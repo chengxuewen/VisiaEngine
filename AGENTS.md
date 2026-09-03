@@ -15,10 +15,13 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 ├── .omo/omo.jsonc    # agent 模型分层/team 配置；.gitignore 排除 .omo/*，仅 omo.jsonc 入库
 ├── .refinfo/         # ⚠ MediaServo 完整归档（21M，gitignored，本机独有）— 只读，永不编辑
 ├── docs/             # whitepaper.md（定位一手事实源）+ architecture.md（v0.1 设计基线，D4 对齐）+ reference/（参考项目库 + evidence/ 证据快照）
+├── pixi.toml/lock    # D5 环境单源（conda-forge 全锁含 rust 工具链）；bootstrap.{sh,bat} 首启 / pixi.{sh,bat} 激活
+├── LICENSE-MIT / LICENSE-APACHE   # 双许可正本（不可撤销承诺见 README）
+├── SKILL.md          # 项目技能注册表（22 项）
 └── README.md         # 白皮书摘要版
 ```
 
-有 README.md、SKILL.md（技能注册表）、双许可（LICENSE-MIT/LICENSE-APACHE）、docs/{whitepaper,architecture}.md、docs/reference/（画像库+evidence/）；仍无 src/、无构建文件。首个工程落地时同步本文件与 status.md。
+有 README.md、SKILL.md（技能注册表）、双许可（LICENSE-MIT/LICENSE-APACHE）、docs/{whitepaper,architecture}.md、docs/reference/（画像库+evidence/）；仍无 src/（环境层已入库，Rust 代码待动工指令）。首个工程落地时同步本文件与 status.md。
 
 ## WHERE TO LOOK
 
@@ -60,7 +63,9 @@ grep -rniE 'mediaservo|audemsp|mediasoup|omsp|msrtc|oxmgr' .agents .opencode --i
 grep -rnE 'PIT-[0-9]+|D1[0-9][0-9]|D2[0-9][0-9]' .agents/rules .agents/skills
 python3 -m json.tool .opencode/opencode.json >/dev/null && echo json-OK
 ```
-无 dev/build/test 命令（无代码）。
+bash bootstrap.sh    # 首次环境初始化（幂等，实测二跑 0.24s；pixi 钉 0.78.0）
+source pixi.sh       # 日常激活（或单命令 pixi run <task>）
+pixi run verify      # 工具链冒烟；check/build/test/lint 等 cargo 任务在 workspace 落地日生效
 
 ## NOTES
 
