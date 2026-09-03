@@ -5,6 +5,24 @@ use visia_render::{Camera, Capability, DrawCommand, Frame, MeshId, RenderBackend
 
 struct Stub;
 
+impl RenderBackend for Stub {
+    fn name(&self) -> &'static str {
+        "stub"
+    }
+    fn supports(&self, _capability: Capability) -> bool {
+        false
+    }
+    fn resize(&mut self, _viewport: Viewport) {}
+    fn render(&mut self, frame: &Frame) {
+        for cmd in &frame.commands {
+            // 穷举消费面：IR 加变体时此处编译失败=契约同步器
+            match cmd {
+                DrawCommand::ClearColor { .. } | DrawCommand::DrawMesh { .. } => {}
+            }
+        }
+    }
+}
+
 // spec: REND-01
 #[test]
 fn backend_trait_object_safe() {
