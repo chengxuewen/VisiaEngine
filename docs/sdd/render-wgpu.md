@@ -21,3 +21,15 @@
 
 `examples/clear.rs` 接受 `--frames N` 自动退出；CI 以 `xvfb-run -a pixi run smoke-clear`
 （N=3）断言 exit 0 = winit→surface→帧循环全链路 E2E 通。本机无 DISPLAY 时该层仅在 CI 验证。
+
+## WGPU-06: golden_cube_center_hit
+`render_offscreen_cube()`（程序化 8 顶点立方 MeshDesc，零资产依赖）中心像素红主导（r≥g+40 且 r≥b+40）——着色非清屏。
+
+## WGPU-07: golden_cube_corner_clear_color
+四角=清屏色 ±16（立方不污染全帧的反证）。
+
+## WGPU-08: golden_cube_silhouette_row
+中线行非清屏段：左右恰 2 次清↔染跳变 + 连续段宽 >100px（正交正面投影的尺寸正确性）。
+
+## WGPU-09: material_uniform_path_live
+同一 offscreen 管线换 material（绿）→ 中心像素绿主导（uniform 绑定路径实跑证据，非 SKIP 假绿）。

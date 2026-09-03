@@ -1,9 +1,21 @@
 //! visiaengine-render 契约测试（仅公开 API；// spec: 标签入双向追溯门禁）。
 
-use visiaengine_core::{Component, Transform, Vec3};
-use visiaengine_render::{Camera, Capability, DrawCommand, Frame, MeshId, RenderBackend, Viewport};
+use visiaengine_render::{
+    BackendError, Camera, Capability, DrawCommand, Frame, MaterialId, MeshDesc, MeshId,
+    RenderBackend, Viewport,
+};
 
-struct Stub;
+const IDENTITY4: [[f32; 4]; 4] = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+struct Stub {
+    meshes: MeshId,
+    materials: MaterialId,
+}
 
 impl RenderBackend for Stub {
     fn name(&self) -> &'static str {
@@ -21,12 +33,20 @@ impl RenderBackend for Stub {
             }
         }
     }
+    fn create_mesh(&mut self, _desc: &MeshDesc) -> Result<MeshId, BackendError> {
+        self.meshes += 1;
+        Ok(self.meshes)
+    }
+    fn create_material(&mut self, _base_color: [f32; 4]) -> Result<MaterialId, BackendError> {
+        self.materials += 1;
+        Ok(self.materials)
+    }
 }
 
 // spec: REND-01
 #[test]
 fn backend_trait_object_safe() {
-    let b: Box<dyn RenderBackend> = Box::new(Stub);
+    let b: Box<dyn RenderBackend> = Box::new(Stub { meshes: 0, materials: 0 });
     assert!(!b.name().is_empty());
 }
 
@@ -34,12 +54,14 @@ fn backend_trait_object_safe() {
 #[test]
 fn stub_impl_without_wgpu() {
     // 本文件即证明：实现 RenderBackend 无需任何后端 crate（不变式②契约面纯度）
-    let mut b = Stub;
+    let mut b = Stub { meshes: 0, materials: 0 };
     let vp = Viewport::new(64, 64, 1.0);
     b.resize(vp);
     let frame = Frame {
         viewport: vp,
         camera: Camera::perspective(1.0, 1.0, 0.1, 1000.0),
+        view: IDENTITY4,
+        proj: IDENTITY4,
         commands: vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.1, 1.0],
         }],
@@ -56,7 +78,8 @@ fn ir_variants_exhaustive_construct() {
         DrawCommand::ClearColor { rgba: [0.0; 4] },
         DrawCommand::DrawMesh {
             mesh,
-            transform: Transform::identity(),
+            material: 3,
+            transform: [[1.0f64, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]],
         },
     ];
     let kinds: Vec<&'static str> = cmds.iter().map(DrawCommand::kind).collect();
@@ -90,11 +113,55 @@ fn camera_projection_variants() {
     assert!(!persp.is_orthographic());
 }
 
-// REND-02 附带面：core 数据型经 IR 流转的编译性
-#[allow(dead_code)]
-fn component_flows_into_frame() {
-    let _c = Component::Transform(Transform {
-        position: Vec3::new(1.0, 2.0, 3.0),
-        scale: 1.0,
-    });
+
+
+// spec: REND-06
+#[test]
+fn mesh_desc_constructible() {
+    let pos = [[0.0f32; 3]; 3];
+    let nrm = [[0.0f32; 3]; 3];
+    let idx = [0u32, 1, 2];
+    let desc = MeshDesc {
+        positions: &pos,
+        normals: &nrm,
+        indices: &idx,
+    };
+    assert_eq!(desc.positions.len(), 3);
+}
+
+// spec: REND-07
+#[test]
+fn create_mesh_returns_distinct_ids() {
+    let mut b = Stub { meshes: 0, materials: 0 };
+    let pos = [[0.0f32; 3]; 3];
+    let desc = MeshDesc { positions: &pos, normals: &pos, indices: &[0, 1, 2] };
+    let m1 = b.create_mesh(&desc).unwrap();
+    let m2 = b.create_mesh(&desc).unwrap();
+    assert_ne!(m1, m2);
+    assert_eq!((m1, m2), (1, 2));
+}
+
+// spec: REND-08
+#[test]
+fn create_material_returns_distinct_ids() {
+    let mut b = Stub { meshes: 0, materials: 0 };
+    assert_eq!(
+        (b.create_material([1.0, 0.0, 0.0, 1.0]).unwrap(),
+         b.create_material([0.0, 1.0, 0.0, 1.0]).unwrap()),
+        (1, 2)
+    );
+}
+
+// spec: REND-09
+#[test]
+fn frame_view_proj_fields_roundtrip() {
+    let f = Frame {
+        viewport: Viewport::new(1, 1, 1.0),
+        camera: Camera::ortho(1.0, 1.0, -1.0, 1.0),
+        view: IDENTITY4,
+        proj: IDENTITY4,
+        commands: vec![],
+    };
+    assert_eq!(f.view, IDENTITY4);
+    assert_eq!(f.proj, IDENTITY4);
 }

@@ -16,3 +16,30 @@ IR `DrawCommand` 全部变体可构造，`kind()` 一一可辨（v0：ClearColor
 
 ## REND-05: camera_projection_variants
 `Camera::Ortho/Perspective` 构造后 `is_orthographic()` 判别正确（2D/3D 统一入口的投影侧地基；切换动画属后续片）。
+
+## REND-06: mesh_desc_constructible
+`MeshDesc{positions:&[[f32;3]], normals:&[[f32;3]], indices:&[u32]}` 纯借用构造，长度约束由文档担保（positions/normals 等长）。
+
+## REND-07: create_mesh_returns_distinct_ids
+trait 法 `create_mesh(&MeshDesc) -> Result<MeshId, BackendError>`；stub 两次调用得不同 MeshId（单调不复用）。
+
+## REND-08: create_material_returns_distinct_ids
+trait 法 `create_material([f32;4]) -> Result<MaterialId, BackendError>`；同 REND-07 语义。
+
+## REND-09: frame_view_proj_fields_roundtrip
+`Frame` 增 `view/proj: [[f32;4];4]`（列主序裸数据，契约面零矩阵库）；恒等阵往返无损。
+
+## REND-10: camera_rig_view_matrix_lookat
+`CameraRig::look_at(eye,target,up)` → view 矩阵：eye 映射到原点、target 的 view 空间 z 分量<0（右手系约定断言）。
+
+## REND-11: persp_proj_matches_glam_std
+90°FOV/aspect1/near1/far∞(大) 透视阵对照手算标准形（RH-GL 深度 0..1 变体，实现选型声明于 camera.rs 顶注）。
+
+## REND-12: ortho_zoom_scales_halfextents
+`CameraRig::ortho_frame(zoom)` 投影半宽半高随 zoom 线性（x 轴 [1,0,0,0] 列分量=1/zoom）。
+
+## REND-13: orbit_90deg_equivalence
+orbit_delta(45°)×2 与 orbit_delta(90°)×1 的 eye 位置 f64 容差 1e-6 等。
+
+## REND-14: degenerate_near_far_rejected
+near>=far → `proj_matrix` 返回 None（构造式拒绝，零 panic）。
