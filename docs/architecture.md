@@ -5,8 +5,8 @@
 
 ## 设计不变式（优先级高于一切图示）
 
-1. **`visia-core` 永不依赖 `visia-render`**：数据模型可无头运行（headless 出图/测试/Studio 复用同源）。
-2. **C ABI 是唯一稳定边界**：wgpu/bevy 级类型止步于 `visia-render-wgpu`，永不泄漏到 trait 之外（D4 否决 Bevy 的第一主因即此）。
+1. **`visiaengine-core` 永不依赖 `visiaengine-render`**：数据模型可无头运行（headless 出图/测试/Studio 复用同源）。
+2. **C ABI 是唯一稳定边界**：wgpu/bevy 级类型止步于 `visiaengine-render-wgpu`，永不泄漏到 trait 之外（D4 否决 Bevy 的第一主因即此）。
 3. **单一语义源，后端只增不分叉**（Unity 三管线互斥学费）：任何后端不得引入新的场景/材质语义。
 4. **主循环归属宿主**：引擎只被 pump，不自建事件循环（rerun spawn/connect 模型为参照，Flutter embedder 为 ABI 纪律范本）。
 5. **兼容 = tier 参数化，非编译期分叉**：能力运行时查询（§图⑥）。
@@ -20,14 +20,14 @@
 └───────────────┬─────────────────────────────────────────────┘
                 │  C ABI（唯一稳定边界，版本化握手）
 ┌───────────────▼─────────────────────────────────────────────┐
-│  绑定生成层     visia-capi(头文件) → bindgen/csbindgen/pub   │
+│  绑定生成层     visiaengine-capi(头文件) → bindgen/csbindgen/pub   │
 ├─────────────────────────────────────────────────────────────┤
-│  引擎核心层     visia-core ── visia-geo ── visia-style       │
+│  引擎核心层     visiaengine-core ── visiaengine-geo ── visiaengine-style       │
 │  (纯 Rust)     场景图/坐标  MVT/投影调度  图层/样式/表达式     │
 ├─────────────────────────────────────────────────────────────┤
-│  渲染抽象层     visia-render：Trait + 渲染指令(IR)，无 GPU 类型 │
+│  渲染抽象层     visiaengine-render：Trait + 渲染指令(IR)，无 GPU 类型 │
 ├─────────────────────────────────────────────────────────────┤
-│  后端层         visia-render-wgpu（默认·自研管线，D4）        │
+│  后端层         visiaengine-render-wgpu（默认·自研管线，D4）        │
 ├─────────────────────────────────────────────────────────────┤
 │  平台层         wgpu v30                                     │
 │   T1: Vulkan│Metal│DX12│WebGPU   T2: GL3.3+/GLES3.0(±ANGLE)  │
@@ -37,20 +37,20 @@
 ## ② Crate 依赖方向
 
 ```
-                 visia-capi ─(cdylib/staticlib + cbindgen 头)
+                 visiaengine-capi ─(cdylib/staticlib + cbindgen 头)
                      │
    ┌───────┬────────┼─────────┬──────────┬──────────┐
-visia-core  visia-geo  visia-style   visia-io-*   visia-proj
+visiaengine-core  visiaengine-geo  visiaengine-style   visiaengine-io-*   visiaengine-proj
  (无 wgpu    (瓦片/     (样式spec,     (gltf/       (投影: feature-gate
   依赖)      坐标/      表达式)        geojson/      纯Rust | C绑定二选一)
              LOD调度)                  mvt)
    └───────┴────────┴─────┬────┴──────────┴──────────┘
-                    visia-render (纯 IR/Trait)
+                    visiaengine-render (纯 IR/Trait)
                           │
-                  visia-render-wgpu ──→ wgpu, lyon, cosmic-text, rstar
- [扩展档，核心零依赖] visia-3dtiles │ visia-odr(Beta) │ visia-ifc(Beta+)
+                  visiaengine-render-wgpu ──→ wgpu, lyon, cosmic-text, rstar
+ [扩展档，核心零依赖] visiaengine-3dtiles │ visiaengine-odr(Beta) │ visiaengine-ifc(Beta+)
 ```
-铁律：依赖箭头只向下；`visia-style`/`visia-geo` 独立性 = Open Core 插件边界的代码化。
+铁律：依赖箭头只向下；`visiaengine-style`/`visiaengine-geo` 独立性 = Open Core 插件边界的代码化。
 
 ## ③ 一帧数据流
 
@@ -67,7 +67,7 @@ host 事件 ──▶ 输入泵 ──▶ 交互/相机状态 (主世界)
         │ 6 SUBMIT/PRESENT (非阻塞 poll 语义)           │
         └────────────────────────────────────┘
 ```
-- **场景存储定调（本轮 Unity-DOTS/UE6 证据收敛）**：slab-handle 索引 + 脏标记起步，**不上 ECS**；若未来性能证据推翻，替换限 `visia-core` 内部，不破 C ABI。
+- **场景存储定调（本轮 Unity-DOTS/UE6 证据收敛）**：slab-handle 索引 + 脏标记起步，**不上 ECS**；若未来性能证据推翻，替换限 `visiaengine-core` 内部，不破 C ABI。
 - **渲染条目 IR 标注 cluster-ready**（UE Nanite 启示）：数据结构预留 meshlet/indirect-draw 扩展位，MVP 不实现、不封死。
 
 ## ④ 2D/2.5D/3D 统一与坐标精度
@@ -91,9 +91,9 @@ host 事件 ──▶ 输入泵 ──▶ 交互/相机状态 (主世界)
 线程契约（仿 Flutter embedder）:
   platform thread = 宿主主线程（visia 绝不自建事件循环、绝不抢占）
   engine work     = 内部任务池（C API 投递/回调）
-  render work     = 宿主调 visia_frame() 驱动；专职渲染线程可选开关
+  render work     = 宿主调 visiaengine_frame() 驱动；专职渲染线程可选开关
 ABI: 结构体首字段 {size, api_version}；只导出 opaque 句柄；
-     错误 = int code + visia_last_error()
+     错误 = int code + visiaengine_last_error()
 ```
 
 ## ⑥ 兼容 Tier 能力矩阵
@@ -105,7 +105,7 @@ compute      ✅                 GLES3.1+/缺失        ✅(WebGPU)/—(WebGL2)
 indirect     ✅                 GL 路径模拟          ~
 阴影/MSAA    全配               半配                 半配
 纹理压缩     BC/ETC2/ASTC       按驱动               按浏览器
-→ visia_capability_query() 返回 tier+flags；样式/图层按 flags 自动降画质
+→ visiaengine_capability_query() 返回 tier+flags；样式/图层按 flags 自动降画质
 ```
 本轮再验证：Godot 4.7（Vulkan+D3D12+Metal+GL+ANGLE 选项）与 wgpu **独立收敛到同构矩阵**；three.js WebGL/WebGPU 双 renderer 十年并存证明"运行时选档"路线可行。
 
@@ -133,7 +133,7 @@ StyleSpec(声明式, 可 diff): type(fill|line|symbol|heatmap|model|volume)
 ## ⑨ 构建交付矩阵
 
 ```
-cargo ──▶ visia-capi: cdylib(.dll/.dylib/.so) + staticlib + visia.h(cbindgen)
+cargo ──▶ visiaengine-capi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h(cbindgen)
       ──▶ wasm: npm 包（webgpu | webgl2 双 feature）
 打包: vcpkg/NuGet/pub 镜像；体积预算核心 .so ≤6MB，总量标 ≤10MB（MVP 实测复核）
 CI 矩阵: 全量测试跑 T1；T2 在 LLVMPipe/Mesa 软渲 + Android 模拟器抽查；WebGL2 浏览器
@@ -145,7 +145,7 @@ pin 纪律: wgpu 季度破坏 → 主版本 pin + 每季度升级窗口（全 ti
 | # | 悬题 | 影响面 | 裁定期 |
 |---|------|--------|--------|
 | P1 | RTC 粒度（per-tile vs viewer-origin rebase） | core 地基，一次定对 | scaffold 后的 core 设计文档 |
-| P2 | 样式 spec 兼容性（MapLibre v8 子集?） | visia-style + 迁移工具 | 样式系统设计时 |
+| P2 | 样式 spec 兼容性（MapLibre v8 子集?） | visiaengine-style + 迁移工具 | 样式系统设计时 |
 | P3 | RK3588 驱动栈（厂商 blob/BSP vs 主线 Panvk） | 发布矩阵/QA 成本 | **商务输入**（客户画像），不阻塞代码 |
 | P4 | 材质表达式层（TSL 式）| 渲染远期 | post-MVP，不现在设计 |
 

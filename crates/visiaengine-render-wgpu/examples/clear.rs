@@ -23,7 +23,7 @@ struct Gfx {
 
 impl Gfx {
     fn new(window: Arc<Window>) -> Option<Self> {
-        let instance = visia_render_wgpu::create_instance();
+        let instance = visiaengine_render_wgpu::create_instance();
         let size = window.inner_size();
         // Arc<Window>：rwh 0.6 对 Arc 有 blanket impl，'static 借用面由 Arc 生命周期担保
         let surface = instance.create_surface(window).expect("create_surface");
@@ -33,7 +33,7 @@ impl Gfx {
         }))
         .ok()?;
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visia-clear"),
+            label: Some("visiaengine-clear"),
             required_features: wgpu::Features::empty(),
             required_limits: adapter.limits(),
             ..Default::default()

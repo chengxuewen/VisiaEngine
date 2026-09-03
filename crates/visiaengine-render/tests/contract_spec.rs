@@ -1,7 +1,7 @@
-//! visia-render 契约测试（仅公开 API；// spec: 标签入双向追溯门禁）。
+//! visiaengine-render 契约测试（仅公开 API；// spec: 标签入双向追溯门禁）。
 
-use visia_core::{Component, Transform, Vec3};
-use visia_render::{Camera, Capability, DrawCommand, Frame, MeshId, RenderBackend, Viewport};
+use visiaengine_core::{Component, Transform, Vec3};
+use visiaengine_render::{Camera, Capability, DrawCommand, Frame, MeshId, RenderBackend, Viewport};
 
 struct Stub;
 

@@ -1,4 +1,4 @@
-//! # visia-render-wgpu
+//! # visiaengine-render-wgpu
 //!
 //! 默认后端（D4 终审：wgpu 直用自研管线）。wgpu 类型止步于本 crate（不变式②）。
 //!

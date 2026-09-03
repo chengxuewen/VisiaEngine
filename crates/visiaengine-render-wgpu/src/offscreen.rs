@@ -50,7 +50,7 @@ pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
     }))
     .ok()?;
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        label: Some("visia-offscreen"),
+        label: Some("visiaengine-offscreen"),
         required_features: wgpu::Features::empty(),
         required_limits: adapter.limits(),
         ..Default::default()

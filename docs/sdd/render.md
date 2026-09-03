@@ -1,4 +1,4 @@
-# visia-render 行为契约（SDD）
+# visiaengine-render 行为契约（SDD）
 
 > 条款标题行 `## REND-NN:` 为追溯锚点；测试挂 `// spec: REND-NN`。
 

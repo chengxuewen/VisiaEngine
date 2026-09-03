@@ -11,9 +11,9 @@ repository = "https://gitee.com/chengxuewen/VisiaEngine"
 
 [workspace.dependencies]
 # 内部 crate（路径统一声明，成员引用 .workspace = true）
-visia-core = { path = "crates/visia-core", version = "0.1.0" }
-visia-render = { path = "crates/visia-render", version = "0.1.0" }
-visia-render-wgpu = { path = "crates/visia-render-wgpu", version = "0.1.0" }
+visiaengine-core = { path = "crates/visiaengine-core", version = "0.1.0" }
+visiaengine-render = { path = "crates/visiaengine-render", version = "0.1.0" }
+visiaengine-render-wgpu = { path = "crates/visiaengine-render-wgpu", version = "0.1.0" }
 
 # 第三方 pin（计划 §1，2026-09-03 crates.io 实测）
 wgpu = "30"                    # 架构⑨：主版本 pin + 季度升级窗口

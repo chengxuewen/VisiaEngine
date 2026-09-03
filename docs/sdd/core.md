@@ -1,4 +1,4 @@
-# visia-core 行为契约（SDD）
+# visiaengine-core 行为契约（SDD）
 
 > 测试注释携带 `// spec: CORE-NN`；双向追溯门禁 `scripts/spec-trace.sh`。
 > 坐标重基（RTC）测试留 P1 裁定后追加（architecture.md 未决点），不预写。

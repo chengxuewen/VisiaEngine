@@ -49,3 +49,9 @@
   4. CI 钉死 pixi-version，锁漂移用 `--frozen` 把关。
   5. `pixi.lock` 与 `Cargo.lock` 同纪律必入库。
 - **影响**: 动工日生成 pixi.toml / bootstrap.{sh,bat} / pixi.{sh,bat} / docs/env.md；`rules/common/constraints.md` 增补环境纪律；机器上永不出现 rustup（除条款①逃生场景）。
+
+## D6: 技术命名空间统一为 visiaengine-*（2026-09-03，用户裁决）
+- **决策**: 品牌名 = **VisiaEngine / 维视引擎**（PascalCase，文档/UI/正式称谓）；技术前缀 = **`visiaengine-`**（小写全品牌名：crate 包名/lib 下划线名/workspace 路径/CI 与门禁引用全链）。C ABI 层：符号 `visiaengine_*`、头文件 `visiaengine.h`、库名 `libvisiaengine.{so,dylib,dll}`（capi 片兑现）。环境变量前缀预留 `VISIAENGINE_`。分层例外：**产品称谓保持原样**（编辑器 "Visia Studio" 非技术命名空间）。
+- **修订面**: D4 历史条目中 crate 名表述按史实保留不改写；自本条起现在时文档全用新名。SDD 条款号（CORE/REND/WGPU-*）独立于 crate 命名，零改动。
+- **原因**: ①"visia" 非官方产品称谓，全名三位一体（仓名=品牌=前缀）检索独占零歧义；②实测无障碍——crates.io 两候选命名空间均空闲、GitHub C 符号 `visia_` 零使用；③前项目 D209→D221 两次全量改名税的终态教训：一次到位=品牌小写全名；④原反对案"C ABI 短前缀双轨"论据经用户质询推翻（C 前缀可同步改，长前缀 gdk_pixbuf_* 有 C 惯例先例）。
+- **影响**: 单笔原子改名（3 crate 目录+包名+引用+CI+现时文档，`pixi run ci` 与 golden 三测全绿后提交）；历史面（decisions/pitfalls 旧条目、docs/reference 快照、commit 史）不改写。未来品牌若再演化，重蹈改名税的成本由"发布前定死"纪律兜底。

@@ -3,7 +3,7 @@
 const W: u32 = 640;
 const H: u32 = 480;
 
-fn px(f: &visia_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] {
+fn px(f: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] {
     let i = ((y * W + x) * 4) as usize;
     [f.rgba[i], f.rgba[i + 1], f.rgba[i + 2], f.rgba[i + 3]]
 }
@@ -23,7 +23,7 @@ macro_rules! skip_if_no_gpu {
 // spec: WGPU-03
 #[test]
 fn golden_center_pixel() {
-    let frame = skip_if_no_gpu!(visia_render_wgpu::render_offscreen_triangle());
+    let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_triangle());
     let [r, g, b, a] = px(&frame, W / 2, H / 2);
     assert!(
         r >= 200 && g <= 60 && b <= 60 && a == 255,
@@ -34,7 +34,7 @@ fn golden_center_pixel() {
 // spec: WGPU-04
 #[test]
 fn golden_frame_dimensions() {
-    let frame = skip_if_no_gpu!(visia_render_wgpu::render_offscreen_triangle());
+    let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_triangle());
     assert_eq!((frame.width, frame.height), (W, H));
     assert_eq!(frame.rgba.len(), (W * H * 4) as usize);
 }
@@ -42,7 +42,7 @@ fn golden_frame_dimensions() {
 // spec: WGPU-05
 #[test]
 fn golden_corner_clear_color() {
-    let frame = skip_if_no_gpu!(visia_render_wgpu::render_offscreen_triangle());
+    let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_triangle());
     for (x, y) in [(0, 0), (W - 1, 0), (0, H - 1), (W - 1, H - 1)] {
         let [r, g, b, _] = px(&frame, x, y);
         assert!(

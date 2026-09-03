@@ -15,13 +15,13 @@
 
 ## 架构（一句话）
 
-`visia-core`（数据模型/空间索引/坐标系/场景图）→ `visia-render`（渲染抽象 Trait）→ `visia-render-wgpu`（默认后端：基于 wgpu 的自研渲染管线，D4 终审定案；后端抽象保留可插拔）。宿主侧只依赖 C API，后端选型不破坏兼容承诺。
+`visiaengine-core`（数据模型/空间索引/坐标系/场景图）→ `visiaengine-render`（渲染抽象 Trait）→ `visiaengine-render-wgpu`（默认后端：基于 wgpu 的自研渲染管线，D4 终审定案；后端抽象保留可插拔）。宿主侧只依赖 C API，后端选型不破坏兼容承诺。
 
 ## 仓库结构
 
 ```
 ├── AGENTS.md / SKILL.md   # 代理知识库与技能注册表
-├── crates/                # visia-core / visia-render / visia-render-wgpu
+├── crates/                # visiaengine-core / visiaengine-render / visiaengine-render-wgpu
 ├── pixi.toml / pixi.lock  # 开发环境单源（D5：conda-forge，含 rust 工具链）
 ├── docs/sdd/              # 行为契约条款（与测试双向追溯）
 ├── docs/

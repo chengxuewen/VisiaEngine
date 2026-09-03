@@ -26,8 +26,8 @@ jobs:
 
       - name: 不变式① core 无渲染依赖
         run: |
-          ! cargo tree -p visia-core -i wgpu
-          ! grep -rq 'use wgpu' crates/visia-core/src/
+          ! cargo tree -p visiaengine-core -i wgpu
+          ! grep -rq 'use wgpu' crates/visiaengine-core/src/
 
       - name: SDD↔测试双向追溯
         run: bash scripts/spec-trace.sh

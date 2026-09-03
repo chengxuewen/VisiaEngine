@@ -1698,29 +1698,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "visia-core"
+name = "visiaengine-core"
 version = "0.1.0"
 dependencies = [
  "thiserror 2.0.20",
 ]
 
 [[package]]
-name = "visia-render"
+name = "visiaengine-render"
 version = "0.1.0"
 dependencies = [
  "thiserror 2.0.20",
- "visia-core",
+ "visiaengine-core",
 ]
 
 [[package]]
-name = "visia-render-wgpu"
+name = "visiaengine-render-wgpu"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
  "pollster",
  "raw-window-handle",
- "visia-core",
- "visia-render",
+ "visiaengine-core",
+ "visiaengine-render",
  "wgpu",
  "winit",
 ]

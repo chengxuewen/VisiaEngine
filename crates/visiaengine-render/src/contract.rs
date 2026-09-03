@@ -1,7 +1,7 @@
 //! 渲染契约：后端 trait + 帧 IR（纯数据，零后端类型——不变式②）。
 //! 条款：docs/sdd/render.md REND-01..05。
 
-use visia_core::Transform;
+use visiaengine_core::Transform;
 
 /// 网格资源标识（不透明；真实资源表属后续片）。
 pub type MeshId = u64;

@@ -8,9 +8,9 @@
 
 | 项 | 状态 |
 |----|------|
-| 技术栈 | ✅ Rust 核心 + wgpu 渲染（白皮书 v0.1.0，2026-09-03 定）；**后端 = D4 终审定案：wgpu 直用自研管线 `visia-render-wgpu`（不采用 Bevy）**；SDK 形态（C API FFI）；Open Core 商业模型 |
+| 技术栈 | ✅ Rust 核心 + wgpu 渲染（白皮书 v0.1.0，2026-09-03 定）；**后端 = D4 终审定案：wgpu 直用自研管线 `visiaengine-render-wgpu`（不采用 Bevy）**；SDK 形态（C API FFI）；Open Core 商业模型 |
 | 许可证 | ✅ 已落地：MIT OR Apache-2.0 双许可正本文件（LICENSE-MIT/LICENSE-APACHE），不可撤销承诺入 README |
-| 源码 | crates/ 3 crate（visia-core / visia-render / visia-render-wgpu），~1.1k 行，20 cargo 测试 + L2 smoke，9 测试套件绿 |
+| 源码 | crates/ 3 crate（visiaengine-core / visiaengine-render / visiaengine-render-wgpu），~1.1k 行，20 cargo 测试 + L2 smoke，9 测试套件绿 |
 | 项目定位 | ✅ 多维空间可视化引擎（2D/2.5D/3D 统一，GIS/数字孪生/AV 仿真/BIM），非游戏引擎 |
 | Agent 工具链 | ✅ 配置中性化 + 根 SKILL.md 技能注册表（22 项）+ 双层 AGENTS.md；Rust 规则回填 instructions 待执行 |
 
@@ -32,4 +32,4 @@
 
 ## 开工骨架基线（2026-09-03）
 
-`pixi run ci` 全绿（fmt/lint/check/test/audit）· spec-trace 20↔20 双向对齐 · 不变式①②机器门禁 PASS · golden L1 本机 lavapipe 实跑 · L2 待 CI xvfb · 提交面 feat(S0-S4)+test(RED)×5=10 笔（S2 RED 拆两笔，规则17收口，K4 偏差已记账）
+`pixi run ci` 全绿（fmt/lint/check/test/audit）· spec-trace 20↔20 双向对齐 · 不变式①②机器门禁 PASS · golden L1 本机 lavapipe 实跑（D6 改名后复验绿） · L2 待 CI xvfb · 提交面 feat(S0-S4)+test(RED)×5=10 笔（S2 RED 拆两笔，规则17收口，K4 偏差已记账）+ 命名统一 1 笔（D6：全链 visiaengine-*）

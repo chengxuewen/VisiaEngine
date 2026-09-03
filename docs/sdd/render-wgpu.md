@@ -1,4 +1,4 @@
-# visia-render-wgpu 行为契约（SDD）
+# visiaengine-render-wgpu 行为契约（SDD）
 
 > 条款格式：`## WGPU-NN: 名称`。双向追溯：`scripts/spec-trace.sh`。
 

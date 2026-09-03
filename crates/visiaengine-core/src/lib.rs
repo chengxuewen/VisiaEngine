@@ -1,4 +1,4 @@
-//! # visia-core
+//! # visiaengine-core
 //!
 //! VisiaEngine 数据模型核心：场景图（slab handle + 脏标记）、坐标类型。
 //!
