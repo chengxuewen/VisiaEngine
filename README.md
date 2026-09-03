@@ -2,7 +2,7 @@
 
 > **多维空间可视化引擎** — 统一的 2D / 2.5D / 3D 渲染管线，为"看见数据的本质"而生。
 
-**状态：白皮书 v0.1.0 已定稿方向，工程未动工（无源码）。** 完整定位见 [docs/whitepaper.md](docs/whitepaper.md)。
+**状态：白皮书 v0.1.0 定稿 + 工程骨架落地（workspace/契约/渲染管线冒烟）。** 完整定位见 [docs/whitepaper.md](docs/whitepaper.md)。
 
 ## 它是什么
 
@@ -21,6 +21,9 @@
 
 ```
 ├── AGENTS.md / SKILL.md   # 代理知识库与技能注册表
+├── crates/                # visia-core / visia-render / visia-render-wgpu
+├── pixi.toml / pixi.lock  # 开发环境单源（D5：conda-forge，含 rust 工具链）
+├── docs/sdd/              # 行为契约条款（与测试双向追溯）
 ├── docs/
 │   ├── whitepaper.md      # 白皮书 v0.1.0（定位与商业策略一手源）
 │   ├── architecture.md    # 架构设计基线 v0.1（D4 定案后的设计入口）
@@ -30,7 +33,11 @@
 
 ## 开发状态
 
-**Phase 0 完成，工程未动工。** 已定案：Rust 核心、wgpu 直用自研管线（后端终裁 D4）、SDK 形态（C API 唯一稳定边界）、Open Core。决策与证据链见 `docs/architecture.md` 与 `docs/reference/`。下一步：Cargo workspace 骨架（visia-core / visia-render / visia-render-wgpu）。
+**Phase 0 完成，Phase 1 骨架落地。** 已定案：Rust 核心、wgpu 直用自研管线（D4）、SDK 形态（C API 边界）、Open Core、pixi 单源环境（D5）。当前态：三 crate workspace + SDD 行为契约（20 测试）+ 离屏渲染 golden + 不变式机器门禁。下一步：MVP 功能片（glTF/GeoJSON 加载、2D↔3D 切换演示）。
+
+```bash
+bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
+```
 
 ## 商业模型
 

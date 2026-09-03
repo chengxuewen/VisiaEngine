@@ -23,3 +23,9 @@
 - **根因**: gitignore 语义 = 后匹配规则覆盖前者，目录排除 `dir/*` 必须写在取反 `!dir/file` **之前**；`check-ignore` 默认模式对"被排除规则匹配但与最终忽略状态矛盾"的路径退出码语义与直觉不符（-v 显示的最终匹配行才是事实源）。
 - **解法**: 调整次序 `.omo/*` → `!.omo/omo.jsonc`；验证以 `git check-ignore -v`（显示最终命中行）和**实际 `git add` 成功与否**为准，不信 `-q` 退出码。
 - **验证**: `git check-ignore -v .omo/omo.jsonc` 命中行必须是取反规则；`git ls-files .omo/` 有输出。任何新增 `!` 取反规则提交前跑一次实 add 演练。
+
+## PIT-3: wgpu v30 升级破坏面——flags 默认值/Color 语义/draw 迁移三连（2026-09-03, S3/S4 实测）
+- **症状**: ①debug profile 下 `cargo test` 在 lavapipe 上 panic `Unable to load cmd_begin_debug_utils_label_ext`（ash, panic-in-cannot-unwind）；②清屏色传 `0.05*255` 期望深蓝实得纯白 (255,255,255)；③`RenderPassColorAttachment` 编译报缺 `depth_slice`、`InstanceDescriptor` 无 `Default`、`enumerate_adapters` 变 async、`encoder.set_pipeline/draw` 不存在、`multiview`→`multiview_mask`、`create_slice`→`slice`、`map_async` 改 (mode, bounds, cb) 回调式、`Maintain`→`PollType::wait_indefinitely()`。另：winit `default-features=false` 裁特征时误删 `rwh_06` → `Window: HasWindowHandle` 不成立，create_surface 类型错。
+- **根因**: ①`InstanceFlags::default()=from_build_config()`，debug 构建自动含 VALIDATION → 强制加载 VK_EXT_debug_utils，软渲染/旧 loader 无此符号；②v30 `Color` 分量语义 0-255→0-1（越界 clamp 成白）；③v30 与 WebGPU 规范对齐的大版本破坏（季度 pin 纪律的预期成本）。
+- **解法**: `create_instance` 显式 `flags = InstanceFlags::empty()`（诊断校验留专项片）；清色按 0-1 传值；winit features 显式含 `rwh_06`；API 差异以**本地 registry 源码**为准（`~/.cargo/registry/src/.../wgpu-30.0.1`，比 docs.rs 快且真）。
+- **验证**: `pixi run ci` 绿 + offscreen golden 3 测真机绿；**任何 wgpu 版本升级日 = 先 grep 本条 + 重跑破坏面清单**；实验定标优先于文档采信（Color 语义即实验确认）。

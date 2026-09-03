@@ -10,7 +10,7 @@
 |----|------|
 | 技术栈 | ✅ Rust 核心 + wgpu 渲染（白皮书 v0.1.0，2026-09-03 定）；**后端 = D4 终审定案：wgpu 直用自研管线 `visia-render-wgpu`（不采用 Bevy）**；SDK 形态（C API FFI）；Open Core 商业模型 |
 | 许可证 | ✅ 已落地：MIT OR Apache-2.0 双许可正本文件（LICENSE-MIT/LICENSE-APACHE），不可撤销承诺入 README |
-| 源码 | 尚无 |
+| 源码 | crates/ 3 crate（visia-core / visia-render / visia-render-wgpu），~1.1k 行，20 cargo 测试 + L2 smoke，9 测试套件绿 |
 | 项目定位 | ✅ 多维空间可视化引擎（2D/2.5D/3D 统一，GIS/数字孪生/AV 仿真/BIM），非游戏引擎 |
 | Agent 工具链 | ✅ 配置中性化 + 根 SKILL.md 技能注册表（22 项）+ 双层 AGENTS.md；Rust 规则回填 instructions 待执行 |
 
@@ -19,13 +19,17 @@
 | Phase | 状态 |
 |-------|:----:|
 | 0 项目初始化（配置中性化/白皮书/架构基线/参考库/许可证） | ✅ |
-| 1 MVP | 🔨 开工中（S0✓骨架 S1✓场景图 S2✓契约 S3✓wgpu 实例/窗口；S4 收官片；；glTF/GeoJSON/切换为后续片） |
+| 1 MVP | 🔨 开工骨架完成（S0-S4 ✓：workspace/场景图 v0/渲染契约/wgpu 实例+L2 example/离屏 golden）；glTF/GeoJSON/2D-3D 切换 = 下轮功能片；glTF/GeoJSON/切换为后续片） |
 | 2 Alpha / 3 Beta / 4 1.0 | — 白皮书路线图 |
 
 ## 下一步
 
-1. 环境初始化：全 pixi 方案（D5）已裁决——计划文档过审后待动工指令；随后 Cargo workspace 骨架 + 最小 CI
-2. 动工日一次性回填（照抄 .refinfo/MediaServo 归档形态）：rust-toolchain/clippy/deny/tarpaulin.toml、check.sh、docs/modules/NN-*.md 编号设计文档群、docs/sdd/
-3. 规则回填：rules/rust/{coding-style,hooks}.md 入 opencode.json instructions
-4. push 至 gitee remote——待用户指令
-5. 未决点 P1-P4（docs/architecture.md 末表）：RTC 粒度、style spec 兼容性、RK3588 驱动栈（商务输入）、材质 DSL（post-MVP）
+1. **MVP 功能片规划轮**（glTF+GeoJSON 加载 / 2D↔3D 切换演示 / 宿主嵌入示例——白皮书 MVP 定义 → 新计划文档 → Momus 审）
+2. P1 裁决（RTC 粒度）= core 坐标系功能片前置；届时补重基测试（SDD core.md 已留位）
+3. CI 激活：GitHub 镜像仓决策日（ci.yml 已待命）；Gitee remote push 待指令
+4. wgpu 升级窗口（季度）：重跑 PIT-3 破坏面清单
+5. 环境/许可证/工具链条款不变（D5）；wasm/GDAL/Qt 到货日见 pixi.toml 注释与架构⑦
+
+## 开工骨架基线（2026-09-03）
+
+`pixi run ci` 全绿（fmt/lint/check/test/audit）· spec-trace 20↔20 双向对齐 · 不变式①②机器门禁 PASS · golden L1 本机 lavapipe 实跑 · L2 待 CI xvfb · 提交面 feat(S0-S4)+test(RED)×5=10 笔（S2 RED 拆两笔，规则17收口，K4 偏差已记账）

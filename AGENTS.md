@@ -4,12 +4,16 @@
 
 ## OVERVIEW
 
-VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visia-render-wgpu`，不采用 Bevy）。仓内尚无源码；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
+VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visia-render-wgpu`，不采用 Bevy）。**开工骨架已落地（S0-S4，2026-09-03）**：三 crate workspace + 20 测试 + golden/不变式/追溯三门禁；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
 
 ## STRUCTURE
 
 ```
 ./
+├── Cargo.toml/lock   # workspace（crates/* 三成员，版本 pin 见计划锚点）；deny.toml licenses/bans
+├── crates/           # visia-core（场景图/坐标，永无渲染依赖）→ visia-render（trait+IR 契约）→ visia-render-wgpu（wgpu 后端+examples+offscreen golden）
+├── docs/sdd/         # 行为契约条款（CORE/REND/WGPU-NN，与测试 // spec: 双向追溯：scripts/spec-trace.sh）
+├── .github/workflows # ci.yml 待命（GitHub 镜像日激活；本机等价=pixi run ci+同款 grep）
 ├── .agents/          # 项目记忆+规则+技能（见其 AGENTS.md）
 ├── .opencode/        # opencode.json（instructions/MCP/LSP 装配点）+ init-mcp-*.mjs / init-lsp-wrap.mjs 桥脚本
 ├── .omo/omo.jsonc    # agent 模型分层/team 配置；.gitignore 排除 .omo/*，仅 omo.jsonc 入库
@@ -21,7 +25,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 └── README.md         # 白皮书摘要版
 ```
 
-有 README.md、SKILL.md（技能注册表）、双许可（LICENSE-MIT/LICENSE-APACHE）、docs/{whitepaper,architecture}.md、docs/reference/（画像库+evidence/）；仍无 src/（环境层已入库，Rust 代码待动工指令）。首个工程落地时同步本文件与 status.md。
+有完整工程层：Cargo workspace（3 crate，~1.1k 行）+ pixi 环境（D5）+ SDD 契约 + CI 待命 + 双许可。Phase 1 MVP 功能片（glTF/GeoJSON/2D-3D）未动工——待新计划轮。
 
 ## WHERE TO LOOK
 
@@ -29,13 +33,13 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 |------|------|------|
 | 每轮会话加载了什么上下文 | `.opencode/opencode.json` → `instructions`（恰 14 条） | 新增条目 = 每轮固定 token 成本，先证明"每轮必需"再加 |
 | 项目状态/约定/决策/踩坑 | `.agents/memorys/` | 模板态，从零积累；编号体系见其 AGENTS.md |
-| 语言规则 | `.agents/rules/<lang>/` | 栈=Rust：rules/rust 入 instructions 为待执行回填项 |
+| 语言规则 | `.agents/rules/<lang>/` | rust/{coding-style,hooks} 已入 instructions（16 条）|
 | 技能 | `.agents/skills/*/SKILL.md` | 22 个；frontmatter description = 路由触发面 |
 | 前项目 MediaServo 的任何历史 | `.refinfo/MediaServo/` | 决策史/踩坑史/完整 rules——查证用，禁止引用编号进新仓 |
 
 ## CODE MAP
 
-无代码，未测量。规划 crate（白皮书）：`visia-core`（数据模型/空间索引/坐标系/场景图/资源）→ `visia-render`（渲染抽象 Trait）→ `visia-render-wgpu`（默认后端，自研管线）。首 commit 后以 LSP/codegraph 重建本节。
+`Scene/EntityId`(crates/visia-core/src/scene.rs：Vec+free-list+代际+脏标记，spike 实测 100k 实体 ~12ms) → `RenderBackend/Frame/DrawCommand`(crates/visia-render/src/contract.rs，object-safe，测试内 stub=不变式②构造证明) → `create_instance/available_adapters/render_offscreen_triangle`(crates/visia-render-wgpu/src/，examples/clear.rs L2)。依赖单向：core ← render ← render-wgpu；wgpu 类型止步后端 crate。
 
 ## CONVENTIONS
 
@@ -65,7 +69,9 @@ python3 -m json.tool .opencode/opencode.json >/dev/null && echo json-OK
 ```
 bash bootstrap.sh    # 首次环境初始化（幂等，实测二跑 0.24s；pixi 钉 0.78.0）
 source pixi.sh       # 日常激活（或单命令 pixi run <task>）
-pixi run verify      # 工具链冒烟；check/build/test/lint 等 cargo 任务在 workspace 落地日生效
+pixi run ci          # fmt+lint+check+test+audit 聚合（开工门禁）
+pixi run <check|build|test|lint|fmt|audit|verify>   # 单任务
+bash scripts/spec-trace.sh    # SDD↔测试双向追溯
 
 ## NOTES
 
