@@ -2,8 +2,6 @@
 //! 相机数学在兄弟模块 `camera`（REND-10..16）。
 //! 条款：docs/sdd/render.md REND-01..05。
 
-use visiaengine_core::Transform;
-
 /// 网格资源标识（不透明；真实资源表属后续片）。
 pub type MeshId = u64;
 

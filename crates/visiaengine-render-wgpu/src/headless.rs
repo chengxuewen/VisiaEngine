@@ -158,7 +158,7 @@ impl HeadlessBackend {
 
     fn uniform(&self, bytes: &[u8], label: &'static str) -> wgpu::Buffer {
         let mut padded = bytes.to_vec();
-        padded.resize(((padded.len() + 255) / 256) * 256, 0); // uniform 最小绑定对齐宽容
+        padded.resize(padded.len().div_ceil(256) * 256, 0); // uniform 最小绑定对齐宽容
         let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(label),
             size: padded.len() as u64,

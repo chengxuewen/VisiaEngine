@@ -25,6 +25,14 @@ pub struct CameraRig {
     pub far: f64,
 }
 
+/// 深度参数合法性：far>near 且拒 NaN/inf（clippy 偏序取反禁令的正解，REND-14 语义面）
+#[must_use]
+fn depth_ok(near: f32, far: f32) -> bool {
+    matches!(far.partial_cmp(&near), Some(std::cmp::Ordering::Greater))
+        && far.is_finite()
+        && near.is_finite()
+}
+
 const UP: glam::DVec3 = glam::DVec3::new(0.0, 1.0, 0.0);
 
 impl CameraRig {
@@ -88,7 +96,8 @@ impl CameraRig {
     /// 增量轨道（yaw 绕 Z-up 水平圆，pitch 极点软钳制——REND-13 断言面）。
     pub fn orbit_delta(&mut self, dyaw: f64, dpitch: f64) {
         self.yaw += dyaw;
-        self.pitch = (self.pitch + dpitch).clamp(-1.570_796, 1.570_796);
+        self.pitch =
+            (self.pitch + dpitch).clamp(-std::f64::consts::FRAC_PI_2, std::f64::consts::FRAC_PI_2);
     }
 
     #[must_use]
@@ -112,7 +121,7 @@ impl CameraRig {
         near: f32,
         far: f32,
     ) -> Option<[[f32; 4]; 4]> {
-        if !(far > near) || near <= 0.0 || aspect <= 0.0 {
+        if !depth_ok(near, far) || near <= 0.0 || !aspect.is_finite() || aspect <= 0.0 {
             return None;
         }
         let f = 1.0 / (fov_y * 0.5).tan();
@@ -138,7 +147,15 @@ impl CameraRig {
         near: f32,
         far: f32,
     ) -> Option<[[f32; 4]; 4]> {
-        if !(far > near) || near <= 0.0 || zoom <= 0.0 || width <= 0.0 || height <= 0.0 {
+        if !depth_ok(near, far)
+            || near <= 0.0
+            || !zoom.is_finite()
+            || zoom <= 0.0
+            || !width.is_finite()
+            || width <= 0.0
+            || !height.is_finite()
+            || height <= 0.0
+        {
             return None;
         }
         let hw = f64::from(zoom);

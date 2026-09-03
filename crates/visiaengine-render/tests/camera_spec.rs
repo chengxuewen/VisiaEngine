@@ -15,16 +15,12 @@ fn apply(m: &[[f32; 4]; 4], v: [f32; 4], row: usize) -> f32 {
     (0..4).map(|c| m[c][row] * v[c]).sum()
 }
 
-fn apply_f64(m: &[[f32; 4]; 4], v: [f64; 4], row: usize) -> f64 {
-    (0..4).map(|c| f64::from(m[c][row]) * v[c]).sum()
-}
-
 // spec: REND-10
 #[test]
 fn camera_rig_view_matrix_lookat() {
     let v = rig().view_matrix();
     let e = [3.0f32, 4.0, 5.0, 1.0];
-    for row in 0..3 {
+    for (row, _) in (0..3).enumerate() {
         let dot: f32 = (0..4).map(|c| v[c][row] * e[c]).sum();
         assert!(dot.abs() < 1e-3, "row {row} = {dot}, 期望 ~0");
     }
