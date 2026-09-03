@@ -5,12 +5,7 @@ const H: u32 = 480;
 
 fn px(f: &visia_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] {
     let i = ((y * W + x) * 4) as usize;
-    [
-        f.rgba[i],
-        f.rgba[i + 1],
-        f.rgba[i + 2],
-        f.rgba[i + 3],
-    ]
+    [f.rgba[i], f.rgba[i + 1], f.rgba[i + 2], f.rgba[i + 3]]
 }
 
 macro_rules! skip_if_no_gpu {
@@ -30,7 +25,10 @@ macro_rules! skip_if_no_gpu {
 fn golden_center_pixel() {
     let frame = skip_if_no_gpu!(visia_render_wgpu::render_offscreen_triangle());
     let [r, g, b, a] = px(&frame, W / 2, H / 2);
-    assert!(r >= 200 && g <= 60 && b <= 60 && a == 255, "center not red: {r},{g},{b},{a}");
+    assert!(
+        r >= 200 && g <= 60 && b <= 60 && a == 255,
+        "center not red: {r},{g},{b},{a}"
+    );
 }
 
 // spec: WGPU-04

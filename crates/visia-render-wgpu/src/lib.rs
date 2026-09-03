@@ -9,11 +9,19 @@
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
+mod offscreen;
+
+pub use offscreen::{OffscreenFrame, render_offscreen_triangle};
+
 /// 以 PRIMARY 后端族构造 Instance（Vulkan/Metal/DX12/GL）。
 #[must_use]
 pub fn create_instance() -> wgpu::Instance {
     let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
     desc.backends = wgpu::Backends::PRIMARY;
+    // 骨架期显式空标志：debug profile 下 default=from_build_config() 开 VALIDATION，
+    // 将尝试 VK_EXT_debug_utils——lavapipe/旧 loader 缺符号即 panic（CI debug 测试同雷）。
+    // 校验/诊断模式（GPU_BASED_VALIDATION 等）属专项切片，随 Studio 诊断面启用。
+    desc.flags = wgpu::InstanceFlags::empty();
     wgpu::Instance::new(desc)
 }
 

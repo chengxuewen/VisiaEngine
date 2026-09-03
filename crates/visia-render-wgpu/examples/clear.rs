@@ -8,9 +8,9 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 
 const CLEAR: wgpu::Color = wgpu::Color {
-    r: 0.05 * 255.0,
-    g: 0.07 * 255.0,
-    b: 0.10 * 255.0,
+    r: 0.05,
+    g: 0.07,
+    b: 0.10,
     a: 1.0,
 };
 
