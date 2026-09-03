@@ -9,4 +9,3 @@ repository.workspace = true
 
 [dependencies]
 thiserror.workspace = true
-slab = "0.4"
