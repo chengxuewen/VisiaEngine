@@ -1,10 +1,29 @@
 //! 渲染契约：后端 trait + 帧 IR（纯数据，零后端类型——不变式②）。
+//! 相机数学在兄弟模块 `camera`（REND-10..16）。
 //! 条款：docs/sdd/render.md REND-01..05。
 
 use visiaengine_core::Transform;
 
 /// 网格资源标识（不透明；真实资源表属后续片）。
 pub type MeshId = u64;
+
+/// 材质资源标识。
+pub type MaterialId = u64;
+
+/// GPU 资源创建失败面（v0 仅承载后端拒绝；OOM 等设备丢失走 callback 侧）。
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[error("后端资源创建失败: {reason}")]
+pub struct BackendError {
+    pub reason: String,
+}
+
+/// CPU 侧网格上传描述（纯借用；positions/normals 等长由调用方担保，REND-06）。
+#[derive(Clone, Copy, Debug)]
+pub struct MeshDesc<'a> {
+    pub positions: &'a [[f32; 3]],
+    pub normals: &'a [[f32; 3]],
+    pub indices: &'a [u32],
+}
 
 /// 能力位（Tier 矩阵钩子，architecture.md ⑥；v0 枚举从简）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,8 +125,15 @@ impl Camera {
 /// 渲染指令 IR v0（新图元=新变体；消费端穷举 match）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DrawCommand {
-    ClearColor { rgba: [f32; 4] },
-    DrawMesh { mesh: MeshId, transform: Transform },
+    ClearColor {
+        rgba: [f32; 4],
+    },
+    DrawMesh {
+        mesh: MeshId,
+        material: MaterialId,
+        /// 世界变换，列主序 f64（io-gltf 烘焙直通；后端上传前降 f32）。
+        transform: [[f64; 4]; 4],
+    },
 }
 
 impl DrawCommand {
@@ -125,6 +151,9 @@ impl DrawCommand {
 pub struct Frame {
     pub viewport: Viewport,
     pub camera: Camera,
+    /// 列主序视图/投影矩阵（裸数据出契约面，矩阵库不入，REND-09）。
+    pub view: [[f32; 4]; 4],
+    pub proj: [[f32; 4]; 4],
     pub commands: Vec<DrawCommand>,
 }
 
@@ -134,4 +163,8 @@ pub trait RenderBackend {
     fn supports(&self, capability: Capability) -> bool;
     fn resize(&mut self, viewport: Viewport);
     fn render(&mut self, frame: &Frame);
+    /// CPU→GPU 网格上传，返回不透明资源 id（单调不复用，REND-07）。
+    fn create_mesh(&mut self, desc: &MeshDesc<'_>) -> Result<MeshId, BackendError>;
+    /// 材质注册（v0=base color 纯色，PBR 后续轮，REND-08）。
+    fn create_material(&mut self, base_color: [f32; 4]) -> Result<MaterialId, BackendError>;
 }

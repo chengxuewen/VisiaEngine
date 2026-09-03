@@ -21,4 +21,5 @@ winit = { version = "0.30", default-features = false, features = ["x11", "waylan
 bytemuck = "1"
 pollster = "1"
 thiserror = "2"
+glam = "0.33"   # 仅 render（camera 数学）与 render-wgpu（uniform 变换）引用；core/io-* 零矩阵依赖（K6 门禁）
 raw-window-handle = "0.6"

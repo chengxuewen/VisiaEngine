@@ -46,7 +46,10 @@ impl RenderBackend for Stub {
 // spec: REND-01
 #[test]
 fn backend_trait_object_safe() {
-    let b: Box<dyn RenderBackend> = Box::new(Stub { meshes: 0, materials: 0 });
+    let b: Box<dyn RenderBackend> = Box::new(Stub {
+        meshes: 0,
+        materials: 0,
+    });
     assert!(!b.name().is_empty());
 }
 
@@ -54,7 +57,10 @@ fn backend_trait_object_safe() {
 #[test]
 fn stub_impl_without_wgpu() {
     // 本文件即证明：实现 RenderBackend 无需任何后端 crate（不变式②契约面纯度）
-    let mut b = Stub { meshes: 0, materials: 0 };
+    let mut b = Stub {
+        meshes: 0,
+        materials: 0,
+    };
     let vp = Viewport::new(64, 64, 1.0);
     b.resize(vp);
     let frame = Frame {
@@ -79,7 +85,12 @@ fn ir_variants_exhaustive_construct() {
         DrawCommand::DrawMesh {
             mesh,
             material: 3,
-            transform: [[1.0f64, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]],
+            transform: [
+                [1.0f64, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
         },
     ];
     let kinds: Vec<&'static str> = cmds.iter().map(DrawCommand::kind).collect();
@@ -113,8 +124,6 @@ fn camera_projection_variants() {
     assert!(!persp.is_orthographic());
 }
 
-
-
 // spec: REND-06
 #[test]
 fn mesh_desc_constructible() {
@@ -132,9 +141,16 @@ fn mesh_desc_constructible() {
 // spec: REND-07
 #[test]
 fn create_mesh_returns_distinct_ids() {
-    let mut b = Stub { meshes: 0, materials: 0 };
+    let mut b = Stub {
+        meshes: 0,
+        materials: 0,
+    };
     let pos = [[0.0f32; 3]; 3];
-    let desc = MeshDesc { positions: &pos, normals: &pos, indices: &[0, 1, 2] };
+    let desc = MeshDesc {
+        positions: &pos,
+        normals: &pos,
+        indices: &[0, 1, 2],
+    };
     let m1 = b.create_mesh(&desc).unwrap();
     let m2 = b.create_mesh(&desc).unwrap();
     assert_ne!(m1, m2);
@@ -144,10 +160,15 @@ fn create_mesh_returns_distinct_ids() {
 // spec: REND-08
 #[test]
 fn create_material_returns_distinct_ids() {
-    let mut b = Stub { meshes: 0, materials: 0 };
+    let mut b = Stub {
+        meshes: 0,
+        materials: 0,
+    };
     assert_eq!(
-        (b.create_material([1.0, 0.0, 0.0, 1.0]).unwrap(),
-         b.create_material([0.0, 1.0, 0.0, 1.0]).unwrap()),
+        (
+            b.create_material([1.0, 0.0, 0.0, 1.0]).unwrap(),
+            b.create_material([0.0, 1.0, 0.0, 1.0]).unwrap()
+        ),
         (1, 2)
     );
 }

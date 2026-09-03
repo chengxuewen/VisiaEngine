@@ -51,3 +51,77 @@ fn golden_corner_clear_color() {
         );
     }
 }
+
+#[must_use]
+fn is_dominant(px: [u8; 4], i: usize) -> bool {
+    let mine = px[i] as i16;
+    mine >= 40
+        && px
+            .iter()
+            .take(3)
+            .enumerate()
+            .all(|(j, v)| i == j || mine - (*v as i16) >= 40)
+}
+
+// spec: WGPU-06
+#[test]
+fn golden_cube_center_hit() {
+    let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_cube([
+        1.0, 0.0, 0.0, 1.0
+    ]));
+    let p = px(&frame, W / 2, H / 2);
+    assert!(is_dominant(p, 0), "center not red-dominant: {p:?}");
+}
+
+// spec: WGPU-07
+#[test]
+fn golden_cube_corner_clear_color() {
+    let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_cube([
+        1.0, 0.0, 0.0, 1.0
+    ]));
+    for (x, y) in [(0, 0), (W - 1, 0), (0, H - 1), (W - 1, H - 1)] {
+        let [r, g, b, _] = px(&frame, x, y);
+        assert!(
+            r.abs_diff(13) <= 16 && g.abs_diff(18) <= 16 && b.abs_diff(26) <= 16,
+            "corner ({x},{y}) polluted: {r},{g},{b}"
+        );
+    }
+}
+
+// spec: WGPU-08
+#[test]
+fn golden_cube_silhouette_row() {
+    let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_cube([
+        1.0, 0.0, 0.0, 1.0
+    ]));
+    let dyed = |x: u32| {
+        let p = px(&frame, x, H / 2);
+        p[0] > 80 && p[3] == 255
+    };
+    let mut transitions = 0;
+    let mut run = 0;
+    let mut max_run = 0;
+    let mut prev = false;
+    for x in 0..W {
+        let d = dyed(x);
+        if d != prev {
+            transitions += 1;
+            prev = d;
+        }
+        run = if d { run + 1 } else { 0 };
+        max_run = max_run.max(run);
+    }
+    assert_eq!(transitions, 2, "凸体中线应恰 2 次清↔染跳变");
+    assert!(max_run > 100, "投影宽度不足: {max_run}");
+}
+
+// spec: WGPU-09
+#[test]
+fn material_uniform_path_live() {
+    // 同几何同相机换绿 material：中心绿主导=uniform 值真实流经管线（非 SKIP 假绿）
+    let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_cube([
+        0.0, 1.0, 0.0, 1.0
+    ]));
+    let p = px(&frame, W / 2, H / 2);
+    assert!(is_dominant(p, 1), "center not green-dominant: {p:?}");
+}

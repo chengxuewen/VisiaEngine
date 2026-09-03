@@ -191,3 +191,119 @@ pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
         rgba: data,
     })
 }
+
+/// 24 顶点/36 索引标准立方（每面独立法线；边长 1.0 居中原点）。
+#[must_use]
+pub fn cube_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
+    let faces: [([f32; 3], [[f32; 3]; 4]); 6] = [
+        (
+            [0.0, 0.0, 1.0],
+            [
+                [-0.5, -0.5, 0.5],
+                [0.5, -0.5, 0.5],
+                [0.5, 0.5, 0.5],
+                [-0.5, 0.5, 0.5],
+            ],
+        ),
+        (
+            [0.0, 0.0, -1.0],
+            [
+                [0.5, -0.5, -0.5],
+                [-0.5, -0.5, -0.5],
+                [-0.5, 0.5, -0.5],
+                [0.5, 0.5, -0.5],
+            ],
+        ),
+        (
+            [1.0, 0.0, 0.0],
+            [
+                [0.5, -0.5, 0.5],
+                [0.5, -0.5, -0.5],
+                [0.5, 0.5, -0.5],
+                [0.5, 0.5, 0.5],
+            ],
+        ),
+        (
+            [-1.0, 0.0, 0.0],
+            [
+                [-0.5, -0.5, -0.5],
+                [-0.5, -0.5, 0.5],
+                [-0.5, 0.5, 0.5],
+                [-0.5, 0.5, -0.5],
+            ],
+        ),
+        (
+            [0.0, 1.0, 0.0],
+            [
+                [-0.5, 0.5, 0.5],
+                [0.5, 0.5, 0.5],
+                [0.5, 0.5, -0.5],
+                [-0.5, 0.5, -0.5],
+            ],
+        ),
+        (
+            [0.0, -1.0, 0.0],
+            [
+                [-0.5, -0.5, -0.5],
+                [0.5, -0.5, -0.5],
+                [0.5, -0.5, 0.5],
+                [-0.5, -0.5, 0.5],
+            ],
+        ),
+    ];
+    let mut pos = Vec::with_capacity(24);
+    let mut nrm = Vec::with_capacity(24);
+    let mut idx = Vec::with_capacity(36);
+    for (n, quad) in faces {
+        let base = pos.len() as u32;
+        for v in quad {
+            pos.push(v);
+            nrm.push(n);
+        }
+        idx.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    }
+    (pos, nrm, idx)
+}
+
+/// 离屏渲染 640×480 单立方（正交正面，L1 golden 入口；无适配器=None）。
+#[must_use]
+pub fn render_offscreen_cube(base_color: [f32; 4]) -> Option<OffscreenFrame> {
+    use visiaengine_render::{
+        Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, Viewport,
+    };
+    let mut backend = crate::headless::HeadlessBackend::new(640, 480)?;
+    let (pos, nrm, idx) = cube_mesh();
+    let mesh = backend
+        .create_mesh(&MeshDesc {
+            positions: &pos,
+            normals: &nrm,
+            indices: &idx,
+        })
+        .ok()?;
+    let material = backend.create_material(base_color).ok()?;
+    let rig = CameraRig::look_at([0.0, 0.0, 3.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    let view = rig.view_matrix();
+    let proj = rig.ortho_frame(1.0, 640.0, 480.0, 0.1, 100.0)?;
+    let frame = Frame {
+        viewport: Viewport::new(640, 480, 1.0),
+        camera: Camera::ortho(1.0, 1.0 / (640.0 / 480.0), 0.1, 100.0),
+        view,
+        proj,
+        commands: vec![
+            DrawCommand::ClearColor {
+                rgba: [0.05, 0.07, 0.10, 1.0],
+            },
+            DrawCommand::DrawMesh {
+                mesh,
+                material,
+                transform: [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+            },
+        ],
+    };
+    backend.render_to_pixels(&frame)
+}

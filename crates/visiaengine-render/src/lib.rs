@@ -5,6 +5,11 @@
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
+pub mod camera;
 pub mod contract;
 
-pub use contract::{Camera, Capability, DrawCommand, Frame, MeshId, RenderBackend, Viewport};
+pub use camera::CameraRig;
+pub use contract::{
+    BackendError, Camera, Capability, DrawCommand, Frame, MaterialId, MeshDesc, MeshId,
+    RenderBackend, Viewport,
+};
