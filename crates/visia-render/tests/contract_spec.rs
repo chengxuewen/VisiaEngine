@@ -73,7 +73,10 @@ fn ir_variants_exhaustive_construct() {
 #[test]
 fn viewport_roundtrip() {
     let vp = Viewport::new(800, 600, 1.5);
-    assert_eq!((vp.width(), vp.height(), vp.scale_factor()), (800, 600, 1.5));
+    assert_eq!(
+        (vp.width(), vp.height(), vp.scale_factor()),
+        (800, 600, 1.5)
+    );
     let (lw, lh) = vp.logical_size();
     assert!((lw - 800.0 / 1.5).abs() < 1e-3 && (lh - 400.0).abs() < 1e-3);
 }
