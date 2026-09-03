@@ -88,6 +88,7 @@ node_modules
 .pixi
 .pixi-pack
 .pixi-cache
+.pixi/
 .sisyphus
 .omo/*
 !.omo/omo.jsonc

@@ -1,0 +1,48 @@
+# VisiaEngine 开发环境 — pixi 单源管理（D5）
+# 纪律: .agents/rules/common/constraints.md | 指南: docs/env.md
+# 用法: bash bootstrap.sh（首次）→ source pixi.sh（日常）| 验证: pixi run verify
+# 注意: rustfmt/clippy 非独立 conda 包名（实测 NOT-FOUND），二进制由 rust 主包提供
+
+[workspace]
+name = "visiaengine"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
+
+[dependencies]
+rust = ">=1.98,<2"
+ripgrep = ">=14,<16"
+ccache = ">=4.9,<5"
+pkg-config = ">=0.29,<1"
+
+[feature.tools.dependencies]
+cargo-deny = ">=0.20,<0.21"
+
+[feature.tools.tasks]
+audit = "cargo deny check"
+
+[feature.ide.dependencies]
+rust-analyzer = "*"
+rust-src = ">=1.98,<2"
+
+# wasm 路（Web SDK/Alpha 期启用，到货日解开即用；本轮不入 environment——
+# pixi 对"定义而未用"的 feature 每次 task 都告警，注释冻结零噪音）:
+# [feature.wasm.dependencies]
+# rust-std-wasm32-unknown-unknown = ">=1.98,<2"
+# wasm-bindgen-cli = ">=0.2.127,<0.3"
+# [environments] 中追加: wasm = { features = ["wasm"] }
+
+[environments]
+# 单环境方案：轻量二进制全部进 default（tools/ide 与 base 依赖同 solve-group，无隔离需求）
+default = { features = ["tools", "ide"], solve-group = "base" }
+
+[tasks]
+# cargo 类 task 是接口合同：Cargo workspace 落地（动工日）前运行必失败，属预期
+check = "cargo check --workspace"
+build = "cargo build --workspace"
+test = "cargo test --workspace"
+lint = "cargo clippy --workspace --all-targets -- -D warnings"
+fmt = "cargo fmt --all -- --check"
+fmt-fix = "cargo fmt --all"
+# 单文件格式化一律 rustfmt --edition 2024 <file>——禁止 cargo fmt -- <path>（其 -- 参数不是路径过滤，历史踩坑）
+verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"
