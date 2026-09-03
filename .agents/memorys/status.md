@@ -24,7 +24,7 @@
 
 ## 下一步
 
-1. 工程动工：Rust 工具链 → Cargo workspace 骨架（visia-core / visia-render / visia-render-wgpu）+ 最小 CI——**待用户指令**
+1. 环境初始化：全 pixi 方案（D5）已裁决——计划文档过审后待动工指令；随后 Cargo workspace 骨架 + 最小 CI
 2. 动工日一次性回填（照抄 .refinfo/MediaServo 归档形态）：rust-toolchain/clippy/deny/tarpaulin.toml、check.sh、docs/modules/NN-*.md 编号设计文档群、docs/sdd/
 3. 规则回填：rules/rust/{coding-style,hooks}.md 入 opencode.json instructions
 4. push 至 gitee remote——待用户指令

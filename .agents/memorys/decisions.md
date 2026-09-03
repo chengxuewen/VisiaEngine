@@ -38,3 +38,14 @@
 - **legacy 一并裁定**: XP 撤出一切对外文本（ANGLE D3D9 已移除 + Rust MSVC=Win10 底线）；Win7 = 非官方 best-effort（不进承诺）；Android 底线 API 24（系统 GLES/Vulkan 双路，ANGLE 无关）；RK3588(Valhall G610)= Panvk 或厂商 libmali blob，**发布二进制锁一种驱动栈**。§3.3 措辞升级：一等 = Vulkan/Metal/DX12/WebGPU，降级档 = GL 3.3+/GLES 3.0+/WebGL2（"一致的是 API 面与 tier 语义，非一致画质"）。
 - **影响**: 白皮书 §3.3/§4.1/§4.2/§6.2 回填（同日完成）；README 架构行更新；AGENTS.md CODE MAP 规划 crate 变更；MVP 期风险自测项：10 万 entity 帧预算、wgpu 季度破坏性 pin 策略、cosmic-text CJK 图集质量。
 - **SUPERSEDED 声明**: 本决策取代 D2 中"白皮书暂定 Bevy 默认后端（待终审）"表述；D2 其余内容（栈=Rust/SDK 形态/Open Core）继续有效。
+
+## D5: 开发环境全 pixi 统一管理，rust 工具链含在内（2026-09-03）
+- **决策**: 开发环境以 pixi（conda-forge 单源）统一管理，**rust 工具链亦由 conda-forge 提供**；不采用 rustup 主路径。新机器唯一先决 = `source bootstrap.sh`（自动装 pixi → 一切从 lock 来）。
+- **原因**: 实测 conda-forge Rust 全家桶完整（rust 1.98 月内跟版 + rustfmt/clippy/rust-src/rust-analyzer + `rust-std-wasm32-unknown-unknown`/android + cargo-deny/wasm-bindgen-cli/cargo-binstall）；单 lockfile、国内 conda 镜像成熟、心智模型唯一。前身项目日常主力开发全程跑在 conda rust 上，其踩坑集中于交叉/厂商栈场景（非 conda rust 装不动）。曾评估"pixi 外壳+rustup 工具链"混合方案（C），因 wasm/交叉 std 论据被探测推翻而降级。
+- **条款（边界）**:
+  1. Windows 逃生舱：win-64 入 platforms；若 win conda rust 摩擦超标，单机 rustup+MSVC 覆盖，不污染主线。
+  2. 嵌入式交叉（RK3588/Jetson 类厂商设备）一律 Docker/厂商工具链，conda rust 只做 host 编译——前项目 PIT-85（conda rust 注入 `CARGO_TARGET_*_LINKER` 优先级高于 `.cargo/config.toml`）的边界化处理。
+  3. conda 无包的 cargo 工具（tarpaulin/cbindgen 等）统一经 cargo-binstall（conda 有包）获取预编译二进制。
+  4. CI 钉死 pixi-version，锁漂移用 `--frozen` 把关。
+  5. `pixi.lock` 与 `Cargo.lock` 同纪律必入库。
+- **影响**: 动工日生成 pixi.toml / bootstrap.{sh,bat} / pixi.{sh,bat} / docs/env.md；`rules/common/constraints.md` 增补环境纪律；机器上永不出现 rustup（除条款①逃生场景）。
