@@ -211,3 +211,10 @@ grep -c "重复模式" <file>    # 期望 1；>1 = edit 重复插入
 **规则**: 清理浏览器/子进程时**禁止** `pkill -f <字符串>`，当该字符串出现在当前 bash 命令行里（路径如 chrome-linux64/chrome 极易入 own cmdline）。用 `ps -eo pid,comm`（comm 精确列）+ 按 pid kill，或 grep 方括号法 `[c]hrome`。
 **先例**: 前项目曾首次踩中；2026-09-01 调试轮中 `pkill -f "ms-playwright/chromium-1234/chrome-linux64/chrome"`（模式串在自身命令行）→ shell 无声挂死两个 60s/260s 工具窗口。
 **阻塞条件**: 任何 `pkill -f`/`pgrep -f` 模式串与当前命令行有子串重叠。
+
+### 17. heredoc python 块结束后是命令分隔符——后续 git commit 不会因 assert 失败而短路
+
+**规则**: 形如 `python3 - <<'EOF' ... EOF` 换行 `git add ... && git commit` 的组合中，**python 的 assert 失败不阻止后面的 git 链**（换行=分隔符，非 `&&`）。后果：编辑被拦截但提交照跑，commit message 声称的动作与实际产物脱节（先例：docs(memory) 笔声称"AGENTS 同步"而 AGENTS 未动，靠追加收口提交修正）。多步"编辑→提交"要么全链 `&&`，要么提交前重跑 `git status --short` 核对暂存面。
+**先例**: 2026-09-03 pixi 环境提交轮（锚行记忆不精确 → assert 拦截 → 消息/产物分叉）。
+**验证**: commit 前 `git diff --cached --stat` 与 message 声称文件清单逐项对得上。
+**阻塞条件**: message 含"N 文件同步"类复数声明而 cached diff 未逐一核验。
