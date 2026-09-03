@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98.0"
+license = "MIT OR Apache-2.0"
+repository = "https://gitee.com/chengxuewen/VisiaEngine"
+
+[workspace.dependencies]
+# 内部 crate（路径统一声明，成员引用 .workspace = true）
+visia-core = { path = "crates/visia-core", version = "0.1.0" }
+visia-render = { path = "crates/visia-render", version = "0.1.0" }
+visia-render-wgpu = { path = "crates/visia-render-wgpu", version = "0.1.0" }
+
+# 第三方 pin（计划 §1，2026-09-03 crates.io 实测）
+wgpu = "30"                    # 架构⑨：主版本 pin + 季度升级窗口
+winit = { version = "0.30", default-features = false, features = ["x11", "wayland"] }  # 修剪 wayland CSD（adwaita 标题栏绘制→ttf-parser 停维 RUSTSEC-2026-0192 传播面消失；SDK 形态装饰归宿主，兼向启动体积目标）
+bytemuck = "1"
+pollster = "1"
+thiserror = "2"
+raw-window-handle = "0.6"

@@ -1,0 +1,33 @@
+# cargo-deny — 骨架期：licenses + bans + sources。advisories 推迟到 CI 镜像化日（需 advisory-db）。
+# 不变式⑥参考：MPL 类件出现在树中即触发人工复核（核心静态链零污染原则）。
+# schema 依据：cargo-deny 0.20.2 init 模板实测（0.20 变更：[licenses] default 键已删、highlight 为枚举）。
+
+[graph]
+all-features = true
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unlicense",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "MPL-2.0",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true   # workspace 内部 path 依赖无版本是常态，不算 wildcard 违规
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://index.crates.io"]

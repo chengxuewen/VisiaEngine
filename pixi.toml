@@ -45,4 +45,6 @@ lint = "cargo clippy --workspace --all-targets -- -D warnings"
 fmt = "cargo fmt --all -- --check"
 fmt-fix = "cargo fmt --all"
 # 单文件格式化一律 rustfmt --edition 2024 <file>——禁止 cargo fmt -- <path>（其 -- 参数不是路径过滤，历史踩坑）
+ci = { depends-on = ["fmt", "lint", "check", "test", "audit"] }
+smoke-clear = "cargo run -p visia-render-wgpu --example clear -- --frames 3"   # L2 窗口 smoke（S3 起有效；CI xvfb-run 调用）
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"

@@ -1,0 +1,36 @@
+# VisiaEngine CI — pixi 钉版（D5 条款④）。本仓镜像 GitHub 日前为"待命"状态：
+# 各 step 同款命令本机手跑即等价（计划 K2 口径）。
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  workspace:
+    name: fmt+lint+check+test+deny / L1 / L2 / 不变式
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.78.0
+          cache: true
+
+      - name: lavapipe(软件 Vulkan, L1) + xvfb(L2 窗口 smoke)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers xvfb
+
+      - run: pixi install --frozen
+      - run: pixi run ci
+
+      - name: 不变式① core 无渲染依赖
+        run: |
+          ! cargo tree -p visia-core -i wgpu
+          ! grep -rq 'use wgpu' crates/visia-core/src/
+
+      - name: SDD↔测试双向追溯
+        run: bash scripts/spec-trace.sh
+
+      - name: L2 窗口 smoke
+        run: xvfb-run -a pixi run smoke-clear

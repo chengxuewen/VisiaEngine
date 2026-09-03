@@ -1,0 +1,17 @@
+[package]
+name = "visia-render-wgpu"
+description = "默认渲染后端：基于 wgpu 的自研管线（D4 终审）。wgpu 类型止步于本 crate（不变式②）。"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+visia-core.workspace = true
+visia-render.workspace = true
+wgpu.workspace = true
+winit.workspace = true
+bytemuck = { workspace = true, features = ["derive"] }
+pollster.workspace = true
+raw-window-handle.workspace = true

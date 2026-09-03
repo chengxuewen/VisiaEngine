@@ -1,0 +1,12 @@
+[package]
+name = "visia-render"
+description = "渲染抽象层：RenderBackend trait + 渲染指令 IR，零 GPU 类型（不变式②的静态保证面）。"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+visia-core.workspace = true
+thiserror.workspace = true

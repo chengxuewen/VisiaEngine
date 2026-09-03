@@ -28,10 +28,11 @@
     ".agents/rules/common/testing.md",
     ".agents/rules/common/constraints.md",
     ".agents/rules/common/edit-safety.md",
-    ".agents/rules/common/lesson-memory.md"
+    ".agents/rules/common/lesson-memory.md",
+    ".agents/rules/rust/coding-style.md",
+    ".agents/rules/rust/hooks.md"
   ],
   "mcp": {
-    
     "websearch": {
       "type": "remote",
       "url": "https://websearch.opencode.ai",

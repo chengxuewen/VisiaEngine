@@ -35,15 +35,15 @@ my_crate/
 
 Unit tests go inside `#[cfg(test)]` modules in the same file. Integration tests go in `tests/`.
 
-## Project Convention (placeholder — calibrate once stack chosen)
+## Project Convention（2026-09-03 校准：wgpu 后端测试实态）
 
 All crates MUST follow this organization:
 
 | Test Type | Location | Example |
 |-----------|----------|---------|
 | Unit tests | `src/**/*.rs` — `#[cfg(test)] mod tests` | `src/base/buffer.rs` |
-| Integration / E2E | `tests/` — flat directory, feature-prefixed filenames | `tests/smoke_generator.rs` |
-| Runnable examples | `examples/` — flat directory, headless + GUI variants | `examples/square-gen.rs` |
+| Integration / E2E | `tests/` — flat directory, feature-prefixed filenames | L1 离屏 golden：`tests/offscreen_golden.rs`（真 adapter→渲染→回读断言，非 mock；无软件 Vulkan 时打印 SKIP 后返回） |
+| Runnable examples | `examples/` — flat；GUI 件必须支持 `--frames N` 自动退出（L2 CI smoke 的前提） | `examples/clear.rs`, `examples/triangle.rs` |
 
 - **Unit tests** test internal implementation details with access to private API.
 - **Integration/E2E tests** in `tests/` test only the public API. They compile as separate binaries and catch API surface issues.
