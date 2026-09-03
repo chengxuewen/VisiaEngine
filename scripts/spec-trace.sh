@@ -4,8 +4,8 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 
 # 只认条款标题行（`## CORE-NN: ...`），正文交叉引用/区间记法不计条款
-sdds=$(grep -ohE '^## (CORE|REND|WGPU)-[0-9]{2}\b' docs/sdd/*.md 2>/dev/null | sed 's/^## //' | sort -u)
-tags=$(grep -rhoE '// spec: (CORE|REND|WGPU)-[0-9]{2}' crates/ 2>/dev/null | grep -oE '(CORE|REND|WGPU)-[0-9]{2}' | sort -u)
+sdds=$(grep -ohE '^## (CORE|REND|WGPU|GLTF)-[0-9]{2}\b' docs/sdd/*.md 2>/dev/null | sed 's/^## //' | sort -u)
+tags=$(grep -rhoE '// spec: (CORE|REND|WGPU|GLTF)-[0-9]{2}' crates/ 2>/dev/null | grep -oE '(CORE|REND|WGPU|GLTF)-[0-9]{2}' | sort -u)
 
 if [ -z "$sdds" ] && [ -z "$tags" ]; then
     echo "spec-trace OK: 0 条款（骨架期空集合法）"

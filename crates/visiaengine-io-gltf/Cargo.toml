@@ -1,0 +1,13 @@
+[package]
+name = "visiaengine-io-gltf"
+description = "glTF 加载（架构② io-* 族）：解析 .glb/.gltf 为 CPU 侧核心数据。零渲染依赖。"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+visiaengine-core.workspace = true
+thiserror.workspace = true
+gltf = { version = "1.4", default-features = false }  # v0=GLB-only：免 import 特性→整棵 image 解码依赖树不进（多文件 .gltf 后续片）
