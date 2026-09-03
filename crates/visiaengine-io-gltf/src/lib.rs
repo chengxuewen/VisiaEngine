@@ -83,7 +83,9 @@ fn read_indices<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<u32> {
     }
     // 索引源类型 u32/u16/u8 精确分派（真实资产多为 u16/u8）
     match acc.data_type() {
-        DataType::U32 => gltf::accessor::util::Iter::<u32>::new(acc, get).map(|it| it.collect::<Vec<u32>>()),
+        DataType::U32 => {
+            gltf::accessor::util::Iter::<u32>::new(acc, get).map(|it| it.collect::<Vec<u32>>())
+        }
         DataType::U16 => gltf::accessor::util::Iter::<u16>::new(acc, get)
             .map(|it| it.map(u32::from).collect::<Vec<u32>>()),
         DataType::U8 => gltf::accessor::util::Iter::<u8>::new(acc, get)
@@ -101,19 +103,22 @@ fn read_mesh<'a>(get: GetBuf<'a, '_>, prim: &gltf::Primitive<'a>) -> GltfMesh {
     let normals = match prim.get(&gltf::Semantic::Normals) {
         Some(acc) => {
             let n = read_v3(get, acc);
-            if n.len() == positions.len() { n } else { vec![[0.0; 3]; positions.len()] }
+            if n.len() == positions.len() {
+                n
+            } else {
+                vec![[0.0; 3]; positions.len()]
+            }
         }
         None => vec![[0.0; 3]; positions.len()],
     };
-    let indices = prim.indices().map_or(Vec::new(), |acc| read_indices(get, acc));
+    let indices = prim
+        .indices()
+        .map_or(Vec::new(), |acc| read_indices(get, acc));
     GltfMesh {
         positions,
         normals,
         indices,
-        base_color: prim
-            .material()
-            .pbr_metallic_roughness()
-            .base_color_factor(),
+        base_color: prim.material().pbr_metallic_roughness().base_color_factor(),
     }
 }
 
@@ -151,11 +156,15 @@ pub fn load_gltf(path: impl AsRef<std::path::Path>) -> Result<GltfDocument, IoEr
         }
         Err(e) => return Err(IoError::Io { source: e }),
     };
-    let gltf =
-        gltf::Gltf::from_slice(&bytes).map_err(|e| IoError::Parse { reason: e.to_string() })?;
+    let gltf = gltf::Gltf::from_slice(&bytes).map_err(|e| IoError::Parse {
+        reason: e.to_string(),
+    })?;
     let doc = &gltf.document;
     // v0 边界：外链 buffer uri 拒解析（GLB 内嵌 blob 是唯一数据源）
-    if doc.buffers().any(|b| !matches!(b.source(), gltf::buffer::Source::Bin)) {
+    if doc
+        .buffers()
+        .any(|b| !matches!(b.source(), gltf::buffer::Source::Bin))
+    {
         return Err(IoError::UnsupportedFormat);
     }
     let blob = gltf.blob.unwrap_or_default();
@@ -163,7 +172,12 @@ pub fn load_gltf(path: impl AsRef<std::path::Path>) -> Result<GltfDocument, IoEr
         matches!(buf.source(), gltf::buffer::Source::Bin).then_some(blob.as_slice())
     };
     let mut entities = Vec::new();
-    let root = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]];
+    let root = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ];
     if let Some(scene) = doc.default_scene() {
         for node in scene.nodes() {
             walk(&get, &node, &root, &mut entities);
