@@ -8,7 +8,14 @@
 ## WGPU-02: adapter_enumeration_typed
 `available_adapters()` 返回 `Vec<wgpu::AdapterInfo>` 类型面：无适配器时空 vec 合法，panic 非法（驱动缺失是可报告状态，不是崩溃理由）。
 
-（WGPU-03..05 随 S4 填充。）
+## WGPU-03: golden_center_pixel
+`render_offscreen_triangle()`（640×480 RGBA8）中心像素为红（R≥200，G/B≤60，A=255，容差 16）；无可用适配器时打印 SKIP 并合法返回（验证地点义务由调用方记录）。
+
+## WGPU-04: golden_frame_dimensions
+返回帧的 `rgba.len()` 恰为 `width*height*4`（行距 256 对齐由尺寸选取保证，640 天然满足）。
+
+## WGPU-05: golden_corner_clear_color
+四角像素等于清屏色 (13,18,26)±16——全屏污染的反证。
 
 ## L2 窗口 smoke（叙述性条款，**不占编号、不入双向 grep**）
 
