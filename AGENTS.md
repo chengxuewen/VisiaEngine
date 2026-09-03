@@ -1,6 +1,6 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-09-03 | **Commit:** (none — repo uninitialized) | **Branch:** main
+**Generated:** 2026-09-03 | **Branch:** main | 仓库已初始化：6 提交（见 git log），工作区 clean
 
 ## OVERVIEW
 
@@ -18,7 +18,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 └── README.md         # 白皮书摘要版
 ```
 
-有 README.md + docs/whitepaper.md（v0.1.0，2026-09-03 入库），仍无 src/、无构建文件。首个真实工程落地时更新本文件 STRUCTURE 与 `.agents/memorys/status.md`。
+有 README.md、SKILL.md（技能注册表）、双许可（LICENSE-MIT/LICENSE-APACHE）、docs/{whitepaper,architecture}.md、docs/reference/（画像库+evidence/）；仍无 src/、无构建文件。首个工程落地时同步本文件与 status.md。
 
 ## WHERE TO LOOK
 
@@ -38,7 +38,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 
 - C1（方案对比格式）/ C9（教训即时沉淀）/ C14（子代理产物必验证）在 `.agents/memorys/conventions.md`，随 instructions 每轮加载——本文件不复述。
 - `Cargo.lock` 必入库等构建约束在 `rules/common/constraints.md`（承自前项目，若选非 Rust 栈需重审）。
-- 工作区根不是新仓协作目录：remote 为 gitee VisiaEngine，0 commits——提交动作始终等用户显式指令。
+- remote 为 gitee VisiaEngine——commit 已获首轮授权（2026-09-03），push 与后续提交仍逐次等用户显式指令。
 
 ## ANTI-PATTERNS (THIS PROJECT)
 

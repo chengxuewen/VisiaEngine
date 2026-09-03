@@ -17,3 +17,9 @@
 - **根因**: 把"我的推测"与"要求验证的点"混写在同一句里；且已入库文档中的行业断言未全部带当日引用。
 - **解法**: 调研任务书中一切预设以"⚠ 原假设待证"独立成条，禁止内嵌为事实从句；文档内行业断言必须带"快照日期+来源"或 *UNCERTAIN* 标记（本仓 docs/reference 模板已含此纪律，本次执行到位——三处错误全部被复核线抓回）。
 - **验证**: 交付前 grep 文档中"Qt6.*ANGLE|无原生 GL"类句式并对照 `evidence/2026-09-03-angle-integration` 的证伪条目；引用备忘录结论与一手 README 逐字比对。
+
+## PIT-2: .gitignore 取反规则次序 bug + check-ignore -q 退出码误导 (2026-09-03)
+- **症状**: `!.omo/omo.jsonc` 位于 `.omo/*` 之前，`git add .omo/omo.jsonc` 报"被忽略"；且修复前 `git check-ignore -q` 对含取反匹配的路径返回 0，易误判"仍被忽略/已被忽略"。注释文档（AGENTS.md"仅 omo.jsonc 入库"）长期是空头支票未被发现。
+- **根因**: gitignore 语义 = 后匹配规则覆盖前者，目录排除 `dir/*` 必须写在取反 `!dir/file` **之前**；`check-ignore` 默认模式对"被排除规则匹配但与最终忽略状态矛盾"的路径退出码语义与直觉不符（-v 显示的最终匹配行才是事实源）。
+- **解法**: 调整次序 `.omo/*` → `!.omo/omo.jsonc`；验证以 `git check-ignore -v`（显示最终命中行）和**实际 `git add` 成功与否**为准，不信 `-q` 退出码。
+- **验证**: `git check-ignore -v .omo/omo.jsonc` 命中行必须是取反规则；`git ls-files .omo/` 有输出。任何新增 `!` 取反规则提交前跑一次实 add 演练。
