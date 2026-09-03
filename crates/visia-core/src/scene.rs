@@ -101,48 +101,108 @@ impl Scene {
 
     /// 分配实体（优先复用回收槽，代际+1）。
     pub fn spawn(&mut self) -> EntityId {
-        todo!("S1 GREEN")
+        if let Some(slot) = self.free.pop() {
+            let s = &mut self.slots[slot as usize];
+            s.alive = true;
+            s.component = None;
+            s.dirty = false;
+            s.generation += 1;
+            EntityId {
+                slot,
+                generation: s.generation,
+            }
+        } else {
+            let slot = self.slots.len() as u32;
+            self.slots.push(Slot {
+                alive: true,
+                generation: 0,
+                component: None,
+                dirty: false,
+            });
+            EntityId {
+                slot,
+                generation: 0,
+            }
+        }
     }
 
     /// 删除并回收槽位；组件与脏标记一并清空。
     pub fn despawn(&mut self, id: EntityId) -> Result<(), CoreError> {
-        let _ = id;
-        todo!("S1 GREEN")
+        let s = self.slot_of_mut(id)?;
+        s.alive = false;
+        s.component = None;
+        s.dirty = false;
+        self.free.push(id.slot);
+        Ok(())
     }
 
     #[must_use]
     pub fn is_alive(&self, id: EntityId) -> bool {
-        let _ = id;
-        todo!("S1 GREEN")
+        self.slot_of(id).is_ok()
     }
 
     /// 挂载/替换组件（CORE-10 替换语义）。
     pub fn insert(&mut self, id: EntityId, component: Component) -> Result<(), CoreError> {
-        let _ = (id, component);
-        todo!("S1 GREEN")
+        self.slot_of_mut(id)?.component = Some(component);
+        Ok(())
     }
 
     /// 读取组件；存活但缺件=MissingComponent（CORE-09）。
-    #[must_use]
     pub fn get(&self, id: EntityId) -> Result<Component, CoreError> {
-        let _ = id;
-        todo!("S1 GREEN")
+        let s = self.slot_of(id)?;
+        s.component.ok_or(CoreError::MissingComponent {
+            entity: id,
+            component: "Transform",
+        })
     }
 
     /// 全部存活实体（含无组件者）。
+    #[must_use]
     pub fn alive_ids(&self) -> Vec<EntityId> {
-        todo!("S1 GREEN")
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.alive)
+            .map(|(i, s)| EntityId {
+                slot: i as u32,
+                generation: s.generation,
+            })
+            .collect()
     }
 
     /// 标脏：同帧重复标记合并（CORE-06）。
     pub fn mark_dirty(&mut self, id: EntityId) -> Result<(), CoreError> {
-        let _ = id;
-        todo!("S1 GREEN")
+        self.slot_of_mut(id)?.dirty = true;
+        Ok(())
     }
 
     /// 取脏清单并清空（CORE-07）。
     pub fn take_dirty(&mut self) -> Vec<EntityId> {
-        todo!("S1 GREEN")
+        let mut out = Vec::new();
+        for (i, s) in self.slots.iter_mut().enumerate() {
+            if s.alive && s.dirty {
+                s.dirty = false;
+                out.push(EntityId {
+                    slot: i as u32,
+                    generation: s.generation,
+                });
+            }
+        }
+        out
+    }
+
+    fn slot_of(&self, id: EntityId) -> Result<&Slot, CoreError> {
+        self.slots
+            .get(id.slot as usize)
+            .filter(|s| s.alive && s.generation == id.generation)
+            .ok_or(CoreError::NotFound { entity: id })
+    }
+
+    fn slot_of_mut(&mut self, id: EntityId) -> Result<&mut Slot, CoreError> {
+        match self.slots.get_mut(id.slot as usize) {
+            Some(s) if s.alive && s.generation == id.generation => Ok(s),
+            _ => Err(CoreError::NotFound { entity: id }),
+        }
     }
 }
 
@@ -176,7 +236,11 @@ mod tests {
             Err(CoreError::NotFound { entity: e }),
             "get after despawn must be NotFound"
         );
-        assert!(scene.insert(e, Component::Transform(Transform::identity())).is_err());
+        assert!(
+            scene
+                .insert(e, Component::Transform(Transform::identity()))
+                .is_err()
+        );
         assert!(scene.mark_dirty(e).is_err());
     }
 
@@ -185,7 +249,9 @@ mod tests {
     fn stale_generation_rejected() {
         let mut scene = Scene::new();
         let old = scene.spawn();
-        scene.insert(old, Component::Transform(Transform::identity())).unwrap();
+        scene
+            .insert(old, Component::Transform(Transform::identity()))
+            .unwrap();
         scene.despawn(old).unwrap();
         let fresh = scene.spawn(); // 复用同槽，新代际
         assert_eq!(
@@ -193,7 +259,10 @@ mod tests {
             Err(CoreError::NotFound { entity: old }),
             "旧 handle 不得读到新主数据"
         );
-        assert!(matches!(scene.get(fresh), Err(CoreError::MissingComponent { .. })));
+        assert!(matches!(
+            scene.get(fresh),
+            Err(CoreError::MissingComponent { .. })
+        ));
     }
 
     // spec: CORE-04
@@ -257,11 +326,12 @@ mod tests {
             )
             .unwrap();
         let got = scene.get(e).unwrap();
-        let Component::Transform(t) = got else {
-            panic!("期望 Transform");
-        };
-        assert_eq!(t.position, far);
-        assert_eq!(t.position.x.to_bits(), far.x.to_bits(), "位精确往返");
+        let expected = Component::Transform(Transform {
+            position: far,
+            scale: 0.25,
+        });
+        // f64 PartialEq 对非特殊值即位比较；往返损耗会在此暴露
+        assert_eq!(got, expected);
     }
 
     // spec: CORE-09
@@ -312,8 +382,6 @@ mod tests {
         let work_t = t1.elapsed();
         assert_eq!(dirty.len(), 100_000);
         assert_eq!(alive.len(), 100_000);
-        println!(
-            "spike_slab: spawn100k={spawn_t:?} mark+take+iter={work_t:?}"
-        );
+        println!("spike_slab: spawn100k={spawn_t:?} mark+take+iter={work_t:?}");
     }
 }

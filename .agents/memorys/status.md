@@ -19,7 +19,7 @@
 | Phase | 状态 |
 |-------|:----:|
 | 0 项目初始化（配置中性化/白皮书/架构基线/参考库/许可证） | ✅ |
-| 1 MVP（visia-core / visia-render / visia-render-wgpu 骨架、glTF+GeoJSON 加载、2D↔3D 切换、宿主嵌入示例） | 📋 规划中（待动工指令） |
+| 1 MVP | 🔨 开工中（S0✓骨架 S1✓core 场景图；S2-S4 见 .omo 计划 v2.1；glTF/GeoJSON/切换为后续片） |
 | 2 Alpha / 3 Beta / 4 1.0 | — 白皮书路线图 |
 
 ## 下一步
