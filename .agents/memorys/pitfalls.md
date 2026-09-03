@@ -29,3 +29,10 @@
 - **根因**: ①`InstanceFlags::default()=from_build_config()`，debug 构建自动含 VALIDATION → 强制加载 VK_EXT_debug_utils，软渲染/旧 loader 无此符号；②v30 `Color` 分量语义 0-255→0-1（越界 clamp 成白）；③v30 与 WebGPU 规范对齐的大版本破坏（季度 pin 纪律的预期成本）。
 - **解法**: `create_instance` 显式 `flags = InstanceFlags::empty()`（诊断校验留专项片）；清色按 0-1 传值；winit features 显式含 `rwh_06`；API 差异以**本地 registry 源码**为准（`~/.cargo/registry/src/.../wgpu-30.0.1`，比 docs.rs 快且真）。
 - **验证**: `pixi run ci` 绿 + offscreen golden 3 测真机绿；**任何 wgpu 版本升级日 = 先 grep 本条 + 重跑破坏面清单**；实验定标优先于文档采信（Color 语义即实验确认）。
+
+## PIT-4: cargo 集成测试 CWD=crate 目录 + Iter 构造探测法触发库内 debug_assert (2026-09-03, G1)
+- **症状**: ①测试引用仓根 `testdata/x.glb` 相对路径全 NotFound（本地手跑 `pixi run cargo test` 时 CWD=workspace 根，单测过滤跑也同——但**集成测试二进制由 cargo 以 crate root 为 CWD 启动**，两种跑法路径语义不同曾给出假绿/假红组合）；②`Iter::<T>::new` 依次试类型当探测（返回 Option 以为安全）在 debug 构建直接 panic（库内 `debug_assert_eq!(size_of::<T>(), accessor.size())` 先行）。
+- **根因**: ①cargo 对 tests/ 的运行目录是包目录，非执行 shell 目录；②Option 返回面之外库还带 debug_assert，"能返回 Option"≠"可安全探测"。
+- **解法**: ①fixture 路径一律 `env!("CARGO_MANIFEST_DIR")` 拼接；②读 accessor 前用 `data_type()/dimensions()` 预检精确分派，类型不合不进构造函数。
+- **验证**: `grep -rn '"testdata/' crates/*/tests/ ` 必须 0 命中（只许经 fixture() 助手）；降级链只许 match 分派形态。
+- **另**: tests/ 目录 redirect 先行 `mkdir -p`（本轮第三次同族漏采，机械前置而非事后补）。

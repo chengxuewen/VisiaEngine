@@ -10,4 +10,6 @@ repository.workspace = true
 [dependencies]
 visiaengine-core.workspace = true
 thiserror.workspace = true
-gltf = { version = "1.4", default-features = false }  # v0=GLB-only：免 import 特性→整棵 image 解码依赖树不进（多文件 .gltf 后续片）
+gltf = { version = "1.4", default-features = false, features = ["utils", "names"] }
+# 实测（gltf-1.4.1 源码）：Gltf::from_slice(GLB) + accessor::util::Iter 仅需 utils；
+# import/image/urlencoding 全链不进（v0=GLB-only，多文件 .gltf 后续片再评估 import）
