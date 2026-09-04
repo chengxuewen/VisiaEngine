@@ -21,7 +21,7 @@
 
 ```
 ├── AGENTS.md / SKILL.md   # 代理知识库与技能注册表
-├── crates/                # visiaengine-core / visiaengine-render / visiaengine-render-wgpu
+├── crates/                # core / render / render-wgpu / io-gltf（四 crate，D6 命名）
 ├── pixi.toml / pixi.lock  # 开发环境单源（D5：conda-forge，含 rust 工具链）
 ├── docs/sdd/              # 行为契约条款（与测试双向追溯）
 ├── docs/
@@ -33,7 +33,7 @@
 
 ## 开发状态
 
-**Phase 0 完成，Phase 1 骨架落地。** 已定案：Rust 核心、wgpu 直用自研管线（D4）、SDK 形态（C API 边界）、Open Core、pixi 单源环境（D5）。当前态：三 crate workspace + SDD 行为契约（20 测试）+ 离屏渲染 golden + 不变式机器门禁。下一步：MVP 功能片（glTF/GeoJSON 加载、2D↔3D 切换演示）。
+**Phase 1 进行中：骨架+内容轮落地。** 当前态：4 crate workspace（含 io-gltf）、43 条 SDD 行为契约全绿、glTF 装配示例、2D↔3D 切换演示（同一场景树同一管线）、离屏 golden 真机验证、不变式机器门禁。下一步：P1 坐标系裁决 → GeoJSON 片 → 宿主嵌入。
 
 ```bash
 bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
