@@ -11,6 +11,7 @@ fn square(half: f64) -> Vec<[f64; 2]> {
         [-half, -half],
         [half, -half],
         [half, half],
+        [-half, half],
         [-half, -half],
     ]
 }
@@ -18,18 +19,24 @@ fn square(half: f64) -> Vec<[f64; 2]> {
 fn total_area_and_inside(parts: &[visiaengine_geo::TessPart], p: (f64, f64)) -> (f64, bool) {
     let mut area = 0.0;
     let mut inside = false;
-    for part in parts {
-        let tri = part.positions.chunks_exact(3);
-        for t in tri {
+    for part in parts
+        .iter()
+        .filter(|p| p.kind == visiaengine_geo::PartKind::Fill)
+    {
+        let (tri, _) = part.positions.as_chunks::<3>();
+        for t in tri.iter().map(|sq| [sq[0], sq[1], sq[2]]) {
             let (a, b, c) = (t[0], t[1], t[2]);
             let ar = ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) as f64 / 2.0;
             area += ar.abs();
-            // 同侧法点内测试（三边符号一致，含 0 容差）
+            // 同侧法点内测试（三边同号，绕向不敏感，含 0 容差）
             let pt = (p.0 as f32, p.1 as f32);
-            let s = |u: [f32; 3], v: [f32; 3]| {
-                ((v[0] - u[0]) * (pt.1 - u[1]) - (v[1] - u[1]) * (pt.0 - u[0])) >= -1e-3
+            let cr = |u: [f32; 3], v: [f32; 3]| {
+                (v[0] - u[0]) * (pt.1 - u[1]) - (v[1] - u[1]) * (pt.0 - u[0])
             };
-            if s(a, b) && s(b, c) && s(c, a) {
+            let (d1, d2, d3) = (cr(a, b), cr(b, c), cr(c, a));
+            if (d1 >= -1e-3 && d2 >= -1e-3 && d3 >= -1e-3)
+                || (d1 <= 1e-3 && d2 <= 1e-3 && d3 <= 1e-3)
+            {
                 inside = true;
             }
         }
@@ -59,7 +66,6 @@ fn hole_interior_uncovered() {
 // spec: GEO-11
 #[test]
 fn stroke_expands_to_width() {
-    let st = StyleRecord::default();
     let line = GeoKind::Line(vec![Vec3::new(0.0, 0.0, 0.0), Vec3::new(10.0, 0.0, 0.0)]);
     let st2 = StyleRecord {
         stroke_width_m: 2.0,
@@ -87,9 +93,15 @@ fn simplestyle_six_keys_parsed() {
     ))
     .unwrap();
     let a = &doc.features()[0].style;
-    assert!((a.fill[0] - 1.0).abs() < 1e-6 && a.fill[1] < 1e-6 && (a.fill_opacity - 0.8).abs() < 1e-6);
+    assert!(
+        (a.fill[0] - 1.0).abs() < 1e-6 && a.fill[1] < 1e-6 && (a.fill_opacity - 0.8).abs() < 1e-6
+    );
     let road = &doc.features()[2].style;
-    assert!((road.stroke[0] - 0.50196).abs() < 0.01, "stroke {}", road.stroke[0]);
+    assert!(
+        (road.stroke[0] - 0.50196).abs() < 0.01,
+        "stroke {}",
+        road.stroke[0]
+    );
     let lamp = &doc.features()[4].style;
     assert!((lamp.marker_color[1] - 0.545).abs() < 0.01);
 }
@@ -120,7 +132,12 @@ fn tessellate_input_is_origin_local() {
     assert_eq!(pa.len(), pb.len());
     for (x, y) in pa.iter().zip(pb.iter()) {
         for k in 0..2 {
-            assert!((x[k] - y[k]).abs() < 1e-3, "平移不变性破坏 {:?} vs {:?}", x, y);
+            assert!(
+                (x[k] - y[k]).abs() < 1e-3,
+                "平移不变性破坏 {:?} vs {:?}",
+                x,
+                y
+            );
         }
     }
 }

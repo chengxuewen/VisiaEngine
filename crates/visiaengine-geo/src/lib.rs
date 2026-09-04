@@ -43,7 +43,6 @@ pub enum GeoKind {
 /// simplestyle 六键子集（GEO-12/13，H2 消费）。
 /// 默认蓝（GEO-13 语义）；六键解析见 style 模块。
 impl Default for StyleRecord {
-    #[must_use]
     fn default() -> Self {
         default_style()
     }
@@ -174,7 +173,11 @@ fn kind_of(gj: &geojson::Geometry) -> Result<GeoKind, GeoError> {
     })
 }
 
-fn feature_from(gj: &geojson::Geometry, name: Option<String>) -> Result<GeoFeature, GeoError> {
+fn feature_from(
+    gj: &geojson::Geometry,
+    name: Option<String>,
+    props: Option<&serde_json::Map<String, serde_json::Value>>,
+) -> Result<GeoFeature, GeoError> {
     // 投影单点：kind_of 内 pt/ring 经 proj()（解析边界 4326→3857，GEO-08 同路拒绝）
     let kind = kind_of(gj)?;
     let mut mins = [f64::MAX; 2];
@@ -193,10 +196,13 @@ fn feature_from(gj: &geojson::Geometry, name: Option<String>) -> Result<GeoFeatu
             }
         }
     }
+    let style = props.map_or_else(default_style, |p| {
+        style::style_from_props(&serde_json::Value::Object(p.clone()))
+    });
     Ok(GeoFeature {
         name,
         kind,
-        style: default_style(),
+        style,
         world_bbox: Some([mins[0], mins[1], maxs[0], maxs[1]]),
     })
 }
@@ -223,7 +229,7 @@ pub fn parse_geojson(bytes: &[u8]) -> Result<GeoDocument, GeoError> {
             }
             return Ok(());
         }
-        features.push(feature_from(g, name)?);
+        features.push(feature_from(g, name, f.properties.as_ref())?);
         Ok(())
     };
     match root {
@@ -244,7 +250,7 @@ pub fn parse_geojson(bytes: &[u8]) -> Result<GeoDocument, GeoError> {
 
 fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
     let geojson::GeometryValue::GeometryCollection { geometries } = &g.value else {
-        return vec![feature_from(g, None)];
+        return vec![feature_from(g, None, None)];
     };
     geometries
         .iter()
@@ -254,7 +260,7 @@ fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
                     reason: "nested GeometryCollection 属 H2 展平策略".into(),
                 })
             } else {
-                feature_from(s, None)
+                feature_from(s, None, None)
             }
         })
         .collect()
@@ -267,7 +273,6 @@ pub fn parse_style(props_json: &str) -> StyleRecord {
         .map(|v| style::style_from_props(&v))
         .unwrap_or_default()
 }
-
 
 /// 解析 GeoJSON 文件。
 pub fn load_geojson(path: impl AsRef<std::path::Path>) -> Result<GeoDocument, GeoError> {

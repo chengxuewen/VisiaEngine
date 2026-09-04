@@ -39,7 +39,10 @@ pub(crate) fn style_from_props(props: &Json) -> crate::StyleRecord {
         // simplestyle 语义为屏幕 px；v0 粗映射 1px≈1m（屏幕空间线宽=相机片，GEO-11 以默认宽断言）
         s.stroke_width_m = (v as f32).max(0.5);
     }
-    if let Some(c) = get("marker-color").and_then(Json::as_str).and_then(parse_color) {
+    if let Some(c) = get("marker-color")
+        .and_then(Json::as_str)
+        .and_then(parse_color)
+    {
         s.marker_color = c;
     }
     if let Some(v) = get("marker-radius").and_then(Json::as_f64) {
