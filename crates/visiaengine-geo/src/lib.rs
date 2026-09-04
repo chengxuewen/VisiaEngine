@@ -41,6 +41,26 @@ pub enum GeoKind {
 }
 
 /// simplestyle 六键子集（GEO-12/13，H2 消费）。
+impl GeoKind {
+    /// 平移几何（GEO-14：world→local 化 = shifted(-origin)，杜绝消费方手改顶点）。
+    #[must_use]
+    pub fn shifted(&self, d: [f64; 2]) -> Self {
+        let s = |v: &Vec3| Vec3::new(v.x + d[0], v.y + d[1], v.z);
+        match self {
+            Self::Point(p) => Self::Point(s(p)),
+            Self::MultiPoint(ps) => Self::MultiPoint(ps.iter().map(s).collect()),
+            Self::Line(ps) => Self::Line(ps.iter().map(s).collect()),
+            Self::Poly { ext, holes } => Self::Poly {
+                ext: ext.iter().map(|p| [p[0] + d[0], p[1] + d[1]]).collect(),
+                holes: holes
+                    .iter()
+                    .map(|r| r.iter().map(|p| [p[0] + d[0], p[1] + d[1]]).collect())
+                    .collect(),
+            },
+        }
+    }
+}
+
 /// 默认蓝（GEO-13 语义）；六键解析见 style 模块。
 impl Default for StyleRecord {
     fn default() -> Self {

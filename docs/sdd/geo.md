@@ -44,4 +44,4 @@ lat=89.0 → GeoError::InvalidCoord（|φ|>85.0511° 3857 发散域）。
 无/未知键（如 "color"）→ 默认样式（fill 蓝 [0,0.45,1,1]，stroke 白），不报错。
 
 ## GEO-14: tessellate_input_is_origin_local
-D7 纪律接口化：`tessellate` 输入为**已减 origin 的 local 坐标**；(1e7,0) 偏移方环 local 化细分 ≡ 原点方环细分（对应顶点 <1e-3 米）。
+D7 纪律接口化：`tessellate` 输入为**已减 origin 的 local 坐标**（引擎提供 `GeoKind::shifted` 作 world→local 原语，消费方不得手改顶点）；(1e7,0) 偏移方环 local 化细分 ≡ 原点方环细分（对应顶点 <1e-3 米）。

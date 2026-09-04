@@ -37,3 +37,4 @@ jobs:
           xvfb-run -a pixi run smoke-clear
           xvfb-run -a pixi run smoke-load-gltf
           xvfb-run -a pixi run smoke-switch-camera
+          xvfb-run -a pixi run smoke-geo-viewer

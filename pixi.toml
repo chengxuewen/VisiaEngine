@@ -48,5 +48,6 @@ fmt-fix = "cargo fmt --all"
 ci = { depends-on = ["fmt", "lint", "check", "test", "audit"] }
 smoke-clear = "cargo run -p visiaengine-render-wgpu --example clear -- --frames 3"   # L2 窗口 smoke（S3 起有效；CI xvfb-run 调用）
 smoke-load-gltf = "cargo run -p visiaengine-render-wgpu --example load_gltf -- testdata/twoprim.glb --frames 3"   # L2：glTF 装配链路（G3）
+smoke-geo-viewer = "cargo run -p visiaengine-render-wgpu --example geo_viewer -- testdata/park.geojson --frames 3"   # L2：GeoJSON 链路（H4）
 smoke-switch-camera = "cargo run -p visiaengine-render-wgpu --example switch_camera -- testdata/twoprim.glb --frames 3"   # L2：2D↔3D 切换（G4）
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"

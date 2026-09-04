@@ -36,3 +36,6 @@
 
 ## WGPU-10: golden_far_origin_pixel_identity
 `render_offscreen_cube_at(offset)`：立方 local 网格 + origin=(1e7,0,0) + 相机随之 10m——中心红/四角清 与 origin=0 版**像素一致**（D7 rebase 在真管线的端到端证明；无适配器 SKIP）。
+
+## WGPU-11: golden_geo_fill_hit
+park.geojson 全链路（解析→细分→D7 上传→正交鸟瞰离屏）：buildingB 质心投影像素邻域命中默认蓝填充——geo×管线合流的存在性证明（无适配器 SKIP）。

@@ -1898,6 +1898,7 @@ dependencies = [
  "pollster",
  "raw-window-handle",
  "visiaengine-core",
+ "visiaengine-geo",
  "visiaengine-io-gltf",
  "visiaengine-render",
  "wgpu",
