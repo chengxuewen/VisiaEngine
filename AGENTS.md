@@ -11,7 +11,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 ```
 ./
 ├── Cargo.toml/lock   # workspace（crates/* 三成员，版本 pin 见计划锚点）；deny.toml licenses/bans
-├── crates/           # visiaengine-core（场景图/坐标，永无渲染依赖）→ visiaengine-render（trait+IR 契约）→ visiaengine-render-wgpu（wgpu 后端+examples+offscreen golden）
+├── crates/           # core（场景图/坐标）→ render（trait+IR+camera 数学）→ render-wgpu（wgpu 后端/mesh_core/examples/offscreen）+ io-gltf（GLB→CPU 实体，零渲染依赖）
 ├── docs/sdd/         # 行为契约条款（CORE/REND/WGPU-NN，与测试 // spec: 双向追溯：scripts/spec-trace.sh）
 ├── .github/workflows # ci.yml 待命（GitHub 镜像日激活；本机等价=pixi run ci+同款 grep）
 ├── .agents/          # 项目记忆+规则+技能（见其 AGENTS.md）
@@ -39,7 +39,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 
 ## CODE MAP
 
-`Scene/EntityId`(crates/visiaengine-core/src/scene.rs：Vec+free-list+代际+脏标记，spike 实测 100k 实体 ~12ms) → `RenderBackend/Frame/DrawCommand`(crates/visiaengine-render/src/contract.rs，object-safe，测试内 stub=不变式②构造证明) → `create_instance/available_adapters/render_offscreen_triangle`(crates/visiaengine-render-wgpu/src/，examples/clear.rs L2)。依赖单向：core ← render ← render-wgpu；wgpu 类型止步后端 crate。
+`Scene/EntityId`(core/src/scene.rs：slab+代际+脏标记，100k 实体 ~12ms spike 实测) → `RenderBackend/MeshDesc/CameraRig`(render/src/{contract,camera}.rs：object-safe，深度变体锁 [0,1] 见 PIT-5) → `MeshCore/headless/offscreen`(render-wgpu/src/：真网格管线+立方 golden) + `load_gltf`(io-gltf/src/lib.rs：gltf from_slice+util::Iter，GLB-only)。examples 三件套：clear/load_gltf/switch_camera（皆 --frames N 可 CI 化）。依赖单向 core←{render, io-gltf}←render-wgpu(dev 合流)。
 
 ## CONVENTIONS
 

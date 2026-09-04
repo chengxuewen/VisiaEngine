@@ -36,3 +36,9 @@
 - **解法**: ①fixture 路径一律 `env!("CARGO_MANIFEST_DIR")` 拼接；②读 accessor 前用 `data_type()/dimensions()` 预检精确分派，类型不合不进构造函数。
 - **验证**: `grep -rn '"testdata/' crates/*/tests/ ` 必须 0 命中（只许经 fixture() 助手）；降级链只许 match 分派形态。
 - **另**: tests/ 目录 redirect 先行 `mkdir -p`（本轮第三次同族漏采，机械前置而非事后补）。
+
+## PIT-5: wgpu 投影深度必须 [0,1]——GL 惯例矩阵 = 静默整帧裁剪（2026-09-03, G2 golden）
+- **症状**: HeadlessBackend 画立方，vp 矩阵逐点验证全在 ±1 内、**零验证报错**、三角旧路全绿——但立方就是不出现（golden 断言中心=清屏色）。二元诊断（手工 identity 投影塞近处）才把问题锁到深度域。
+- **根因**: wgpu clip 空间深度 **[0,1]**（WebGPU 原生约定），不是 GL 的 [-1,1]。照 GL 公式建的 ortho/persp 在近处产生负 z_ndc → 硬件整体裁剪。深度范围错在管线里**不报任何错**——几何死亡无声。
+- **解法**: 投影矩阵一律建/校到 [0,1] 变体（glam 旧 `*_rh_gl` 是 [-1,1]，`perspective_rh`/手写 ortho 才是 wgpu 向）；camera.rs 顶注已锁死变体声明，REND-11/12 用**行为断言**（near→0/far→1）而非公式抄写。
+- **验证**: 离屏 golden 家族存在即预防——任何矩阵/管线改动后 `pixi run cargo test -p visiaengine-render-wgpu` 立方 7 测必真绿（非 SKIP 路径；验证地点如实记录）。同类：`x+(y-x)*t` 在 t=1 不精确等于 y（lerp 端点快路，REND-16）；clippy 偏序取反禁令用 `partial_cmp` 正解。
