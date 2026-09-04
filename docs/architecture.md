@@ -80,7 +80,7 @@ host 事件 ──▶ 输入泵 ──▶ 交互/相机状态 (主世界)
   坐标精度：世界 f64(ECEF/投影域) ──RTC 分块──▶ 渲染 chunk 局部 f32
      (大坐标偏移以相机/瓦片中心为原点；不这么做 = 地图引擎第一杀手)
 ```
-悬题（进 core 设计文档）：RTC 粒度 per-tile vs per-viewer rebase 阈值——**一次定对**（UE 场景模型换代拖三代的教训）。
+**已裁（D7，2026-09-03）**：三层合体——core f64 全局 / 顶点 f32 局部（model·tile 级 origin）/ draw uniform f64 `origin−eye`→f32（viewer-origin 每帧）。证据链 `reference/evidence/2026-09-03-rtc-hierarchy.md`；实施=GeoJSON 片，glTF 现路径兼容。
 
 ## ⑤ 宿主嵌入模型
 
@@ -144,7 +144,7 @@ pin 纪律: wgpu 季度破坏 → 主版本 pin + 每季度升级窗口（全 ti
 
 | # | 悬题 | 影响面 | 裁定期 |
 |---|------|--------|--------|
-| P1 | RTC 粒度（per-tile vs viewer-origin rebase） | core 地基，一次定对 | scaffold 后的 core 设计文档 |
+| ~~P1~~ | RTC 粒度 | — | **✅ D7 裁决（分层 origin）** |
 | P2 | 样式 spec 兼容性（MapLibre v8 子集?） | visiaengine-style + 迁移工具 | 样式系统设计时 |
 | P3 | RK3588 驱动栈（厂商 blob/BSP vs 主线 Panvk） | 发布矩阵/QA 成本 | **商务输入**（客户画像），不阻塞代码 |
 | P4 | 材质表达式层（TSL 式）| 渲染远期 | post-MVP，不现在设计 |

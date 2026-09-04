@@ -55,3 +55,9 @@
 - **修订面**: D4 历史条目中 crate 名表述按史实保留不改写；自本条起现在时文档全用新名。SDD 条款号（CORE/REND/WGPU-*）独立于 crate 命名，零改动。
 - **原因**: ①"visia" 非官方产品称谓，全名三位一体（仓名=品牌=前缀）检索独占零歧义；②实测无障碍——crates.io 两候选命名空间均空闲、GitHub C 符号 `visia_` 零使用；③前项目 D209→D221 两次全量改名税的终态教训：一次到位=品牌小写全名；④原反对案"C ABI 短前缀双轨"论据经用户质询推翻（C 前缀可同步改，长前缀 gdk_pixbuf_* 有 C 惯例先例）。
 - **影响**: 单笔原子改名（3 crate 目录+包名+引用+CI+现时文档，`pixi run ci` 与 golden 三测全绿后提交）；历史面（decisions/pitfalls 旧条目、docs/reference 快照、commit 史）不改写。未来品牌若再演化，重蹈改名税的成本由"发布前定死"纪律兜底。
+
+## D7: P1 裁决——RTC 采用分层 origin 方案（viewer-origin rebase，2026-09-03 用户裁决）
+- **决策**: 坐标精度机制定死三层合体：①core 世界=**f64 全局**（ECEF/投影域数值，语义归属 io 数据源侧，与本题正交）；②顶点存储=**局部 f32**（相对 model/tile 级 origin；local ≤64km 下 f32 保 mm）；③draw uniform 平移=**f64 `origin−eye` 后降 f32**（每帧/相机动阈值，v0 每帧）。不采 CesiumJS 全局绝对顶点+high/low 拆分（那是其历史包袱的补偿）；不采 shader f64（WebGPU 禁）；不采每帧重写顶点（大模型 VBO churn=死）。
+- **原因**: 四方独立收敛（3D Tiles tile transform / MapLibre tile-local+u_matrix / deck.gl layer origin / UE5 LWC——其 per-component 特化方案在 5.0 被废弃回退，即"过度分层 origin"的反面教材）；Cesium `czm_translateRelativeToEye.glsl` 源码实证 viewer-origin rebase 语义；本方案纯 f32 上传面 → **Web SDK 路线零额外工作**；顺带显式化 G2 遗留的 `model f64→f32` 大坐标步长债（1e7 m 级步长约 1m）。
+- **影响**: 实施时机=**GeoJSON 片**（glTF demo 坐标小，现路径兼容零改动）；core SDD 届时补 CORE-11/12 重基行为断言；tile 切分粒度（地图级子毫米需求时）=io-geo 自决，引擎机制不变；极端远程精度需求预留 Cesium 式 high/low 为升级路径（不默认实现）。architecture.md ④/未决点表同步销账。
+- **证据**: `docs/reference/evidence/2026-09-03-rtc-hierarchy.md`

@@ -5,3 +5,4 @@ D4 后端终裁的案卷。按 `YYYY-MM-DD-<topic>.md` 命名，**只增不改**
 - 2026-09-03-bevy-embed.md — Bevy 嵌入式可行性（否决依据）
 - 2026-09-03-angle-integration.md — ANGLE 集成（含 Qt6 证伪、XP 判词）
 - `2026-09-03-spike-slab-budget.md` — spike-2 10 万实体 slab 帧预算实测（S1）
+- `2026-09-03-rtc-hierarchy.md` — P1/D7 分层 origin 五方案证据（Cesium glsl 实拉）
