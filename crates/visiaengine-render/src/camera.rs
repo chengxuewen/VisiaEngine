@@ -124,6 +124,14 @@ impl CameraRig {
             (self.pitch + dpitch).clamp(-std::f64::consts::FRAC_PI_2, std::f64::consts::FRAC_PI_2);
     }
 
+    /// 纯旋转视图基（REND-17：平移经 eye 走 rebase 组合）。
+    #[must_use]
+    pub fn view_rotation(&self) -> [[f32; 4]; 4] {
+        let mut v = self.view_matrix();
+        v[3] = [0.0, 0.0, 0.0, 1.0];
+        v
+    }
+
     #[must_use]
     pub fn view_matrix(&self) -> [[f32; 4]; 4] {
         down(
@@ -135,7 +143,6 @@ impl CameraRig {
             .to_cols_array_2d(),
         )
     }
-
     /// 透视投影（REND-11：RH 深度 [0,1]；退化拒——REND-14）。
     #[must_use]
     pub fn perspective(

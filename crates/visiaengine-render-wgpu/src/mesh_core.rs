@@ -64,16 +64,6 @@ impl MeshCore {
                     count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(64),
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
                     binding: 2,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
@@ -210,12 +200,6 @@ impl MeshCore {
                 DrawCommand::DrawMesh { .. } => None,
             })
             .unwrap_or([0.0; 4]);
-        let view_proj: [[f32; 4]; 4] = {
-            let p = glam::Mat4::from_cols_array_2d(&frame.proj);
-            let v = glam::Mat4::from_cols_array_2d(&frame.view);
-            (p * v).to_cols_array_2d()
-        };
-        let vp_buf = self.uniform(bytemuck::cast_slice(&view_proj), "view-proj");
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
@@ -243,11 +227,20 @@ impl MeshCore {
                 let DrawCommand::DrawMesh {
                     mesh,
                     material,
+                    origin,
                     transform,
                 } = cmd
                 else {
                     continue;
                 };
+                let mvp = visiaengine_render::rebase::compose_mvp(
+                    &frame.proj,
+                    &frame.view_rot,
+                    &frame.eye,
+                    origin,
+                    transform,
+                );
+                let mvp_buf = self.uniform(bytemuck::cast_slice(&mvp), "mvp");
                 let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
                     Some(gm) => (&gm.vbuf, &gm.ibuf, gm.index_count),
                     None => continue,
@@ -255,22 +248,13 @@ impl MeshCore {
                 let Some(mat) = self.materials.get(material) else {
                     continue;
                 };
-                let model: [[f32; 4]; 4] = {
-                    let m = glam::DMat4::from_cols_array_2d(transform);
-                    m.as_mat4().to_cols_array_2d()
-                };
-                let model_buf = self.uniform(bytemuck::cast_slice(&model), "model");
                 let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("mesh-bg"),
                     layout: &self.bgl,
                     entries: &[
                         wgpu::BindGroupEntry {
                             binding: 0,
-                            resource: vp_buf.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: model_buf.as_entire_binding(),
+                            resource: mvp_buf.as_entire_binding(),
                         },
                         wgpu::BindGroupEntry {
                             binding: 2,

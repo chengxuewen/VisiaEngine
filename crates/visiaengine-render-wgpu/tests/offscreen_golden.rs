@@ -125,3 +125,25 @@ fn material_uniform_path_live() {
     let p = px(&frame, W / 2, H / 2);
     assert!(is_dominant(p, 1), "center not green-dominant: {p:?}");
 }
+
+// spec: WGPU-10
+#[test]
+fn golden_far_origin_pixel_identity() {
+    let base = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_cube_at([0.0; 3]));
+    let far = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_cube_at([
+        1.0e7, 0.0, 0.0
+    ]));
+    for (x, y) in [
+        (W / 2, H / 2),
+        (0, 0),
+        (W - 1, H - 1),
+        (200, 240),
+        (440, 300),
+    ] {
+        assert_eq!(
+            px(&base, x, y),
+            px(&far, x, y),
+            "({x},{y}) 像素不一致=D7 路径未闭环"
+        );
+    }
+}

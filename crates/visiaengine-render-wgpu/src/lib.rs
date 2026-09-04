@@ -14,7 +14,9 @@ pub mod mesh_core;
 mod offscreen;
 
 pub use headless::HeadlessBackend;
-pub use offscreen::{OffscreenFrame, render_offscreen_cube, render_offscreen_triangle};
+pub use offscreen::{
+    OffscreenFrame, render_offscreen_cube, render_offscreen_cube_at, render_offscreen_triangle,
+};
 
 /// 以 PRIMARY 后端族构造 Instance（Vulkan/Metal/DX12/GL）。
 #[must_use]

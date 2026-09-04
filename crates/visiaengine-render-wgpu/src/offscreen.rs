@@ -268,6 +268,16 @@ pub fn cube_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
 /// 离屏渲染 640×480 单立方（正交正面，L1 golden 入口；无适配器=None）。
 #[must_use]
 pub fn render_offscreen_cube(base_color: [f32; 4]) -> Option<OffscreenFrame> {
+    render_offscreen_cube_at_with(base_color, [0.0; 3])
+}
+
+/// 立方在 offset 远点仍与原点渲染像素一致（WGPU-10：相机随至 10m 前，f64 相消）。
+#[must_use]
+pub fn render_offscreen_cube_at(offset: [f64; 3]) -> Option<OffscreenFrame> {
+    render_offscreen_cube_at_with([1.0, 0.0, 0.0, 1.0], offset)
+}
+
+fn render_offscreen_cube_at_with(base_color: [f32; 4], offset: [f64; 3]) -> Option<OffscreenFrame> {
     use visiaengine_render::{
         Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, Viewport,
     };
@@ -281,13 +291,15 @@ pub fn render_offscreen_cube(base_color: [f32; 4]) -> Option<OffscreenFrame> {
         })
         .ok()?;
     let material = backend.create_material(base_color).ok()?;
-    let rig = CameraRig::look_at([0.0, 0.0, 3.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-    let view = rig.view_matrix();
+    let eye = [offset[0], offset[1], offset[2] + 3.0];
+    let rig = CameraRig::look_at(eye, offset, [0.0, 1.0, 0.0]);
+    let view = rig.view_rotation();
     let proj = rig.ortho_frame(1.0, 640.0, 480.0, 0.1, 100.0)?;
     let frame = Frame {
         viewport: Viewport::new(640, 480, 1.0),
         camera: Camera::ortho(1.0, 1.0 / (640.0 / 480.0), 0.1, 100.0),
-        view,
+        view_rot: view,
+        eye,
         proj,
         commands: vec![
             DrawCommand::ClearColor {
@@ -296,6 +308,7 @@ pub fn render_offscreen_cube(base_color: [f32; 4]) -> Option<OffscreenFrame> {
             DrawCommand::DrawMesh {
                 mesh,
                 material,
+                origin: offset,
                 transform: [
                     [1.0, 0.0, 0.0, 0.0],
                     [0.0, 1.0, 0.0, 0.0],

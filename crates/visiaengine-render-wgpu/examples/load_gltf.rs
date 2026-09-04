@@ -13,6 +13,9 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
 
+/// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
+type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
+
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
 
 struct App {
@@ -21,7 +24,7 @@ struct App {
     config: Option<wgpu::SurfaceConfiguration>,
     window: Option<Arc<Window>>,
     rig: CameraRig,
-    statics: Vec<(MeshId, MeshId, [[f64; 4]; 4])>, // mesh, material(复用 id), world
+    statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
     frames_left: Option<u32>,
     glb_path: String,
 }
@@ -123,7 +126,15 @@ impl ApplicationHandler for App {
             let Ok(mat) = core.upload_material(e.mesh.base_color) else {
                 continue;
             };
-            self.statics.push((mesh, mat, e.world));
+            // D7：world 4x4 分解 = 平移列 origin + 纯位姿 local
+            let mut origin = [e.world[3][0], e.world[3][1], e.world[3][2]];
+            let _ = &mut origin;
+            let local = {
+                let mut m = e.world;
+                m[3] = [0.0, 0.0, 0.0, 1.0];
+                m
+            };
+            self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
         self.window = Some(window);
@@ -162,11 +173,15 @@ impl ApplicationHandler for App {
                 };
                 let st = std::mem::take(&mut self.statics);
                 let mut commands = vec![DrawCommand::ClearColor { rgba: CLEAR }];
-                commands.extend(st.iter().map(|(m, mat, world)| DrawCommand::DrawMesh {
-                    mesh: *m,
-                    material: *mat,
-                    transform: *world,
-                }));
+                commands.extend(
+                    st.iter()
+                        .map(|(m, mat, origin, local)| DrawCommand::DrawMesh {
+                            mesh: *m,
+                            material: *mat,
+                            origin: *origin,
+                            transform: *local,
+                        }),
+                );
                 self.statics = st;
                 let aspect = config.width as f32 / config.height.max(1) as f32;
                 let (near, far) = ((self.rig.dist * 0.01) as f32, (self.rig.dist * 30.0) as f32);
@@ -180,7 +195,8 @@ impl ApplicationHandler for App {
                 let frame = Frame {
                     viewport: Viewport::new(config.width, config.height, 1.0),
                     camera: Camera::perspective(self.rig.fov_y as f32, aspect, near, far),
-                    view: self.rig.view_matrix(),
+                    view_rot: self.rig.view_rotation(),
+                    eye: self.rig.eye(),
                     proj,
                     commands,
                 };

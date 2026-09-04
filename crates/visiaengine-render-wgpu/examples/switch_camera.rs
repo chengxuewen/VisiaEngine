@@ -13,6 +13,9 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
 
+/// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
+type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
+
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
 
 struct App {
@@ -21,7 +24,7 @@ struct App {
     config: Option<wgpu::SurfaceConfiguration>,
     window: Option<Arc<Window>>,
     rig: CameraRig,
-    statics: Vec<(MeshId, MeshId, [[f64; 4]; 4])>, // mesh, material(复用 id), world
+    statics: Vec<DrawRecord>, // mesh, material(复用 id), world
     frames_left: Option<u32>,
     glb_path: String,
     rig_a: CameraRig,
@@ -130,7 +133,10 @@ impl ApplicationHandler for App {
             let Ok(mat) = core.upload_material(e.mesh.base_color) else {
                 continue;
             };
-            self.statics.push((mesh, mat, e.world));
+            let origin = [e.world[3][0], e.world[3][1], e.world[3][2]];
+            let mut local = e.world;
+            local[3] = [0.0, 0.0, 0.0, 1.0];
+            self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
         self.window = Some(window);
@@ -169,11 +175,15 @@ impl ApplicationHandler for App {
                 };
                 let st = std::mem::take(&mut self.statics);
                 let mut commands = vec![DrawCommand::ClearColor { rgba: CLEAR }];
-                commands.extend(st.iter().map(|(m, mat, world)| DrawCommand::DrawMesh {
-                    mesh: *m,
-                    material: *mat,
-                    transform: *world,
-                }));
+                commands.extend(
+                    st.iter()
+                        .map(|(m, mat, origin, local)| DrawCommand::DrawMesh {
+                            mesh: *m,
+                            material: *mat,
+                            origin: *origin,
+                            transform: *local,
+                        }),
+                );
                 self.statics = st;
                 self.t = (self.t + self.dir / 60.0).clamp(0.0, 1.0);
                 let rig = CameraRig::mix_rig(&self.rig_a, &self.rig_b, self.t);
@@ -199,7 +209,8 @@ impl ApplicationHandler for App {
                 let frame = Frame {
                     viewport: Viewport::new(config.width, config.height, 1.0),
                     camera,
-                    view: rig.view_matrix(),
+                    view_rot: rig.view_rotation(),
+                    eye: rig.eye(),
                     proj,
                     commands,
                 };

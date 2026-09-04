@@ -7,6 +7,7 @@
 
 pub mod camera;
 pub mod contract;
+pub mod rebase;
 
 pub use camera::CameraRig;
 pub use contract::{

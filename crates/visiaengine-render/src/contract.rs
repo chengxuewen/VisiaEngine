@@ -129,7 +129,9 @@ pub enum DrawCommand {
     DrawMesh {
         mesh: MeshId,
         material: MaterialId,
-        /// 世界变换，列主序 f64（io-gltf 烘焙直通；后端上传前降 f32）。
+        /// layer/模型级世界 origin（D7②）；local 网格相对它。
+        origin: [f64; 3],
+        /// origin-local 位姿，列主序 f64（REND-18）。
         transform: [[f64; 4]; 4],
     },
 }
@@ -148,9 +150,12 @@ impl DrawCommand {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Frame {
     pub viewport: Viewport,
+    /// 投影型判别位（后端数学不消费，host/演示消费，REND-17）。
     pub camera: Camera,
-    /// 列主序视图/投影矩阵（裸数据出契约面，矩阵库不入，REND-09）。
-    pub view: [[f32; 4]; 4],
+    /// 纯旋转视图基（平移经 eye 走 D7 rebase 路径，REND-17）。
+    pub view_rot: [[f32; 4]; 4],
+    /// 世界相机位，f64（与 DrawMesh.origin f64 相减后才降 f32）。
+    pub eye: [f64; 3],
     pub proj: [[f32; 4]; 4],
     pub commands: Vec<DrawCommand>,
 }
