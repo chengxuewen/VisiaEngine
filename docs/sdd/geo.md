@@ -27,3 +27,21 @@ park 字节截半 → GeoError::Parse，零 panic。
 
 ## GEO-08: extreme_latitude_rejected
 lat=89.0 → GeoError::InvalidCoord（|φ|>85.0511° 3857 发散域）。
+
+## GEO-09: fill_area_matches_polygon
+单位方环 [-1,1]² 细分 → 三角形总面积 ≈4 ±5%，重心 (0,0) 落于某三角形内（含边容差）。
+
+## GEO-10: hole_interior_uncovered
+方环含中心 0.4² 洞 → 洞内采样点 (0,0) 不在任何输出三角形内部。
+
+## GEO-11: stroke_expands_to_width
+(0,0)-(10,0) 线、显式 stroke_width_m=2（默认 3 不断言具体值）→ 输出 y 跨度 2±0.1、x 跨度 10±0.1（butt 端）。
+
+## GEO-12: simplestyle_six_keys_parsed
+六键：fill / fill-opacity / stroke / stroke-width / marker-color / marker-radius；色支持 #rrggbb 与 rgb(r,g,b)。park 断言：A fill=[1,0,0,1] α=0.8、road stroke=#808080、lamp marker=#228B22。
+
+## GEO-13: missing_props_default_style
+无/未知键（如 "color"）→ 默认样式（fill 蓝 [0,0.45,1,1]，stroke 白），不报错。
+
+## GEO-14: tessellate_input_is_origin_local
+D7 纪律接口化：`tessellate` 输入为**已减 origin 的 local 坐标**；(1e7,0) 偏移方环 local 化细分 ≡ 原点方环细分（对应顶点 <1e-3 米）。

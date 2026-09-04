@@ -11,3 +11,6 @@ repository.workspace = true
 visiaengine-core.workspace = true
 thiserror.workspace = true
 geojson = { version = "1.0", default-features = false }
+serde_json = "1"
+lyon_path = "1"
+lyon_tessellation = "1"

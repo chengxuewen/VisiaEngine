@@ -4,6 +4,12 @@
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
+mod style;
+mod tess;
+
+pub use style::parse_color;
+pub use tess::{PartKind, TessPart, tessellate};
+
 use thiserror::Error;
 use visiaengine_core::Vec3;
 
@@ -35,6 +41,14 @@ pub enum GeoKind {
 }
 
 /// simplestyle 六键子集（GEO-12/13，H2 消费）。
+/// 默认蓝（GEO-13 语义）；六键解析见 style 模块。
+impl Default for StyleRecord {
+    #[must_use]
+    fn default() -> Self {
+        default_style()
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StyleRecord {
     pub fill: [f32; 4],
@@ -245,6 +259,15 @@ fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
         })
         .collect()
 }
+
+/// 从 JSON 对象字符串解析样式（测试/宿主便利口；非法回默认）。
+#[must_use]
+pub fn parse_style(props_json: &str) -> StyleRecord {
+    serde_json::from_str(props_json)
+        .map(|v| style::style_from_props(&v))
+        .unwrap_or_default()
+}
+
 
 /// 解析 GeoJSON 文件。
 pub fn load_geojson(path: impl AsRef<std::path::Path>) -> Result<GeoDocument, GeoError> {
