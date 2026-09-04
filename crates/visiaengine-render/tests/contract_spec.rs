@@ -66,7 +66,8 @@ fn stub_impl_without_wgpu() {
     let frame = Frame {
         viewport: vp,
         camera: Camera::perspective(1.0, 1.0, 0.1, 1000.0),
-        view: IDENTITY4,
+        view_rot: IDENTITY4,
+        eye: [0.0; 3],
         proj: IDENTITY4,
         commands: vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.1, 1.0],
@@ -85,6 +86,7 @@ fn ir_variants_exhaustive_construct() {
         DrawCommand::DrawMesh {
             mesh,
             material: 3,
+            origin: [0.0; 3],
             transform: [
                 [1.0f64, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 0.0],
@@ -179,10 +181,47 @@ fn frame_view_proj_fields_roundtrip() {
     let f = Frame {
         viewport: Viewport::new(1, 1, 1.0),
         camera: Camera::ortho(1.0, 1.0, -1.0, 1.0),
-        view: IDENTITY4,
+        view_rot: IDENTITY4,
+        eye: [3.0, 4.0, 5.0],
         proj: IDENTITY4,
         commands: vec![],
     };
-    assert_eq!(f.view, IDENTITY4);
+    assert_eq!(f.view_rot, IDENTITY4);
+    assert_eq!(f.eye, [3.0, 4.0, 5.0]);
     assert_eq!(f.proj, IDENTITY4);
+}
+
+// spec: REND-17
+#[test]
+fn frame_camera_split_roundtrip() {
+    let f = Frame {
+        viewport: Viewport::new(2, 1, 1.0),
+        camera: Camera::perspective(1.0, 2.0, 0.1, 10.0),
+        view_rot: IDENTITY4,
+        eye: [1.5e7, -2.5, 3.25],
+        proj: IDENTITY4,
+        commands: vec![],
+    };
+    assert_eq!(f.eye, [1.5e7, -2.5, 3.25]);
+    assert_eq!(f.view_rot, IDENTITY4);
+}
+
+// spec: REND-18
+#[test]
+fn drawmesh_carries_origin() {
+    let cmd = DrawCommand::DrawMesh {
+        mesh: 7,
+        material: 2,
+        origin: [1.0e7, 0.0, 0.0],
+        transform: [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+    };
+    match cmd {
+        DrawCommand::DrawMesh { origin, .. } => assert_eq!(origin, [1.0e7, 0.0, 0.0]),
+        DrawCommand::ClearColor { .. } => panic!("expected mesh"),
+    }
 }
