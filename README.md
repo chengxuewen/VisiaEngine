@@ -21,7 +21,7 @@
 
 ```
 ├── AGENTS.md / SKILL.md   # 代理知识库与技能注册表
-├── crates/                # core / render / render-wgpu / io-gltf（四 crate，D6 命名）
+├── crates/                # core / render / render-wgpu / io-gltf / geo（五 crate，D6 命名）
 ├── pixi.toml / pixi.lock  # 开发环境单源（D5：conda-forge，含 rust 工具链）
 ├── docs/sdd/              # 行为契约条款（与测试双向追溯）
 ├── docs/
@@ -33,7 +33,7 @@
 
 ## 开发状态
 
-**Phase 1 进行中：骨架+内容轮落地。** 当前态：4 crate workspace（含 io-gltf）、43 条 SDD 行为契约全绿、glTF 装配示例、2D↔3D 切换演示（同一场景树同一管线）、离屏 golden 真机验证、不变式机器门禁。下一步：P1 坐标系裁决 → GeoJSON 片 → 宿主嵌入。
+**Phase 1 进行中：骨架+内容轮+GeoJSON 落地。** 当前态：5 crate workspace（io-gltf/geo）、43 条 SDD 行为契约全绿、glTF+GeoJSON 装配、2D↔3D 切换、D7 分层 origin 重基（远坐标像素级验证）、离屏 golden 真机、不变式机器门禁。下一步：宿主嵌入示例 → C API 稳定化（ABI 已锁 D6）→ Alpha。
 
 ```bash
 bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
