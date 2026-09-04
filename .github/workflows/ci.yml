@@ -33,4 +33,6 @@ jobs:
         run: bash scripts/spec-trace.sh
 
       - name: L2 窗口 smoke
-        run: xvfb-run -a pixi run smoke-clear
+        run: |
+          xvfb-run -a pixi run smoke-clear
+          xvfb-run -a pixi run smoke-load-gltf

@@ -10,6 +10,7 @@
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 pub mod headless;
+pub mod mesh_core;
 mod offscreen;
 
 pub use headless::HeadlessBackend;
