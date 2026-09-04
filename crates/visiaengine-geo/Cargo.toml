@@ -1,0 +1,13 @@
+[package]
+name = "visiaengine-geo"
+description = "GeoJSON 矢量地理数据：解析/WGS84→WebMercator/细分/最小样式（D7 分层 origin 的 host 侧）。零渲染依赖。"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+visiaengine-core.workspace = true
+thiserror.workspace = true
+geojson = { version = "1.0", default-features = false }

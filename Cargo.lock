@@ -435,6 +435,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "geojson"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "510c094bfc76ea34d02eee00833254945b70491d79a9c0b050abed6eaa799ffb"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tinyvec",
+]
+
+[[package]]
 name = "gethostname"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1707,6 +1720,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinyvec"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e6cd18156ba6530d7deea039a6c1a6ec4f173dd330a9a53a4ea569fe85abac"
+dependencies = [
+ "serde_core",
+ "tinyvec_macros",
+]
+
+[[package]]
+name = "tinyvec_macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
 name = "toml_datetime"
 version = "1.1.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1781,6 +1810,15 @@ name = "visiaengine-core"
 version = "0.1.0"
 dependencies = [
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "visiaengine-geo"
+version = "0.1.0"
+dependencies = [
+ "geojson",
+ "thiserror 2.0.20",
+ "visiaengine-core",
 ]
 
 [[package]]
