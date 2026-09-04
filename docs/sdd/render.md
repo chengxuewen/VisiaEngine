@@ -43,3 +43,11 @@ orbit_delta(45°)×2 与 orbit_delta(90°)×1 的 eye 位置 f64 容差 1e-6 等
 
 ## REND-14: degenerate_near_far_rejected
 near>=far → `proj_matrix` 返回 None（构造式拒绝，零 panic）。
+
+## REND-15: switch_midpoint_continuity
+`mix_rig(a, b, t)` 参数空间逐分量插值：`mix(0.5)` 与 `mix(0.5001)` 逐字段差 <1e-3（t 连续域无跳变）。
+
+## REND-16: switch_endpoints_exact
+`mix_rig(a,b,0)==a`、`mix_rig(a,b,1)==b` 逐字段精确（端点恒等）。
+
+> v0 注：yaw 线性插值（demo 角度域 <180°）；wrap 最短弧属后续相机片（ponytail 标记于实现）。

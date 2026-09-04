@@ -86,3 +86,29 @@ fn degenerate_near_far_rejected() {
     assert!(rig().perspective(1.0, 1.0, 100.0, 50.0).is_none());
     assert!(rig().ortho_frame(10.0, 1.0, 1.0, 100.0, 50.0).is_none());
 }
+
+// spec: REND-15
+#[test]
+fn switch_midpoint_continuity() {
+    let a = CameraRig::orbit([0.0; 3], 0.0, 1.5, 500.0, 40.0, 1.1, 1.0, 1e5);
+    let b = CameraRig::orbit([0.0; 3], 0.8, 0.35, 9.0, 1.0, 1.1, 0.1, 500.0);
+    let m1 = CameraRig::mix_rig(&a, &b, 0.5);
+    let m2 = CameraRig::mix_rig(&a, &b, 0.5001);
+    for (x, y) in [
+        (m1.dist, m2.dist),
+        (m1.pitch, m2.pitch),
+        (m1.zoom, m2.zoom),
+        (m1.fov_y, m2.fov_y),
+    ] {
+        assert!((x - y).abs() < 1e-3, "t 域连续性破坏: {x} vs {y}");
+    }
+}
+
+// spec: REND-16
+#[test]
+fn switch_endpoints_exact() {
+    let a = CameraRig::orbit([1.0, 2.0, 3.0], 0.1, 0.2, 7.0, 2.0, 1.0, 0.5, 99.0);
+    let b = CameraRig::orbit([-4.0, 0.0, 5.0], 2.0, -0.4, 3.0, 0.5, 0.7, 0.1, 42.0);
+    assert_eq!(CameraRig::mix_rig(&a, &b, 0.0), a);
+    assert_eq!(CameraRig::mix_rig(&a, &b, 1.0), b);
+}
