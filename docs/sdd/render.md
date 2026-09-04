@@ -51,3 +51,15 @@ near>=far → `proj_matrix` 返回 None（构造式拒绝，零 panic）。
 `mix_rig(a,b,0)==a`、`mix_rig(a,b,1)==b` 逐字段精确（端点恒等）。
 
 > v0 注：yaw 线性插值（demo 角度域 <180°）；wrap 最短弧属后续相机片（ponytail 标记于实现）。
+
+## REND-17: frame_view_rotation_eye_split
+`Frame.view` 拆为 `view_rot:[[f32;4];4]`（纯旋转）+ `eye:[f64;3]`（世界相机位）；`camera` 型判别字段保留；裸数据构造往返无损（D7 实施态）。
+
+## REND-18: drawmesh_carries_origin
+`DrawMesh +{ origin: [f64;3] }`（layer 级世界 origin，D7 ②）；transform 语义改为 **origin-local** 位姿（f64）；全部构造点编译同步。
+
+## REND-19: rebase_identity_at_zero_origin
+`rebase::compose_mvp(proj, view_rot, eye, origin, model_local)`：origin=0、model=世界矩阵时 ≡ P·V·M 旧组合（1e-4 容差）。
+
+## REND-20: far_origin_precision_preserved
+origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域相对误差 <1e-4；对照旧路（world 直 f32 cast）误差 ≥0.25m。

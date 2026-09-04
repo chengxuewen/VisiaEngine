@@ -33,3 +33,6 @@
 
 ## WGPU-09: material_uniform_path_live
 同一 offscreen 管线换 material（绿）→ 中心像素绿主导（uniform 绑定路径实跑证据，非 SKIP 假绿）。
+
+## WGPU-10: golden_far_origin_pixel_identity
+`render_offscreen_cube_at(offset)`：立方 local 网格 + origin=(1e7,0,0) + 相机随之 10m——中心红/四角清 与 origin=0 版**像素一致**（D7 rebase 在真管线的端到端证明；无适配器 SKIP）。
