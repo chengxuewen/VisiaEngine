@@ -85,6 +85,30 @@ impl CameraRig {
         }
     }
 
+    /// 2D↔3D 切换的参数空间插值（REND-15/16）。
+    /// ponytail: yaw 线性 lerp（demo 域 |Δyaw|<π）；wrap 最短弧待多圈轨道需求再引入。
+    #[must_use]
+    pub fn mix_rig(a: &Self, b: &Self, t: f64) -> Self {
+        // 端点恒等快路：浮点 x+(y-x)*1 不保证精确等于 y（REND-16 语义即端点精确）
+        match t {
+            0.0 => return *a,
+            1.0 => return *b,
+            _ => {}
+        }
+        let l = |x: f64, y: f64| x + (y - x) * t;
+        let lv = |x: [f64; 3], y: [f64; 3]| [l(x[0], y[0]), l(x[1], y[1]), l(x[2], y[2])];
+        Self {
+            target: lv(a.target, b.target),
+            yaw: l(a.yaw, b.yaw),
+            pitch: l(a.pitch, b.pitch),
+            dist: l(a.dist, b.dist),
+            zoom: l(a.zoom, b.zoom),
+            fov_y: l(a.fov_y, b.fov_y),
+            near: l(a.near, b.near),
+            far: l(a.far, b.far),
+        }
+    }
+
     #[must_use]
     pub fn eye(&self) -> [f64; 3] {
         let t = glam::DVec3::from(self.target);

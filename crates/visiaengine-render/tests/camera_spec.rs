@@ -93,7 +93,7 @@ fn switch_midpoint_continuity() {
     let a = CameraRig::orbit([0.0; 3], 0.0, 1.5, 500.0, 40.0, 1.1, 1.0, 1e5);
     let b = CameraRig::orbit([0.0; 3], 0.8, 0.35, 9.0, 1.0, 1.1, 0.1, 500.0);
     let m1 = CameraRig::mix_rig(&a, &b, 0.5);
-    let m2 = CameraRig::mix_rig(&a, &b, 0.5001);
+    let m2 = CameraRig::mix_rig(&a, &b, 0.500_001);
     for (x, y) in [
         (m1.dist, m2.dist),
         (m1.pitch, m2.pitch),
