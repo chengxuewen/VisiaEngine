@@ -61,3 +61,4 @@
 - **原因**: 四方独立收敛（3D Tiles tile transform / MapLibre tile-local+u_matrix / deck.gl layer origin / UE5 LWC——其 per-component 特化方案在 5.0 被废弃回退，即"过度分层 origin"的反面教材）；Cesium `czm_translateRelativeToEye.glsl` 源码实证 viewer-origin rebase 语义；本方案纯 f32 上传面 → **Web SDK 路线零额外工作**；顺带显式化 G2 遗留的 `model f64→f32` 大坐标步长债（1e7 m 级步长约 1m）。
 - **影响**: 实施时机=**GeoJSON 片**（glTF demo 坐标小，现路径兼容零改动）；core SDD 届时补 CORE-11/12 重基行为断言；tile 切分粒度（地图级子毫米需求时）=io-geo 自决，引擎机制不变；极端远程精度需求预留 Cesium 式 high/low 为升级路径（不默认实现）。architecture.md ④/未决点表同步销账。
 - **证据**: `docs/reference/evidence/2026-09-03-rtc-hierarchy.md`
+- **追加勘误（2026-09-03 规划轮）**：'core SDD 补 CORE-11/12'归属错——rebase 组合数学主场在 render（core 无矩阵/wgpu 语义），实际编号=REND-19/20；CORE 命名空间本链无新增。

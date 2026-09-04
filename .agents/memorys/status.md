@@ -24,7 +24,7 @@
 
 ## 下一步
 
-1. ~~P1 裁决~~ ✅ **D7 已裁（分层 origin）**——GeoJSON 片实施重基机制 + CORE-11/12 测试届时落
+1. ~~P1 裁决~~ ✅ **D7 已裁（分层 origin）**——GeoJSON 片实施重基机制（断言归 REND-19/20，非 CORE，见 D7 勘误）
 2. **宿主嵌入片**（rwh 路径 A 真窗 + Qt demo 需 conda qt-main——环境扩张单独立项；spike-3）
 3. MVP 收尾后 capi 片（ABI 面 D6 已锁：visiaengine_*/visiaengine.h）；纹理/材质系统（PBR 子集）
 4. CI 激活：GitHub 镜像仓决策日（ci.yml 已三连 smoke）；Gitee push 待指令
