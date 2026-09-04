@@ -67,25 +67,196 @@ impl GeoDocument {
     /// 全层 3857 bbox 并集（空层 None，GEO-05）。
     #[must_use]
     pub fn layer_bbox(&self) -> Option<[f64; 4]> {
-        todo!("H1 GREEN")
+        let mut it = self.features.iter().filter_map(|f| f.world_bbox);
+        let first = it.next()?;
+        Some(it.fold(first, |a, b| {
+            [
+                a[0].min(b[0]),
+                a[1].min(b[1]),
+                a[2].max(b[2]),
+                a[3].max(b[3]),
+            ]
+        }))
     }
 }
 
-/// WGS84 经纬 → EPSG:3857 球面式（GEO-02/08）。
+/// WGS84 经纬 → EPSG:3857 球面式（GEO-02/08；|φ|>85.0511° 发散域拒）。
 #[must_use]
 pub fn web_mercator(lon: f64, lat: f64) -> Option<[f64; 2]> {
-    let _ = (lon, lat);
-    todo!("H1 GREEN")
+    const R: f64 = 6378137.0;
+    const MAX_LAT: f64 = 85.051_128_779_806_6;
+    if !(-180.0..=180.0).contains(&lon) || !(-MAX_LAT..=MAX_LAT).contains(&lat) {
+        return None;
+    }
+    Some([
+        R * lon.to_radians(),
+        R * ((std::f64::consts::FRAC_PI_4 + lat.to_radians() / 2.0).tan()).ln(),
+    ])
 }
 
-/// 解析 GeoJSON 文件（仅 FeatureCollection/Feature/单几何；GC 展平）。
-pub fn load_geojson(path: impl AsRef<std::path::Path>) -> Result<GeoDocument, GeoError> {
-    let _ = path;
-    todo!("H1 GREEN")
+/// 默认样式（GEO-13；simplestyle 六键解析属 H2）。
+#[must_use]
+pub const fn default_style() -> StyleRecord {
+    StyleRecord {
+        fill: [0.0, 0.45, 1.0, 1.0],
+        fill_opacity: 1.0,
+        stroke: [1.0, 1.0, 1.0, 1.0],
+        stroke_width_m: 3.0,
+        marker_color: [0.0, 0.45, 1.0, 1.0],
+        radius_m: 4.0,
+    }
 }
 
-/// 从字节解析（GEO-06/07/08 的无文件入口；load_geojson = read + 本函数）。
+fn proj(p: &geojson::Position) -> Result<[f64; 2], GeoError> {
+    let s = p.as_slice();
+    web_mercator(s[0], s[1]).ok_or(GeoError::InvalidCoord { lat: s[1] })
+}
+
+fn pt(p: &geojson::Position) -> Result<Vec3, GeoError> {
+    let [x, y] = proj(p)?;
+    Ok(Vec3::new(x, y, 0.0))
+}
+
+fn ring(v: &[geojson::Position]) -> Result<Vec<[f64; 2]>, GeoError> {
+    v.iter().map(proj).collect()
+}
+
+fn push_bbox(mins: &mut [f64; 2], maxs: &mut [f64; 2], x: f64, y: f64) {
+    mins[0] = mins[0].min(x);
+    mins[1] = mins[1].min(y);
+    maxs[0] = maxs[0].max(x);
+    maxs[1] = maxs[1].max(y);
+}
+
+fn kind_of(gj: &geojson::Geometry) -> Result<GeoKind, GeoError> {
+    let bad = |why: &str| GeoError::Parse {
+        reason: why.to_string(),
+    };
+    Ok(match &gj.value {
+        geojson::GeometryValue::Point { coordinates } => GeoKind::Point(pt(coordinates)?),
+        geojson::GeometryValue::MultiPoint { coordinates } => {
+            GeoKind::MultiPoint(coordinates.iter().map(pt).collect::<Result<_, _>>()?)
+        }
+        geojson::GeometryValue::LineString { coordinates } => {
+            GeoKind::Line(coordinates.iter().map(pt).collect::<Result<_, _>>()?)
+        }
+        geojson::GeometryValue::MultiLineString { coordinates } => match coordinates.as_slice() {
+            [single] => GeoKind::Line(single.iter().map(pt).collect::<Result<_, _>>()?),
+            _ => return Err(bad("MultiLineString len>1 属 H2 拆分（多部件策略）")),
+        },
+        geojson::GeometryValue::Polygon { coordinates } => {
+            let Some((ext, holes)) = coordinates.split_first() else {
+                return Err(bad("empty polygon rings"));
+            };
+            GeoKind::Poly {
+                ext: ring(ext)?,
+                holes: holes
+                    .iter()
+                    .map(|r| ring(r.as_slice()))
+                    .collect::<Result<_, _>>()?,
+            }
+        }
+        _ => return Err(bad("MultiPolygon/GC 在文档层处理")),
+    })
+}
+
+fn feature_from(gj: &geojson::Geometry, name: Option<String>) -> Result<GeoFeature, GeoError> {
+    // 投影单点：kind_of 内 pt/ring 经 proj()（解析边界 4326→3857，GEO-08 同路拒绝）
+    let kind = kind_of(gj)?;
+    let mut mins = [f64::MAX; 2];
+    let mut maxs = [f64::MIN; 2];
+    let mut acc = |x: f64, y: f64| push_bbox(&mut mins, &mut maxs, x, y);
+    match &kind {
+        GeoKind::Point(p) => acc(p.x, p.y),
+        GeoKind::MultiPoint(ps) | GeoKind::Line(ps) => {
+            for p in ps {
+                acc(p.x, p.y);
+            }
+        }
+        GeoKind::Poly { ext, holes } => {
+            for p in ext.iter().chain(holes.iter().flatten()) {
+                acc(p[0], p[1]);
+            }
+        }
+    }
+    Ok(GeoFeature {
+        name,
+        kind,
+        style: default_style(),
+        world_bbox: Some([mins[0], mins[1], maxs[0], maxs[1]]),
+    })
+}
+
+/// 从字节解析（GEO-06/07/08 无文件入口）。
 pub fn parse_geojson(bytes: &[u8]) -> Result<GeoDocument, GeoError> {
-    let _ = bytes;
-    todo!("H1 GREEN")
+    let root = geojson::GeoJson::from_reader(std::io::Cursor::new(bytes)).map_err(|e| {
+        GeoError::Parse {
+            reason: e.to_string(),
+        }
+    })?;
+    let mut features = Vec::new();
+    let mut feed = |f: &geojson::Feature| -> Result<(), GeoError> {
+        let name = f
+            .properties
+            .as_ref()
+            .and_then(|p| p.get("name"))
+            .and_then(geojson::JsonValue::as_str)
+            .map(String::from);
+        let Some(g) = &f.geometry else { return Ok(()) };
+        if matches!(g.value, geojson::GeometryValue::GeometryCollection { .. }) {
+            for sub in flatten_gc(g) {
+                features.push(sub?);
+            }
+            return Ok(());
+        }
+        features.push(feature_from(g, name)?);
+        Ok(())
+    };
+    match root {
+        geojson::GeoJson::FeatureCollection(fc) => {
+            for f in &fc.features {
+                feed(f)?;
+            }
+        }
+        geojson::GeoJson::Feature(f) => feed(&f)?,
+        geojson::GeoJson::Geometry(g) => {
+            for sub in flatten_gc(&g) {
+                features.push(sub?);
+            }
+        }
+    }
+    Ok(GeoDocument { features })
+}
+
+fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
+    let geojson::GeometryValue::GeometryCollection { geometries } = &g.value else {
+        return vec![feature_from(g, None)];
+    };
+    geometries
+        .iter()
+        .map(|s| {
+            if matches!(s.value, geojson::GeometryValue::GeometryCollection { .. }) {
+                Err(GeoError::Parse {
+                    reason: "nested GeometryCollection 属 H2 展平策略".into(),
+                })
+            } else {
+                feature_from(s, None)
+            }
+        })
+        .collect()
+}
+
+/// 解析 GeoJSON 文件。
+pub fn load_geojson(path: impl AsRef<std::path::Path>) -> Result<GeoDocument, GeoError> {
+    let path = path.as_ref();
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Err(GeoError::NotFound {
+                path: path.display().to_string(),
+            });
+        }
+        Err(e) => return Err(GeoError::Io { source: e }),
+    };
+    parse_geojson(&bytes)
 }

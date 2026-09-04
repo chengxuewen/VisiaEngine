@@ -3,7 +3,11 @@
 use visiaengine_geo::{GeoKind, load_geojson, parse_geojson, web_mercator};
 
 fn park() -> visiaengine_geo::GeoDocument {
-    load_geojson(concat!(env!("CARGO_MANIFEST_DIR"), "/../../testdata/park.geojson")).unwrap()
+    load_geojson(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../testdata/park.geojson"
+    ))
+    .unwrap()
 }
 fn at(p: &str) -> String {
     format!("{}/../../testdata/{p}", env!("CARGO_MANIFEST_DIR"))
@@ -14,15 +18,22 @@ fn at(p: &str) -> String {
 fn parses_feature_count() {
     let doc = park();
     assert_eq!(doc.features().len(), 5);
-    let names: Vec<&str> = doc.features().iter().map(|f| f.name.as_deref().unwrap_or("")).collect();
-    assert_eq!(names, vec!["buildingA", "buildingB", "road", "grove", "lamp"]);
+    let names: Vec<&str> = doc
+        .features()
+        .iter()
+        .map(|f| f.name.as_deref().unwrap_or(""))
+        .collect();
+    assert_eq!(
+        names,
+        vec!["buildingA", "buildingB", "road", "grove", "lamp"]
+    );
 }
 
 // spec: GEO-02
 #[test]
 fn webmercator_known_points() {
     let o = web_mercator(0.0, 0.0).unwrap();
-    assert!((o[0]).abs() < 1e-6 && o[1].abs() < 1e-6);
+    assert!(o[0].abs() < 1e-6 && o[1].abs() < 1e-6);
     let e = web_mercator(180.0, 0.0).unwrap();
     assert!((e[0] - 20037508.342789244).abs() < 1e-3);
     let p = web_mercator(10.0, 50.0).unwrap();
@@ -59,9 +70,12 @@ fn line_and_multipoint_kinds() {
 fn layer_bbox_union() {
     let doc = park();
     let [x0, y0, x1, y1] = doc.layer_bbox().expect("non-empty layer");
-    let (ax, ay) = web_mercator(2.3499, 48.8499).unwrap();
-    let (bx, by) = web_mercator(2.35045, 48.85018).unwrap();
-    assert!((x0 - ax).abs() < 1.0 && (y0 - ay).abs() < 1.0, "min corner {x0},{y0} vs {ax},{ay}");
+    let [ax, ay] = web_mercator(2.3499, 48.8499).unwrap();
+    let [bx, by] = web_mercator(2.35045, 48.85018).unwrap();
+    assert!(
+        (x0 - ax).abs() < 1.0 && (y0 - ay).abs() < 1.0,
+        "min corner {x0},{y0} vs {ax},{ay}"
+    );
     assert!((x1 - bx).abs() < 1.0 && (y1 - by).abs() < 1.0);
     assert!(at("missing-check").is_empty() || true);
 }
@@ -71,7 +85,10 @@ fn layer_bbox_union() {
 fn malformed_err_not_panic() {
     let bytes = std::fs::read(at("park.geojson")).unwrap();
     let err = parse_geojson(&bytes[..bytes.len() / 2]).unwrap_err();
-    assert!(matches!(err, visiaengine_geo::GeoError::Parse { .. }), "got {err:?}");
+    assert!(
+        matches!(err, visiaengine_geo::GeoError::Parse { .. }),
+        "got {err:?}"
+    );
 }
 
 // spec: GEO-07
@@ -91,5 +108,8 @@ fn geometrycollection_flattened() {
 fn extreme_latitude_rejected() {
     let bad = br#"{"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[2.35,89.0]}}"#;
     let err = parse_geojson(bad).unwrap_err();
-    assert!(matches!(err, visiaengine_geo::GeoError::InvalidCoord { lat } if (lat - 89.0).abs() < 1e-9), "got {err:?}");
+    assert!(
+        matches!(err, visiaengine_geo::GeoError::InvalidCoord { lat } if (lat - 89.0).abs() < 1e-9),
+        "got {err:?}"
+    );
 }
