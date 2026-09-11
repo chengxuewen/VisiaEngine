@@ -68,3 +68,11 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - **批 2 批准轮执行中（2026-09-11）**：I0+J0 环境轮 `a163d0d`（host/wasm 双 spike 环境、wasm 全树绿零 cfg 修复、PROBE-OK）→ I1 `c68e57c`（句柄/栅栏/线程/错误串/输入口 六条款测试）→ I2 `6bdd7e7`（出图链真身 + **headless readback 行对齐存量 bug 修复** + gate-abi 14/14 + demo 'OK capi headless'）；基线 **88↔88 · 98 passed · ci=0**
 - #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
 - 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
+
+## 批 2+批 7 落地基线（2026-09-11 收官）
+
+- 批 2 I0-I4 全清：capi 14 入口（句柄/栅栏/线程/错误协议/输入/attach）+ 双 C demo 真跑 + gate-abi/gate-trace 入 ci
+- 批 7 J0-J3 全清：visiaengine-wasm 独立 crate（隔离裁决：no_mangle×bindgen wasm-ld 互斥实锤）· WEB-BUILD 双胶水 · CAPI-09 镜像 · demo 页+T3 · **733KB raw/294KB gz**
+- 基线：**90↔90 · 100 passed · ci exit=0 · SMOKE-X11 ✓ web-check ✓**
+- D8/D10 已转正（修订面记录齐）；README MVP 四件套销账完成
+- 余账：push 待令（本地领先持续增长）· 批 4 渲染强化/批 5 文档/批 6 基建候令 · smoke-x11/web-check 的 CI 现役=镜像仓日

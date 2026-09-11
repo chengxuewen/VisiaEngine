@@ -63,10 +63,11 @@
 - **证据**: `docs/reference/evidence/2026-09-03-rtc-hierarchy.md`
 - **追加勘误（2026-09-03 规划轮）**：'core SDD 补 CORE-11/12'归属错——rebase 组合数学主场在 render（core 无矩阵/wgpu 语义），实际编号=REND-19/20；CORE 命名空间本链无新增。
 
-## D8（预登记，未终审）: 宿主嵌入面三原则（2026-09-03 计划 v1.1 批次 0c）
+## D8: 宿主嵌入面规范（2026-09-11 批准转正；预登记 2026-09-03）
 - **来源**: Easy3D 嵌入域调研 [E3D:C1/C2/C5]（docs/reference/easy3d.md），其 Qt 集成靠 QApplication::notify 私有 hack、ImGui 版丢鼠标坐标、GLFW 指针泄进 public ABI、绑定自动全扫——四坑全为我方反证。
 - **预登记内容**: ①引擎零事件 API：宿主统一经 `visiaengine_on_input(ev)` 注入，出向仅 `frame_requested`/`redraw_needed` 回调，永不要求宿主子类化/事件 poll；②渲染契约面（render trait + IR）禁携带任何窗口/surface 后端类型，rwh handle 只在 capi 边界出现（Easy3D renderer 模块 glfw 零引用实证该纯度可达）；③C ABI 首版=6 行 demo 证通最小集（create 即渲染就绪，零多阶段 init），未绑定项入 graveyard 流程，禁 GLOB 式全量扫绑。
-- **转正程序**: 宿主嵌入片计划轮（批 2）审查通过后，本条改写为正式 D8 裁决并补 rwh 路径 A/Qt feature 环境细节；被否内容留"修订面"注记。计划期间引用一律带"预登记"字样。
+- **转正增补（批 2 I0-I4 全清，2026-09-11）**：① 句柄=u64 (slot<<32|gen)、slot 基 1、C 头零位布局外露；② 线程例外集={abi_version,last_error}，destroy 跨线程拒销毁、released 再入 -1（双销毁不吞没）；③ **frame_requested/set_callbacks 被否**（拉模型 ve_render+宿主 rAF/paint 自决；SDL3 双层先例在案，重评触发=Qt 动画轮）；④ attach 原子性（失败保 headless 现目标）+ x11 display 必填/win32 hinstance 0=自动；⑤ **wasm 面 C ABI 整体 cfg 出局**（no_mangle 与 bindgen 导出表 wasm-ld 互斥实测）——JS=独立 crate visiaengine-wasm，C 符号图零侵蚀。
+- **验证锚**：gate-abi（14 符号白名单+demo 编译运行）· SMOKE-X11 'OK capi x11' 真窗三帧 · 'OK capi headless input+pick' · CAPI-01..09 十五条款全带测试。
 
 ## D9: P2 裁决——样式 spec 采 MapLibre v8 paint 别名子集（2026-09-03，用户裁决 B 案）
 - **决策**: 在既有 simplestyle 六键之上，接受 MapLibre v8 style spec 的**静态 paint 布局键别名**：`fill-color`→fill、`line-color`→stroke、`line-width`→stroke-width、`circle-color`→marker-color、`circle-radius`→marker-radius（`fill-opacity` 同名）。**不采** v8 的 expressions / zoom stops / source-layer / data-driven（那是 Visia Studio 商业面 + 完整 spec 轮）。simplestyle 主键优先，别名回退。
@@ -74,6 +75,6 @@
 - **参考**: C1 四案对比（A 维持/B 别名子集/C 完整/D 自有），B 案 = docs/reference/maplibre.md 活标杆生态兼容 + three-js.md 库形态先例；否决 D（自造=零生态+隐性锁定）。
 - **影响**: geo::style 增别名表（GEO-19）；值格式复用 GEO-12 色解析（#hex/rgb()）；样式系统商业面（Visia Studio 表达式/图层编排）边界清晰上移至未决 P4 邻近。后续 3b 标量→LUT 建在此样式口上。
 
-## D10（预登记，未终审）: Web/wasm 绑定=路线 A（双面口单源）（2026-09-11 批 7 计划批准轮登记）
+## D10: Web/wasm 绑定=路线 A（双面口单源）（2026-09-11 J1-J3 落地转正）
 - **预登记内容**: ① 浏览器面=capi crate 的 `wasm` feature，js.rs 与 ffi.rs 双叶共 engine.rs（单 crate 双面，非 per-repo——单厂商全控面下更懒且免疫 MapLibre 式"同名异核"）；② 薄口纪律：js.rs 只限编组/生命周期/常量再导出/错误翻译，语义唯一住 engine.rs；常量 Rust pub const 单源进 .d.ts 与 C 头（镜像 CAPI-09 机器守卫）；③ 无 free 函数纪律维持（borrowed + caller-alloc 两式，SQLite/[MS] 双派实证）；④ emscripten 路线否决（语言匹配律：C/C++ 核心→emscripten，Rust 核心→wasm-bindgen，三例全合）；⑤ u64≡BigInt、异步工厂（web GPU 交互无同步路径，wgpu 30 Future 实证）。
-- **转正程序**: J1-J3 落地后本条改写为正式 D10（含 .d.ts 面冻结清单+M2 边界）；被否方案留修订面。计划期间引用带"预登记"字样。证据链 docs/reference/ffi-patterns.md [FFI-R:BS-5/6/7, v13-FEAS-2/7]。
+- **转正增补（J1-J3）**：① js 面冻结清单=类 VisiaEngine（fromCanvas 异步工厂/扁平 input/pick→bigint）+11 常量 getter+abiVersion 静态；.d.ts 为锁定档（web-mirror.mjs 编译面断言守卫）；② **修订面（被否路线记录）**：wasm-pack 未死但 D5 无包直用 CLI；`visiaengine_input_struct_size()` 导出否决（14 符号面）；playwright CI 自动化归 M2（本机 timebox 放弃实录）；③ 尺寸实录 **raw 733KB/gz 294KB**（wgpu web 全家，≤10MB 目标的 web 半边提前达标）；④ 隔离终形：capi(native C ABI)+visiaengine-wasm(bindgen) 两 crate，**单源=Engine**，CAPI-09 机器对账。证据链 docs/reference/ffi-patterns.md [FFI-R:BS-5/6/7, v13-FEAS-2/7]。

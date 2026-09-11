@@ -33,7 +33,7 @@
 
 ## 开发状态
 
-**Phase 1 进行中：MVP 内容全落，宿主嵌入开工。** 当前态：5 crate workspace、**83 条** SDD 行为契约全绿（spec-trace 双向追溯）、glTF+GeoJSON+AttrSet 属性列化+v8 别名+数据驱动色带、2D↔3D 切换、平面量测、拾取→高亮闭环（E401/E403 示例）、**mesh 管线深度面补齐**（WGPU-13）、D7 分层 origin 重基（远坐标像素级验证）、离屏 golden 真机无 SKIP、六路 smoke+双 gate 机器门禁（90 测试）。进行中：C API capi 片（批 2 v1.4 已批，ABI 面 D6 锁）+ Web/wasm（批 7 v1.4，J0 先行）→ Alpha。
+**Phase 1 MVP 收口：宿主嵌入（C ABI+web/wasm）落地。** 当前态：5 crate workspace、**83 条** SDD 行为契约全绿（spec-trace 双向追溯）、glTF+GeoJSON+AttrSet 属性列化+v8 别名+数据驱动色带、2D↔3D 切换、平面量测、拾取→高亮闭环（E401/E403 示例）、**mesh 管线深度面补齐**（WGPU-13）、D7 分层 origin 重基（远坐标像素级验证）、离屏 golden 真机无 SKIP、六路 smoke+双 gate 机器门禁（90 测试）。**宿主嵌入销账**：C ABI 14 入口（gate-abi 符号白名单+headless/X11 双 C demo 真跑）+ Web 面（visiaengine-wasm：733KB wasm，CAPI-09 双面镜像，demo 页可跑）——Qt widget 轮与 npm/pip 打包挂 Alpha。
 
 ```bash
 bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
