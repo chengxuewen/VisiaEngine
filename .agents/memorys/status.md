@@ -57,4 +57,6 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 教训两处如实：GREEN 回归网抓到 feed 普通件分支绕过 accept 分类器；grep 门禁谓词首版被自家注释文本绊倒（谓词收窄至代码形态）
 - 3c 已裁：**D9=B**（v8 paint 别名子集，主键优先/表达式边界冻结）→ GEO-19 实施（`str_first/f64_first` 回退映射）
 - 基线刷新：**72↔72 · 76 passed · ci exit=0（含 gate-style 段）· golden 9/9 无 SKIP**
-- 下一步：3b 标量→LUT（键 schema 已按 D9 就绪）；批 2 计划轮候令
+- 3b 已实施（修订降档 CPU lerp，GEO-20+渲染三色族 golden）：**73↔73 · 80 passed · ci exit=0 · SKIP 0**；批次 3 全清
+- 教训追加：grep -c 零匹配=exit 1 断 && 链（3b commit 链破一次，补跑坐实）
+- 下一步：批 2 宿主嵌入计划轮候令 / 批 3.5 交互片 / push（11 笔）
