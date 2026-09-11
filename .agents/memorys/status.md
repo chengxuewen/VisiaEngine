@@ -12,7 +12,7 @@
 | 许可证 | ✅ 已落地：MIT OR Apache-2.0 双许可正本文件（LICENSE-MIT/LICENSE-APACHE），不可撤销承诺入 README |
 | 源码 | crates/ 4 crate（core/render/render-wgpu/**io-gltf**），~2.4k 行，**43 cargo 测试全绿** + 3×L2 smoke 接线；离屏 golden 本机 lavapipe 实跑 |
 | 项目定位 | ✅ 多维空间可视化引擎（2D/2.5D/3D 统一，GIS/数字孪生/AV 仿真/BIM），非游戏引擎 |
-| Agent 工具链 | ✅ 配置中性化 + 根 SKILL.md 技能注册表（22 项）+ 双层 AGENTS.md；Rust 规则回填 instructions 待执行 |
+| Agent 工具链 | ✅ 中性化+注册表+双层 AGENTS；Rust 规则已入 instructions（16 条）；MCP 修复轮：nodejs 入 pixi 环境+with-node 包装器，codegraph/github 通路绿，openspace 归按需族（PIT-6） |
 
 ## Phase 状态
 
@@ -24,7 +24,7 @@
 
 ## 下一步
 
-1. **push gitee**（38→50 笔单磁盘风险持续）+ GitHub 镜像决策（ci.yml 五步 L2 smoke 即转现役）
+1. **push gitee**（47 笔单磁盘风险持续）+ GitHub 镜像决策（ci.yml 四步 L2 smoke 即转现役）——**用户侧另需 GITHUB_TOKEN+重启验 MCP**
 2. ~~P1 裁决~~ ✅ D7 已裁 + **H3 已实施**（compose_mvp 落地，WGPU-10 远原点像素一致实证）
 3. **宿主嵌入片**（rwh 路径 A + Qt demo conda qt-main 环境扩张单独立项；spike-3）
 4. capi 片（ABI 面 D6 已锁：visiaengine_*/visiaengine.h）；纹理/材质 PBR、屏幕空间线宽、MVT/tile 流式（⑦）= Alpha 档

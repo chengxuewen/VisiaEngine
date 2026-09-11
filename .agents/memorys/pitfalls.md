@@ -42,3 +42,9 @@
 - **根因**: wgpu clip 空间深度 **[0,1]**（WebGPU 原生约定），不是 GL 的 [-1,1]。照 GL 公式建的 ortho/persp 在近处产生负 z_ndc → 硬件整体裁剪。深度范围错在管线里**不报任何错**——几何死亡无声。
 - **解法**: 投影矩阵一律建/校到 [0,1] 变体（glam 旧 `*_rh_gl` 是 [-1,1]，`perspective_rh`/手写 ortho 才是 wgpu 向）；camera.rs 顶注已锁死变体声明，REND-11/12 用**行为断言**（near→0/far→1）而非公式抄写。
 - **验证**: 离屏 golden 家族存在即预防——任何矩阵/管线改动后 `pixi run cargo test -p visiaengine-render-wgpu` 立方 7 测必真绿（非 SKIP 路径；验证地点如实记录）。同类：`x+(y-x)*t` 在 t=1 不精确等于 y（lerp 端点快路，REND-16）；clippy 偏序取反禁令用 `partial_cmp` 正解。
+
+## PIT-6: MCP 桥裸 PATH 依赖 + opencode 配置键名静默忽略（2026-09-03, MCP 修复轮）
+- **症状**: 三台 MCP 报 `Executable not found in $PATH: node/npx`；local-github 的 token 从未注入过（无报错，纯静默）。
+- **根因**: ①桥配置假定 node 在 PATH，而本机遵 D5 纪律不装系统 node——环境里根本没注册 nodejs；②配置键写作 `env`，opencode schema（McpLocalConfig）正名 `environment`，未知键不报错只忽略；③桥脚本子进程还要 `npm`/`pixi`——绝对路径直启 node 也救不了这层。
+- **解法**: nodejs 纳入 pixi 默认环境（单源不破）；`with-node.sh` 包装器统一注入 node 目录+~/.pixi/bin 后透传 exec；配置键改正。
+- **验证**: `bash .opencode/with-node.sh node --version` 出号 + 桥拉起 timeout 存活；**任何 opencode 配置字段改动以 https://opencode.ai/config.json schema 为准，不凭记忆**；配置类修改需重启 opencode 才热载（运行会话用旧配置）。

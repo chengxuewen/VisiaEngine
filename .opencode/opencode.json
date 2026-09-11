@@ -42,6 +42,8 @@
       "type": "local",
       "enabled": true,
       "command": [
+        "bash",
+        ".opencode/with-node.sh",
         "node",
         ".opencode/init-mcp-codegraph.mjs"
       ]
@@ -50,6 +52,8 @@
       "type": "local",
       "enabled": false,
       "command": [
+        "bash",
+        ".opencode/with-node.sh",
         "node",
         ".opencode/init-mcp-playwright.mjs"
       ]
@@ -58,11 +62,13 @@
       "type": "local",
       "enabled": true,
       "command": [
+        "bash",
+        ".opencode/with-node.sh",
         "npx",
         "-y",
         "@modelcontextprotocol/server-github"
       ],
-      "env": {
+      "environment": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"
       }
     },
@@ -70,14 +76,18 @@
       "type": "local",
       "enabled": false,
       "command": [
+        "bash",
+        ".opencode/with-node.sh",
         "node",
         ".opencode/init-mcp-postgres.mjs"
       ]
     },
     "local-openspace": {
       "type": "local",
-      "enabled": true,
+      "enabled": false,
       "command": [
+        "bash",
+        ".opencode/with-node.sh",
         "node",
         ".opencode/init-mcp-openspace.mjs"
       ]

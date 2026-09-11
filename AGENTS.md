@@ -76,5 +76,5 @@ bash scripts/spec-trace.sh    # SDD↔测试双向追溯
 ## NOTES
 
 - `.sisyphus` 在 `.gitignore` L92 预留（plans 不落库）；`www/` 并无预留——工程未建，勿假设目录存在。
-- MCP：local-github 需 `GITHUB_TOKEN` 环境变量；local-playwright/postgres/websearch 默认禁用，按需开启。
+- MCP（2026-09-03 修复轮后）：nodejs 在 pixi 默认环境，全部 local 桥经 `bash .opencode/with-node.sh` 拉起；local-github 仍需 `GITHUB_TOKEN` 环境变量（environment 键，勿写 env）；local-playwright/postgres/websearch/openspace 默认禁用，按需开启（openspace 另需 python 树+LLM key）。
 - Rust 栈回填点（解锁待执行）：instructions += `rules/rust/{coding-style,hooks}.md`；`rules/rust/testing.md` L38 placeholder 校准；docker.md 保留为按需参考。

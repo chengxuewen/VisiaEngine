@@ -72,6 +72,9 @@ nodejs
 stash
 
 # nodejs environments
+# MCP 桥 auto-install 落根产物（npm 状态，非工程文件）
+/package.json
+/package-lock.json
 node_modules
 .npm-cache
 .turbo
