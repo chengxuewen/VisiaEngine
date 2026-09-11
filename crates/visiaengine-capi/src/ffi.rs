@@ -113,8 +113,14 @@ macro_rules! capi_guard {
     ($body:expr, $err_val:expr) => {{
         match std::panic::catch_unwind(AssertUnwindSafe(|| $body)) {
             Ok(v) => v,
-            Err(_) => {
-                set_err("panic caught at FFI boundary".to_string());
+            Err(p) => {
+                // 诊断升级：取 panic payload（&str/String）入 last_error，未知兜底原句
+                let msg = p
+                    .downcast_ref::<&str>()
+                    .map(|s| (*s).to_string())
+                    .or_else(|| p.downcast_ref::<String>().cloned())
+                    .unwrap_or_else(|| "panic caught at FFI boundary".to_string());
+                set_err(format!("panic at FFI boundary: {msg}"));
                 $err_val
             }
         }
@@ -197,16 +203,53 @@ pub extern "C" fn visiaengine_attach(ve: u64, win_ptr: u64, display_ptr: u64, ki
     capi_guard!(
         {
             match gate(ve) {
-                Gate::Live(_) => {
+                Gate::Live(i) => {
                     if !(0..=2).contains(&kind) || win_ptr == 0 {
                         set_err(format!(
-                            "attach kind {kind}/win {win_ptr:#x} rejected (0=x11 1=win32 hinstance? 2=cocoa)"
+                            "attach kind {kind}/win {win_ptr:#x} rejected (0=x11 1=win32 2=cocoa)"
                         ));
                         return VE_ERR_ARG;
                     }
-                    let _ = display_ptr;
-                    set_err("surface wiring lands in I3".to_string());
-                    VE_ERR_STATE
+                    if kind == 0 && display_ptr == 0 {
+                        set_err(
+                            "attach x11 requires display_ptr (Xlib 无 display 不可构面)"
+                                .to_string(),
+                        );
+                        return VE_ERR_ARG;
+                    }
+                    use raw_window_handle::{
+                        AppKitWindowHandle, RawDisplayHandle, RawWindowHandle, Win32WindowHandle,
+                        XlibDisplayHandle, XlibWindowHandle,
+                    };
+                    // NonNull::new 的 Option 即非零担保（原 filter(is_null) 属
+                    // useless_ptr_null_checks lint 域，删）
+                    let nn = |p: u64| std::ptr::NonNull::new(p as *mut std::ffi::c_void);
+                    // ? 禁入（栅栏宏闭包返回 i32）——Option combinator 式构造
+                    let built: Option<(Option<RawDisplayHandle>, RawWindowHandle)> = match kind {
+                        0 => nn(display_ptr).map(|d| {
+                            (
+                                Some(RawDisplayHandle::Xlib(XlibDisplayHandle::new(Some(d), 0))),
+                                RawWindowHandle::Xlib(XlibWindowHandle::new(win_ptr)),
+                            )
+                        }),
+                        1 => std::num::NonZeroIsize::new(win_ptr as isize)
+                            .map(|w| (None, RawWindowHandle::Win32(Win32WindowHandle::new(w)))),
+                        2 => nn(win_ptr)
+                            .map(|v| (None, RawWindowHandle::AppKit(AppKitWindowHandle::new(v)))),
+                        _ => None,
+                    };
+                    let Some((dh, wh)) = built else {
+                        set_err("attach: null/unsupported handle slot".to_string());
+                        return VE_ERR_ARG;
+                    };
+                    let r = with_engine(i, |e| unsafe { e.attach_raw(dh, wh) });
+                    match r {
+                        Ok(()) => VE_OK,
+                        Err(msg) => {
+                            set_err(format!("attach: {msg}"));
+                            VE_ERR_STATE
+                        }
+                    }
                 }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,

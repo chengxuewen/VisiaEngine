@@ -39,3 +39,5 @@ pub fn available_adapters() -> Vec<wgpu::AdapterInfo> {
         .map(|adapter| adapter.get_info())
         .collect()
 }
+
+pub mod surface;

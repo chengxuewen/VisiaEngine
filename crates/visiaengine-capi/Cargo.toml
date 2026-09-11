@@ -10,6 +10,8 @@ name = "visiaengine"            # [FFI-R:v13-FEAS-4] 产物名=libvisiaengine.so
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+raw-window-handle.workspace = true
+wgpu.workspace = true
 visiaengine-core.workspace = true
 visiaengine-render.workspace = true
 visiaengine-render-wgpu.workspace = true

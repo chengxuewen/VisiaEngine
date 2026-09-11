@@ -11,6 +11,9 @@ C ABI 面条款。**位布局与编码规则正本住本档（C 头不外露 [FF
 ## CAPI-03: 线程亲和与错误串协议
 create 记录 owner ThreadId；**例外集={abi_version, last_error}** 外全部入口非 owner 调用→`VE_ERR_STATE`（destroy 跨线程**不销毁**）并在调用方线程 TLS 记含"thread"诊断。错误串协议：`last_error(ve)` 读**调用线程 TLS**，线程绑定、**至该线程下次错误写入前有效**；**仅返回值 <0 分支可写 TLS——任何返回 0/正值入口（含 destroy 幂等 0、on_input 未消费 0）不得触碰**（SDL 警告面：串禁作分支判据）。
 
+## CAPI-06: attach 与窗口生命周期（I3 实装）
+`attach(ve, win, display, kind)`：kind 0=x11（**display 必填**——Xlib 无 display 不可构面）1=win32（display 槽=hinstance，0=自动）2=appkit；非法 kind/win=0/必需槽空 → `VE_ERR_ARG`。**原子性**：构面/配置失败保全原 headless 目标（半途不换面，错误走 -2+last_error）。**宿主义务**：窗口与 display 必须存活至 swapchain 析构（destroy 即释放；跨重启持久化句柄被 CAPI-01 世代门拒）。resize=下帧自动重配；Outdated/Lost 帧内消化；Timeout/Occluded=跳帧不计错（Filament beginFrame 语义的 wgpu 对应物，D8 触发器①就此兑现）。管线按 surface caps 格式惰性建（Rgba8Unorm 优先，Bgra* 合法——X11 面格式多样，I3 smoke 实锤）。
+
 ## CAPI-05: 输入映射与错误归因（前段，I1 生效子集）
 `VeInput.struct_size` 过小→`VE_ERR_ARG`（-1 入口参数家族；-5 专属缓冲/维度运行时量值——归因表）。kind 口径：PTR_DOWN 消费=1、其后 MOVE=orbit 消费=1、未按下的 MOVE=0（非本引擎事件不消费）、WHEEL=zoom 乘性（透视/正交共享 [E3D:B6]）、未登记 kind no-op=0。输入→相机=引擎策略非事件透传。
 

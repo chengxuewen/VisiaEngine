@@ -17,10 +17,16 @@ struct GpuMesh {
 pub struct MeshCore {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
+    /// attach/surface 复用同一 instance+adapter（设备配对约束，I3）
+    pub instance: wgpu::Instance,
+    pub adapter: wgpu::Adapter,
     meshes: HashMap<MeshId, GpuMesh>,
     materials: HashMap<MaterialId, wgpu::Buffer>,
     next_id: u64,
-    pipeline: wgpu::RenderPipeline,
+    /// 色彩格式→管线（surface 格式多样性：Rgba/Bgra* 系，I3 格式对齐重构）
+    pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    shader: wgpu::ShaderModule,
+    layout: wgpu::PipelineLayout,
     bgl: wgpu::BindGroupLayout,
     /// 深度面缓存（WGPU-13：尺寸变更重建；pipeline 与 attachment 格式同源）
     depth_cache: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
@@ -31,7 +37,17 @@ pub(crate) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth3
 
 /// 无 surface 请求 PRIMARY 适配器并建设备；失败=None（可报告语义）。
 #[must_use]
-pub fn create_shared_device() -> Option<(wgpu::Device, wgpu::Queue)> {
+pub struct Shared {
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
+    pub instance: wgpu::Instance,
+    pub adapter: wgpu::Adapter,
+}
+
+/// 无 surface 请求 PRIMARY 适配器并建设备（instance/adapter 随还——surface 配对约束）；
+/// 失败=None（可报告语义）。
+#[must_use]
+pub fn create_shared_device() -> Option<Shared> {
     let instance = crate::create_instance();
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         ..Default::default()
@@ -44,11 +60,21 @@ pub fn create_shared_device() -> Option<(wgpu::Device, wgpu::Queue)> {
         ..Default::default()
     }))
     .ok()?;
-    Some((device, queue))
+    Some(Shared {
+        device,
+        queue,
+        instance,
+        adapter,
+    })
 }
 
 impl MeshCore {
-    pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
+    pub fn new(
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        instance: wgpu::Instance,
+        adapter: wgpu::Adapter,
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("mesh-shader"),
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(include_str!(
@@ -85,51 +111,22 @@ impl MeshCore {
             bind_group_layouts: &[Some(&bgl)],
             immediate_size: 0,
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("mesh-pipeline"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: (6 * std::mem::size_of::<f32>()) as u64,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3],
-                })],
-            },
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        let mut pipelines = HashMap::new();
+        pipelines.insert(
+            wgpu::TextureFormat::Rgba8Unorm,
+            build_pipeline(&device, &layout, &shader, wgpu::TextureFormat::Rgba8Unorm),
+        );
         Self {
             device,
             queue,
+            instance,
+            adapter,
             meshes: HashMap::new(),
             materials: HashMap::new(),
             next_id: 0,
-            pipeline,
+            pipelines,
+            shader,
+            layout,
             bgl,
             depth_cache: None,
         }
@@ -232,6 +229,18 @@ impl MeshCore {
         width: u32,
         height: u32,
     ) {
+        self.render_view_format(frame, view, width, height, wgpu::TextureFormat::Rgba8Unorm);
+    }
+
+    /// 色彩格式版（surface 路径与 headless 固定格式分流，I3 格式对齐）。
+    pub fn render_view_format(
+        &mut self,
+        frame: &Frame,
+        view: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+        color_format: wgpu::TextureFormat,
+    ) {
         let _unused: Option<Viewport> = None;
         let clear = frame
             .commands
@@ -277,7 +286,15 @@ impl MeshCore {
                 }),
                 ..Default::default()
             });
-            pass.set_pipeline(&self.pipeline);
+            let pipeline = match self.pipelines.get(&color_format) {
+                Some(p) => p.clone(),
+                None => {
+                    let p = build_pipeline(&self.device, &self.layout, &self.shader, color_format);
+                    self.pipelines.insert(color_format, p.clone());
+                    p
+                }
+            };
+            pass.set_pipeline(&pipeline);
             for cmd in &frame.commands {
                 let DrawCommand::DrawMesh {
                     mesh,
@@ -325,4 +342,53 @@ impl MeshCore {
         }
         self.queue.submit(std::iter::once(encoder.finish()));
     }
+}
+
+/// 按目标色彩格式建管线（`Rgba8Unorm` 与 `Bgra8Unorm*` 系由 surface caps 决定）。
+#[must_use]
+#[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
+fn build_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    shader: &wgpu::ShaderModule,
+    color_format: wgpu::TextureFormat,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("mesh-pipeline"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("vs"),
+            compilation_options: Default::default(),
+            buffers: &[Some(wgpu::VertexBufferLayout {
+                array_stride: (6 * std::mem::size_of::<f32>()) as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3],
+            })],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("fs"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: color_format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    })
 }

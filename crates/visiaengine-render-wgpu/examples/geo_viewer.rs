@@ -110,7 +110,7 @@ impl ApplicationHandler for App {
             ..Default::default()
         }))
         .expect("request_device");
-        let mut core = MeshCore::new(device, queue);
+        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
         let caps = surface.get_capabilities(&adapter);
         let mut config = surface
             .get_default_config(&adapter, size.width.max(1), size.height.max(1))

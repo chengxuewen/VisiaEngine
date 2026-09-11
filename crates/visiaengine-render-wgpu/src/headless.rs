@@ -18,8 +18,8 @@ pub struct HeadlessBackend {
 impl HeadlessBackend {
     #[must_use]
     pub fn new(width: u32, height: u32) -> Option<Self> {
-        let (device, queue) = crate::mesh_core::create_shared_device()?;
-        let core = MeshCore::new(device, queue);
+        let sh = crate::mesh_core::create_shared_device()?;
+        let core = MeshCore::new(sh.device, sh.queue, sh.instance, sh.adapter);
         let viewport = Viewport::new(width, height, 1.0);
         let (target, target_view) = Self::make_target(&core.device, width, height);
         Some(Self {
@@ -154,5 +154,38 @@ impl RenderBackend for HeadlessBackend {
 
     fn create_material(&mut self, base_color: [f32; 4]) -> Result<MaterialId, BackendError> {
         self.core.upload_material(base_color)
+    }
+}
+
+impl HeadlessBackend {
+    /// attach 面（CAPI-06）：裸句柄建 swapchain（配置成功才返回；失败不动现目标）。
+    ///
+    /// # Safety
+    /// 句柄存活义务见 [`Swapchain::from_raw_handles`]（capi attach 合同承接）。
+    pub unsafe fn attach_surface(
+        &mut self,
+        display: Option<raw_window_handle::RawDisplayHandle>,
+        window: raw_window_handle::RawWindowHandle,
+    ) -> Result<crate::surface::Swapchain, BackendError> {
+        let mut sw = unsafe {
+            crate::surface::Swapchain::from_raw_handles(
+                &self.core,
+                display,
+                window,
+                self.viewport.width(),
+                self.viewport.height(),
+            )
+        }?;
+        sw.configure(&self.core)?;
+        Ok(sw)
+    }
+
+    /// 窗口帧渲染（swapchain 路径；headless target 不参与）。
+    pub fn render_swapchain(
+        &mut self,
+        frame: &visiaengine_render::Frame,
+        sw: &mut crate::surface::Swapchain,
+    ) -> Result<crate::surface::SwapOutcome, BackendError> {
+        sw.render(&mut self.core, frame)
     }
 }

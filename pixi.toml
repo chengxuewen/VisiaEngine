@@ -32,6 +32,7 @@ rust-src = ">=1.98,<2"
 # Windows 逃生舱场景=cargo build 不带 host feature（D5 既定，本环境仅 linux 用）。
 xorg-xvfb-server = "*"   # 注意：真包名带 -server（pixi search 模糊命中教训）
 xorg-libx11 = "*"
+xorg-xproto = "*"      # X.h/Xproto.h 基协议头（Xlib.h 依赖，不在 libx11 包内）
 gcc = "*"
 binutils = "*"
 
@@ -61,6 +62,7 @@ lint = "cargo clippy --workspace --all-targets -- -D warnings"
 fmt = "cargo fmt --all -- --check"
 fmt-fix = "cargo fmt --all"
 # 单文件格式化一律 rustfmt --edition 2024 <file>——禁止 cargo fmt -- <path>（其 -- 参数不是路径过滤，历史踩坑）
+smoke-x11 = "bash scripts/smoke-x11.sh"   # 批2 I3：Xvfb 自管三帧 present
 gate-abi = "bash scripts/gate-abi.sh"   # 批2 I2：符号白名单+demo 编译运行（host 工具检索式）
 gate-trace = "bash scripts/spec-trace.sh"   # 批2 v1.4：追溯本机化入 ci 链（[FFI-R:FC-6] 假绿窗口封堵）
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # GEO-18 解析边界门禁（代码形态，注释豁免）

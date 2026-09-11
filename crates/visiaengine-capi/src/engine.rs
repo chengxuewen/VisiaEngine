@@ -8,6 +8,7 @@ use visiaengine_render::{
     RenderBackend, Viewport, pick_meshes, screen_to_ray_ortho, screen_to_ray_persp,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
+use visiaengine_render_wgpu::surface::Swapchain;
 
 /// 输入→相机引擎策略（非事件透传）：按下后移动=orbit，滚轮=共享 zoom。
 const ORBIT_RATE: f64 = 0.005;
@@ -21,6 +22,12 @@ struct DrawItem {
     origin: [f64; 3],
     positions: Vec<[f32; 3]>,
     indices: Vec<u32>,
+}
+
+/// 渲染目标态（CAPI-06：headless 与窗口互斥共存于同一引擎，attach 失败不动现态）。
+enum TargetMode {
+    Headless,
+    Window(Swapchain),
 }
 
 /// 投影模式（geo=ortho fit、gltf=persp，viewport 变更重建）。
@@ -39,6 +46,7 @@ pub struct Engine {
     down: bool,
     last: (f32, f32),
     backend: HeadlessBackend,
+    target: TargetMode,
     scene: Scene, // EntityId 生成器（slot+gen 与 core slab 同空间，pick/entity_at 共用）
     items: Vec<DrawItem>,
     frame_cache: Option<Vec<u8>>,
@@ -56,6 +64,7 @@ impl Engine {
             down: false,
             last: (0.0, 0.0),
             backend: HeadlessBackend::new(w, h)?,
+            target: TargetMode::Headless,
             scene: Scene::new(),
             items: Vec::new(),
             frame_cache: None,
@@ -180,6 +189,24 @@ impl Engine {
         }
     }
 
+    // ===== attach（CAPI-06）=====
+
+    /// 裸句柄建面并接管渲染目标（configure 成功才算 attach 完成）。
+    ///
+    /// # Safety
+    /// 见 `Swapchain::from_raw_handles`（宿主窗口存活义务）。
+    pub unsafe fn attach_raw(
+        &mut self,
+        display: Option<raw_window_handle::RawDisplayHandle>,
+        window: raw_window_handle::RawWindowHandle,
+    ) -> Result<(), String> {
+        // 先建后换：失败保全 headless 现目标（attach 原子性，CAPI-06）
+        let sw =
+            unsafe { self.backend.attach_surface(display, window) }.map_err(|e| e.to_string())?;
+        self.target = TargetMode::Window(sw);
+        Ok(())
+    }
+
     // ===== 渲染/回读（CAPI-04）=====
 
     pub fn render(&mut self) -> Result<(), String> {
@@ -228,12 +255,21 @@ impl Engine {
             proj,
             commands,
         };
-        let img = self
-            .backend
-            .render_to_pixels(&frame)
-            .ok_or("render failed")?;
-        self.frame_cache = Some(img.rgba);
-        Ok(())
+        match &mut self.target {
+            TargetMode::Headless => {
+                let img = self
+                    .backend
+                    .render_to_pixels(&frame)
+                    .ok_or("render failed")?;
+                self.frame_cache = Some(img.rgba);
+                Ok(())
+            }
+            TargetMode::Window(sw) => self
+                .backend
+                .render_swapchain(&frame, sw)
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
+        }
     }
 
     /// readback 缓冲需求（未渲染=0，调用方据此给 -2/-5 归因）。
@@ -252,6 +288,9 @@ impl Engine {
         self.w = w;
         self.h = h;
         self.backend.resize(Viewport::new(w, h, 1.0));
+        if let TargetMode::Window(sw) = &mut self.target {
+            sw.resize(w, h); // 下帧 configure 重配（CAPI-06 resize 路径）
+        }
         self.frame_cache = None;
     }
 

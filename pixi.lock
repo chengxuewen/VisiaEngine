@@ -202,6 +202,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libx11-1.8.13-he1eb515_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libxau-1.0.12-h7cc23a3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libxdmcp-1.1.5-hb03c661_2.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-xproto-7.0.31-hb9d3cd8_1008.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-xvfb-server-21.1.24-h21257ac_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xxhash-0.8.3-hec8ed23_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_7.conda
@@ -1005,6 +1006,17 @@ packages:
     - xorg-libxdmcp >=1.1.5,<2.0a0
   size: 21120
   timestamp: 1786381006369
+- conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-xproto-7.0.31-hb9d3cd8_1008.conda
+  sha256: ea02425c898d6694167952794e9a865e02e14e9c844efb067374f90b9ce8ce33
+  md5: a63f5b66876bb1ec734ab4bdc4d11e86
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=13
+  license: MIT
+  license_family: MIT
+  run_exports: {}
+  size: 73315
+  timestamp: 1726845753874
 - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-xvfb-server-21.1.24-h21257ac_0.conda
   sha256: 0b94ccc9ffb02be5877378cf5bedbe1840a87b7709bbd5feb4f169767e3d32ae
   md5: 0f719495e483854c495b521a6d1adf97
