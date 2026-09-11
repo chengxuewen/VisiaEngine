@@ -39,3 +39,9 @@
 
 ## WGPU-11: golden_geo_fill_hit
 park.geojson 全链路（解析→细分→D7 上传→正交鸟瞰离屏）：buildingB 质心投影像素邻域命中默认蓝填充——geo×管线合流的存在性证明（无适配器 SKIP）。
+
+## WGPU-13: 深度遮挡正确性
+mesh 管线挂 Depth32Float 面（pipeline `Less`+write on；pass 每帧 Clear(1.0)/store Discard；尺寸驱动 MeshCore 内部缓存重建）：多实体场景**近侧覆盖与 draw 顺序无关**（拾取命中件与渲染可见件一致——WGPU-12 双箱堆叠断言锁行为）。窗口/surface 路径与 headless 同深度配置（`render_view` 尺寸参数化）。
+
+## WGPU-12: 选择高亮渲染面
+拾取链闭环可渲染：屏幕射线（REND-21/22）→ `pick_meshes`（REND-23/24）→ 选中实体 material 以高亮纯色重建（**CPU 侧覆写，[E3D:A5] by-name 的渲染侧最小子集**）→ 中心像素=高亮色族断言（双箱堆叠场景，pick_highlight.rs）。选择态本体=宿主/example 层 `Option<EntityId>` 数据（引擎零新增状态）。

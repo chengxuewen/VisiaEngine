@@ -69,3 +69,9 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-22: 正交屏幕射线 + D7 远场保持
 `screen_to_ray_ortho`：origin=eye+right·(hw·nx)+up·(hh·ny)（hw=rig.zoom、hh=zoom·h/w，与 REND-12 同约定），dir=fwd。两口全程 f64（世界大坐标下起点/方向无 f32 步长灾难——D7 断言面）。
+
+## REND-23: 场景拾取=最近命中+即算剪除
+`pick_meshes(Ray, &[MeshCandidate{entity, positions, indices, world}]) -> Option<PickHit{entity, triangle, t, point}>`：逐候选**世界 AABB 即算**（局部 8 角变换，[E3D:A5] 懒算不常存）→ `ray_aabb` 剪除 → 逐三角 `ray_triangle` 正面命中取全局 min t。空几何/索引越界候选跳过不 panic。
+
+## REND-24: 拾取世界合成
+候选顶点 = 局部 f32 经 `world`（列主序 f64，`DrawMesh.transform` 同型）变换后再求交——缩放/平移合成命中点与 t 均落世界系（f64，D7 域）。空候选数组=None。

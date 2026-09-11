@@ -38,3 +38,5 @@ jobs:
           xvfb-run -a pixi run smoke-load-gltf
           xvfb-run -a pixi run smoke-switch-camera
           xvfb-run -a pixi run smoke-geo-viewer
+          xvfb-run -a pixi run smoke-pick   # headless 形态免 xvfb，统一跑法
+          xvfb-run -a pixi run smoke-measure

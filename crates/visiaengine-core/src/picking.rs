@@ -13,6 +13,9 @@ pub struct Ray {
 
 const DET_EPS: f64 = 1e-12;
 const T_EPS: f64 = 1e-9;
+/// u/v 边界容差：拾取射线可精确落于 quad 对角线/共享边（屏幕像素中心与
+/// 世界几何无对齐关系），无 slack 则命中随三角绕序侧的 1ulp 噪声翻转=flaky。
+const UV_EPS: f64 = 1e-12;
 
 #[must_use]
 fn sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
@@ -49,12 +52,12 @@ fn mt(r: Ray, a: [f64; 3], b: [f64; 3], c: [f64; 3], double_sided: bool) -> Opti
     let inv = 1.0 / det;
     let tv = sub(ro, a);
     let u = dot(tv, p) * inv;
-    if !(0.0..=1.0).contains(&u) {
+    if !(-UV_EPS..=1.0 + UV_EPS).contains(&u) {
         return None;
     }
     let q = cross(tv, e1);
     let v = dot(rd, q) * inv;
-    if !(0.0..=1.0).contains(&v) || u + v > 1.0 {
+    if !(-UV_EPS..=1.0 + UV_EPS).contains(&v) || u + v > 1.0 + UV_EPS {
         return None;
     }
     let t = dot(e2, q) * inv;

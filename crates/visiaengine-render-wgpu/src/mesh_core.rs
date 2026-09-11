@@ -22,7 +22,12 @@ pub struct MeshCore {
     next_id: u64,
     pipeline: wgpu::RenderPipeline,
     bgl: wgpu::BindGroupLayout,
+    /// 深度面缓存（WGPU-13：尺寸变更重建；pipeline 与 attachment 格式同源）
+    depth_cache: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
 }
+
+/// 深度管线格式（wgpu 原生 [0,1]，PIT-5 纪律的正方）
+pub(crate) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 /// 无 surface 请求 PRIMARY 适配器并建设备；失败=None（可报告语义）。
 #[must_use]
@@ -97,7 +102,13 @@ impl MeshCore {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -120,6 +131,7 @@ impl MeshCore {
             next_id: 0,
             pipeline,
             bgl,
+            depth_cache: None,
         }
     }
 
@@ -189,8 +201,37 @@ impl MeshCore {
         matches!(capability, Capability::Mesh3D | Capability::OrthoCamera)
     }
 
+    fn ensure_depth(&mut self, width: u32, height: u32) {
+        if matches!(&self.depth_cache, Some((w, h, _, _)) if *w == width && *h == height) {
+            return;
+        }
+        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("depth"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        self.depth_cache = Some((width, height, tex, view));
+    }
+
     /// 一帧渲染到任意 view（清屏色取 commands 首个 ClearColor；DrawMesh 全量重绘，v0 无剔除）。
-    pub fn render_view(&mut self, frame: &Frame, view: &wgpu::TextureView) {
+    /// 尺寸驱动内部深度面（WGPU-13：遮挡正确性——近物遮远物不依赖 draw 顺序）。
+    pub fn render_view(
+        &mut self,
+        frame: &Frame,
+        view: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+    ) {
         let _unused: Option<Viewport> = None;
         let clear = frame
             .commands
@@ -200,6 +241,12 @@ impl MeshCore {
                 DrawCommand::DrawMesh { .. } => None,
             })
             .unwrap_or([0.0; 4]);
+        self.ensure_depth(width.max(1), height.max(1));
+        let depth_view = self
+            .depth_cache
+            .as_ref()
+            .map(|(_, _, _, v)| v.clone())
+            .expect("depth just ensured");
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
@@ -220,6 +267,14 @@ impl MeshCore {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &depth_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
                 ..Default::default()
             });
             pass.set_pipeline(&self.pipeline);

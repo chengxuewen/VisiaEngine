@@ -132,7 +132,12 @@ impl RenderBackend for HeadlessBackend {
     }
 
     fn render(&mut self, frame: &Frame) {
-        self.core.render_view(frame, &self.target_view);
+        self.core.render_view(
+            frame,
+            &self.target_view,
+            self.viewport.width(),
+            self.viewport.height(),
+        );
     }
 
     fn create_mesh(&mut self, desc: &MeshDesc<'_>) -> Result<MeshId, BackendError> {

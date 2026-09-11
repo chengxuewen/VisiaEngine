@@ -9,8 +9,11 @@ pub mod camera;
 pub mod contract;
 pub mod rebase;
 
+mod picking;
+
 pub use camera::{CameraRig, screen_to_ray_ortho, screen_to_ray_persp};
 pub use contract::{
     BackendError, Camera, Capability, DrawCommand, Frame, MaterialId, MeshDesc, MeshId,
     RenderBackend, Viewport,
 };
+pub use picking::{MeshCandidate, PickHit, pick_meshes};
