@@ -1,0 +1,6 @@
+{"type":"FeatureCollection","features":[
+ {"type":"Feature","properties":{"name":"h0","height":0,"visia:color-column":"height","visia:color-lo":0,"visia:color-hi":50,"visia:color-low":"#00ff00","visia:color-high":"#ff0000"},"geometry":{"type":"Polygon","coordinates":[[[2.3500,48.8500],[2.3506,48.8500],[2.3506,48.8506],[2.3500,48.8506],[2.3500,48.8500]]]}},
+ {"type":"Feature","properties":{"name":"h25","height":25,"visia:color-column":"height","visia:color-lo":0,"visia:color-hi":50,"visia:color-low":"#00ff00","visia:color-high":"#ff0000"},"geometry":{"type":"Polygon","coordinates":[[[2.3508,48.8500],[2.3514,48.8500],[2.3514,48.8506],[2.3508,48.8506],[2.3508,48.8500]]]}},
+ {"type":"Feature","properties":{"name":"h50","height":50,"visia:color-column":"height","visia:color-lo":0,"visia:color-hi":50,"visia:color-low":"#00ff00","visia:color-high":"#ff0000"},"geometry":{"type":"Polygon","coordinates":[[[2.3516,48.8500],[2.3522,48.8500],[2.3522,48.8506],[2.3516,48.8506],[2.3516,48.8500]]]}},
+ {"type":"Feature","properties":{"name":"nocolumn","visia:color-column":"absent","visia:color-lo":0,"visia:color-hi":50,"visia:color-low":"#00ff00","visia:color-high":"#ff0000"},"geometry":{"type":"Polygon","coordinates":[[[2.3524,48.8500],[2.3530,48.8500],[2.3530,48.8506],[2.3524,48.8506],[2.3524,48.8500]]]}}
+]}
