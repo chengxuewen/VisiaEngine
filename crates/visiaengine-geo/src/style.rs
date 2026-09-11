@@ -25,26 +25,35 @@ pub fn parse_color(raw: &str) -> Option<[f32; 4]> {
     Some([n(it.next()?)?, n(it.next()?)?, n(it.next()?)?, 1.0])
 }
 
+/// 键取：simplestyle 主键优先，v8 paint 别名回退（D9/GEO-19）。
+fn str_first<'a>(a: &'a AttrSet, row: usize, primary: &str, alias: &str) -> Option<&'a str> {
+    a.str_value(row, primary)
+        .or_else(|| a.str_value(row, alias))
+}
+fn f64_first(a: &AttrSet, row: usize, primary: &str, alias: &str) -> Option<f64> {
+    a.f64(row, primary).or_else(|| a.f64(row, alias))
+}
+
 /// 经列读六键（typed，零 Value 匹配）。缺键=该列 None→默认值保持。
 pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     let mut s = crate::StyleRecord::default();
-    if let Some(c) = a.str_value(row, "fill").and_then(parse_color) {
+    if let Some(c) = str_first(a, row, "fill", "fill-color").and_then(parse_color) {
         s.fill = c;
     }
     if let Some(v) = a.f64(row, "fill-opacity") {
         s.fill_opacity = v.clamp(0.0, 1.0) as f32;
     }
-    if let Some(c) = a.str_value(row, "stroke").and_then(parse_color) {
+    if let Some(c) = str_first(a, row, "stroke", "line-color").and_then(parse_color) {
         s.stroke = c;
     }
-    if let Some(v) = a.f64(row, "stroke-width") {
-        // simplestyle 语义为屏幕 px；v0 粗映射 1px≈1m（屏幕空间线宽=相机片，GEO-11 以默认宽断言）
+    if let Some(v) = f64_first(a, row, "stroke-width", "line-width") {
+        // simplestyle/v8 语义均为屏幕 px；v0 粗映射 1px≈1m（屏幕空间线宽=相机片，GEO-11 以默认宽断言）
         s.stroke_width_m = (v as f32).max(0.5);
     }
-    if let Some(c) = a.str_value(row, "marker-color").and_then(parse_color) {
+    if let Some(c) = str_first(a, row, "marker-color", "circle-color").and_then(parse_color) {
         s.marker_color = c;
     }
-    if let Some(v) = a.f64(row, "marker-radius") {
+    if let Some(v) = f64_first(a, row, "marker-radius", "circle-radius") {
         s.radius_m = v as f32;
     }
     s

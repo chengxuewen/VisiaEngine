@@ -55,4 +55,6 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - geo（GEO-17/18）：props 解析后不再丢弃（宿主查询口打开）；样式经 typed 列读，style.rs 零 JSON 依赖（gate-style 任务入 ci 链）
 - 基线：**71↔71 · 74 passed · ci exit=0 · golden 9/9 无 SKIP**；RED `070ce59` GREEN `28c250f`
 - 教训两处如实：GREEN 回归网抓到 feed 普通件分支绕过 accept 分类器；grep 门禁谓词首版被自家注释文本绊倒（谓词收窄至代码形态）
-- 下一步：3c P2 裁决（用户）→ 3b LUT；批 2 计划轮候令
+- 3c 已裁：**D9=B**（v8 paint 别名子集，主键优先/表达式边界冻结）→ GEO-19 实施（`str_first/f64_first` 回退映射）
+- 基线刷新：**72↔72 · 76 passed · ci exit=0（含 gate-style 段）· golden 9/9 无 SKIP**
+- 下一步：3b 标量→LUT（键 schema 已按 D9 就绪）；批 2 计划轮候令

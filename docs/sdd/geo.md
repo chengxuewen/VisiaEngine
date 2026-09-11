@@ -57,3 +57,6 @@ D7 纪律接口化：`tessellate` 输入为**已减 origin 的 local 坐标**（
 
 ## GEO-18: 样式经 typed 列读取
 simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` 模块零 serde_json 依赖（解析边界固定 lib.rs，机器门禁 `pixi run gate-style`）；六键输出与列化前语义逐键一致（回归网=既有 GEO-11/12/13 断言）。`parse_style(json)` 便利口经一次性 AttrSet 走同一实现。
+
+## GEO-19: v8 paint 别名回退（D9 裁决实施）
+每个样式键在 simplestyle 主键缺席时接受 MapLibre v8 静态 paint 别名回退：fill→fill-color、stroke→line-color、stroke-width→line-width、marker-color→circle-color、marker-radius→circle-radius（fill-opacity 同名直读）。**主键优先于别名**（并存时主键胜，规则定死）。值格式复用 GEO-12 色解析与 GEO-13 数值语义；v8 表达式/stops/data-driven 明确不在本条覆盖面（D9 边界）。

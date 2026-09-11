@@ -67,3 +67,9 @@
 - **来源**: Easy3D 嵌入域调研 [E3D:C1/C2/C5]（docs/reference/easy3d.md），其 Qt 集成靠 QApplication::notify 私有 hack、ImGui 版丢鼠标坐标、GLFW 指针泄进 public ABI、绑定自动全扫——四坑全为我方反证。
 - **预登记内容**: ①引擎零事件 API：宿主统一经 `visiaengine_on_input(ev)` 注入，出向仅 `frame_requested`/`redraw_needed` 回调，永不要求宿主子类化/事件 poll；②渲染契约面（render trait + IR）禁携带任何窗口/surface 后端类型，rwh handle 只在 capi 边界出现（Easy3D renderer 模块 glfw 零引用实证该纯度可达）；③C ABI 首版=6 行 demo 证通最小集（create 即渲染就绪，零多阶段 init），未绑定项入 graveyard 流程，禁 GLOB 式全量扫绑。
 - **转正程序**: 宿主嵌入片计划轮（批 2）审查通过后，本条改写为正式 D8 裁决并补 rwh 路径 A/Qt feature 环境细节；被否内容留"修订面"注记。计划期间引用一律带"预登记"字样。
+
+## D9: P2 裁决——样式 spec 采 MapLibre v8 paint 别名子集（2026-09-03，用户裁决 B 案）
+- **决策**: 在既有 simplestyle 六键之上，接受 MapLibre v8 style spec 的**静态 paint 布局键别名**：`fill-color`→fill、`line-color`→stroke、`line-width`→stroke-width、`circle-color`→marker-color、`circle-radius`→marker-radius（`fill-opacity` 同名）。**不采** v8 的 expressions / zoom stops / source-layer / data-driven（那是 Visia Studio 商业面 + 完整 spec 轮）。simplestyle 主键优先，别名回退。
+- **原因**: GIS 行业现成样式资产多为 v8 格式（MapTiler/OSM thisdir 生态）；别名映射 ~30 LoC 即吃下兼容面，为 SDK 嵌入门槛降低；完整 v8 表达式引擎 3-4 周且侵蚀商业层（Open Core 边界），故取"静态别名子集"这一最小兼容切面。
+- **参考**: C1 四案对比（A 维持/B 别名子集/C 完整/D 自有），B 案 = docs/reference/maplibre.md 活标杆生态兼容 + three-js.md 库形态先例；否决 D（自造=零生态+隐性锁定）。
+- **影响**: geo::style 增别名表（GEO-19）；值格式复用 GEO-12 色解析（#hex/rgb()）；样式系统商业面（Visia Studio 表达式/图层编排）边界清晰上移至未决 P4 邻近。后续 3b 标量→LUT 建在此样式口上。

@@ -66,3 +66,44 @@ fn style_reads_through_columns_identical_to_legacy() {
     assert_eq!(doc.attr_f64(0, "fill-opacity"), Some(0.5));
     // park.geojson 回归族在 geo_spec/tess_style_spec（既有 14 条样式断言=迁移网）
 }
+
+// spec: GEO-19
+#[test]
+fn v8_paint_alias_keys_are_accepted_as_fallback() {
+    // D9：MapLibre v8 静态 paint 键别名；simplestyle 主键优先，别名回退
+    let v8 = r##"{
+      "type":"FeatureCollection",
+      "features":[{"type":"Feature","properties":{
+          "fill-color":"#0000ff","line-color":"#ff0000","line-width":2.5,
+          "circle-color":"#00ff00","circle-radius":7.0},"geometry":
+        {"type":"Point","coordinates":[10.0,50.0]}}]
+    }"##;
+    let (doc, _) = parse_geojson_with(v8.as_bytes(), RepairPolicy::Lenient).unwrap();
+    let s = &doc.features()[0].style;
+    assert!((s.fill[2] - 1.0).abs() < 1e-6, "fill-color→fill");
+    assert!((s.stroke[0] - 1.0).abs() < 1e-6, "line-color→stroke");
+    assert!(
+        (s.stroke_width_m - 2.5).abs() < 1e-6,
+        "line-width→stroke-width"
+    );
+    assert!(
+        (s.marker_color[1] - 1.0).abs() < 1e-6,
+        "circle-color→marker-color"
+    );
+    assert!(
+        (s.radius_m - 7.0).abs() < 1e-6,
+        "circle-radius→marker-radius"
+    );
+}
+
+// spec: GEO-19
+#[test]
+fn simplestyle_primary_wins_over_v8_alias() {
+    // 主键+别名并存 → 主键优先（优先级规则定死，杜绝行为歧义）
+    let both = r##"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"fill":"#ff0000","fill-color":"#0000ff"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}]}"##;
+    let (doc, _) = parse_geojson_with(both.as_bytes(), RepairPolicy::Lenient).unwrap();
+    assert!(
+        (doc.features()[0].style.fill[0] - 1.0).abs() < 1e-6,
+        "fill 主键胜 fill-color 别名"
+    );
+}
