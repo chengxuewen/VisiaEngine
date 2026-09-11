@@ -37,6 +37,7 @@ fn handle_generation_slot_base1_stale_and_all_doors() {
     assert_eq!(OK_VV(ve), 0);
     assert_eq!(visiaengine_pick(ve, 32.0, 32.0), u64::MAX, "空场景未命中=UINT64_MAX");
     assert_eq!(visiaengine_entity_at(ve, 0), u64::MAX, "越界 index=UINT64_MAX");
+    // spec: CAPI-05
     // kind 非法（>5）→ 0 未消费（no-op 家族）；struct_size 过小 → -1（归因表 [FFI-R:CS-4]）
     assert_eq!(visiaengine_on_input(ve, &input(KIND_NO_SUCH)), 0);
     let tiny = input(KIND_PTR_MOVE); // 复制后改 size
