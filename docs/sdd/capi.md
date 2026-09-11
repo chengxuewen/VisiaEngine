@@ -19,3 +19,6 @@ create 记录 owner ThreadId；**例外集={abi_version, last_error}** 外全部
 
 ## CAPI-04: headless 出图字节链
 `create_headless→load_*→render→readback` 全链经 C ABI：装载成功=0 且 entity_count 增长、render=0、readback 缓冲不足→-5/空指针→-1、像素回读非背景。viewport(w,h) 0 维→-5 族（w==0 归 -5 量值口径，attach kind 越界归 -1 参数口径）。pick 命中句柄 ∈ {entity_at(i)}（代际稳定），装载件的世界几何同一来源（REND-23/24 复用）。
+
+## CAPI-09: 双面镜像一致性（web/C 常量同一性，批 7 J2′）
+js 胶水面（visiaengine-wasm crate）的 `abiVersion` + 11 常量 getter 与 capi C ABI 常量逐项等价；`pick/entityAt` 在 .d.ts 编译面为 `bigint`（u64≡BigInt [FFI-R:BS-6/7]）。Rust 侧同一 `pub const` 源引用=恒等按构造（不设运行时断言）；跨语言面由 `scripts/web-mirror.mjs` 机器对账（node 载 pkg-node 产物：值对表 12 项 + d.ts bigint 编译断言 + 产物存在性），执行通道=`web-check` 任务（build→test，`#[ignore]` 显式链 T2——无产物即红，禁假绿）。

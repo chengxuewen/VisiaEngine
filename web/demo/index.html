@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>VisiaEngine — 同一内核 · 浏览器面</title>
+<style>
+ body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}
+ canvas{display:block;margin:2vh auto;border:1px solid #2a3340;touch-action:none}
+ h2,p,ul{padding:0 16px}
+ li{font-size:12px}
+</style></head>
+<body>
+<h2>VisiaEngine · web demo（批 7 J3）</h2>
+<canvas id="c" width="640" height="480"></canvas>
+<p id="status">初始化…（需 WebGPU：Chrome/Edge/Safari 26+）</p>
+<ul><li>T3-1 拖拽 → orbit 跟手</li><li>T3-2 滚轮 → zoom</li>
+<li>T3-3 点击 → pick 命中显示实体句柄</li><li>T3-4 色带/几何与 native geo_viewer 同形</li></ul>
+<script type="module">
+import init, { VisiaEngine } from './pkg/visiaengine_wasm.js';
+await init();
+const canvas = document.getElementById('c');
+const st = document.getElementById('status');
+const eng = await VisiaEngine.fromCanvas(canvas);
+if (!eng) { st.textContent = '✗ WebGPU 不可用（浏览器/flag/独显驱动）'; throw new Error('no WebGPU'); }
+const geo = new Uint8Array(await (await fetch('./park.geojson')).arrayBuffer());
+const rc = eng.loadGeoJsonBytes(geo);
+st.textContent = `就绪（load rc=${rc}，件数=${eng.entityCount()}）——拖拽/滚轮/点击试用`;
+let last = [0, 0];
+canvas.addEventListener('pointerdown', e => { last = [e.offsetX, e.offsetY]; eng.input(2, last[0], last[1], 0); canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => { if (e.buttons) { eng.input(1, e.offsetX, e.offsetY, 0); } });
+canvas.addEventListener('pointerup', e => eng.input(3, e.offsetX, e.offsetY, 0));
+canvas.addEventListener('wheel', e => { e.preventDefault(); eng.input(4, e.offsetX, e.offsetY, e.deltaY > 0 ? -1 : 1); }, { passive: false });
+canvas.addEventListener('click', e => {
+  const h = eng.pick(e.offsetX, e.offsetY);
+  st.textContent = h === 18446744073709551615n ? 'pick：未命中' : `pick：命中实体 ${h}`;
+});
+(function loop() { eng.render(); requestAnimationFrame(loop); })();
+</script>
+</body></html>

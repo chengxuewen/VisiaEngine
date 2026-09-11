@@ -39,5 +39,6 @@ jobs:
           xvfb-run -a pixi run smoke-switch-camera
           xvfb-run -a pixi run smoke-geo-viewer
           pixi run smoke-x11   # attach 三帧 present（脚本自管 Xvfb/复用系统 DISPLAY）
+          pixi run -e wasm-spike web-check   # J2′：wasm 构建+CAPI-09 双面镜像
           xvfb-run -a pixi run smoke-pick   # headless 形态免 xvfb，统一跑法
           xvfb-run -a pixi run smoke-measure

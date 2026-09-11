@@ -45,6 +45,7 @@ binaryen = "*"
 
 [feature.wasm.tasks]
 web-probe = "bash scripts/web-probe.sh"   # J0 验收（版本相等+rlib 存在+全树 check 人跑）
+web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-wasm -- --ignored'"   # J2′：build→CAPI-09 镜像（T2 显式链）
 
 [environments]
 # 单环境方案：轻量二进制全部进 default（tools/ide 与 base 依赖同 solve-group，无隔离需求）
