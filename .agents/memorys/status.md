@@ -24,9 +24,9 @@
 
 ## 下一步
 
-1. **push gitee**（47 笔单磁盘风险持续）+ GitHub 镜像决策（ci.yml 四步 L2 smoke 即转现役）——**用户侧另需 GITHUB_TOKEN+重启验 MCP**
+1. **push gitee**（远端由用户侧同步推进中，本地领先笔数随轮变动）+ GitHub 镜像决策（ci.yml 五路 L2 smoke+gate 即转现役）——**用户侧另需 GITHUB_TOKEN+重启验 MCP**
 2. ~~P1 裁决~~ ✅ D7 已裁 + **H3 已实施**（compose_mvp 落地，WGPU-10 远原点像素一致实证）
-3. **宿主嵌入片**（rwh 路径 A + Qt demo conda qt-main 环境扩张单独立项；spike-3）
+3. ~~宿主嵌入片候令~~ ✅ **批准轮（2026-09-11）**：批 2 v1.4 + 批 7 v1.4 同批批准；I0/J0 环境轮开工；Qt demo 仍单独立项（qt-main 扩张随该轮）
 4. capi 片（ABI 面 D6 已锁：visiaengine_*/visiaengine.h）；纹理/材质 PBR、屏幕空间线宽、MVT/tile 流式（⑦）= Alpha 档
 5. P2 样式 spec 兼容性裁决（simplestyle 六键之上：MapLibre v8 子集？）——样式系统设计轮
 4. CI 激活：GitHub 镜像仓决策日（ci.yml 已三连 smoke）；Gitee push 待指令

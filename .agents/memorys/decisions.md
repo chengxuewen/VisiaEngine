@@ -73,3 +73,7 @@
 - **原因**: GIS 行业现成样式资产多为 v8 格式（MapTiler/OSM thisdir 生态）；别名映射 ~30 LoC 即吃下兼容面，为 SDK 嵌入门槛降低；完整 v8 表达式引擎 3-4 周且侵蚀商业层（Open Core 边界），故取"静态别名子集"这一最小兼容切面。
 - **参考**: C1 四案对比（A 维持/B 别名子集/C 完整/D 自有），B 案 = docs/reference/maplibre.md 活标杆生态兼容 + three-js.md 库形态先例；否决 D（自造=零生态+隐性锁定）。
 - **影响**: geo::style 增别名表（GEO-19）；值格式复用 GEO-12 色解析（#hex/rgb()）；样式系统商业面（Visia Studio 表达式/图层编排）边界清晰上移至未决 P4 邻近。后续 3b 标量→LUT 建在此样式口上。
+
+## D10（预登记，未终审）: Web/wasm 绑定=路线 A（双面口单源）（2026-09-11 批 7 计划批准轮登记）
+- **预登记内容**: ① 浏览器面=capi crate 的 `wasm` feature，js.rs 与 ffi.rs 双叶共 engine.rs（单 crate 双面，非 per-repo——单厂商全控面下更懒且免疫 MapLibre 式"同名异核"）；② 薄口纪律：js.rs 只限编组/生命周期/常量再导出/错误翻译，语义唯一住 engine.rs；常量 Rust pub const 单源进 .d.ts 与 C 头（镜像 CAPI-09 机器守卫）；③ 无 free 函数纪律维持（borrowed + caller-alloc 两式，SQLite/[MS] 双派实证）；④ emscripten 路线否决（语言匹配律：C/C++ 核心→emscripten，Rust 核心→wasm-bindgen，三例全合）；⑤ u64≡BigInt、异步工厂（web GPU 交互无同步路径，wgpu 30 Future 实证）。
+- **转正程序**: J1-J3 落地后本条改写为正式 D10（含 .d.ts 面冻结清单+M2 边界）；被否方案留修订面。计划期间引用带"预登记"字样。证据链 docs/reference/ffi-patterns.md [FFI-R:BS-5/6/7, v13-FEAS-2/7]。
