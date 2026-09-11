@@ -3,7 +3,7 @@
 //! GIS 属性着色的真实形态是 **per-feature 常量色**（楼高=每 feature 单值），
 //! CPU lerp 即完备；GPU LUT 纹理留待逐顶点场（DEM/点云）真需求（backlog）。
 
-use visiaengine_geo::{RepairPolicy, load_geojson, parse_geojson_lenient};
+use visiaengine_geo::{load_geojson, parse_geojson_lenient};
 
 const ONE: &str = r##"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"height":40,"visia:color-column":"height","visia:color-lo":0,"visia:color-hi":50,"visia:color-low":"#00ff00","visia:color-high":"#ff0000"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}]}"##;
 

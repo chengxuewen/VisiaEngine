@@ -56,7 +56,37 @@ pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     if let Some(v) = f64_first(a, row, "marker-radius", "circle-radius") {
         s.radius_m = v as f32;
     }
+    apply_scalar_ramp(a, row, &mut s);
     s
+}
+
+/// 标量→色带（GEO-20/D9 边界外的 `visia:` 扩展键，解析期物化——
+/// tess/渲染管线零改动；GIS 属性着色真实形态=per-feature 常量色）。
+/// 任一前置缺失（引用列/区间/端色/hi<=lo）→ 静默禁用，六键结果保持。
+fn apply_scalar_ramp(a: &AttrSet, row: usize, s: &mut crate::StyleRecord) {
+    let (Some(col), Some(lo), Some(hi)) = (
+        a.str_value(row, "visia:color-column"),
+        a.f64(row, "visia:color-lo"),
+        a.f64(row, "visia:color-hi"),
+    ) else {
+        return;
+    };
+    if hi <= lo {
+        return;
+    }
+    let (Some(low), Some(high)) = (
+        a.str_value(row, "visia:color-low").and_then(parse_color),
+        a.str_value(row, "visia:color-high").and_then(parse_color),
+    ) else {
+        return;
+    };
+    let Some(v) = a.f64(row, col) else {
+        return;
+    };
+    let t = (((v - lo) / (hi - lo)).clamp(0.0, 1.0)) as f32;
+    let ramp = [0, 1, 2, 3].map(|i| low[i] + (high[i] - low[i]) * t);
+    s.fill = ramp;
+    s.marker_color = ramp;
 }
 
 #[cfg(test)]

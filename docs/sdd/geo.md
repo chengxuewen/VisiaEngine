@@ -60,3 +60,6 @@ simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` �
 
 ## GEO-19: v8 paint 别名回退（D9 裁决实施）
 每个样式键在 simplestyle 主键缺席时接受 MapLibre v8 静态 paint 别名回退：fill→fill-color、stroke→line-color、stroke-width→line-width、marker-color→circle-color、marker-radius→circle-radius（fill-opacity 同名直读）。**主键优先于别名**（并存时主键胜，规则定死）。值格式复用 GEO-12 色解析与 GEO-13 数值语义；v8 表达式/stops/data-driven 明确不在本条覆盖面（D9 边界）。
+
+## GEO-20: 标量→色带扩展键（解析期物化）
+`visia:color-column`（属性列名）+ `visia:color-lo/hi`（数值区间）+ `visia:color-low/high`（端色，GEO-12 格式）齐备且区间有效时：列值线性插值 t=clamp((v−lo)/(hi−lo)) 物化写入 `style.fill`/`style.marker_color`（渲染零改动——per-feature 常量色形态）。任一要素缺失/`hi<=lo`/引用列不存在或非数值 → 静默禁用（六键结果保持）。`visia:` 前缀为 D9 边界外自有扩展命名空间；逐顶点 GPU LUT（DEM/点云场）不在本条，留 backlog。
