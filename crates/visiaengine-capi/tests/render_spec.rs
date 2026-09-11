@@ -95,3 +95,66 @@ fn geo_ramp_scene_renders_colored_pixels() {
     assert!(fg > 2000, "geo 面片像素不足: {fg}");
     visiaengine_destroy(ve);
 }
+
+// spec: CAPI-05
+#[test]
+fn wheel_zoom_changes_ortho_frame() {
+    // 行为路径选 geo ortho 场景：twoprim persp 相机位于 orbit 极点（pitch=90°
+    // →cp=0，yaw 退化）且 persp 投影不吃 zoom——换镜头几何会测到假阴性，
+    // 故用 zoom 真实驱动像素的 ortho 面（WHEEL=共享 zoom 乘性 [E3D:B6]）。
+    use visiaengine::{
+        KIND_WHEEL, VE_ERR_ARG, VeInput, visiaengine_load_geojson, visiaengine_on_input,
+    };
+    let ve = visiaengine_create_headless(160, 120);
+    assert_eq!(
+        visiaengine_load_geojson(ve, fixture("heights.geojson").as_ptr()),
+        0
+    );
+    let fg_of = |buf: &[u8]| -> usize {
+        buf.as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| (p[0] as u32 + p[1] as u32 + p[2] as u32) > 60)
+            .count()
+    };
+    let frame = |buf: &mut Vec<u8>| {
+        assert_eq!(visiaengine_render(ve), 0);
+        assert_eq!(
+            visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
+            0
+        );
+    };
+    let mut a = vec![0u8; 160 * 120 * 4];
+    frame(&mut a);
+    let before = fg_of(&a);
+    assert!(before > 1000, "geo 面应有前景，得 {before}");
+    // WHEEL 正=zoom×exp(+) 放大 → 前景增长
+    let mk_wheel = |w: f32| VeInput {
+        struct_size: std::mem::size_of::<VeInput>(),
+        kind: KIND_WHEEL,
+        px: 80.0,
+        py: 60.0,
+        wheel: w,
+        button: 0,
+        mods: 0,
+    };
+    assert_eq!(visiaengine_on_input(ve, &mk_wheel(3.0)), 1);
+    let mut b = vec![0u8; 160 * 120 * 4];
+    frame(&mut b);
+    let after = fg_of(&b);
+    let diff = a
+        .iter()
+        .zip(b.iter())
+        .filter(|pair| {
+            let (x, y) = *pair;
+            (i16::from(*x) - i16::from(*y)).abs() > 8
+        })
+        .count();
+    assert!(diff > 3000, "zoom 后画面应显著变化，diff={diff}");
+    assert!(after != before, "前景像素应随 zoom 变（{before}→{after}）");
+    // 演进锚行为面：struct_size 过小的 WHEEL 被拒且不改状态
+    let mut tiny = mk_wheel(3.0);
+    tiny.struct_size = 4;
+    assert_eq!(visiaengine_on_input(ve, &tiny), VE_ERR_ARG);
+    assert_eq!(visiaengine_destroy(ve), 0);
+}

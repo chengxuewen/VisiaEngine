@@ -25,7 +25,20 @@ int main(int argc, char **argv) {
     if (lum <= 40) { printf("FAIL dark center lum=%u\n", lum); return 1; }
     uint64_t hit = visiaengine_pick(ve, 80.0f, 60.0f);
     if (hit == VE_MISS) { puts("FAIL pick miss on lit pixel"); return 1; }
+    /* input 段（I4）：DOWN→MOVE=orbit、WHEEL=zoom（消费性断言 1） */
+    VeInput in_ = { sizeof(VeInput), KIND_PTR_DOWN, 30.0f, 30.0f, 0.0f, 1u, 0u };
+    if (visiaengine_on_input(ve, &in_) != 1) { puts("FAIL down unconsumed"); return 1; }
+    in_.kind = KIND_PTR_MOVE; in_.px = 60.0f; in_.py = 40.0f;
+    if (visiaengine_on_input(ve, &in_) != 1) { puts("FAIL move unconsumed"); return 1; }
+    in_.kind = KIND_PTR_UP;
+    (void)visiaengine_on_input(ve, &in_);
+    in_.kind = KIND_WHEEL; in_.wheel = 1.0f;
+    if (visiaengine_on_input(ve, &in_) != 1) { puts("FAIL wheel unconsumed"); return 1; }
+    if (visiaengine_render(ve) != VE_OK) { puts("FAIL render after input"); return 1; }
+    if (visiaengine_readback(ve, buf, sizeof buf) != VE_OK) { puts("FAIL readback2"); return 1; }
+    in_.struct_size = 1; /* 演进锚探针：过小必拒 */
+    if (visiaengine_on_input(ve, &in_) != VE_ERR_ARG) { puts("FAIL struct_size gate"); return 1; }
     visiaengine_destroy(ve);
-    puts("OK capi headless");
+    puts("OK capi headless input+pick");
     return 0;
 }
