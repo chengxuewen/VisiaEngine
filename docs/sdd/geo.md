@@ -63,3 +63,9 @@ simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` �
 
 ## GEO-20: 标量→色带扩展键（解析期物化）
 `visia:color-column`（属性列名）+ `visia:color-lo/hi`（数值区间）+ `visia:color-low/high`（端色，GEO-12 格式）齐备且区间有效时：列值线性插值 t=clamp((v−lo)/(hi−lo)) 物化写入 `style.fill`/`style.marker_color`（渲染零改动——per-feature 常量色形态）。任一要素缺失/`hi<=lo`/引用列不存在或非数值 → 静默禁用（六键结果保持）。`visia:` 前缀为 D9 边界外自有扩展命名空间；逐顶点 GPU LUT（DEM/点云场）不在本条，留 backlog。
+
+## GEO-21: 折线平面距离
+`planar_distance(&[Vec3]) -> f64`：3857 米平面折线长（相邻有限点段和）。非有限点跳过不成段（大坐标 NaN 传播防御）；空/单点=0。**语义冻结**：墨卡托平面距离随纬度含 cos φ 畸变——大地学语义属"坐标系完善"（Alpha roadmap），本条不充胖子。
+
+## GEO-22: 环平面面积
+`ring_area(&[Vec3]) -> f64`：shoelace 绝对值、方向无关（GeoJSON 顺/逆时针双俗同值）、闭合重复点与否同值。顶点 <3 或任一非有限点 → 0（不猜测残缺多边形）。

@@ -4,9 +4,11 @@
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
+mod measure;
 mod style;
 mod tess;
 
+pub use measure::{planar_distance, ring_area};
 pub use style::parse_color;
 pub use tess::{PartKind, TessPart, tessellate};
 
