@@ -1,16 +1,16 @@
-//! GEO-01..08 契约测试（fixture=testdata/park.geojson 自产）。
+//! GEO-01..08 契约测试（fixture=resources/data/park.geojson 自产）。
 
 use visiaengine_geo::{GeoKind, load_geojson, parse_geojson, web_mercator};
 
 fn park() -> visiaengine_geo::GeoDocument {
     load_geojson(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../testdata/park.geojson"
+        "/../../resources/data/park.geojson"
     ))
     .unwrap()
 }
 fn at(p: &str) -> String {
-    format!("{}/../../testdata/{p}", env!("CARGO_MANIFEST_DIR"))
+    format!("{}/../../resources/data/{p}", env!("CARGO_MANIFEST_DIR"))
 }
 
 // spec: GEO-01

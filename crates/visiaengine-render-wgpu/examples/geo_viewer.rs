@@ -259,7 +259,7 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut path = String::from("testdata/park.geojson");
+    let mut path = String::from("resources/data/park.geojson");
     let mut frames: Option<u32> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {

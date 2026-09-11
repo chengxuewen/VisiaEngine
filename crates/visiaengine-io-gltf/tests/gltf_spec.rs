@@ -1,11 +1,11 @@
-//! GLTF-01..08 契约测试（fixture=程序化 glb，testdata/ 入 git）。
+//! GLTF-01..08 契约测试（fixture=程序化 glb，resources/data/ 入 git）。
 
 use visiaengine_io_gltf::{IoError, load_gltf};
 
 // fixture 以 crate 相对定位（cargo 测试 CWD=crate root，非仓根）
 fn fixture(name: &str) -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../testdata")
+        .join("../../resources/data")
         .join(name)
 }
 const TRI: &str = "tri-blue.glb";

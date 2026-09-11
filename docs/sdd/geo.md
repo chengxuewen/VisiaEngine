@@ -1,11 +1,11 @@
 # visiaengine-geo 行为契约（SDD）
 
 > 条款标题行 `## GEO-NN:` 为追溯锚点；测试挂 `// spec: GEO-NN`。
-> fixture：`testdata/park.geojson`（本仓自产：2 多边形[其一含双洞]+1 线+1 MultiPoint+1 点=5 features，simplestyle 属性）。
+> fixture：`resources/data/park.geojson`（本仓自产：2 多边形[其一含双洞]+1 线+1 MultiPoint+1 点=5 features，simplestyle 属性）。
 > 投影语义：EPSG:3857 定义即**球面近似**（auxiliary sphere WGS84 a=6378137）；与椭球 Mercator 在 50°N 差约 8.7mm 属标准定义行为，非实现误差。datum 假定 WGS84（RFC7946 强制）。
 
 ## GEO-01: parses_feature_count
-`load_geojson("testdata/park.geojson")` → 5 features，name 保序（buildingA..lamp）。
+`load_geojson("resources/data/park.geojson")` → 5 features，name 保序（buildingA..lamp）。
 
 ## GEO-02: webmercator_known_points
 球面式正反参考：(0,0)→(0,0)；(180°,0)→x=20037508.342789244；(10°,50°)→(1113194.9079327357, 6446275.841017158)±0.01m。

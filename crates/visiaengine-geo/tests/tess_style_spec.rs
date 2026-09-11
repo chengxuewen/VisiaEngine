@@ -89,7 +89,7 @@ fn stroke_expands_to_width() {
 fn simplestyle_six_keys_parsed() {
     let doc = load_geojson(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../testdata/park.geojson"
+        "/../../resources/data/park.geojson"
     ))
     .unwrap();
     let a = &doc.features()[0].style;
@@ -111,7 +111,7 @@ fn simplestyle_six_keys_parsed() {
 fn missing_props_default_style() {
     let doc = load_geojson(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../testdata/park.geojson"
+        "/../../resources/data/park.geojson"
     ))
     .unwrap();
     // buildingB 的 "color" 非六键 → 全默认；grove 无 props → 默认

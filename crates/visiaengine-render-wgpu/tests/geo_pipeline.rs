@@ -18,7 +18,10 @@ fn px(f: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] {
 // spec: WGPU-11
 #[test]
 fn golden_geo_fill_hit() {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../testdata/park.geojson");
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../resources/data/park.geojson"
+    );
     let doc = match load_geojson(path) {
         Ok(d) => d,
         Err(e) => panic!("fixture 解析失败: {e}"),

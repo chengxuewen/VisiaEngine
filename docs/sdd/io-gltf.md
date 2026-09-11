@@ -2,11 +2,11 @@
 
 > 条款标题行 `## GLTF-NN:` 为追溯锚点；测试挂 `// spec: GLTF-NN`。
 > 矩阵约定：`world: [[f64;4];4]` **列主序**（glTF/glam 同构），平移即 `m[3][0..3]`。
-> 资产纪律：fixture 为程序化生成 glb（testdata/*.glb，本仓自产零第三方许可面）。
+> 资产纪律：fixture 为程序化生成 glb（resources/data/*.glb，本仓自产零第三方许可面）。
 > v0 格式面：仅 GLB；`.gltf`+外链资源 → `UnsupportedFormat`（多文件支持后续片）。
 
 ## GLTF-01: parses_glb_fixture
-`load_gltf("testdata/tri-blue.glb")` → 1 实体，positions.len()==4、indices.len()==6，name=Some("Quad")。
+`load_gltf("resources/data/tri-blue.glb")` → 1 实体，positions.len()==4、indices.len()==6，name=Some("Quad")。
 
 ## GLTF-02: node_hierarchy_transform_baked
 hierarchy.glb 双节点（root translate(1,2,3) × leaf translate(10,0,0)）→ 实体 world 矩阵平移列 == (11,2,3)（f64 累乘烘焙，场景展开不保留节点树）。
