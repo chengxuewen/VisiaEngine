@@ -11,6 +11,37 @@
  * [FFI-R:CS-R1]）。 */
 typedef uint64_t VeEngine;
 
-/* I1+: 14 入口 + VeInput struct + 返回码宏 + kind/错误码常量镜像 */
+typedef struct { size_t struct_size; uint32_t kind;
+                 float px, py, wheel; uint32_t button, mods; } VeInput;
+
+#define VE_OK            0
+#define VE_ERR_ARG      (-1)   /* 句柄无效/stale/foreign/空指针/struct_size 过小/kind 越界 */
+#define VE_ERR_STATE    (-2)   /* 未 attach/非 owner 线程（线程亲和：入口仅 owner 线程可调） */
+#define VE_ERR_IO       (-3)
+#define VE_ERR_PANIC    (-4)   /* 栅栏兜底；诊断读 last_error */
+#define VE_ERR_SIZE     (-5)   /* 缓冲/维度运行时量值 */
+#define KIND_PTR_MOVE 1u
+#define KIND_PTR_DOWN 2u
+#define KIND_PTR_UP   3u
+#define KIND_WHEEL    4u
+#define KIND_KEY      5u
+#define VE_MISS       UINT64_MAX  /* pick/entity_at 未命中与越界哨兵 */
+
+/* 	hreadsafety 每入口：owner 线程；create 记录属主。例外={abi_version, last_error}。
+ * 宿主义务：输入线程≠paint 线程时（Qt 类）转送 owner 线程。 */
+uint32_t   visiaengine_abi_version(void);                       /* (major<<16)|minor；v0 major=1 */
+uint64_t   visiaengine_create_headless(uint32_t w, uint32_t h); /* 0=失败（诊断读 last_error） */
+int32_t    visiaengine_destroy(uint64_t ve);                    /* released 再入 -1（双销毁不吞没） */
+int32_t    visiaengine_attach(uint64_t ve, uint64_t win, uint64_t display_or_hinstance, int32_t kind); /* 0=x11 1=win32 2=cocoa；重复 attach=旧目标释放后重配 */
+int32_t    visiaengine_load_gltf(uint64_t ve, const char *path);
+int32_t    visiaengine_load_geojson(uint64_t ve, const char *path);
+int32_t    visiaengine_on_input(uint64_t ve, const VeInput *in); /* 唯一输入口；1=消费 0=非本引擎事件 */
+int32_t    visiaengine_render(uint64_t ve);                     /* 拉模型一帧（宿主 rAF/paint 时机自决） */
+int32_t    visiaengine_readback(uint64_t ve, uint8_t *buf, uint64_t len);
+int32_t    visiaengine_viewport(uint64_t ve, uint32_t w, uint32_t h);
+const char *visiaengine_last_error(uint64_t ve);                /* 线程绑定；至该线程下次错误写入前有效；禁作分支判据 */
+int32_t    visiaengine_entity_count(uint64_t ve);
+uint64_t   visiaengine_pick(uint64_t ve, float px, float py);   /* 实体句柄（异空间）；VE_MISS=未命中 */
+uint64_t   visiaengine_entity_at(uint64_t ve, uint32_t index);
 
 #endif /* VISIAENGINE_H */

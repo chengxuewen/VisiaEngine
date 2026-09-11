@@ -3,7 +3,7 @@
 C ABI 面条款。**位布局与编码规则正本住本档（C 头不外露 [FFI-R:CS-R1]）**。
 
 ## CAPI-01: 句柄编码与世代（slot 基 1）
-引擎句柄=`u64 (slot<<32 | generation)`；**slot 自 1 起分配，slot 0 永不占用**（0=失败/无效专用哨兵）；destroy 槽回收、世代前进（stale=destroy 后复用槽位以旧句柄进门→`VE_ERR_ARG`）；表外 slot（foreign）同 -1。全部带 ve 入口校验先行于状态机校验。实体句柄同形**不同空间**（引擎侧 slot 基 1 偏置不适用于实体：slot0gen0=0 合法；miss/越界哨兵=`UINT64_MAX`，与引擎侧 0 哨兵不对称是有意分工）。abi_version=`(major<<16)|minor`，v0=0x00010000（宿主校验 `>>16==1`）。
+引擎句柄=`u64 (slot<<32 | generation)`；**slot 自 1 起分配，slot 0 永不占用**（0=失败/无效专用哨兵）；destroy 槽回收（**released 句柄再入含 destroy 本身一律 -1**——双销毁=宿主 bug 信号不吞没）、槽位复用世代前进（stale=旧句柄进门→`VE_ERR_ARG`）；表外 slot（foreign）同 -1。全部带 ve 入口校验先行于状态机校验。实体句柄同形**不同空间**（引擎侧 slot 基 1 偏置不适用于实体：slot0gen0=0 合法；miss/越界哨兵=`UINT64_MAX`，与引擎侧 0 哨兵不对称是有意分工）。abi_version=`(major<<16)|minor`，v0=0x00010000（宿主校验 `>>16==1`）。
 
 ## CAPI-02: panic 栅栏（VE_ERR_PANIC 不外溢）
 全部 14 extern 入口体经 `capi_guard` 单宏（=catch_unwind(AssertUnwindSafe)+TLS 写诊断+返回 -4）；grep 门：`#[unsafe(no_mangle)]` 计数==14 且 `pub unsafe extern` 签名零命中（安全签名+内部校验，[FFI-R:FC-5]）。栅栏后同 handle 后续入口行为不受污染。
