@@ -25,6 +25,7 @@
 | [openusd.md](openusd.md) | OpenUSD | 数字孪生场景组织与交换标准 | ★☆☆ |
 | [av-sim-opendrive.md](av-sim-opendrive.md) | CARLA/esmini | ODR/OSC 插件的直接参考实现 | ★☆☆ |
 | [bim-ifc.md](bim-ifc.md) | IfcOpenShell/web-ifc/OCCT | BIM 线：显示层边界与许可证雷区 | ★☆☆ |
+| [ffi-patterns.md](ffi-patterns.md) | SDL3/Vulkan/sokol/Filament/DuckDB/godot 等 28 源 | C ABI+绑定分层模式档（批 2/7 计划 [FFI-R] 引用正本） | ★★★ |
 | [easy3d.md](easy3d.md) | Easy3D v2.6.1（GPL，归档只读） | 宿主嵌入反面教材库 + 属性/pass/教程设计正例 | ★★☆ |
 
 ## 证据备忘录（evidence/，日期快照 **永不更新**；摘要档与 D4 的引用链落点，勿删勿改名）
