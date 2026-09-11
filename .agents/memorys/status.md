@@ -64,4 +64,7 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 3.5d 已实施（GEO-21/22 平面量测，amend 收编 lint）；3.5c/e 已实施（REND-23/24 pick_meshes + WGPU-12/13 高亮+**深度面补齐** + E401/E403 + smoke 双路）
 - 基线刷新：**83↔83 · 90 passed · ci exit=0 · golden 无 SKIP · smoke-pick/measure 本机真跑绿**
 - WGPU-13 存量修复：mesh 管线此前无深度缓冲（单对象 golden 掩盖）——多实体遮挡自此正确
-- 交互片（3.5 全 5 项）收口；下一步：批 2 计划轮候令 / 批 4 渲染强化 / push（当前 5 笔未推，远端由用户侧同步推进中）
+- 交互片（3.5 全 5 项）收口
+- **批 2 批准轮执行中（2026-09-11）**：I0+J0 环境轮 `a163d0d`（host/wasm 双 spike 环境、wasm 全树绿零 cfg 修复、PROBE-OK）→ I1 `c68e57c`（句柄/栅栏/线程/错误串/输入口 六条款测试）→ I2 `6bdd7e7`（出图链真身 + **headless readback 行对齐存量 bug 修复** + gate-abi 14/14 + demo 'OK capi headless'）；基线 **88↔88 · 98 passed · ci=0**
+- #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
+- 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
