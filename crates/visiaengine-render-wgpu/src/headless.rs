@@ -30,6 +30,36 @@ impl HeadlessBackend {
         })
     }
 
+    /// async 构造（web/批 7 J1；native 等价 `new`）。
+    pub async fn new_async(width: u32, height: u32) -> Option<Self> {
+        let sh = crate::mesh_core::create_shared_device_async().await?;
+        let core = MeshCore::new(sh.device, sh.queue, sh.instance, sh.adapter);
+        let viewport = Viewport::new(width, height, 1.0);
+        let (target, target_view) = Self::make_target(&core.device, width, height);
+        Some(Self {
+            core,
+            viewport,
+            target,
+            target_view,
+        })
+    }
+
+    /// Canvas attach（wasm32+web feature；swapchain 与设备同 instance）。
+    #[cfg(all(target_arch = "wasm32", feature = "web"))]
+    pub fn attach_canvas(
+        &mut self,
+        canvas: &web_sys::HtmlCanvasElement,
+    ) -> Result<crate::surface::Swapchain, visiaengine_render::BackendError> {
+        let mut sw = crate::surface::Swapchain::from_target(
+            &self.core,
+            wgpu::SurfaceTarget::Canvas(canvas.clone()),
+            self.viewport.width(),
+            self.viewport.height(),
+        )?;
+        sw.configure(&self.core)?;
+        Ok(sw)
+    }
+
     fn make_target(
         device: &wgpu::Device,
         width: u32,

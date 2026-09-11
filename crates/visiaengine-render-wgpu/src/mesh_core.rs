@@ -48,18 +48,27 @@ pub struct Shared {
 /// 失败=None（可报告语义）。
 #[must_use]
 pub fn create_shared_device() -> Option<Shared> {
+    pollster::block_on(create_shared_device_async())
+}
+
+/// async 主体（web 主线程禁阻塞，批 7 J1；native 走 pollster 等价壳）。
+pub async fn create_shared_device_async() -> Option<Shared> {
     let instance = crate::create_instance();
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        ..Default::default()
-    }))
-    .ok()?;
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        label: Some("visiaengine-core-dev"),
-        required_features: wgpu::Features::empty(),
-        required_limits: adapter.limits(),
-        ..Default::default()
-    }))
-    .ok()?;
+    let adapter = instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            ..Default::default()
+        })
+        .await
+        .ok()?;
+    let (device, queue) = adapter
+        .request_device(&wgpu::DeviceDescriptor {
+            label: Some("visiaengine-core-dev"),
+            required_features: wgpu::Features::empty(),
+            required_limits: adapter.limits(),
+            ..Default::default()
+        })
+        .await
+        .ok()?;
     Some(Shared {
         device,
         queue,

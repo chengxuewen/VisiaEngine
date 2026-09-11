@@ -104,10 +104,22 @@ impl Engine {
 
     // ===== 装载（CAPI-04）=====
 
-    /// glTF：primitive 粒度=实体（与 GLTF-01 家族对齐；world 烘入上传顶点，
-    /// DrawItem.origin=0——headless demo 小坐标域，rebase 恒等合法）。
+    /// glTF path 口（CAPI-04）。
     pub fn load_gltf(&mut self, path: &str) -> Result<usize, String> {
         let doc = visiaengine_io_gltf::load_gltf(path).map_err(|e| format!("{path}: {e}"))?;
+        self.mount_gltf(&doc)
+    }
+
+    /// glTF bytes 口（批 7 js 面复用；[FFI-R:EP-附] bytes-first 兑现）。
+    #[cfg(all(feature = "web", target_arch = "wasm32"))]
+    pub fn load_gltf_bytes(&mut self, data: &[u8]) -> Result<usize, String> {
+        let doc = visiaengine_io_gltf::load_gltf_bytes(data).map_err(|e| format!("bytes: {e}"))?;
+        self.mount_gltf(&doc)
+    }
+
+    /// primitive 粒度=实体（与 GLTF-01 家族对齐；world 烘入上传顶点，
+    /// DrawItem.origin=0——headless demo 小坐标域，rebase 恒等合法）。
+    fn mount_gltf(&mut self, doc: &visiaengine_io_gltf::GltfDocument) -> Result<usize, String> {
         let n = doc.entities().len();
         if n == 0 {
             return Err("no primitives".to_string());
@@ -126,10 +138,24 @@ impl Engine {
         Ok(n)
     }
 
-    /// GeoJSON：feature 粒度=实体（一件可多 part 共享 id）；layer bbox 中心
-    /// =origin（D7 shifted 纪律，geo_viewer 同款）；正交 fit 取景。
+    /// GeoJSON path 口（CAPI-04）。
     pub fn load_geojson(&mut self, path: &str) -> Result<usize, String> {
         let doc = visiaengine_geo::load_geojson(path).map_err(|e| format!("{path}: {e}"))?;
+        self.mount_geo(&doc)
+    }
+
+    /// GeoJSON bytes 口（js 面；Lenient 策略——脏件丢弃不因数据拖死整层，
+    /// 报告导出=M2）。
+    #[cfg(all(feature = "web", target_arch = "wasm32"))]
+    pub fn load_geojson_bytes(&mut self, data: &[u8]) -> Result<usize, String> {
+        let (doc, _rep) =
+            visiaengine_geo::parse_geojson_lenient(data).map_err(|e| format!("bytes: {e}"))?;
+        self.mount_geo(&doc)
+    }
+
+    /// feature 粒度=实体（一件可多 part 共享 id）；layer bbox 中心
+    /// =origin（D7 shifted 纪律，geo_viewer 同款）；正交 fit 取景。
+    fn mount_geo(&mut self, doc: &visiaengine_geo::GeoDocument) -> Result<usize, String> {
         let [x0, y0, x1, y1] = doc.layer_bbox().ok_or("empty layer")?;
         let origin = [(x0 + x1) / 2.0, (y0 + y1) / 2.0, 0.0];
         let radius = ((x1 - x0) / 2.0).max((y1 - y0) / 2.0) * FIT_PAD;
@@ -332,6 +358,31 @@ impl Engine {
             })
             .collect();
         pick_meshes(ray, &cands).map(|hit| hit.entity)
+    }
+}
+
+#[cfg(all(feature = "web", target_arch = "wasm32"))]
+impl Engine {
+    /// Canvas 引擎构造（批 7 J1：async 设备 + canvas surface 一气呵成）。
+    pub async fn new_canvas(canvas: &web_sys::HtmlCanvasElement) -> Option<Self> {
+        let w = canvas.width().max(1);
+        let h = canvas.height().max(1);
+        let mut backend = HeadlessBackend::new_async(w, h).await?;
+        let sw = backend.attach_canvas(canvas).ok()?;
+        Some(Self {
+            w,
+            h,
+            rig: CameraRig::look_at([0.0, 0.0, 10.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+            mode: Proj::Persp,
+            zoom: 1.0,
+            down: false,
+            last: (0.0, 0.0),
+            backend,
+            target: TargetMode::Window(sw),
+            scene: Scene::new(),
+            items: Vec::new(),
+            frame_cache: None,
+        })
     }
 }
 

@@ -1,0 +1,17 @@
+[package]
+name = "visiaengine-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "JS/wasm 胶水层（批 7 路线 A）：capi rlib 之上的纯编组薄叶（D10 预登记）。与 C ABI 面隔离 crate——no_mangle 与 bindgen 符号图互不侵蚀（J1 链接冲突隔离裁决）。"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+visiaengine-core.workspace = true
+visiaengine-capi = { path = "../visiaengine-capi", version = "0.1.0", features = ["web"] }
+wasm-bindgen = "=0.2.127"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }

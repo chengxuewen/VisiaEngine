@@ -1862,6 +1862,7 @@ dependencies = [
  "visiaengine-io-gltf",
  "visiaengine-render",
  "visiaengine-render-wgpu",
+ "web-sys",
  "wgpu",
 ]
 
@@ -1914,8 +1915,21 @@ dependencies = [
  "visiaengine-geo",
  "visiaengine-io-gltf",
  "visiaengine-render",
+ "web-sys",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "visiaengine-wasm"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "visiaengine-capi",
+ "visiaengine-core",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

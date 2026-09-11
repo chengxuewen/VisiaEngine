@@ -4,7 +4,6 @@
 
 use std::os::raw::c_char;
 use std::panic::AssertUnwindSafe;
-use std::sync::Mutex;
 use std::thread::ThreadId;
 
 use crate::engine::Engine;
@@ -45,7 +44,38 @@ struct Slot {
     engine: Option<Engine>,
     owner: Option<ThreadId>,
 }
-static TABLE: Mutex<Vec<Slot>> = Mutex::new(Vec::new());
+/// 槽表访问平台抽象：native=Mutex（引擎类型 Send 于 native 成立）；
+/// wasm=thread_local（wgpu web 后端 Rc 非 Send——浏览器单线程世界如实落地，
+/// 批 7 J1 编译期实锤 [FFI-R:v13-J1-1]）。
+mod slots {
+    use super::Slot;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    mod imp {
+        use super::Slot;
+        use std::sync::Mutex;
+        static TABLE: Mutex<Vec<Slot>> = Mutex::new(Vec::new());
+        pub fn with_table<R>(f: impl FnOnce(&mut Vec<Slot>) -> R) -> R {
+            let mut g = TABLE
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            f(&mut g)
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    mod imp {
+        use super::Slot;
+        use std::cell::RefCell;
+        thread_local! {
+            static TABLE: RefCell<Vec<Slot>> = const { RefCell::new(Vec::new()) };
+        }
+        pub fn with_table<R>(f: impl FnOnce(&mut Vec<Slot>) -> R) -> R {
+            TABLE.with(|c| f(&mut c.borrow_mut()))
+        }
+    }
+    pub use imp::with_table;
+}
+use slots::with_table;
 
 const fn enc(slot: u32, generation: u32) -> u64 {
     ((slot as u64) << 32) | (generation as u64)
@@ -53,12 +83,6 @@ const fn enc(slot: u32, generation: u32) -> u64 {
 #[allow(clippy::cast_possible_truncation)]
 const fn dec(ve: u64) -> (u32, u32) {
     ((ve >> 32) as u32, ve as u32)
-}
-
-fn table_lock() -> std::sync::MutexGuard<'static, Vec<Slot>> {
-    TABLE
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 enum Gate {
@@ -73,18 +97,19 @@ fn gate(ve: u64) -> Gate {
     if slot == 0 {
         return Gate::Arg; // slot 0 永不合法（含 ve==0）
     }
-    let t = table_lock();
-    match t.get(slot as usize) {
+    let st = with_table(|t| match t.get(slot as usize) {
         Some(s) if s.generation == generation && s.engine.is_some() => {
-            if s.owner == Some(std::thread::current().id()) {
-                Gate::Live(slot as usize)
-            } else {
-                drop(t);
-                set_err(format!(
-                    "non-owner thread call on handle {ve:#x} (thread affinity: CAPI-03)"
-                ));
-                Gate::State
-            }
+            u8::from(s.owner == Some(std::thread::current().id()))
+        }
+        _ => 2u8,
+    });
+    match st {
+        1 => Gate::Live(slot as usize),
+        0 => {
+            set_err(format!(
+                "non-owner thread call on handle {ve:#x} (thread affinity: CAPI-03)"
+            ));
+            Gate::State
         }
         _ => Gate::Arg,
     }
@@ -129,12 +154,12 @@ macro_rules! capi_guard {
 
 // ===== 14 入口 =====
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
     1 << 16 // v0 = major 1（demo/宿主校验 >>16==1）
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_create_headless(w: u32, h: u32) -> u64 {
     capi_guard!(
         {
@@ -146,48 +171,49 @@ pub extern "C" fn visiaengine_create_headless(w: u32, h: u32) -> u64 {
                 set_err("create: no adapter/device available".to_string());
                 return 0;
             };
-            let mut t = table_lock();
-            if t.is_empty() {
-                t.push(Slot {
-                    generation: 0,
-                    engine: None,
-                    owner: None,
-                }); // slot 0 永久占位
-            }
-            let idx = match t
-                .iter()
-                .position(|s| s.engine.is_none() && s.generation > 0)
-            {
-                Some(i) => {
-                    t[i].generation += 1;
-                    t[i].engine = Some(engine);
-                    t[i].owner = Some(std::thread::current().id());
-                    i
-                }
-                None => {
+            with_table(|t| {
+                if t.is_empty() {
                     t.push(Slot {
-                        generation: 1,
-                        engine: Some(engine),
-                        owner: Some(std::thread::current().id()),
-                    });
-                    t.len() - 1
+                        generation: 0,
+                        engine: None,
+                        owner: None,
+                    }); // slot 0 永久占位
                 }
-            };
-            enc(idx as u32, t[idx].generation)
+                let owner = Some(std::thread::current().id());
+                let idx = match t
+                    .iter()
+                    .position(|s| s.engine.is_none() && s.generation > 0)
+                {
+                    Some(i) => {
+                        t[i].generation += 1;
+                        t[i].engine = Some(engine);
+                        t[i].owner = owner;
+                        i
+                    }
+                    None => {
+                        t.push(Slot {
+                            generation: 1,
+                            engine: Some(engine),
+                            owner,
+                        });
+                        t.len() - 1
+                    }
+                };
+                enc(idx as u32, t[idx].generation)
+            })
         },
         0u64
     )
 }
 
 /// released/foreign/stale 再入一律 -1（双销毁不吞没）；非 owner=-2。
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_destroy(ve: u64) -> i32 {
     capi_guard!(
         {
             match gate(ve) {
                 Gate::Live(i) => {
-                    let mut t = table_lock();
-                    t[i].engine = None; // 槽回收（generation 保持，再入 -1；复用才 +1）
+                    with_table(|t| t[i].engine = None); // 槽回收（gen 保持，再入 -1）
                     0
                 }
                 Gate::State => VE_ERR_STATE,
@@ -198,7 +224,7 @@ pub extern "C" fn visiaengine_destroy(ve: u64) -> i32 {
     )
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_attach(ve: u64, win_ptr: u64, display_ptr: u64, kind: i32) -> i32 {
     capi_guard!(
         {
@@ -229,7 +255,9 @@ pub extern "C" fn visiaengine_attach(ve: u64, win_ptr: u64, display_ptr: u64, ki
                         0 => nn(display_ptr).map(|d| {
                             (
                                 Some(RawDisplayHandle::Xlib(XlibDisplayHandle::new(Some(d), 0))),
-                                RawWindowHandle::Xlib(XlibWindowHandle::new(win_ptr)),
+                                // rwh new(c_ulong)——target 变宽（x86_64=64/wasm32=32），
+                                // as _ 平台自推；XID 值域 32 位无损
+                                RawWindowHandle::Xlib(XlibWindowHandle::new(win_ptr as _)),
                             )
                         }),
                         1 => std::num::NonZeroIsize::new(win_ptr as isize)
@@ -264,11 +292,10 @@ fn with_engine<T>(
     idx: usize,
     f: impl FnOnce(&mut Engine) -> Result<T, String>,
 ) -> Result<T, String> {
-    let mut t = table_lock();
-    match t[idx].engine.as_mut() {
+    with_table(|t| match t[idx].engine.as_mut() {
         Some(e) => f(e),
         None => Err("engine released mid-call".to_string()),
-    }
+    })
 }
 
 /// 共用装载体（CAPI-04/05）：path null=-1；IO/解析失败=-3；成功=0（尺寸违规在 -5 族）。
@@ -301,11 +328,11 @@ fn load_impl(ve: u64, path: *const c_char, label: &str) -> i32 {
     }
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_load_gltf(ve: u64, path: *const c_char) -> i32 {
     capi_guard!(load_impl(ve, path, "load_gltf"), VE_ERR_PANIC)
 }
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_load_geojson(ve: u64, path: *const c_char) -> i32 {
     capi_guard!(load_impl(ve, path, "load_geojson"), VE_ERR_PANIC)
 }
@@ -314,7 +341,7 @@ pub extern "C" fn visiaengine_load_geojson(ve: u64, path: *const c_char) -> i32 
 // [FFI-R:FC-5] 风格裁决=安全签名（调用点无 unsafe 义务），指针解引用在栅栏内校验；
 // clippy 该 lint 针对"公开 safe fn 解引用"的一般场景，FFI 边界是既定例外（allow 在此=记录裁决而非绕lint）。
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_on_input(ve: u64, input: *const VeInput) -> i32 {
     capi_guard!(
         {
@@ -333,15 +360,16 @@ pub extern "C" fn visiaengine_on_input(ve: u64, input: *const VeInput) -> i32 {
                         ));
                         return VE_ERR_ARG;
                     }
-                    let mut t = table_lock();
-                    match t[i]
-                        .engine
-                        .as_mut()
-                        .map(|e| e.apply_input(inp.kind, inp.px, inp.py, inp.wheel))
-                    {
-                        Some(Some(consumed)) => i32::from(consumed),
-                        Some(None) | None => 0, // 未登记 kind / 竞态消失：不消费
-                    }
+                    with_table(|t| {
+                        match t[i]
+                            .engine
+                            .as_mut()
+                            .map(|e| e.apply_input(inp.kind, inp.px, inp.py, inp.wheel))
+                        {
+                            Some(Some(consumed)) => i32::from(consumed),
+                            Some(None) | None => 0, // 未登记 kind / 竞态消失：不消费
+                        }
+                    })
                 }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
@@ -351,7 +379,7 @@ pub extern "C" fn visiaengine_on_input(ve: u64, input: *const VeInput) -> i32 {
     )
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_render(ve: u64) -> i32 {
     capi_guard!(
         {
@@ -373,7 +401,7 @@ pub extern "C" fn visiaengine_render(ve: u64) -> i32 {
 
 /// [FFI-R:FC-5] 同 on_input：安全签名体内校验（allow=FFI 边界裁决记录）。
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_readback(ve: u64, buf: *mut u8, len: u64) -> i32 {
     capi_guard!(
         {
@@ -409,7 +437,7 @@ pub extern "C" fn visiaengine_readback(ve: u64, buf: *mut u8, len: u64) -> i32 {
     )
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_viewport(ve: u64, w: u32, h: u32) -> i32 {
     capi_guard!(
         {
@@ -434,7 +462,7 @@ pub extern "C" fn visiaengine_viewport(ve: u64, w: u32, h: u32) -> i32 {
 }
 
 /// 例外集成员：读调用线程 TLS（无句柄校验）；无错=空串静态。
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_last_error(_ve: u64) -> *const c_char {
     // 栅栏对指针返回意义有限（读 TLS 不 panic 面），仍统一裹持
     capi_guard!(
@@ -443,14 +471,13 @@ pub extern "C" fn visiaengine_last_error(_ve: u64) -> *const c_char {
     )
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_entity_count(ve: u64) -> i32 {
     capi_guard!(
         match gate(ve) {
-            Gate::Live(i) => table_lock()[i]
-                .engine
-                .as_ref()
-                .map_or(0, Engine::entity_count) as i32,
+            Gate::Live(i) => {
+                with_table(|t| t[i].engine.as_ref().map_or(0, Engine::entity_count)) as i32
+            }
             Gate::State => VE_ERR_STATE,
             Gate::Arg => VE_ERR_ARG,
         },
@@ -458,7 +485,7 @@ pub extern "C" fn visiaengine_entity_count(ve: u64) -> i32 {
     )
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_pick(ve: u64, px: f32, py: f32) -> u64 {
     capi_guard!(
         {
@@ -474,11 +501,11 @@ pub extern "C" fn visiaengine_pick(ve: u64, px: f32, py: f32) -> u64 {
 }
 
 /// 实体句柄编码（CAPI-08）：slot+gen 直译，无引擎侧基 1 偏置；miss=UINT64_MAX。
-fn enc_entity(id: visiaengine_core::EntityId) -> u64 {
+pub fn enc_entity(id: visiaengine_core::EntityId) -> u64 {
     enc(id.slot(), id.generation())
 }
 
-#[unsafe(no_mangle)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_entity_at(ve: u64, index: u32) -> u64 {
     capi_guard!(
         match gate(ve) {

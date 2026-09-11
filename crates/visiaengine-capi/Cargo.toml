@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 description = "VisiaEngine C ABI 面（批 2）：宿主嵌入唯一稳定边界（D2/D6）"
 
+[features]
+default = []
+web = ["visiaengine-render-wgpu/web", "dep:web-sys"]   # 仅 engine canvas 口；js 胶水在 visiaengine-wasm
+
 [lib]
 name = "visiaengine"            # [FFI-R:v13-FEAS-4] 产物名=libvisiaengine.so，-lvisiaengine 链接前提
 crate-type = ["cdylib", "staticlib", "rlib"]
@@ -18,3 +22,6 @@ visiaengine-render-wgpu.workspace = true
 visiaengine-io-gltf.workspace = true
 visiaengine-geo.workspace = true
 # I2 起追加：visiaengine-{render-wgpu,geo,io-gltf} + wgpu + raw-window-handle（§3 边界）
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"], optional = true }

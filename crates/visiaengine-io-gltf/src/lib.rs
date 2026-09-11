@@ -179,21 +179,15 @@ pub fn load_gltf(path: impl AsRef<std::path::Path>) -> Result<GltfDocument, IoEr
     Ok(load_gltf_with_report(path)?.0)
 }
 
-/// 带跳过报告的入口（GLTF-09）。
-pub fn load_gltf_with_report(
-    path: impl AsRef<std::path::Path>,
-) -> Result<(GltfDocument, LoadReport), IoError> {
-    let path = path.as_ref();
-    let bytes = match std::fs::read(path) {
-        Ok(b) => b,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Err(IoError::NotFound {
-                path: path.display().to_string(),
-            });
-        }
-        Err(e) => return Err(IoError::Io { source: e }),
-    };
-    let gltf = gltf::Gltf::from_slice(&bytes).map_err(|e| IoError::Parse {
+/// GLB 字节解析（无文件系统——批 7 wasm 传输的 bytes-first 主体口 [FFI-R:EP-附]；
+/// GLTF-09 过滤/报告与 path 口同源）。
+pub fn load_gltf_bytes(data: &[u8]) -> Result<GltfDocument, IoError> {
+    Ok(load_gltf_bytes_with_report(data)?.0)
+}
+
+/// 字节面的带报告入口（GLTF-09 主体）。
+pub fn load_gltf_bytes_with_report(bytes: &[u8]) -> Result<(GltfDocument, LoadReport), IoError> {
+    let gltf = gltf::Gltf::from_slice(bytes).map_err(|e| IoError::Parse {
         reason: e.to_string(),
     })?;
     let doc = &gltf.document;
@@ -222,4 +216,21 @@ pub fn load_gltf_with_report(
         }
     }
     Ok((GltfDocument { entities }, rep))
+}
+
+/// 带跳过报告的 path 入口（GLTF-09；NotFound/IO 语义在此层，GLTF-05 契约位）。
+pub fn load_gltf_with_report(
+    path: impl AsRef<std::path::Path>,
+) -> Result<(GltfDocument, LoadReport), IoError> {
+    let path = path.as_ref();
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Err(IoError::NotFound {
+                path: path.display().to_string(),
+            });
+        }
+        Err(e) => return Err(IoError::Io { source: e }),
+    };
+    load_gltf_bytes_with_report(&bytes)
 }

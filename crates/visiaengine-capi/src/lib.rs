@@ -7,6 +7,10 @@
 mod engine;
 mod ffi;
 
+#[cfg(target_arch = "wasm32")]
+pub use engine::Engine; // visiaengine-wasm 桥（js 胶水独立 crate）
+#[cfg(target_arch = "wasm32")]
+pub use ffi::enc_entity;
 pub use ffi::{
     KIND_KEY, KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, KIND_PTR_UP, KIND_WHEEL, MISS,
     VE_ERR_ARG, VE_ERR_IO, VE_ERR_PANIC, VE_ERR_SIZE, VE_ERR_STATE, VeInput,

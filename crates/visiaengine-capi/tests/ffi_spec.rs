@@ -213,12 +213,16 @@ fn abi_version_packed_and_never_thread_gated() {
 fn symbol_surface_grep_gate() {
     // 入口=14 且风格统一（安全签名内部校验）：文件自扫（[FFI-R:FC-5]）
     let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/ffi.rs")).unwrap();
+    // v1.3 风格演进：C ABI 导出 native-only cfg_attr（wasm 零 no_mangle——与
+    // wasm-bindgen 导出表冲突的根修，J1 链接期实锤）；grep 门随形
     assert_eq!(
         src.lines()
-            .filter(|l| l.starts_with("#[unsafe(no_mangle)]"))
+            .filter(
+                |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
+            )
             .count(),
         14,
-        "extern 入口计数（行首属性形态，doc 注释豁免）"
+        "extern 入口计数（cfg-gated 行首式）"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),

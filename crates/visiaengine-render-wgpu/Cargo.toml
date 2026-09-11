@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+web = ["dep:web-sys"]   # 批 7：Canvas attach（wasm32 代码路径自带 cfg）
+
 [dependencies]
 visiaengine-core.workspace = true
 visiaengine-render.workspace = true
@@ -16,6 +20,9 @@ bytemuck = { workspace = true, features = ["derive"] }
 pollster.workspace = true
 glam.workspace = true
 raw-window-handle.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"], optional = true }
 
 [dev-dependencies]
 # 装配示例专用（dev 面不传染正常依赖图：example 是 io×render 合流的演示位）

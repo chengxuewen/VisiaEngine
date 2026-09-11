@@ -40,7 +40,7 @@ binutils = "*"
 # 组件无 rust↔cross-std 锁步 run-dep [FFI-R:env-B1]：pin 必须 == rust 锁文件实况(1.98.0)，
 # 动任一必同步另一 + pixi.lock 随迁入库（D5）。bindgen-cli schema 对偶执行日校验 [FFI-R:CS-5]。
 rust-std-wasm32-unknown-unknown = "=1.98.0"
-wasm-bindgen-cli = "*"
+wasm-bindgen-cli = "=0.2.127"  # 与 Cargo pin 同步（schema 每 patch 变，J1 实测互拒）
 binaryen = "*"
 
 [feature.wasm.tasks]
