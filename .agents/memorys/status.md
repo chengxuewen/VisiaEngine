@@ -48,3 +48,11 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 批次 1b：testdata→resources/data 迁移 14 处同步，grep 清零（`229f77f`）
 - 基线：66↔66 · 68 测试 · ci exit=0 · golden 无 SKIP；边界事实：JSON 数字超域在文档层拒=双策略 Err（条款注记）；非有限坐标 parse 入口不可达（字段留 web_mercator 直调路径）
 - 计划文档 `.omo/plans/easy3d-adoption-plan.md`（v1.1 已批准）；下一步=批 2 计划轮（宿主嵌入，含 D8 转正）或批 3（∥3c→3b）+ 批 3.5 交互片
+
+## 批次 3a 基线（2026-09-03，AttrSet 属性列化轮）
+
+- core::AttrSet（CORE-11/12/13）：三型闭合列存、行对齐不变式、缺失≠零值、首写定型
+- geo（GEO-17/18）：props 解析后不再丢弃（宿主查询口打开）；样式经 typed 列读，style.rs 零 JSON 依赖（gate-style 任务入 ci 链）
+- 基线：**71↔71 · 74 passed · ci exit=0 · golden 9/9 无 SKIP**；RED `070ce59` GREEN `28c250f`
+- 教训两处如实：GREEN 回归网抓到 feed 普通件分支绕过 accept 分类器；grep 门禁谓词首版被自家注释文本绊倒（谓词收窄至代码形态）
+- 下一步：3c P2 裁决（用户）→ 3b LUT；批 2 计划轮候令
