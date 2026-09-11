@@ -1,0 +1,13 @@
+[package]
+name = "visiaengine-capi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "VisiaEngine C ABI 面（批 2）：宿主嵌入唯一稳定边界（D2/D6）"
+
+[lib]
+name = "visiaengine"            # [FFI-R:v13-FEAS-4] 产物名=libvisiaengine.so，-lvisiaengine 链接前提
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+# I1 起接入：visiaengine-render/render-wgpu/geo/io-gltf + wgpu + raw-window-handle（§3 边界）
