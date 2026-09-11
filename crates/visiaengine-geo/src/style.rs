@@ -1,6 +1,8 @@
-//! simplestyle-spec 六键子集（GEO-12/13）。未知键静默忽略、缺失回默认。
+//! simplestyle-spec 六键子集（GEO-12/13/18）。未知键静默忽略、缺失回默认。
+//! GEO-18：样式判定经 AttrSet typed 列读取——本文件禁现 serde_json（解析边界
+//! 固定 lib.rs；grep 门禁=pixi run gate-style）。
 
-use serde_json::Value as Json;
+use visiaengine_core::AttrSet;
 
 /// `#rrggbb` / `rgb(r,g,b)` 双格式；非法串 None（GEO-12 色格式面）。
 #[must_use]
@@ -23,29 +25,26 @@ pub fn parse_color(raw: &str) -> Option<[f32; 4]> {
     Some([n(it.next()?)?, n(it.next()?)?, n(it.next()?)?, 1.0])
 }
 
-pub(crate) fn style_from_props(props: &Json) -> crate::StyleRecord {
+/// 经列读六键（typed，零 Value 匹配）。缺键=该列 None→默认值保持。
+pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     let mut s = crate::StyleRecord::default();
-    let get = |k: &str| props.get(k);
-    if let Some(c) = get("fill").and_then(Json::as_str).and_then(parse_color) {
+    if let Some(c) = a.str_value(row, "fill").and_then(parse_color) {
         s.fill = c;
     }
-    if let Some(v) = get("fill-opacity").and_then(Json::as_f64) {
+    if let Some(v) = a.f64(row, "fill-opacity") {
         s.fill_opacity = v.clamp(0.0, 1.0) as f32;
     }
-    if let Some(c) = get("stroke").and_then(Json::as_str).and_then(parse_color) {
+    if let Some(c) = a.str_value(row, "stroke").and_then(parse_color) {
         s.stroke = c;
     }
-    if let Some(v) = get("stroke-width").and_then(Json::as_f64) {
+    if let Some(v) = a.f64(row, "stroke-width") {
         // simplestyle 语义为屏幕 px；v0 粗映射 1px≈1m（屏幕空间线宽=相机片，GEO-11 以默认宽断言）
         s.stroke_width_m = (v as f32).max(0.5);
     }
-    if let Some(c) = get("marker-color")
-        .and_then(Json::as_str)
-        .and_then(parse_color)
-    {
+    if let Some(c) = a.str_value(row, "marker-color").and_then(parse_color) {
         s.marker_color = c;
     }
-    if let Some(v) = get("marker-radius").and_then(Json::as_f64) {
+    if let Some(v) = a.f64(row, "marker-radius") {
         s.radius_m = v as f32;
     }
     s
@@ -71,3 +70,5 @@ mod tests {
         assert!(parse_color("nonsense").is_none());
     }
 }
+
+// style.rs 依赖面契约（GEO-18 禁 serde_json）由 pixi run gate-style 机器把关。

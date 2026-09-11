@@ -57,7 +57,11 @@ fn style_reads_through_columns_identical_to_legacy() {
     // 六键结果与迁移前逐项一致（fill hex→r=1.0；opacity clamp；未给键回默认）
     assert!((s0.fill[0] - 1.0).abs() < 1e-6 && s0.fill[1] < 1e-6);
     assert!((s0.fill_opacity - 0.5).abs() < 1e-6);
-    assert_eq!(s0.stroke, [1.0, 1.0, 1.0, 1.0], "缺 stroke 回默认，非 height 干扰");
+    assert_eq!(
+        s0.stroke,
+        [1.0, 1.0, 1.0, 1.0],
+        "缺 stroke 回默认，非 height 干扰"
+    );
     // 样式键之外，其余标量属性保持可查（样式消费不再吞属性）
     assert_eq!(doc.attr_f64(0, "fill-opacity"), Some(0.5));
     // park.geojson 回归族在 geo_spec/tess_style_spec（既有 14 条样式断言=迁移网）

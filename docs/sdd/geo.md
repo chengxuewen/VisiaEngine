@@ -51,3 +51,9 @@ D7 纪律接口化：`tessellate` 输入为**已减 origin 的 local 坐标**（
 
 ## GEO-16: 旧入口 FastFail 语义冻结
 `parse_geojson` = `RepairPolicy::FastFail`：首件脏几何即整文档 Err（GEO-08 拒绝面原样保持）；`geometry:null` feature 维持旧静默跳过（不计数）；纯干净输入下双入口 features 结果一致且报告全零。
+
+## GEO-17: feature 属性入列，行与展平件对齐
+解析成功的每个 feature 件（GC 展平后按件计）占 `AttrSet` 一行，`doc.attrs().len() == features().len()` 恒成立；`geometry:null`/被丢弃脏件不占行（先于 add_row 失败）。JSON 标量（number/string/bool）入对应类型列；object/array/null 值跳过不入列。GC 子件行复制 feature 级 name/props。宿主查询口 `doc.attr_f64/attr_str/attr_bool(feature_idx, name)`。
+
+## GEO-18: 样式经 typed 列读取
+simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` 模块零 serde_json 依赖（解析边界固定 lib.rs，机器门禁 `pixi run gate-style`）；六键输出与列化前语义逐键一致（回归网=既有 GEO-11/12/13 断言）。`parse_style(json)` 便利口经一次性 AttrSet 走同一实现。

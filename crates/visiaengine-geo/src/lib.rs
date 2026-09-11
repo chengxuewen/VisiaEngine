@@ -11,7 +11,7 @@ pub use style::parse_color;
 pub use tess::{PartKind, TessPart, tessellate};
 
 use thiserror::Error;
-use visiaengine_core::Vec3;
+use visiaengine_core::{AttrSet, Vec3};
 
 #[derive(Error, Debug)]
 pub enum GeoError {
@@ -95,12 +95,35 @@ pub struct GeoFeature {
 #[derive(Debug)]
 pub struct GeoDocument {
     features: Vec<GeoFeature>,
+    attrs: AttrSet,
 }
 
 impl GeoDocument {
     #[must_use]
     pub fn features(&self) -> &[GeoFeature] {
         &self.features
+    }
+
+    /// 属性列集（GEO-17：行数与 features() 1:1 对齐）。
+    #[must_use]
+    pub fn attrs(&self) -> &AttrSet {
+        &self.attrs
+    }
+
+    /// 宿主查询口（行=feature 下标）。
+    #[must_use]
+    pub fn attr_f64(&self, feature: usize, name: &str) -> Option<f64> {
+        self.attrs.f64(feature, name)
+    }
+
+    #[must_use]
+    pub fn attr_str(&self, feature: usize, name: &str) -> Option<&str> {
+        self.attrs.str_value(feature, name)
+    }
+
+    #[must_use]
+    pub fn attr_bool(&self, feature: usize, name: &str) -> Option<bool> {
+        self.attrs.bool(feature, name)
     }
 
     /// 全层 3857 bbox 并集（空层 None，GEO-05）。
@@ -200,17 +223,12 @@ fn kind_of(gj: &geojson::Geometry) -> Result<GeoKind, GeoError> {
     })
 }
 
-fn feature_from(
-    gj: &geojson::Geometry,
-    name: Option<String>,
-    props: Option<&serde_json::Map<String, serde_json::Value>>,
-) -> Result<GeoFeature, GeoError> {
-    // 投影单点：kind_of 内 pt/ring 经 proj()（解析边界 4326→3857，GEO-08 同路拒绝）
-    let kind = kind_of(gj)?;
+/// 几何→3857 bbox（feature 构造段拆出的纯函数，GEO-05 语义不变）。
+fn bbox_of(kind: &GeoKind) -> [f64; 4] {
     let mut mins = [f64::MAX; 2];
     let mut maxs = [f64::MIN; 2];
     let mut acc = |x: f64, y: f64| push_bbox(&mut mins, &mut maxs, x, y);
-    match &kind {
+    match kind {
         GeoKind::Point(p) => acc(p.x, p.y),
         GeoKind::MultiPoint(ps) | GeoKind::Line(ps) => {
             for p in ps {
@@ -223,15 +241,29 @@ fn feature_from(
             }
         }
     }
-    let style = props.map_or_else(default_style, |p| {
-        style::style_from_props(&serde_json::Value::Object(p.clone()))
-    });
-    Ok(GeoFeature {
-        name,
-        kind,
-        style,
-        world_bbox: Some([mins[0], mins[1], maxs[0], maxs[1]]),
-    })
+    [mins[0], mins[1], maxs[0], maxs[1]]
+}
+
+/// JSON 标量属性入列（GEO-17 解析边界——serde_json 只在此处+文档层出现）。
+/// number/string/bool 入对应型列；null/object/array 跳过（失真不如缺席）。
+fn load_props(a: &mut AttrSet, row: usize, p: &serde_json::Map<String, serde_json::Value>) {
+    use serde_json::Value;
+    for (k, v) in p {
+        match v {
+            Value::Number(n) => {
+                if let Some(f) = n.as_f64() {
+                    a.set_f64(row, k, f);
+                }
+            }
+            Value::String(s) => {
+                a.set_str(row, k, s.clone());
+            }
+            Value::Bool(b) => {
+                a.set_bool(row, k, *b);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// 修复策略（[E3D:A4] 移植）：FastFail=单件脏几何整文档 Err（既有契约）；
@@ -281,26 +313,48 @@ impl LoadReport {
     }
 }
 
-/// feature 级传播/丢弃决策收敛器。
+/// feature 级传播/丢弃决策收敛器（属性列化 GEO-17 的行生产点）。
 struct Collector {
     policy: RepairPolicy,
     features: Vec<GeoFeature>,
     report: LoadReport,
+    attrs: AttrSet,
 }
 
 impl Collector {
-    fn accept(&mut self, r: Result<GeoFeature, GeoError>) -> Result<(), GeoError> {
+    fn accept(&mut self, r: Result<(), GeoError>) -> Result<(), GeoError> {
         match r {
-            Ok(f) => {
-                self.features.push(f);
-                Ok(())
-            }
+            Ok(()) => Ok(()),
             Err(e) if self.policy == RepairPolicy::FastFail => Err(e),
             Err(e) => {
                 self.report.classify(&e);
                 Ok(())
             }
         }
+    }
+
+    /// 几何→feature 单管线（投影单点：kind_of 内 proj()，GEO-08 同路拒绝）。
+    /// kind_of 失败先于行追加——attrs 行与 features 恒对齐（GEO-17）。
+    fn push_geom(
+        &mut self,
+        gj: &geojson::Geometry,
+        name: Option<String>,
+        props: Option<&serde_json::Map<String, serde_json::Value>>,
+    ) -> Result<(), GeoError> {
+        let kind = kind_of(gj)?;
+        let bbox = bbox_of(&kind);
+        let row = self.attrs.add_row();
+        if let Some(p) = props {
+            load_props(&mut self.attrs, row, p);
+        }
+        let style = style::style_from_attrs(&self.attrs, row);
+        self.features.push(GeoFeature {
+            name,
+            kind,
+            style,
+            world_bbox: Some(bbox),
+        });
+        Ok(())
     }
 
     fn feed(&mut self, f: &geojson::Feature) -> Result<(), GeoError> {
@@ -316,13 +370,18 @@ impl Collector {
             }
             return Ok(()); // null 几何：FastFail 维持旧静默跳过（GEO-16 契约位）
         };
+        let props = f.properties.as_ref();
         if matches!(g.value, geojson::GeometryValue::GeometryCollection { .. }) {
             for sub in flatten_gc(g) {
+                // GC 子件共享 feature 级 name/props（每子件独立行，GEO-17）
+                let sub = sub.and_then(|g| self.push_geom(g, name.clone(), props));
                 self.accept(sub)?;
             }
             return Ok(());
         }
-        self.accept(feature_from(g, name, f.properties.as_ref()))
+        // 普通件也须经 accept 收敛（直返=绕过 Lenient 分类，GREEN 回归抓到）
+        let r = self.push_geom(g, name, props);
+        self.accept(r)
     }
 }
 
@@ -354,6 +413,7 @@ fn parse_impl(bytes: &[u8], policy: RepairPolicy) -> Result<(GeoDocument, LoadRe
         policy,
         features: Vec::new(),
         report: LoadReport::default(),
+        attrs: AttrSet::new(),
     };
     match root {
         geojson::GeoJson::FeatureCollection(fc) => {
@@ -364,6 +424,7 @@ fn parse_impl(bytes: &[u8], policy: RepairPolicy) -> Result<(GeoDocument, LoadRe
         geojson::GeoJson::Feature(f) => col.feed(&f)?,
         geojson::GeoJson::Geometry(g) => {
             for sub in flatten_gc(&g) {
+                let sub = sub.and_then(|g| col.push_geom(g, None, None));
                 col.accept(sub)?;
             }
         }
@@ -371,14 +432,16 @@ fn parse_impl(bytes: &[u8], policy: RepairPolicy) -> Result<(GeoDocument, LoadRe
     Ok((
         GeoDocument {
             features: col.features,
+            attrs: col.attrs,
         },
         col.report,
     ))
 }
 
-fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
+/// GC 展平一层（借用输出，props 由调用方复制入各子件行）。
+fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<&geojson::Geometry, GeoError>> {
     let geojson::GeometryValue::GeometryCollection { geometries } = &g.value else {
-        return vec![feature_from(g, None, None)];
+        return vec![Ok(g)];
     };
     geometries
         .iter()
@@ -386,18 +449,23 @@ fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
             if matches!(s.value, geojson::GeometryValue::GeometryCollection { .. }) {
                 Err(GeoError::NestedCollection)
             } else {
-                feature_from(s, None, None)
+                Ok(s)
             }
         })
         .collect()
 }
 
 /// 从 JSON 对象字符串解析样式（测试/宿主便利口；非法回默认）。
+/// GEO-17 边界口：JSON→一次性 AttrSet→列读（与主管线同一实现）。
 #[must_use]
 pub fn parse_style(props_json: &str) -> StyleRecord {
-    serde_json::from_str(props_json)
-        .map(|v| style::style_from_props(&v))
-        .unwrap_or_default()
+    let Ok(serde_json::Value::Object(m)) = serde_json::from_str(props_json) else {
+        return default_style();
+    };
+    let mut a = AttrSet::new();
+    let r = a.add_row();
+    load_props(&mut a, r, &m);
+    style::style_from_attrs(&a, r)
 }
 
 /// 解析 GeoJSON 文件。

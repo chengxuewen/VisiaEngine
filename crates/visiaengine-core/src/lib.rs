@@ -7,6 +7,8 @@
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
+mod attrs;
 mod scene;
 
+pub use attrs::AttrSet;
 pub use scene::{Component, CoreError, EntityId, Scene, Transform, Vec3};

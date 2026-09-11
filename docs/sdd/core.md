@@ -32,3 +32,12 @@ despawn 腾出的槽位由后续 spawn 复用：`slot` 相同、`generation` 严
 
 ## CORE-10: insert_replaces_component
 同实体重复 `insert` 同型组件为替换语义（get 恒得最后值），非多值叠加。
+
+## CORE-11: AttrSet 三型 typed 列
+`AttrSet` 提供 `add_row()->行号` + `set_f64/set_str/set_bool(row,name,v)->bool` 与 `f64/str_value/bool(row,name)->Option<T>` 读口。缺失（列不存在/异型读/行越界/空格）一律 `None` 不 panic——"属性缺席"与"值为 0/false"语义分离（样式键判定依赖）。
+
+## CORE-12: 行对齐是存储不变式
+列行数恒等于 `AttrSet::len()`；`set_*` 到越界行号隐式扩行（所有列同步 resize）；同行同名重写=覆盖。行号分配与元素↔行 1:1 由宿主维持（geo 侧见 GEO-17）。
+
+## CORE-13: 同名首写定型
+列一经创建类型锁定；后续异型 `set_*` 返回 `false` 且不改动数据（渲染/样式端可按列名稳定依赖类型）。
