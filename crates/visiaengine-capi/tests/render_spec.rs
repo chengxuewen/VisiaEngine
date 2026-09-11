@@ -2,9 +2,9 @@
 
 use std::ffi::CString;
 use visiaengine::{
-    MISS, VE_ERR_SIZE, visiaengine_create_headless, visiaengine_destroy,
-    visiaengine_entity_at, visiaengine_entity_count, visiaengine_load_gltf, visiaengine_load_geojson,
-    visiaengine_pick, visiaengine_readback, visiaengine_render, visiaengine_viewport,
+    MISS, VE_ERR_SIZE, visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
+    visiaengine_entity_count, visiaengine_load_geojson, visiaengine_load_gltf, visiaengine_pick,
+    visiaengine_readback, visiaengine_render, visiaengine_viewport,
 };
 
 fn fixture(name: &str) -> CString {
@@ -21,21 +21,38 @@ fn headless_load_render_readback_pipeline() {
     let ve = visiaengine_create_headless(160, 120);
     assert_ne!(ve, 0);
     // I1 占位语义已退场：装载实装 → 0
-    assert_eq!(visiaengine_load_gltf(ve, fixture("twoprim.glb").as_ptr()), 0);
-    assert_eq!(visiaengine_entity_count(ve), 2, "twoprim=2 件（GLTF-01 家族事实）");
+    assert_eq!(
+        visiaengine_load_gltf(ve, fixture("twoprim.glb").as_ptr()),
+        0
+    );
+    assert_eq!(
+        visiaengine_entity_count(ve),
+        2,
+        "twoprim=2 件（GLTF-01 家族事实）"
+    );
     assert_eq!(visiaengine_render(ve), 0);
     // 缓冲量值归因（CAPI-05 -5 专属运行时尺寸）
-    assert_eq!(visiaengine_readback(ve, std::ptr::null_mut(), 0), VE_ERR_SIZE);
+    assert_eq!(
+        visiaengine_readback(ve, std::ptr::null_mut(), 0),
+        VE_ERR_SIZE
+    );
     let mut small = vec![0u8; 100];
     assert_eq!(
         visiaengine_readback(ve, small.as_mut_ptr(), small.len() as u64),
         VE_ERR_SIZE
     );
     let mut buf = vec![0u8; 160 * 120 * 4];
-    assert_eq!(visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64), 0);
+    assert_eq!(
+        visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
+        0
+    );
     let mid = ((60 * 160 + 80) * 4) as usize;
     let lum = buf[mid] as u32 + buf[mid + 1] as u32 + buf[mid + 2] as u32;
-    assert!(lum > 40, "中心像素非背景，亮度={lum} rgba={:?}", &buf[mid..mid + 4]);
+    assert!(
+        lum > 40,
+        "中心像素非背景，亮度={lum} rgba={:?}",
+        &buf[mid..mid + 4]
+    );
     // pick 经同一帧几何：中心命中实体句柄 ∈ entity_at 值域
     let hit = visiaengine_pick(ve, 80.0, 60.0);
     assert_ne!(hit, MISS, "中心应命中");
@@ -47,7 +64,10 @@ fn headless_load_render_readback_pipeline() {
     assert_eq!(visiaengine_viewport(ve, 200, 150), 0);
     assert_eq!(visiaengine_render(ve), 0);
     let mut buf2 = vec![0u8; 200 * 150 * 4];
-    assert_eq!(visiaengine_readback(ve, buf2.as_mut_ptr(), buf2.len() as u64), 0);
+    assert_eq!(
+        visiaengine_readback(ve, buf2.as_mut_ptr(), buf2.len() as u64),
+        0
+    );
     assert_eq!(visiaengine_destroy(ve), 0);
 }
 
@@ -61,10 +81,15 @@ fn geo_ramp_scene_renders_colored_pixels() {
     assert_eq!(visiaengine_entity_count(ve), 4, "4 件（含无列回退件）");
     assert_eq!(visiaengine_render(ve), 0);
     let mut buf = vec![0u8; 256 * 256 * 4];
-    assert_eq!(visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64), 0);
+    assert_eq!(
+        visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
+        0
+    );
     // 非背景像素计数（ramp 着色的直接可见证据；逐像素色族断言归 WGPU 系 golden 域）
     let fg = buf
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| (p[0] as u32 + p[1] as u32 + p[2] as u32) > 60)
         .count();
     assert!(fg > 2000, "geo 面片像素不足: {fg}");

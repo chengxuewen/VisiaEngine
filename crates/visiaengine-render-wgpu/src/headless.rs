@@ -58,7 +58,11 @@ impl HeadlessBackend {
     pub fn render_to_pixels(&mut self, frame: &Frame) -> Option<OffscreenFrame> {
         self.render(frame);
         let (w, h) = (self.viewport.width(), self.viewport.height());
-        let bpr = (w * 4) as u64;
+        // 行对齐（COPY_BYTES_PER_ROW_ALIGNMENT）：任意 w 合法（capi 宿主尺寸不可控——
+        // 原实现仅 64px 倍数宽度可用，golden 域恰好躲过，I2 出图链实锤修复）
+        let bpr_raw = (w * 4) as u64;
+        let bpr = bpr_raw.div_ceil(u64::from(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT))
+            * u64::from(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
         let size = bpr * h as u64;
         let readback = self.core.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("readback"),
@@ -102,10 +106,14 @@ impl HeadlessBackend {
             .ok()?
             .map_err(|e| eprintln!("map failed: {e}"))
             .ok()?;
-        let rgba = readback
-            .get_mapped_range(0..size)
-            .ok()
-            .map(|v| v.to_vec())?;
+        let raw = readback.get_mapped_range(0..size).ok()?;
+        // 去 padding：按行裁回 packed（对外 OffscreenFrame 契约不变，消费方零感知）
+        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h as usize {
+            let start = y * bpr as usize;
+            rgba.extend_from_slice(&raw[start..start + bpr_raw as usize]);
+        }
+        drop(raw);
         readback.unmap();
         Some(OffscreenFrame {
             width: w,

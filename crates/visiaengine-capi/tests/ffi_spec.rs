@@ -103,11 +103,8 @@ fn handle_generation_slot_base1_stale_and_all_doors() {
         (ve2 & 0xFFFF_FFFF_0000_0000) != (ve3 & 0xFFFF_FFFF_0000_0000)
             || (ve2 >> 32) != (ve3 >> 32)
     );
-    assert_eq!(
-        visiaengine_render(ve3),
-        VE_ERR_STATE,
-        "I1 阶段出图未实装=-2（状态语义占位，I2 填实）"
-    );
+    // I2 已实装：空场景 render=0（出图链行为断言归 CAPI-04/render_spec）
+    assert_eq!(visiaengine_render(ve3), 0);
     visiaengine_destroy(ve2);
     visiaengine_destroy(ve3);
 }

@@ -10,5 +10,9 @@ name = "visiaengine"            # [FFI-R:v13-FEAS-4] 产物名=libvisiaengine.so
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+visiaengine-core.workspace = true
 visiaengine-render.workspace = true
+visiaengine-render-wgpu.workspace = true
+visiaengine-io-gltf.workspace = true
+visiaengine-geo.workspace = true
 # I2 起追加：visiaengine-{render-wgpu,geo,io-gltf} + wgpu + raw-window-handle（§3 边界）

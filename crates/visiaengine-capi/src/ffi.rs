@@ -9,6 +9,8 @@ use std::thread::ThreadId;
 
 use crate::engine::Engine;
 
+pub const VE_OK: i32 = 0;
+
 // ===== 返回码与 kind（Rust 单源，C 头/TS 皆镜像 [FFI-R:CS-M1/BS 纪律]）=====
 pub const VE_ERR_ARG: i32 = -1;
 pub const VE_ERR_STATE: i32 = -2;
@@ -134,6 +136,10 @@ pub extern "C" fn visiaengine_create_headless(w: u32, h: u32) -> u64 {
                 set_err(format!("create size {w}x{h} invalid (use >0; -5 family)"));
                 return 0; // u64 面失败仅 0（诊断走 last_error(NULL 语义：无句柄读 TLS)
             }
+            let Some(engine) = Engine::new_headless(w, h) else {
+                set_err("create: no adapter/device available".to_string());
+                return 0;
+            };
             let mut t = table_lock();
             if t.is_empty() {
                 t.push(Slot {
@@ -148,14 +154,14 @@ pub extern "C" fn visiaengine_create_headless(w: u32, h: u32) -> u64 {
             {
                 Some(i) => {
                     t[i].generation += 1;
-                    t[i].engine = Some(Engine::new(w, h));
+                    t[i].engine = Some(engine);
                     t[i].owner = Some(std::thread::current().id());
                     i
                 }
                 None => {
                     t.push(Slot {
                         generation: 1,
-                        engine: Some(Engine::new(w, h)),
+                        engine: Some(engine),
                         owner: Some(std::thread::current().id()),
                     });
                     t.len() - 1
@@ -210,27 +216,40 @@ pub extern "C" fn visiaengine_attach(ve: u64, win_ptr: u64, display_ptr: u64, ki
     )
 }
 
-/// 共用装载体（CAPI-05：path null=-1；IO=-3；装载管线 I2 实装=-2）。
+/// 锁表执行（Live 索引来自 gate；引擎中途消失=Err 传播给调用入口的哨兵分支）。
+fn with_engine<T>(
+    idx: usize,
+    f: impl FnOnce(&mut Engine) -> Result<T, String>,
+) -> Result<T, String> {
+    let mut t = table_lock();
+    match t[idx].engine.as_mut() {
+        Some(e) => f(e),
+        None => Err("engine released mid-call".to_string()),
+    }
+}
+
+/// 共用装载体（CAPI-04/05）：path null=-1；IO/解析失败=-3；成功=0（尺寸违规在 -5 族）。
 fn load_impl(ve: u64, path: *const c_char, label: &str) -> i32 {
     match gate(ve) {
-        Gate::Live(_) => {
+        Gate::Live(i) => {
             if path.is_null() {
                 set_err(format!("{label}: null path"));
                 return VE_ERR_ARG;
             }
             let cstr = unsafe { std::ffi::CStr::from_ptr(path) };
             let p = cstr.to_string_lossy().into_owned();
-            match std::fs::read(&p) {
-                Err(e) => {
-                    set_err(format!("{label} read '{p}': {e}"));
-                    VE_ERR_IO
+            let r = with_engine(i, |e| {
+                if label == "load_gltf" {
+                    e.load_gltf(&p)
+                } else {
+                    e.load_geojson(&p)
                 }
-                Ok(bytes) => {
-                    let _ = bytes;
-                    set_err(format!(
-                        "{label} parsed-source ready but assemble lands in I2 ('{p}')"
-                    ));
-                    VE_ERR_STATE
+            });
+            match r {
+                Ok(_) => VE_OK,
+                Err(msg) => {
+                    set_err(format!("{label} '{p}': {msg}"));
+                    VE_ERR_IO
                 }
             }
         }
@@ -294,10 +313,13 @@ pub extern "C" fn visiaengine_render(ve: u64) -> i32 {
     capi_guard!(
         {
             match gate(ve) {
-                Gate::Live(_) => {
-                    set_err("render: frame wiring lands in I2".to_string());
-                    VE_ERR_STATE
-                }
+                Gate::Live(i) => match with_engine(i, |e| e.render()) {
+                    Ok(()) => VE_OK,
+                    Err(msg) => {
+                        set_err(format!("render: {msg}"));
+                        VE_ERR_STATE
+                    }
+                },
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
             }
@@ -306,16 +328,35 @@ pub extern "C" fn visiaengine_render(ve: u64) -> i32 {
     )
 }
 
+/// [FFI-R:FC-5] 同 on_input：安全签名体内校验（allow=FFI 边界裁决记录）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn visiaengine_readback(ve: u64, buf: *mut u8, len: u64) -> i32 {
     capi_guard!(
         {
             match gate(ve) {
-                Gate::Live(_) => {
-                    // 无帧可读是硬前置（先于缓冲量值检查）；出图落地 I2 后转 -5 量值域
-                    let _ = (buf, len);
-                    set_err("readback: no frame before I2 wiring".to_string());
-                    VE_ERR_STATE
+                Gate::Live(i) => {
+                    // 无帧可读是硬前置（先于缓冲量值检查，CAPI-04）
+                    let need = match with_engine(i, |e| {
+                        e.frame_bytes()
+                            .ok_or_else(|| "no frame; call render".to_string())
+                    }) {
+                        Ok(n) => n,
+                        Err(msg) => {
+                            set_err(format!("readback: {msg}"));
+                            return VE_ERR_STATE;
+                        }
+                    };
+                    if buf.is_null() || (len as usize) < need {
+                        set_err(format!("readback buffer {len} < need {need}"));
+                        return VE_ERR_SIZE;
+                    }
+                    let dest = unsafe { std::slice::from_raw_parts_mut(buf, need) };
+                    let _ = with_engine(i, |e| {
+                        e.copy_frame(dest);
+                        Ok(0)
+                    });
+                    VE_OK
                 }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
@@ -335,12 +376,11 @@ pub extern "C" fn visiaengine_viewport(ve: u64, w: u32, h: u32) -> i32 {
                         set_err(format!("viewport {w}x{h}: zero dimension (-5 family)"));
                         return VE_ERR_SIZE;
                     }
-                    let mut t = table_lock();
-                    if let Some(e) = t[i].engine.as_mut() {
-                        e.w = w;
-                        e.h = h;
-                    }
-                    0
+                    let _ = with_engine(i, |e| {
+                        e.resize(w, h);
+                        Ok(0)
+                    });
+                    VE_OK
                 }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
@@ -367,7 +407,7 @@ pub extern "C" fn visiaengine_entity_count(ve: u64) -> i32 {
             Gate::Live(i) => table_lock()[i]
                 .engine
                 .as_ref()
-                .map_or(0, |e| e.entity_total) as i32,
+                .map_or(0, Engine::entity_count) as i32,
             Gate::State => VE_ERR_STATE,
             Gate::Arg => VE_ERR_ARG,
         },
@@ -376,26 +416,32 @@ pub extern "C" fn visiaengine_entity_count(ve: u64) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn visiaengine_pick(_ve: u64, _px: f32, _py: f32) -> u64 {
+pub extern "C" fn visiaengine_pick(ve: u64, px: f32, py: f32) -> u64 {
     capi_guard!(
         {
-            match gate(_ve) {
-                Gate::Live(_) => MISS, // 无装载件（I2 起 intersect 实装）
-                _ => MISS,             // u64 面无错误码族：一切异常=未命中哨兵
+            match gate(ve) {
+                Gate::Live(i) => {
+                    with_engine(i, |e| Ok(e.pick(px, py).map_or(MISS, enc_entity))).unwrap_or(MISS)
+                }
+                _ => MISS, // u64 面无错误码族：一切异常=未命中哨兵（CAPI-01/08）
             }
         },
         MISS
     )
 }
 
+/// 实体句柄编码（CAPI-08）：slot+gen 直译，无引擎侧基 1 偏置；miss=UINT64_MAX。
+fn enc_entity(id: visiaengine_core::EntityId) -> u64 {
+    enc(id.slot(), id.generation())
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn visiaengine_entity_at(ve: u64, index: u32) -> u64 {
     capi_guard!(
         match gate(ve) {
-            Gate::Live(_) => {
-                let _ = index;
-                MISS
-            } // 实体表 I2 实装
+            Gate::Live(i) =>
+                with_engine(i, |e| { Ok(e.entity_at(index).map_or(MISS, enc_entity)) })
+                    .unwrap_or(MISS),
             _ => MISS,
         },
         MISS
