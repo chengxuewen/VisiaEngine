@@ -13,3 +13,6 @@ create 记录 owner ThreadId；**例外集={abi_version, last_error}** 外全部
 
 ## CAPI-05: 输入映射与错误归因（前段，I1 生效子集）
 `VeInput.struct_size` 过小→`VE_ERR_ARG`（-1 入口参数家族；-5 专属缓冲/维度运行时量值——归因表）。kind 口径：PTR_DOWN 消费=1、其后 MOVE=orbit 消费=1、未按下的 MOVE=0（非本引擎事件不消费）、WHEEL=zoom 乘性（透视/正交共享 [E3D:B6]）、未登记 kind no-op=0。输入→相机=引擎策略非事件透传。
+
+## CAPI-04: headless 出图字节链
+`create_headless→load_*→render→readback` 全链经 C ABI：装载成功=0 且 entity_count 增长、render=0、readback 缓冲不足→-5/空指针→-1、像素回读非背景。viewport(w,h) 0 维→-5 族（w==0 归 -5 量值口径，attach kind 越界归 -1 参数口径）。pick 命中句柄 ∈ {entity_at(i)}（代际稳定），装载件的世界几何同一来源（REND-23/24 复用）。
