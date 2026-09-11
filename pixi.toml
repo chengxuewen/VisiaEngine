@@ -61,8 +61,9 @@ lint = "cargo clippy --workspace --all-targets -- -D warnings"
 fmt = "cargo fmt --all -- --check"
 fmt-fix = "cargo fmt --all"
 # 单文件格式化一律 rustfmt --edition 2024 <file>——禁止 cargo fmt -- <path>（其 -- 参数不是路径过滤，历史踩坑）
+gate-trace = "bash scripts/spec-trace.sh"   # 批2 v1.4：追溯本机化入 ci 链（[FFI-R:FC-6] 假绿窗口封堵）
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # GEO-18 解析边界门禁（代码形态，注释豁免）
-ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style"] }
+ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace"] }
 smoke-clear = "cargo run -p visiaengine-render-wgpu --example clear -- --frames 3"   # L2 窗口 smoke（S3 起有效；CI xvfb-run 调用）
 smoke-load-gltf = "cargo run -p visiaengine-render-wgpu --example load_gltf -- resources/data/twoprim.glb --frames 3"   # L2：glTF 装配链路（G3）
 smoke-geo-viewer = "cargo run -p visiaengine-render-wgpu --example geo_viewer -- resources/data/park.geojson --frames 3"   # L2：GeoJSON 链路（H4）
