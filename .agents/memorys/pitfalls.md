@@ -48,3 +48,9 @@
 - **根因**: ①桥配置假定 node 在 PATH，而本机遵 D5 纪律不装系统 node——环境里根本没注册 nodejs；②配置键写作 `env`，opencode schema（McpLocalConfig）正名 `environment`，未知键不报错只忽略；③桥脚本子进程还要 `npm`/`pixi`——绝对路径直启 node 也救不了这层。
 - **解法**: nodejs 纳入 pixi 默认环境（单源不破）；`with-node.sh` 包装器统一注入 node 目录+~/.pixi/bin 后透传 exec；配置键改正。
 - **验证**: `bash .opencode/with-node.sh node --version` 出号 + 桥拉起 timeout 存活；**任何 opencode 配置字段改动以 https://opencode.ai/config.json schema 为准，不凭记忆**；配置类修改需重启 opencode 才热载（运行会话用旧配置）。
+
+## PIT-7: cargo-deny audit 实时联网拉库=本机网络抖动的假失败源（2026-09-11）
+- **症状**: `pixi run ci` 时绿时红；红时全量测试/lint/clippy 皆绿，唯 audit 段 exit=1。
+- **根因**: `cargo deny check`（advisories 部分）**每次实时 git-fetch** RustSec advisory-db；本机对 github.com 的 TLS 出网（gnutls_handshake）间歇失败 → fetch 失败即红，与代码/依赖变更零相关。
+- **解法**: 认定"audit 红"前先 `grep 'failed to fetch advisory' ` 看日志；网络性失败重跑即可；真 advisory 才会输出 RUSTSEC-id。镜像 GitHub CI 端拉库成功率高，本机该症状会随网络环境波动。
+- **验证**: `pixi run cargo deny check` 连跑两次结果一致才算依赖面定论；不一致=网络层。

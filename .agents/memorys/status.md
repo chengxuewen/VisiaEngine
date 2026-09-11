@@ -59,4 +59,6 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 基线刷新：**72↔72 · 76 passed · ci exit=0（含 gate-style 段）· golden 9/9 无 SKIP**
 - 3b 已实施（修订降档 CPU lerp，GEO-20+渲染三色族 golden）：**73↔73 · 80 passed · ci exit=0 · SKIP 0**；批次 3 全清
 - 教训追加：grep -c 零匹配=exit 1 断 && 链（3b commit 链破一次，补跑坐实）
-- 下一步：批 2 宿主嵌入计划轮候令 / 批 3.5 交互片 / push（11 笔）
+- 3.5a/b 已实施（CORE-14/15+REND-21/22 射线族，MT 求交+屏幕口）：**77↔77 · 84 passed**；RED `929b3b6` GREEN `0db9d87`
+- GREEN 战果：slab tmax 变量误用真 bug + 测试侧两处（zoom 默认值/f32 aspect 噪声）；PIT-7 入档（deny 联网抖动假红）
+- 下一步：3.5d 量测 → 3.5c/e（依赖 3a 已就绪）；批 2 计划轮候令 / push（14 笔）
