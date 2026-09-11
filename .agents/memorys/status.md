@@ -61,4 +61,7 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 教训追加：grep -c 零匹配=exit 1 断 && 链（3b commit 链破一次，补跑坐实）
 - 3.5a/b 已实施（CORE-14/15+REND-21/22 射线族，MT 求交+屏幕口）：**77↔77 · 84 passed**；RED `929b3b6` GREEN `0db9d87`
 - GREEN 战果：slab tmax 变量误用真 bug + 测试侧两处（zoom 默认值/f32 aspect 噪声）；PIT-7 入档（deny 联网抖动假红）
-- 下一步：3.5d 量测 → 3.5c/e（依赖 3a 已就绪）；批 2 计划轮候令 / push（14 笔）
+- 3.5d 已实施（GEO-21/22 平面量测，amend 收编 lint）；3.5c/e 已实施（REND-23/24 pick_meshes + WGPU-12/13 高亮+**深度面补齐** + E401/E403 + smoke 双路）
+- 基线刷新：**83↔83 · 90 passed · ci exit=0 · golden 无 SKIP · smoke-pick/measure 本机真跑绿**
+- WGPU-13 存量修复：mesh 管线此前无深度缓冲（单对象 golden 掩盖）——多实体遮挡自此正确
+- 交互片（3.5 全 5 项）收口；下一步：批 2 计划轮候令 / 批 4 渲染强化 / push（当前 5 笔未推，远端由用户侧同步推进中）
