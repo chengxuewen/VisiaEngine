@@ -64,3 +64,13 @@ cargo test --workspace
 # 验证：覆盖率
 cargo tarpaulin --workspace 2>/dev/null || echo "tarpaulin not installed"
 ```
+
+## 本仓测试三层法（E3D:D5 纪律，2026-09-03 计划 v1.1 批次 0a）
+
+| 层 | 定义 | 命令 | 门禁位置 |
+|----|------|------|---------|
+| **T1 纯单元** | 无 GPU/窗口的逻辑断言（解析/数学/场景）| `cargo test --workspace` | `pixi run ci` |
+| **T2 帧预算 auto-smoke** | `--frames N` 离屏/窗口示例真执行 | `xvfb-run -a pixi run smoke-clear`（smoke-* 全族） | `pixi run ci`（L2 段）|
+| **T3 人工交互（诚实层）** | 无法自动化的交互验证（鼠标拾取、飞行相机等）——测试体 `#[ignore]` 且**运行时必须打印人检步骤清单**，报告时明说"T3 未跑/已人验" | `cargo test --workspace -- --ignored`（当前允许空集，命令合法空跑=通过） | 合并前人检 |
+
+原则：任何"测试通过"声明必须指明层级；T3 项禁止被 T1/T2 绿灯冒充（verification-honesty 条款的测试面投影）。

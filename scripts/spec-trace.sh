@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # SDD 条款号 ↔ 测试 `// spec:` 双向覆盖门禁（计划 §4）。L2 不占号，天然不在扫描面。
+# 条款起号以实施日 docs/sdd 实际 max+1 为准（现况 CORE10/REND20/WGPU11/GLTF8/GEO14）。
+# ⚠ 新命名空间：必须同步扩本文件两处正则 + docs/sdd 新文件，否则两侧扫描同时静默失明（假绿）。
+# 示例门禁见 rules/common/development-workflow.md（API 新增必带可运行 example）。
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 

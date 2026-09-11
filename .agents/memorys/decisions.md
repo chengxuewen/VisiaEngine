@@ -62,3 +62,8 @@
 - **影响**: 实施时机=**GeoJSON 片**（glTF demo 坐标小，现路径兼容零改动）；core SDD 届时补 CORE-11/12 重基行为断言；tile 切分粒度（地图级子毫米需求时）=io-geo 自决，引擎机制不变；极端远程精度需求预留 Cesium 式 high/low 为升级路径（不默认实现）。architecture.md ④/未决点表同步销账。
 - **证据**: `docs/reference/evidence/2026-09-03-rtc-hierarchy.md`
 - **追加勘误（2026-09-03 规划轮）**：'core SDD 补 CORE-11/12'归属错——rebase 组合数学主场在 render（core 无矩阵/wgpu 语义），实际编号=REND-19/20；CORE 命名空间本链无新增。
+
+## D8（预登记，未终审）: 宿主嵌入面三原则（2026-09-03 计划 v1.1 批次 0c）
+- **来源**: Easy3D 嵌入域调研 [E3D:C1/C2/C5]（docs/reference/easy3d.md），其 Qt 集成靠 QApplication::notify 私有 hack、ImGui 版丢鼠标坐标、GLFW 指针泄进 public ABI、绑定自动全扫——四坑全为我方反证。
+- **预登记内容**: ①引擎零事件 API：宿主统一经 `visiaengine_on_input(ev)` 注入，出向仅 `frame_requested`/`redraw_needed` 回调，永不要求宿主子类化/事件 poll；②渲染契约面（render trait + IR）禁携带任何窗口/surface 后端类型，rwh handle 只在 capi 边界出现（Easy3D renderer 模块 glfw 零引用实证该纯度可达）；③C ABI 首版=6 行 demo 证通最小集（create 即渲染就绪，零多阶段 init），未绑定项入 graveyard 流程，禁 GLOB 式全量扫绑。
+- **转正程序**: 宿主嵌入片计划轮（批 2）审查通过后，本条改写为正式 D8 裁决并补 rwh 路径 A/Qt feature 环境细节；被否内容留"修订面"注记。计划期间引用一律带"预登记"字样。
