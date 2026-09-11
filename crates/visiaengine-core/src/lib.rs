@@ -8,7 +8,9 @@
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 mod attrs;
+mod picking;
 mod scene;
 
 pub use attrs::AttrSet;
+pub use picking::{Ray, ray_aabb, ray_triangle, ray_triangle_double};
 pub use scene::{Component, CoreError, EntityId, Scene, Transform, Vec3};

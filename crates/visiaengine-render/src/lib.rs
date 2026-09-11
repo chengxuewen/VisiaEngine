@@ -9,7 +9,7 @@ pub mod camera;
 pub mod contract;
 pub mod rebase;
 
-pub use camera::CameraRig;
+pub use camera::{CameraRig, screen_to_ray_ortho, screen_to_ray_persp};
 pub use contract::{
     BackendError, Camera, Capability, DrawCommand, Frame, MaterialId, MeshDesc, MeshId,
     RenderBackend, Viewport,

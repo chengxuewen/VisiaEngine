@@ -41,3 +41,9 @@ despawn 腾出的槽位由后续 spawn 复用：`slot` 相同、`generation` 严
 
 ## CORE-13: 同名首写定型
 列一经创建类型锁定；后续异型 `set_*` 返回 `false` 且不改动数据（渲染/样式端可按列名稳定依赖类型）。
+
+## CORE-14: 射线×三角形（Möller–Trumbore）
+`ray_triangle(Ray{origin:Vec3,dir}, a,b,c) -> Option<t>`：CCW 正面命中（背向剔除，`ray_triangle_double` 双面口），返回距离参数 t（命中点=origin+t·dir）。背后（t≤0）、平行、出界（u/v/u+v）、退化（det≈0 零面积）一律 None 不 panic。全 f64（D7 远原点安全）。
+
+## CORE-15: 射线×AABB 剪除口
+`ray_aabb(Ray, min, max) -> bool`（slab 法）：框内起点=true；平行轴越界=false；全区间背后=false。供实体级即算剪除（bbox 不常存，[E3D:A5] 懒算语义；升级位=BVH，触发=bench 证据，CORE-12 行对齐纪律同源）。

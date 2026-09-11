@@ -4,6 +4,7 @@
 //! （无验证报错的几何死亡）。投影矩阵构造因此在此处手建并以 REND-11/12 行为断言锁死。
 
 use glam::{Mat4, Vec4};
+use visiaengine_core::{Ray, Vec3};
 
 /// f64 列主序 → f32（上传前唯一降位点，显式化避免 cast lint 面）。
 #[must_use]
@@ -203,4 +204,94 @@ impl CameraRig {
             .to_cols_array_2d(),
         ))
     }
+}
+
+// ===== REND-21/22：屏幕像素→世界射线（交互片，[E3D:4xx] 移植）=====
+
+const UP6: [f64; 3] = [0.0, 1.0, 0.0];
+
+#[must_use]
+fn vsub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+#[must_use]
+fn vcross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+#[must_use]
+fn vlen(a: [f64; 3]) -> f64 {
+    (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt()
+}
+#[must_use]
+fn vnorm(a: [f64; 3]) -> Option<[f64; 3]> {
+    let l = vlen(a);
+    (l > 1e-12).then(|| [a[0] / l, a[1] / l, a[2] / l])
+}
+
+/// 视基（fwd/right/up）。与 look_at 同一世界 UP 约定；极点视角（fwd∥UP）退化 None。
+#[must_use]
+fn view_basis(rig: &CameraRig) -> Option<([f64; 3], [f64; 3], [f64; 3])> {
+    let eye = rig.eye();
+    let fwd = vnorm(vsub(rig.target, eye))?;
+    let right = vnorm(vcross(fwd, UP6))?;
+    let up = vcross(right, fwd);
+    Some((fwd, right, up))
+}
+
+#[must_use]
+fn ndc(px: f32, py: f32, w: f32, h: f32) -> (f64, f64) {
+    (
+        2.0 * f64::from(px) / f64::from(w) - 1.0, // px=0 左缘 → -1
+        1.0 - 2.0 * f64::from(py) / f64::from(h), // py=0 顶缘 → +1（屏幕 y 向下）
+    )
+}
+
+/// 透视：屏幕像素（左上原点，px∈[0,w]）→ 世界射线（用 rig.fov_y，D7 全程 f64）。
+/// 退化输入（w/h≤0、fov 非法、极点姿态）None。
+#[must_use]
+pub fn screen_to_ray_persp(rig: &CameraRig, px: f32, py: f32, w: f32, h: f32) -> Option<Ray> {
+    let (fwd, right, up) = view_basis(rig)?;
+    if w <= 0.0 || h <= 0.0 || !rig.fov_y.is_finite() || rig.fov_y <= 0.0 {
+        return None;
+    }
+    let (nx, ny) = ndc(px, py, w, h);
+    let ty = (rig.fov_y / 2.0).tan();
+    let tx = ty * (f64::from(w) / f64::from(h));
+    let dir = [
+        fwd[0] + right[0] * tx * nx + up[0] * ty * ny,
+        fwd[1] + right[1] * tx * nx + up[1] * ty * ny,
+        fwd[2] + right[2] * tx * nx + up[2] * ty * ny,
+    ];
+    let e = rig.eye();
+    let d = vnorm(dir)?;
+    Some(Ray {
+        origin: Vec3::new(e[0], e[1], e[2]),
+        dir: Vec3::new(d[0], d[1], d[2]),
+    })
+}
+
+/// 正交：视平面偏移 origin = eye + right·(hw·nx) + up·(hh·ny)，dir=fwd。
+/// 半宽=rig.zoom，半高=zoom·h/w（REND-12 同一约定）。
+#[must_use]
+pub fn screen_to_ray_ortho(rig: &CameraRig, px: f32, py: f32, w: f32, h: f32) -> Option<Ray> {
+    let (fwd, right, up) = view_basis(rig)?;
+    if w <= 0.0 || h <= 0.0 || !rig.zoom.is_finite() || rig.zoom <= 0.0 {
+        return None;
+    }
+    let (nx, ny) = ndc(px, py, w, h);
+    let hw = rig.zoom;
+    let hh = rig.zoom * f64::from(h) / f64::from(w);
+    let eye = rig.eye();
+    Some(Ray {
+        origin: Vec3::new(
+            eye[0] + right[0] * hw * nx + up[0] * hh * ny,
+            eye[1] + right[1] * hw * nx + up[1] * hh * ny,
+            eye[2] + right[2] * hw * nx + up[2] * hh * ny,
+        ),
+        dir: Vec3::new(fwd[0], fwd[1], fwd[2]),
+    })
 }

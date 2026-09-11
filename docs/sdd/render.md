@@ -63,3 +63,9 @@ near>=far → `proj_matrix` 返回 None（构造式拒绝，零 panic）。
 
 ## REND-20: far_origin_precision_preserved
 origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域相对误差 <1e-4；对照旧路（world 直 f32 cast）误差 ≥0.25m。
+
+## REND-21: 透视屏幕射线
+`screen_to_ray_persp(rig, px, py, w, h) -> Option<Ray>`：左上原点像素系（px=0→NDC −1，py=0 顶缘→+1）；张角 tx=tan(fov_y/2)·aspect、ty=tan(fov_y/2)，dir=归一(fwd+right·tx·nx+up·ty·ny)，origin=eye。视基=与 look_at 同 UP 约定解析构造；退化输入（w/h≤0、fov 非法、极点 fwd∥UP）→ None。
+
+## REND-22: 正交屏幕射线 + D7 远场保持
+`screen_to_ray_ortho`：origin=eye+right·(hw·nx)+up·(hh·ny)（hw=rig.zoom、hh=zoom·h/w，与 REND-12 同约定），dir=fwd。两口全程 f64（世界大坐标下起点/方向无 f32 步长灾难——D7 断言面）。
