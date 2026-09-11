@@ -45,3 +45,9 @@ lat=89.0 → GeoError::InvalidCoord（|φ|>85.0511° 3857 发散域）。
 
 ## GEO-14: tessellate_input_is_origin_local
 D7 纪律接口化：`tessellate` 输入为**已减 origin 的 local 坐标**（引擎提供 `GeoKind::shifted` 作 world→local 原语，消费方不得手改顶点）；(1e7,0) 偏移方环 local 化细分 ≡ 原点方环细分（对应顶点 <1e-3 米）。
+
+## GEO-15: 宽松加载=分型丢弃计数
+`parse_geojson_lenient(bytes)` → `(doc, LoadReport)`：脏几何按 out_of_bounds/non_finite/unsupported/null_geometry/nested_collection 五类在产生点计数（typed GeoError 变体映射，非 reason 字符串反解）；`total_dropped()`=五类和；文档级错误（语法/IO）仍整文件 Err。`parse_geojson_with(bytes, RepairPolicy)` 为显式策略入口。
+
+## GEO-16: 旧入口 FastFail 语义冻结
+`parse_geojson` = `RepairPolicy::FastFail`：首件脏几何即整文档 Err（GEO-08 拒绝面原样保持）；`geometry:null` feature 维持旧静默跳过（不计数）；纯干净输入下双入口 features 结果一致且报告全零。

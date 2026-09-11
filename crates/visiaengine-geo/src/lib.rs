@@ -21,6 +21,12 @@ pub enum GeoError {
     Parse { reason: String },
     #[error("纬度 {lat}° 超出 Web Mercator 域 ±85.0511°")]
     InvalidCoord { lat: f64 },
+    #[error("坐标分量非有限（NaN/inf）")]
+    NonFinite,
+    #[error("不支持几何变体: {what}")]
+    Unsupported { what: &'static str },
+    #[error("GeometryCollection 嵌套 ≥2 层")]
+    NestedCollection,
     #[error("IO 失败: {source}")]
     Io {
         #[from]
@@ -142,6 +148,9 @@ pub const fn default_style() -> StyleRecord {
 
 fn proj(p: &geojson::Position) -> Result<[f64; 2], GeoError> {
     let s = p.as_slice();
+    if !s[0].is_finite() || !s[1].is_finite() {
+        return Err(GeoError::NonFinite);
+    }
     web_mercator(s[0], s[1]).ok_or(GeoError::InvalidCoord { lat: s[1] })
 }
 
@@ -162,9 +171,7 @@ fn push_bbox(mins: &mut [f64; 2], maxs: &mut [f64; 2], x: f64, y: f64) {
 }
 
 fn kind_of(gj: &geojson::Geometry) -> Result<GeoKind, GeoError> {
-    let bad = |why: &str| GeoError::Parse {
-        reason: why.to_string(),
-    };
+    let bad = |why: &'static str| GeoError::Unsupported { what: why };
     Ok(match &gj.value {
         geojson::GeometryValue::Point { coordinates } => GeoKind::Point(pt(coordinates)?),
         geojson::GeometryValue::MultiPoint { coordinates } => {
@@ -227,45 +234,146 @@ fn feature_from(
     })
 }
 
-/// 从字节解析（GEO-06/07/08 无文件入口）。
-pub fn parse_geojson(bytes: &[u8]) -> Result<GeoDocument, GeoError> {
-    let root = geojson::GeoJson::from_reader(std::io::Cursor::new(bytes)).map_err(|e| {
-        GeoError::Parse {
-            reason: e.to_string(),
+/// 修复策略（[E3D:A4] 移植）：FastFail=单件脏几何整文档 Err（既有契约）；
+/// Lenient=逐件丢弃+分型计数（GEO-15/16）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepairPolicy {
+    Lenient,
+    FastFail,
+}
+
+/// 宽松加载报告：丢弃原因的分型计数（GEO-15）。分类在产生点定死
+/// （typed GeoError 变体映射），不反解 reason 字符串。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LoadReport {
+    /// lon/lat 出 Web Mercator 域
+    pub dropped_out_of_bounds: u32,
+    /// 坐标分量 NaN/inf
+    pub dropped_non_finite: u32,
+    /// MultiPolygon/多部件 MLS/空环等未就绪变体
+    pub dropped_unsupported: u32,
+    /// `geometry: null` 的 feature（Lenient 下不再静默）
+    pub dropped_null_geometry: u32,
+    /// GeometryCollection 嵌套 ≥2 层
+    pub dropped_nested_collection: u32,
+}
+
+impl LoadReport {
+    /// 丢弃总数（五类和）。
+    #[must_use]
+    pub fn total_dropped(&self) -> u32 {
+        self.dropped_out_of_bounds
+            + self.dropped_non_finite
+            + self.dropped_unsupported
+            + self.dropped_null_geometry
+            + self.dropped_nested_collection
+    }
+
+    fn classify(&mut self, e: &GeoError) {
+        match e {
+            GeoError::InvalidCoord { .. } => self.dropped_out_of_bounds += 1,
+            GeoError::NonFinite => self.dropped_non_finite += 1,
+            GeoError::Unsupported { .. } => self.dropped_unsupported += 1,
+            GeoError::NestedCollection => self.dropped_nested_collection += 1,
+            // 文档级错误（语法/IO/NotFound）=整文件 Err，永不进丢弃计数
+            GeoError::Parse { .. } | GeoError::Io { .. } | GeoError::NotFound { .. } => {}
         }
-    })?;
-    let mut features = Vec::new();
-    let mut feed = |f: &geojson::Feature| -> Result<(), GeoError> {
+    }
+}
+
+/// feature 级传播/丢弃决策收敛器。
+struct Collector {
+    policy: RepairPolicy,
+    features: Vec<GeoFeature>,
+    report: LoadReport,
+}
+
+impl Collector {
+    fn accept(&mut self, r: Result<GeoFeature, GeoError>) -> Result<(), GeoError> {
+        match r {
+            Ok(f) => {
+                self.features.push(f);
+                Ok(())
+            }
+            Err(e) if self.policy == RepairPolicy::FastFail => Err(e),
+            Err(e) => {
+                self.report.classify(&e);
+                Ok(())
+            }
+        }
+    }
+
+    fn feed(&mut self, f: &geojson::Feature) -> Result<(), GeoError> {
         let name = f
             .properties
             .as_ref()
             .and_then(|p| p.get("name"))
             .and_then(geojson::JsonValue::as_str)
             .map(String::from);
-        let Some(g) = &f.geometry else { return Ok(()) };
+        let Some(g) = &f.geometry else {
+            if self.policy == RepairPolicy::Lenient {
+                self.report.dropped_null_geometry += 1;
+            }
+            return Ok(()); // null 几何：FastFail 维持旧静默跳过（GEO-16 契约位）
+        };
         if matches!(g.value, geojson::GeometryValue::GeometryCollection { .. }) {
             for sub in flatten_gc(g) {
-                features.push(sub?);
+                self.accept(sub)?;
             }
             return Ok(());
         }
-        features.push(feature_from(g, name, f.properties.as_ref())?);
-        Ok(())
+        self.accept(feature_from(g, name, f.properties.as_ref()))
+    }
+}
+
+/// 从字节解析（GEO-06/07/08 无文件入口；=FastFail 语义，GEO-16 契约位）。
+pub fn parse_geojson(bytes: &[u8]) -> Result<GeoDocument, GeoError> {
+    Ok(parse_impl(bytes, RepairPolicy::FastFail)?.0)
+}
+
+/// 宽松入口（GEO-15）：脏几何逐件丢弃+分型报告。
+pub fn parse_geojson_lenient(bytes: &[u8]) -> Result<(GeoDocument, LoadReport), GeoError> {
+    parse_impl(bytes, RepairPolicy::Lenient)
+}
+
+/// 策略显式入口（双口封装等价）。
+pub fn parse_geojson_with(
+    bytes: &[u8],
+    policy: RepairPolicy,
+) -> Result<(GeoDocument, LoadReport), GeoError> {
+    parse_impl(bytes, policy)
+}
+
+fn parse_impl(bytes: &[u8], policy: RepairPolicy) -> Result<(GeoDocument, LoadReport), GeoError> {
+    let root = geojson::GeoJson::from_reader(std::io::Cursor::new(bytes)).map_err(|e| {
+        GeoError::Parse {
+            reason: e.to_string(),
+        }
+    })?;
+    let mut col = Collector {
+        policy,
+        features: Vec::new(),
+        report: LoadReport::default(),
     };
     match root {
         geojson::GeoJson::FeatureCollection(fc) => {
             for f in &fc.features {
-                feed(f)?;
+                col.feed(f)?;
             }
         }
-        geojson::GeoJson::Feature(f) => feed(&f)?,
+        geojson::GeoJson::Feature(f) => col.feed(&f)?,
         geojson::GeoJson::Geometry(g) => {
             for sub in flatten_gc(&g) {
-                features.push(sub?);
+                col.accept(sub)?;
             }
         }
     }
-    Ok(GeoDocument { features })
+    Ok((
+        GeoDocument {
+            features: col.features,
+        },
+        col.report,
+    ))
 }
 
 fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
@@ -276,9 +384,7 @@ fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<GeoFeature, GeoError>> {
         .iter()
         .map(|s| {
             if matches!(s.value, geojson::GeometryValue::GeometryCollection { .. }) {
-                Err(GeoError::Parse {
-                    reason: "nested GeometryCollection 属 H2 展平策略".into(),
-                })
+                Err(GeoError::NestedCollection)
             } else {
                 feature_from(s, None, None)
             }

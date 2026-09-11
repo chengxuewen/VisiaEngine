@@ -127,25 +127,62 @@ fn walk<'a>(
     node: &gltf::Node<'a>,
     parent_world: &[[f64; 4]; 4],
     out: &mut Vec<GltfEntity>,
+    rep: &mut LoadReport,
 ) {
     // Transform 合成由 crate 完成（T·R·S 或原样 Matrix），本侧仅 f64 升位+层级乘（GLTF-08 直通）
     let world = mul(parent_world, &mat4_f64(node.transform().matrix()));
     if let Some(mesh) = node.mesh() {
         for prim in mesh.primitives() {
+            // GLTF-09：模式过滤（曾以假三角混入）+ 空 positions 跳过
+            if prim.mode() != gltf::mesh::Mode::Triangles {
+                rep.skipped_non_triangle += 1;
+                continue;
+            }
+            let data = read_mesh(get, &prim);
+            if data.positions.is_empty() {
+                rep.skipped_unreadable_positions += 1;
+                continue;
+            }
             out.push(GltfEntity {
                 name: node.name().map(String::from),
-                mesh: read_mesh(get, &prim),
+                mesh: data,
                 world,
             });
         }
     }
     for child in node.children() {
-        walk(get, &child, &world, out);
+        walk(get, &child, &world, out, rep);
+    }
+}
+
+/// primitive 级跳过报告（GLTF-09，[E3D:A4] 移植）。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LoadReport {
+    /// mode ≠ Triangles（POINTS/LINES 不得以假三角混入管线）
+    pub skipped_non_triangle: u32,
+    /// POSITION 缺失/类型不合/空读取
+    pub skipped_unreadable_positions: u32,
+}
+
+impl LoadReport {
+    /// 跳过总数。
+    #[must_use]
+    pub fn total_skipped(&self) -> u32 {
+        self.skipped_non_triangle + self.skipped_unreadable_positions
     }
 }
 
 /// 解析 GLB 文件为实体列表（场景根遍历+世界变换烘焙，primitive 级拆分）。
+/// GLTF-09：非 TRIANGLES 原语与空 positions 原语始终过滤（正确性），
+/// 报告需显式入口 [`load_gltf_with_report`]。
 pub fn load_gltf(path: impl AsRef<std::path::Path>) -> Result<GltfDocument, IoError> {
+    Ok(load_gltf_with_report(path)?.0)
+}
+
+/// 带跳过报告的入口（GLTF-09）。
+pub fn load_gltf_with_report(
+    path: impl AsRef<std::path::Path>,
+) -> Result<(GltfDocument, LoadReport), IoError> {
     let path = path.as_ref();
     let bytes = match std::fs::read(path) {
         Ok(b) => b,
@@ -172,6 +209,7 @@ pub fn load_gltf(path: impl AsRef<std::path::Path>) -> Result<GltfDocument, IoEr
         matches!(buf.source(), gltf::buffer::Source::Bin).then_some(blob.as_slice())
     };
     let mut entities = Vec::new();
+    let mut rep = LoadReport::default();
     let root = [
         [1.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
@@ -180,8 +218,8 @@ pub fn load_gltf(path: impl AsRef<std::path::Path>) -> Result<GltfDocument, IoEr
     ];
     if let Some(scene) = doc.default_scene() {
         for node in scene.nodes() {
-            walk(&get, &node, &root, &mut entities);
+            walk(&get, &node, &root, &mut entities, &mut rep);
         }
     }
-    Ok(GltfDocument { entities })
+    Ok((GltfDocument { entities }, rep))
 }

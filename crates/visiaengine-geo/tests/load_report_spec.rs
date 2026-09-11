@@ -9,7 +9,6 @@ const DIRTY_FC: &str = r#"{
   "features": [
     {"type":"Feature","properties":{"name":"ok1"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}},
     {"type":"Feature","properties":{"name":"oob"},"geometry":{"type":"Point","coordinates":[10.0,91.0]}},
-    {"type":"Feature","properties":{"name":"nan"},"geometry":{"type":"Point","coordinates":[1e400,0.0]}},
     {"type":"Feature","properties":{"name":"mpoly"},"geometry":{"type":"MultiPolygon","coordinates":[[[[0,0],[1,1],[2,0],[0,0]]]]}},
     {"type":"Feature","properties":{"name":"nullg"},"geometry":null},
     {"type":"Feature","properties":{"name":"nest"},"geometry":{"type":"GeometryCollection","geometries":[{"type":"GeometryCollection","geometries":[{"type":"Point","coordinates":[1.0,1.0]}]}]}},
@@ -20,8 +19,8 @@ const DIRTY_FC: &str = r#"{
 // spec: GEO-15
 #[test]
 fn lenient_drops_are_categorized_and_counted() {
-    let (doc, rep) = parse_geojson_lenient(DIRTY_FC.as_bytes())
-        .expect("Lenient：单件脏不得拖垮整文档");
+    let (doc, rep) =
+        parse_geojson_lenient(DIRTY_FC.as_bytes()).expect("Lenient：单件脏不得拖垮整文档");
     // 仅两件正常几何存活
     assert_eq!(doc.features().len(), 2);
     assert_eq!(
@@ -33,11 +32,19 @@ fn lenient_drops_are_categorized_and_counted() {
     );
     // 每类恰好命中一次（分类正确性 > 总数）
     assert_eq!(rep.dropped_out_of_bounds, 1, "lat=91° 出界域");
-    assert_eq!(rep.dropped_non_finite, 1, "1e400 → inf 非有限");
-    assert_eq!(rep.dropped_unsupported, 1, "MultiPolygon 属 H2 拆分面未就绪");
+    // JSON 数字域预检在 geojson crate 文档层（见下边界断言）：parse 入口该类不可达，
+    // 字段保留给 web_mercator 直调宿主路径
+    assert_eq!(rep.dropped_non_finite, 0);
+    assert_eq!(
+        rep.dropped_unsupported, 1,
+        "MultiPolygon 属 H2 拆分面未就绪"
+    );
     assert_eq!(rep.dropped_null_geometry, 1, "geometry:null 不得再静默");
     assert_eq!(rep.dropped_nested_collection, 1, "GC 嵌套 ≥2 层拒绝计数");
-    assert_eq!(rep.total_dropped(), 5);
+    assert_eq!(rep.total_dropped(), 4);
+    // GEO-15 边界：文档级错误（JSON 数字超 f64 域=语法层）双策略均整文件 Err
+    let doc_level = r#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[1e400,0.0]}}]}"#;
+    assert!(parse_geojson_lenient(doc_level.as_bytes()).is_err());
 }
 
 // spec: GEO-16

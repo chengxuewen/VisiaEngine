@@ -28,3 +28,6 @@ GLB 截断字节流 → `IoError::Parse`，零 panic 零 unwrap。
 
 ## GLTF-08: y_up_orientation_preserved
 loader 零坐标系改写：hierarchy 世界平移 z==3.0 原样出（无隐式 Z-up 翻号——行业转换属 geo 片）。
+
+## GLTF-09: primitive 模式过滤+跳过报告
+`load_gltf_with_report(path)` → `(doc, LoadReport)`：mode≠Triangles 的 primitive 跳过并计 `skipped_non_triangle`（不再以假三角混入实体表——正确性修复对旧入口同步生效），POSITION 缺失/不可读/空计 `skipped_unreadable_positions`；`load_gltf` 签名不变 = 丢弃报告的 wrapper。

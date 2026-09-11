@@ -94,11 +94,11 @@ fn y_up_orientation_preserved() {
 /// 手工组 GLB：mesh0 = [POINTS primitive(脏混入), TRIANGLES primitive(正常)]
 fn glb_bytes(json: &str, bin: &[u8]) -> Vec<u8> {
     let mut jp = json.as_bytes().to_vec();
-    while jp.len() % 4 != 0 {
+    while !jp.len().is_multiple_of(4) {
         jp.push(b' ');
     }
     let mut bp = bin.to_vec();
-    while bp.len() % 4 != 0 {
+    while !bp.len().is_multiple_of(4) {
         bp.push(0);
     }
     let total = 12 + 8 + jp.len() + 8 + bp.len();
@@ -131,14 +131,14 @@ fn mixed_mode_glb() -> Vec<u8> {
       "nodes":[{"mesh":0}],
       "meshes":[{"primitives":[
         {"attributes":{"POSITION":0},"mode":0},
-        {"attributes":{"POSITION":1,"indices":2}}]}],
+        {"attributes":{"POSITION":1},"indices":2}]}],
       "buffers":[{"byteLength":108}],
       "bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},
         {"buffer":0,"byteOffset":36,"byteLength":48},
         {"buffer":0,"byteOffset":84,"byteLength":24,"target":34963}],
       "accessors":[
-        {"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"},
-        {"bufferView":1,"componentType":5126,"count":4,"type":"VEC3"},
+        {"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[8,8,8]},
+        {"bufferView":1,"componentType":5126,"count":4,"type":"VEC3","min":[0,0,0],"max":[11,11,11]},
         {"bufferView":2,"componentType":5125,"count":6,"type":"SCALAR"}]}"#;
     glb_bytes(json, &bin)
 }
