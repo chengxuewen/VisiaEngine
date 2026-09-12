@@ -69,6 +69,15 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
 - 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
 
+## 批 4ab 材质纹理片基线（2026-09-12 收官）
+
+- M1 io-gltf（`2f293fe`）· M2 RED→GREEN（`4449fb3`→`c9d80f3`）· M3（`434e56e`+`7b92676` 条款体同步）
+- 管线：32B 材质块双 layout（Flat 逐像素零回归=构造保证）+ upload_texture(256 行距补零)+textured 双管线 (format,textured) 键；REND-25/26+WGPU-14/15 条款体入册（specular=mock-up Lambert 系数，非 GGX）
+- capi/example 纹理链路实装；texquad.glb=io-gltf builder #[ignore] emit 真源可再生；gate-abi 双 demo 路
+- 基线：**117 passed · ci exit=0 · spec-trace 97↔97 · golden SKIP 0 · GATE-ABI 14/14 · web-check ✓**
+- **R2 超阈待裁决**：WEB-SIZE raw=1062807B gz=431472B（基线 733KB/294KB gz **+47% > 15%**）；退路=「纹理解码仅 native，wasm 收 RGBA 裸字节口」**未擅自启用**，数字已记录待用户裁
+- 教训：PIT-8 入档（像素断言首版谓词=几何覆盖×滤波×通道乘法链，先探针实测再写断言；两轮各 1 次踩中）
+
 ## 批 2+批 7 落地基线（2026-09-11 收官）
 
 - 批 2 I0-I4 全清：capi 14 入口（句柄/栅栏/线程/错误协议/输入/attach）+ 双 C demo 真跑 + gate-abi/gate-trace 入 ci

@@ -54,3 +54,9 @@
 - **根因**: `cargo deny check`（advisories 部分）**每次实时 git-fetch** RustSec advisory-db；本机对 github.com 的 TLS 出网（gnutls_handshake）间歇失败 → fetch 失败即红，与代码/依赖变更零相关。
 - **解法**: 认定"audit 红"前先 `grep 'failed to fetch advisory' ` 看日志；网络性失败重跑即可；真 advisory 才会输出 RUSTSEC-id。镜像 GitHub CI 端拉库成功率高，本机该症状会随网络环境波动。
 - **验证**: `pixi run cargo deny check` 连跑两次结果一致才算依赖面定论；不一致=网络层。
+
+## PIT-8: T2 像素断言首版谓词必翻车——几何覆盖/通道乘法链未先实测（2026-09-12, 批 4ab M2/M3 两轮）
+- **症状**: M2 texture_render 首版：采样窗 (8,8) 全黑（脱四边形）+ 棋盘单像素族断言被线性滤波混合带打成橙灰；M3 capi 首版：`B<20` 谓词恒假（baseColorFactor 的 B=0.5 与红 texel 相乘→品红）且 ±1 四边形 21px 覆盖下红族核心仅 20 px。
+- **根因**: RED 写断言时凭 uv/投影直觉推像素，未先测「四边形屏幕 bbox」「texel×base×shade 通道乘积」。像素测试的谓词是**三条乘法链的交点**，任一链猜错即假红。
+- **解法**: 先跑一次性 dump 探针（区域步进打印 R/G 值或 bbox 统计），从实测值反推谓词阈值与窗口；探针删除、断言改写为**区域族统计**（count≥N 双族并存）而非单像素；fixture 尺寸让 texel≥16px 屏宽（滤波混合带吞 <8px 纯度核心）。
+- **验证**: 新像素断言首次运行前先 `-- --nocapture` 看数值带；计划期 [四个不装/诚实面] 禁止用调阈值掩盖断链——判据须保留判别力（uv 断链→某族恒 0 的不变式，M3 红=20/紫=304 即链路未通的证据形态）。
