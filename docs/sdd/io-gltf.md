@@ -31,3 +31,6 @@ loader 零坐标系改写：hierarchy 世界平移 z==3.0 原样出（无隐式 
 
 ## GLTF-09: primitive 模式过滤+跳过报告
 `load_gltf_with_report(path)` → `(doc, LoadReport)`：mode≠Triangles 的 primitive 跳过并计 `skipped_non_triangle`（不再以假三角混入实体表——正确性修复对旧入口同步生效），POSITION 缺失/不可读/空计 `skipped_unreadable_positions`；`load_gltf` 签名不变 = 丢弃报告的 wrapper。
+
+## GLTF-10: GLB 解码全输入无 panic（属性面）
+`load_gltf_bytes` 对任意字节流、任意 GLB header 组合（magic/version/total/chunk 篡改）、合法 fixture 的截断带零 panic——Err 合法、panic 契约违反。proptest 512 例×2 + 确定性截断带一测。

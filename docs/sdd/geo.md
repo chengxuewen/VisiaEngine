@@ -69,3 +69,6 @@ simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` �
 
 ## GEO-22: 环平面面积
 `ring_area(&[Vec3]) -> f64`：shoelace 绝对值、方向无关（GeoJSON 顺/逆时针双俗同值）、闭合重复点与否同值。顶点 <3 或任一非有限点 → 0（不猜测残缺多边形）。
+
+## GEO-23: 解析域全输入无 panic（属性面）
+`parse_geojson`（FastFail）与 `parse_geojson_lenient` 对**任意字节流与任意 f64 坐标域**（含 NaN/inf/越界/非法 JSON 结构）零 panic——Err/丢弃为合法出口，panic 为契约违反。proptest 512 例×3 性质覆盖（随机流/全 f64 坐标/干净域双策略一致性：无脏件时 total_dropped==0 且件数同）。
