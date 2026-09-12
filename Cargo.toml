@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://gitee.com/chengxuewen/VisiaEngine"
 
 [workspace.dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 proptest = "1"
 # 内部 crate（路径统一声明，成员引用 .workspace = true）
 visiaengine-core = { path = "crates/visiaengine-core", version = "0.1.0" }

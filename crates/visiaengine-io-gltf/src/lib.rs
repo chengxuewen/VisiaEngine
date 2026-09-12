@@ -27,6 +27,22 @@ pub struct GltfMesh {
     pub normals: Vec<[f32; 3]>,
     pub indices: Vec<u32>,
     pub base_color: [f32; 4],
+    /// GLTF-11：TEXCOORD_0（缺省=空，等长由 GLTF-03 同款占位纪律免——不填充）。
+    pub uv: Vec<[f32; 2]>,
+    /// baseColorTexture 解析后的 **image 槽位**（textures() 下标）；无纹理/
+    /// texCoord≠0（v0 只支持第一套 UV）/uri 图= None。
+    pub texture: Option<usize>,
+    /// PBR 因子收纳（render IR 的 specular 组合住 M2；io 层零换算）。
+    pub metallic_factor: f32,
+    pub roughness_factor: f32,
+}
+
+/// GLTF-11：embedded 纹理 CPU 解码产物（RGBA8 全展开——GPU 压缩格式=真 PBR 轮）。
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TextureDesc {
+    pub rgba: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -40,12 +56,19 @@ pub struct GltfEntity {
 #[derive(Debug)]
 pub struct GltfDocument {
     entities: Vec<GltfEntity>,
+    textures: Vec<TextureDesc>,
 }
 
 impl GltfDocument {
     #[must_use]
     pub fn entities(&self) -> &[GltfEntity] {
         &self.entities
+    }
+
+    /// images[] 槽位序的解码纹理（GLTF-11）。
+    #[must_use]
+    pub fn textures(&self) -> &[TextureDesc] {
+        &self.textures
     }
 }
 
@@ -76,6 +99,56 @@ fn read_v3<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<[f32; 3]> {
 }
 
 /// 索引按 u32→u16→u8 源类型降级读取（真实资产多为 u16/u8）。
+fn read_v2<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<[f32; 2]> {
+    use gltf::accessor::{DataType, Dimensions};
+    if acc.data_type() != DataType::F32 || acc.dimensions() != Dimensions::Vec2 {
+        return Vec::new();
+    }
+    gltf::accessor::util::Iter::<[f32; 2]>::new(acc, get).map_or(Vec::new(), |it| it.collect())
+}
+
+/// 解码全部 embedded images 为 RGBA8 槽位（GLTF-11）。uri/data:URI 图=
+/// UnsupportedFormat 级 Err（v0 禁 data:URI 契约）；解码失败=Parse（FastFail
+/// 一致，不静默丢纹理）。零 gltf feature 改动[FFI-R:Momus-B2]：走 json 根。
+fn decode_images(root: &gltf::json::Root, blob: &[u8]) -> Result<Vec<TextureDesc>, IoError> {
+    root.images
+        .iter()
+        .enumerate()
+        .map(|(i, img)| {
+            let Some(bv_index) = img.buffer_view else {
+                return Err(IoError::UnsupportedFormat);
+            };
+            let bv = &root.buffer_views[bv_index.value()];
+            // USize64(pub u64)：端口径统一走 u64→usize try_from
+            let start =
+                usize::try_from(bv.byte_offset.map_or(0, |o| o.0)).map_err(|_| IoError::Parse {
+                    reason: format!("image[{i}] byte_offset 越界"),
+                })?;
+            let len = usize::try_from(bv.byte_length.0).map_err(|_| IoError::Parse {
+                reason: format!("image[{i}] byte_length 越界"),
+            })?;
+            let bytes = blob
+                .get(
+                    start..start.checked_add(len).ok_or_else(|| IoError::Parse {
+                        reason: format!("image[{i}] 区间溢出"),
+                    })?,
+                )
+                .ok_or_else(|| IoError::Parse {
+                    reason: format!("image[{i}] 出 blob 范围"),
+                })?;
+            let img = image::load_from_memory(bytes).map_err(|e| IoError::Parse {
+                reason: format!("image[{i}] 解码失败: {e}"),
+            })?;
+            let (width, height) = (img.width(), img.height());
+            Ok(TextureDesc {
+                rgba: img.to_rgba8().into_raw(),
+                width,
+                height,
+            })
+        })
+        .collect()
+}
+
 fn read_indices<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<u32> {
     use gltf::accessor::{DataType, Dimensions};
     if acc.dimensions() != Dimensions::Scalar {
@@ -95,7 +168,11 @@ fn read_indices<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<u32> {
     .unwrap_or_default()
 }
 
-fn read_mesh<'a>(get: GetBuf<'a, '_>, prim: &gltf::Primitive<'a>) -> GltfMesh {
+fn read_mesh<'a>(
+    get: GetBuf<'a, '_>,
+    prim: &gltf::Primitive<'a>,
+    tex_slot: &dyn Fn(usize) -> Option<usize>,
+) -> GltfMesh {
     let positions = prim
         .get(&gltf::Semantic::Positions)
         .map_or(Vec::new(), |acc| read_v3(get, acc));
@@ -114,11 +191,25 @@ fn read_mesh<'a>(get: GetBuf<'a, '_>, prim: &gltf::Primitive<'a>) -> GltfMesh {
     let indices = prim
         .indices()
         .map_or(Vec::new(), |acc| read_indices(get, acc));
+    let pbr = prim.material().pbr_metallic_roughness();
+    // GLTF-11：baseColorTexture→image 槽位；texCoord≠0（v0 只支持第一套 UV）
+    // 与缺纹理= None（材质保留，纹理丢弃——契约注记）
+    let texture = pbr
+        .base_color_texture()
+        .filter(|info| info.tex_coord() == 0)
+        .and_then(|info| tex_slot(info.texture().index()));
+    let uv = prim
+        .get(&gltf::Semantic::TexCoords(0))
+        .map_or(Vec::new(), |acc| read_v2(get, acc));
     GltfMesh {
         positions,
         normals,
         indices,
-        base_color: prim.material().pbr_metallic_roughness().base_color_factor(),
+        base_color: pbr.base_color_factor(),
+        uv,
+        texture,
+        metallic_factor: pbr.metallic_factor(),
+        roughness_factor: pbr.roughness_factor(),
     }
 }
 
@@ -128,6 +219,7 @@ fn walk<'a>(
     parent_world: &[[f64; 4]; 4],
     out: &mut Vec<GltfEntity>,
     rep: &mut LoadReport,
+    tex_slot: &dyn Fn(usize) -> Option<usize>,
 ) {
     // Transform 合成由 crate 完成（T·R·S 或原样 Matrix），本侧仅 f64 升位+层级乘（GLTF-08 直通）
     let world = mul(parent_world, &mat4_f64(node.transform().matrix()));
@@ -138,7 +230,7 @@ fn walk<'a>(
                 rep.skipped_non_triangle += 1;
                 continue;
             }
-            let data = read_mesh(get, &prim);
+            let data = read_mesh(get, &prim, tex_slot);
             if data.positions.is_empty() {
                 rep.skipped_unreadable_positions += 1;
                 continue;
@@ -151,7 +243,7 @@ fn walk<'a>(
         }
     }
     for child in node.children() {
-        walk(get, &child, &world, out, rep);
+        walk(get, &child, &world, out, rep, tex_slot);
     }
 }
 
@@ -202,6 +294,9 @@ pub fn load_gltf_bytes_with_report(bytes: &[u8]) -> Result<(GltfDocument, LoadRe
     let get = |buf: gltf::buffer::Buffer<'_>| -> Option<&[u8]> {
         matches!(buf.source(), gltf::buffer::Source::Bin).then_some(blob.as_slice())
     };
+    let jroot = doc.as_json();
+    let textures = decode_images(jroot, &blob)?;
+    let tex_slot = |t: usize| -> Option<usize> { jroot.textures.get(t).map(|x| x.source.value()) };
     let mut entities = Vec::new();
     let mut rep = LoadReport::default();
     let root = [
@@ -212,10 +307,10 @@ pub fn load_gltf_bytes_with_report(bytes: &[u8]) -> Result<(GltfDocument, LoadRe
     ];
     if let Some(scene) = doc.default_scene() {
         for node in scene.nodes() {
-            walk(&get, &node, &root, &mut entities, &mut rep);
+            walk(&get, &node, &root, &mut entities, &mut rep, &tex_slot);
         }
     }
-    Ok((GltfDocument { entities }, rep))
+    Ok((GltfDocument { entities, textures }, rep))
 }
 
 /// 带跳过报告的 path 入口（GLTF-09；NotFound/IO 语义在此层，GLTF-05 契约位）。
