@@ -126,6 +126,7 @@ impl ApplicationHandler for App {
                 positions: &e.mesh.positions,
                 normals: &e.mesh.normals,
                 indices: &e.mesh.indices,
+                uv: &[],
             }) else {
                 eprintln!("skip entity: mesh upload failed");
                 continue;

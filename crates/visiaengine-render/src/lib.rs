@@ -13,7 +13,7 @@ mod picking;
 
 pub use camera::{CameraRig, screen_to_ray_ortho, screen_to_ray_persp};
 pub use contract::{
-    BackendError, Camera, Capability, DrawCommand, Frame, MaterialId, MeshDesc, MeshId,
-    RenderBackend, Viewport,
+    BackendError, Camera, Capability, DrawCommand, Frame, MaterialDesc, MaterialId, MeshDesc,
+    MeshId, RenderBackend, TextureDesc, TextureId, Viewport,
 };
 pub use picking::{MeshCandidate, PickHit, pick_meshes};

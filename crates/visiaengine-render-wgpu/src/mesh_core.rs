@@ -4,7 +4,8 @@
 use std::collections::HashMap;
 
 use visiaengine_render::{
-    BackendError, Capability, DrawCommand, Frame, MaterialId, MeshDesc, MeshId, Viewport,
+    BackendError, Capability, DrawCommand, Frame, MaterialDesc, MaterialId, MeshDesc, MeshId,
+    TextureDesc, TextureId, Viewport,
 };
 
 struct GpuMesh {
@@ -21,15 +22,29 @@ pub struct MeshCore {
     pub instance: wgpu::Instance,
     pub adapter: wgpu::Adapter,
     meshes: HashMap<MeshId, GpuMesh>,
-    materials: HashMap<MaterialId, wgpu::Buffer>,
+    materials: HashMap<MaterialId, MatGpu>,
     next_id: u64,
-    /// 色彩格式→管线（surface 格式多样性：Rgba/Bgra* 系，I3 格式对齐重构）
-    pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    /// 纹理槽位（WGPU-14）：tex id → (texture, view)；sampler 全局单例（REPEAT/linear）
+    textures: HashMap<u64, (wgpu::Texture, wgpu::TextureView)>,
+    next_tex: u64,
+    sampler: Option<wgpu::Sampler>,
+    /// (色彩格式, textured) → 管线（双 layout 双管线：mega-bool 否决 [E3D:B2]；
+    /// 格式维=I3 surface 遗产，≤4 管线现实 [Momus-R3]）
+    pipelines: HashMap<(wgpu::TextureFormat, bool), wgpu::RenderPipeline>,
     shader: wgpu::ShaderModule,
     layout: wgpu::PipelineLayout,
+    layout_tex: wgpu::PipelineLayout,
     bgl: wgpu::BindGroupLayout,
+    bgl_tex: wgpu::BindGroupLayout,
     /// 深度面缓存（WGPU-13：尺寸变更重建；pipeline 与 attachment 格式同源）
     depth_cache: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
+}
+
+/// 材质 GPU 态：32B uniform 块 + 可选纹理 view（textured 变体键源）。
+struct MatGpu {
+    buf: wgpu::Buffer,
+    textured: bool,
+    view: Option<wgpu::TextureView>,
 }
 
 /// 深度管线格式（wgpu 原生 [0,1]，PIT-5 纪律的正方）
@@ -90,9 +105,10 @@ impl MeshCore {
                 "../shaders/mesh.wgsl"
             ))),
         });
-        let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("mesh-bgl"),
-            entries: &[
+        // material block 32B（base_color+repeat+specular+pad，binding2 两 layout 同尺寸
+        // ——flat shader 忽略后部字段=逐像素零回归的构造保证 [Momus-B1]）
+        let mk_bgl = |label: &'static str, textured: bool| {
+            let mut entries = vec![
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
@@ -109,21 +125,66 @@ impl MeshCore {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(16),
+                        min_binding_size: wgpu::BufferSize::new(32),
                     },
                     count: None,
                 },
-            ],
-        });
+            ];
+            if textured {
+                entries.push(wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                });
+                entries.push(wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                });
+            }
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some(label),
+                entries: &entries,
+            })
+        };
+        let bgl_flat = mk_bgl("mesh-bgl", false);
+        let bgl_tex = mk_bgl("mesh-bgl-tex", true);
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("mesh-pl"),
-            bind_group_layouts: &[Some(&bgl)],
+            bind_group_layouts: &[Some(&bgl_flat)],
+            immediate_size: 0,
+        });
+        let layout_tex = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("mesh-pl-tex"),
+            bind_group_layouts: &[Some(&bgl_tex)],
             immediate_size: 0,
         });
         let mut pipelines = HashMap::new();
         pipelines.insert(
-            wgpu::TextureFormat::Rgba8Unorm,
-            build_pipeline(&device, &layout, &shader, wgpu::TextureFormat::Rgba8Unorm),
+            (wgpu::TextureFormat::Rgba8Unorm, false),
+            build_pipeline(
+                &device,
+                &layout,
+                &shader,
+                wgpu::TextureFormat::Rgba8Unorm,
+                false,
+            ),
+        );
+        pipelines.insert(
+            (wgpu::TextureFormat::Rgba8Unorm, true),
+            build_pipeline(
+                &device,
+                &layout_tex,
+                &shader,
+                wgpu::TextureFormat::Rgba8Unorm,
+                true,
+            ),
         );
         Self {
             device,
@@ -133,10 +194,15 @@ impl MeshCore {
             meshes: HashMap::new(),
             materials: HashMap::new(),
             next_id: 0,
+            textures: HashMap::new(),
+            next_tex: 0,
+            sampler: None,
             pipelines,
             shader,
             layout,
-            bgl,
+            layout_tex,
+            bgl: bgl_flat,
+            bgl_tex,
             depth_cache: None,
         }
     }
@@ -155,15 +221,20 @@ impl MeshCore {
     }
 
     pub fn upload_mesh(&mut self, desc: &MeshDesc<'_>) -> Result<MeshId, BackendError> {
-        if desc.positions.len() != desc.normals.len() || desc.indices.is_empty() {
+        if desc.positions.len() != desc.normals.len()
+            || desc.indices.is_empty()
+            || (!desc.uv.is_empty() && desc.uv.len() != desc.positions.len())
+        {
             return Err(BackendError {
                 reason: "MeshDesc length mismatch or empty indices".into(),
             });
         }
-        let mut interleaved: Vec<f32> = Vec::with_capacity(desc.positions.len() * 6);
-        for (p, n) in desc.positions.iter().zip(desc.normals.iter()) {
+        let mut interleaved: Vec<f32> = Vec::with_capacity(desc.positions.len() * 8);
+        for (idx, (p, n)) in desc.positions.iter().zip(desc.normals.iter()).enumerate() {
             interleaved.extend_from_slice(p);
             interleaved.extend_from_slice(n);
+            let uv = desc.uv.get(idx).copied().unwrap_or([0.0, 0.0]);
+            interleaved.extend_from_slice(&uv);
         }
         let vbuf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("mesh-vb"),
@@ -195,11 +266,130 @@ impl MeshCore {
     }
 
     pub fn upload_material(&mut self, base_color: [f32; 4]) -> Result<MaterialId, BackendError> {
-        let buf = self.uniform(bytemuck::cast_slice(&base_color), "material");
+        self.upload_material_desc(&MaterialDesc {
+            base_color,
+            texture: None,
+            repeat: [1.0, 1.0],
+            specular: 0.0,
+        })
+    }
+
+    /// 材质描述版（WGPU-14）：32B uniform 块 [base_color, repeat, specular, pad]；
+    /// texture=Some → textured 变体（引用未知纹理=Err，不静默降级）。
+    pub fn upload_material_desc(
+        &mut self,
+        desc: &MaterialDesc,
+    ) -> Result<MaterialId, BackendError> {
+        let (textured, view) = match desc.texture {
+            Some(tid) => match self.textures.get(&tid) {
+                Some((_, view)) => (true, Some(view.clone())),
+                None => {
+                    return Err(BackendError {
+                        reason: "material references unknown texture".into(),
+                    });
+                }
+            },
+            None => (false, None),
+        };
+        let block = [
+            desc.base_color[0],
+            desc.base_color[1],
+            desc.base_color[2],
+            desc.base_color[3],
+            desc.repeat[0],
+            desc.repeat[1],
+            desc.specular,
+            0.0,
+        ];
+        let buf = self.uniform(bytemuck::cast_slice(&block), "material");
         self.next_id += 1;
         let id = self.next_id;
-        self.materials.insert(id, buf);
+        self.materials.insert(
+            id,
+            MatGpu {
+                buf,
+                textured,
+                view,
+            },
+        );
         Ok(id)
+    }
+
+    /// RGBA8 → GPU 纹理（WGPU-14）：行距补零至 256 对齐（write_texture 约束）。
+    pub fn upload_texture(&mut self, desc: &TextureDesc<'_>) -> Result<TextureId, BackendError> {
+        if desc.width == 0 || desc.height == 0 {
+            return Err(BackendError {
+                reason: "zero-size texture".into(),
+            });
+        }
+        let need = desc.width as usize * desc.height as usize * 4;
+        if desc.rgba.len() < need {
+            return Err(BackendError {
+                reason: "texture data shorter than width*height*4".into(),
+            });
+        }
+        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("diffuse"),
+            size: wgpu::Extent3d {
+                width: desc.width,
+                height: desc.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let row = desc.width as usize * 4;
+        let stride = row.next_multiple_of(256);
+        let mut data = Vec::with_capacity(stride * desc.height as usize);
+        if stride == row {
+            data.extend_from_slice(&desc.rgba[..need]);
+        } else {
+            for y in 0..desc.height as usize {
+                data.extend_from_slice(&desc.rgba[y * row..(y + 1) * row]);
+                data.resize(data.len() + (stride - row), 0);
+            }
+        }
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(stride as u32),
+                rows_per_image: Some(desc.height),
+            },
+            wgpu::Extent3d {
+                width: desc.width,
+                height: desc.height,
+                depth_or_array_layers: 1,
+            },
+        );
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        self.next_tex += 1;
+        let id = self.next_tex;
+        self.textures.insert(id, (tex, view));
+        Ok(id)
+    }
+
+    fn ensure_sampler(&mut self) {
+        if self.sampler.is_none() {
+            self.sampler = Some(self.device.create_sampler(&wgpu::SamplerDescriptor {
+                label: Some("diffuse-samp"),
+                address_mode_u: wgpu::AddressMode::Repeat,
+                address_mode_v: wgpu::AddressMode::Repeat,
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                ..Default::default()
+            }));
+        }
     }
 
     #[must_use]
@@ -295,15 +485,6 @@ impl MeshCore {
                 }),
                 ..Default::default()
             });
-            let pipeline = match self.pipelines.get(&color_format) {
-                Some(p) => p.clone(),
-                None => {
-                    let p = build_pipeline(&self.device, &self.layout, &self.shader, color_format);
-                    self.pipelines.insert(color_format, p.clone());
-                    p
-                }
-            };
-            pass.set_pipeline(&pipeline);
             for cmd in &frame.commands {
                 let DrawCommand::DrawMesh {
                     mesh,
@@ -323,26 +504,76 @@ impl MeshCore {
                 );
                 let mvp_buf = self.uniform(bytemuck::cast_slice(&mvp), "mvp");
                 let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
-                    Some(gm) => (&gm.vbuf, &gm.ibuf, gm.index_count),
+                    Some(gm) => (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count),
                     None => continue,
                 };
                 let Some(mat) = self.materials.get(material) else {
                     continue;
                 };
-                let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("mesh-bg"),
-                    layout: &self.bgl,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: mvp_buf.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: mat.as_entire_binding(),
-                        },
-                    ],
-                });
+                let buf = mat.buf.clone();
+                let (textured, view) = (mat.textured, mat.view.clone());
+                let pipeline = match self.pipelines.get(&(color_format, textured)) {
+                    Some(p) => p.clone(),
+                    None => {
+                        let layout = if textured {
+                            &self.layout_tex
+                        } else {
+                            &self.layout
+                        };
+                        let p = build_pipeline(
+                            &self.device,
+                            layout,
+                            &self.shader,
+                            color_format,
+                            textured,
+                        );
+                        self.pipelines.insert((color_format, textured), p.clone());
+                        p
+                    }
+                };
+                pass.set_pipeline(&pipeline);
+                let bg = if textured {
+                    let Some(view) = view else { continue };
+                    self.ensure_sampler();
+                    let sampler = self.sampler.clone().expect("sampler just ensured");
+                    self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("mesh-bg-tex"),
+                        layout: &self.bgl_tex,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: mvp_buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 3,
+                                resource: wgpu::BindingResource::TextureView(&view),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 4,
+                                resource: wgpu::BindingResource::Sampler(&sampler),
+                            },
+                        ],
+                    })
+                } else {
+                    self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("mesh-bg"),
+                        layout: &self.bgl,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: mvp_buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: buf.as_entire_binding(),
+                            },
+                        ],
+                    })
+                };
                 pass.set_bind_group(0, &bg, &[]);
                 pass.set_vertex_buffer(0, vbuf.slice(..));
                 pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
@@ -361,6 +592,7 @@ fn build_pipeline(
     layout: &wgpu::PipelineLayout,
     shader: &wgpu::ShaderModule,
     color_format: wgpu::TextureFormat,
+    textured: bool,
 ) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("mesh-pipeline"),
@@ -370,9 +602,9 @@ fn build_pipeline(
             entry_point: Some("vs"),
             compilation_options: Default::default(),
             buffers: &[Some(wgpu::VertexBufferLayout {
-                array_stride: (6 * std::mem::size_of::<f32>()) as u64,
+                array_stride: (8 * std::mem::size_of::<f32>()) as u64,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3],
+                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2],
             })],
         },
         primitive: wgpu::PrimitiveState {
@@ -389,7 +621,7 @@ fn build_pipeline(
         multisample: Default::default(),
         fragment: Some(wgpu::FragmentState {
             module: shader,
-            entry_point: Some("fs"),
+            entry_point: Some(if textured { "fs_textured" } else { "fs" }),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format: color_format,

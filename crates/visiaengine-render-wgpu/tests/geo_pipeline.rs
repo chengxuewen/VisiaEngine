@@ -53,6 +53,7 @@ fn golden_geo_fill_hit() {
                     positions: &p.positions,
                     normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
                     indices: &p.indices,
+                    uv: &[],
                 })
                 .unwrap();
             let mat = backend.create_material(p.color).unwrap();
@@ -147,6 +148,7 @@ fn golden_scalar_ramp_pixels() {
                     positions: &p.positions,
                     normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
                     indices: &p.indices,
+                    uv: &[],
                 })
                 .unwrap();
             let mat = backend.create_material(p.color).unwrap();

@@ -75,3 +75,9 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-24: 拾取世界合成
 候选顶点 = 局部 f32 经 `world`（列主序 f64，`DrawMesh.transform` 同型）变换后再求交——缩放/平移合成命中点与 t 均落世界系（f64，D7 域）。空候选数组=None。
+
+## REND-25: MeshDesc.uv 可选语义
+`MeshDesc.uv: &'a [[f32;2]]`：空片=整 mesh 零填充 (0,0)（Flat 存量形态零改动）；非空且 ≠ len(positions) = 后端拒绝（不静默补齐，防错位采样）。
+
+## REND-26: RenderBackend 纹理扩展默认体
+`create_material_desc(&MaterialDesc)` 默认 = 转发 `create_material(base_color)`（texture/repeat/specular 丢弃=安全降级）；`upload_texture(&TextureDesc)` 默认 = 显式 Err（无纹理面后端不假装成功）。两者皆默认体=trait 向后兼容，存量 impl 零改动。

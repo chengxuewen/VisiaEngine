@@ -121,6 +121,7 @@ fn main() {
                 positions: &pos,
                 normals: &vec![[0.0, 0.0, 1.0]; pos.len()],
                 indices: &idx,
+                uv: &[],
             })
             .expect("mesh");
         let selected = hit.entity == entity;

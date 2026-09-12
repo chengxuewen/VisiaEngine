@@ -288,6 +288,7 @@ fn render_offscreen_cube_at_with(base_color: [f32; 4], offset: [f64; 3]) -> Opti
             positions: &pos,
             normals: &nrm,
             indices: &idx,
+            uv: &[],
         })
         .ok()?;
     let material = backend.create_material(base_color).ok()?;

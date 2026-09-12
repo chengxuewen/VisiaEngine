@@ -85,6 +85,7 @@ impl Engine {
                 positions,
                 normals: &vec![[0.0, 0.0, 1.0]; positions.len()],
                 indices,
+                uv: &[],
             })
             .map_err(|e| format!("create_mesh: {e:?}"))?;
         let material = self

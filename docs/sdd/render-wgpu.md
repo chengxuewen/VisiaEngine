@@ -45,3 +45,9 @@ mesh 管线挂 Depth32Float 面（pipeline `Less`+write on；pass 每帧 Clear(1
 
 ## WGPU-12: 选择高亮渲染面
 拾取链闭环可渲染：屏幕射线（REND-21/22）→ `pick_meshes`（REND-23/24）→ 选中实体 material 以高亮纯色重建（**CPU 侧覆写，[E3D:A5] by-name 的渲染侧最小子集**）→ 中心像素=高亮色族断言（双箱堆叠场景，pick_highlight.rs）。选择态本体=宿主/example 层 `Option<EntityId>` 数据（引擎零新增状态）。
+
+## WGPU-14: Textured 管线采样链
+材质绑定 32B 块 `[base_color, repeat, specular, pad]`（binding2 与 Flat 同布局同尺寸——Flat 侧 shader 忽略后部字段=逐像素零回归的构造保证 [Momus-B1]）。textured 变体（独立 bgl/pipeline，mega-bool 分支否决 [E3D:B2]）：fragment `out = base·shade ⊗ texel.rgb`，`a = base.a·texel.a`；uv 顶点属性 @location(2)（缺失=零填充，全采 texel(0,0)）。`upload_texture`：RGBA8，行距补零至 256B（write_texture 约束），零尺寸/数据短=w·h·4 → Err；材质引用未知纹理 id → Err（不静默降 Flat）。specular=PBR 收纳位，本条款不生效（GGX 独立轮——诚实注记）。
+
+## WGPU-15: repeat=采样相位倍率
+顶点 `out.uv = uv·mat.repeat`，sampler 全局单例 REPEAT/Linear：repeat=k → 视口内采样频率 ×k。机器 oracle：水平渐变纹理（R=4i）单行回绕断崖数 repeat=1 为 0、repeat=2 恰 1（棋盘奇偶对照在线性滤波下不成立——弃）。

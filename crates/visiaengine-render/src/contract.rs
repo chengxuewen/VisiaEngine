@@ -8,6 +8,9 @@ pub type MeshId = u64;
 /// 材质资源标识。
 pub type MaterialId = u64;
 
+/// GPU 纹理资源标识（WGPU-14）。
+pub type TextureId = u64;
+
 /// GPU 资源创建失败面（v0 仅承载后端拒绝；OOM 等设备丢失走 callback 侧）。
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 #[error("后端资源创建失败: {reason}")]
@@ -18,6 +21,8 @@ pub struct BackendError {
 /// CPU 侧网格上传描述（纯借用；positions/normals 等长由调用方担保，REND-06）。
 #[derive(Clone, Copy, Debug)]
 pub struct MeshDesc<'a> {
+    /// UV 通道 0（WGPU-14；缺省=空，上传端零填充——Flat 管线不读）。
+    pub uv: &'a [[f32; 2]],
     pub positions: &'a [[f32; 3]],
     pub normals: &'a [[f32; 3]],
     pub indices: &'a [u32],
@@ -170,4 +175,34 @@ pub trait RenderBackend {
     fn create_mesh(&mut self, desc: &MeshDesc<'_>) -> Result<MeshId, BackendError>;
     /// 材质注册（v0=base color 纯色，PBR 后续轮，REND-08）。
     fn create_material(&mut self, base_color: [f32; 4]) -> Result<MaterialId, BackendError>;
+
+    /// 纹理材质面（WGPU-14）：默认体转发纯色（不支持纹理的后端零改动即合规）。
+    fn create_material_desc(&mut self, desc: &MaterialDesc) -> Result<MaterialId, BackendError> {
+        self.create_material(desc.base_color)
+    }
+
+    /// embedded 纹理上传（GLTF-11 下游）：默认=不支持（Err 语义与 supports 面正交）。
+    fn upload_texture(&mut self, _desc: &TextureDesc<'_>) -> Result<TextureId, BackendError> {
+        Err(BackendError {
+            reason: "texture upload unsupported by this backend".into(),
+        })
+    }
+}
+
+/// 材质描述（WGPU-14 管线变体键源；`specular`=PBR 因子**收纳位**——
+/// 现 shader 无独立高光项，因子透传不生效，真 GGX=独立轮[FFI-R 诚实注记]）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MaterialDesc {
+    pub base_color: [f32; 4],
+    pub texture: Option<TextureId>,
+    pub repeat: [f32; 2],
+    pub specular: f32,
+}
+
+/// CPU 侧 RGBA8 纹理借用（io-gltf/geo 产出 → 后端 upload 的中间 IR）。
+#[derive(Clone, Copy, Debug)]
+pub struct TextureDesc<'a> {
+    pub rgba: &'a [u8],
+    pub width: u32,
+    pub height: u32,
 }

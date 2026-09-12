@@ -104,6 +104,7 @@ fn selected_entity_renders_highlight_overlay() {
                 positions: &local,
                 normals: &vec![[0.0, 0.0, 1.0]; local.len()],
                 indices: &idx,
+                uv: &[],
             })
             .unwrap();
         let mat = backend.create_material(color).unwrap();
@@ -167,6 +168,7 @@ fn occlusion_independent_of_draw_order() {
                     positions: &pos,
                     normals: &vec![[0.0, 0.0, 1.0]; pos.len()],
                     indices: &idx,
+                    uv: &[],
                 })
                 .unwrap();
             let mat = backend.create_material(color).unwrap();

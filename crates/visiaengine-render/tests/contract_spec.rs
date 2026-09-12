@@ -1,8 +1,8 @@
 //! visiaengine-render 契约测试（仅公开 API；// spec: 标签入双向追溯门禁）。
 
 use visiaengine_render::{
-    BackendError, Camera, Capability, DrawCommand, Frame, MaterialId, MeshDesc, MeshId,
-    RenderBackend, Viewport,
+    BackendError, Camera, Capability, DrawCommand, Frame, MaterialDesc, MaterialId, MeshDesc,
+    MeshId, RenderBackend, TextureDesc, Viewport,
 };
 
 const IDENTITY4: [[f32; 4]; 4] = [
@@ -136,6 +136,7 @@ fn mesh_desc_constructible() {
         positions: &pos,
         normals: &nrm,
         indices: &idx,
+        uv: &[],
     };
     assert_eq!(desc.positions.len(), 3);
 }
@@ -152,6 +153,7 @@ fn create_mesh_returns_distinct_ids() {
         positions: &pos,
         normals: &pos,
         indices: &[0, 1, 2],
+        uv: &[],
     };
     let m1 = b.create_mesh(&desc).unwrap();
     let m2 = b.create_mesh(&desc).unwrap();
@@ -224,4 +226,32 @@ fn drawmesh_carries_origin() {
         DrawCommand::DrawMesh { origin, .. } => assert_eq!(origin, [1.0e7, 0.0, 0.0]),
         DrawCommand::ClearColor { .. } => panic!("expected mesh"),
     }
+}
+
+// spec: REND-26
+#[test]
+fn trait_defaults_texture_extension() {
+    let mut s = Stub {
+        meshes: 0,
+        materials: 100,
+    };
+    // 默认体=转发：texture/repeat/specular 被安全丢弃，id 仍由 create_material 分配
+    let id = s
+        .create_material_desc(&MaterialDesc {
+            base_color: [1.0, 0.0, 0.0, 1.0],
+            texture: Some(7),
+            repeat: [2.0, 2.0],
+            specular: 0.5,
+        })
+        .unwrap();
+    assert_eq!(id, 101);
+    // 无纹理后端 upload=显式拒绝（不假成功）
+    let e = s
+        .upload_texture(&TextureDesc {
+            rgba: &[0u8; 4],
+            width: 1,
+            height: 1,
+        })
+        .unwrap_err();
+    assert!(e.reason.contains("unsupported"), "{e:?}");
 }

@@ -145,6 +145,7 @@ impl ApplicationHandler for App {
                     positions: &p.positions,
                     normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
                     indices: &p.indices,
+                    uv: &[],
                 }) else {
                     continue;
                 };
