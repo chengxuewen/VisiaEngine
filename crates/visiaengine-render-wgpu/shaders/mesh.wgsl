@@ -1,7 +1,7 @@
 struct Mat {
     base_color: vec4<f32>,
     repeat: vec2<f32>,
-    specular: f32, // WGPU-14 收纳位：现不生效（无 GGX 高光项），真 PBR 独立轮
+    specular: f32, // mock-up [4ab①/WGPU-14]：参与 Lambert 亮度系数（非 GGX，真 PBR=独立轮）
     _pad: f32,
 };
 
