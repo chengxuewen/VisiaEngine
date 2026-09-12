@@ -157,3 +157,17 @@ fn image_segment_tampering_never_panics() {
         let _ = load_gltf_bytes(&v);
     }
 }
+
+/// 真源注记：`resources/data/texquad.glb` = 本 builder 输出（capi/render_spec 纹理链路
+/// fixture 消费面）。重生：`cargo test -p visiaengine-io-gltf emit_textured_glb_fixture -- --ignored`
+#[test]
+#[ignore = "fixture 生成（非验证）"]
+fn emit_textured_glb_fixture() {
+    let glb = build_textured_glb();
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../resources/data/texquad.glb"
+    );
+    std::fs::write(path, &glb).expect("write fixture");
+    println!("wrote {path} ({} bytes)", glb.len());
+}

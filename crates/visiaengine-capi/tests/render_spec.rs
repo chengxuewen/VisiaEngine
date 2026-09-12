@@ -158,3 +158,42 @@ fn wheel_zoom_changes_ortho_frame() {
     assert_eq!(visiaengine_on_input(ve, &tiny), VE_ERR_ARG);
     assert_eq!(visiaengine_destroy(ve), 0);
 }
+
+// spec: CAPI-04
+#[test]
+fn textured_glb_mount_renders_checker() {
+    // M3 链路复核：texquad.glb（4×4 棋盘 PNG + TEXCOORD_0 + baseColor 0.5,0.25,0.5）
+    // mount 后必须走 Textured 变体：棋盘红格（B≈0）与白格×base（紫：B≈R）双族并存。
+    // uv 断链（=&[] 零填）→ 全采 (0,0) 红格 → 紫族=0 即红。
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    assert_eq!(
+        visiaengine_load_gltf(ve, fixture("texquad.glb").as_ptr()),
+        0
+    );
+    assert_eq!(visiaengine_entity_count(ve), 1);
+    assert_eq!(visiaengine_render(ve), 0);
+    let mut buf = vec![0u8; 160 * 120 * 4];
+    assert_eq!(
+        visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
+        0
+    );
+    let (mut reds, mut violets) = (0u32, 0u32);
+    for y in 40..80 {
+        for x in 50..110 {
+            let p = &buf[((y * 160 + x) * 4) as usize..][..4];
+            // 红 texel×base → (R,0,B)品红族；白 texel×base → (R,G,B) G≈R/2。
+            // uv 断链=全采 (0,0) 红 texel → 第二族恒 0。
+            if p[0] > 60 && p[1] < 15 {
+                reds += 1;
+            } else if p[0] > 40 && p[1] > 25 && p[2] > 40 {
+                violets += 1;
+            }
+        }
+    }
+    assert!(
+        reds > 30 && violets > 30,
+        "棋盘双族缺失 red={reds} violet={violets}"
+    );
+    assert_eq!(visiaengine_destroy(ve), 0);
+}

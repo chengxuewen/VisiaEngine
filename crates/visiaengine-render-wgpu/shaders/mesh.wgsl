@@ -32,7 +32,10 @@ fn vs(in: VsIn) -> FsIn {
     out.pos = view_proj * vec4<f32>(in.pos, 1.0);
     let n = normalize(in.normal);
     let l = normalize(LIGHT);
-    let shade = 0.35 + 0.65 * max(dot(n, l), 0.0);
+    // mock-up [4ab①/WGPU-14]：specular 参与 Lambert 亮度系数（非 GGX）。
+    // 存量材质 specular=0 → `s + 0.0` 逐位恒等=Flat 零回归不受累。
+    let ndl = max(dot(n, l), 0.0);
+    let shade = 0.35 + 0.65 * ndl + mat.specular * ndl;
     out.color = mat.base_color.rgb * shade;
     out.uv = in.uv * mat.repeat;
     return out;

@@ -168,6 +168,35 @@ fn draw_grad(repeat: [f32; 2]) -> visiaengine_render_wgpu::OffscreenFrame {
     b.render_to_pixels(&sc.frame).expect("render")
 }
 
+fn draw_flat_mat(specular: f32) -> visiaengine_render_wgpu::OffscreenFrame {
+    let mut b = HeadlessBackend::new(W, H).expect("adapter");
+    let mid = b
+        .create_material_desc(&visiaengine_render::MaterialDesc {
+            base_color: [1., 1., 1., 1.],
+            texture: None,
+            repeat: [1., 1.],
+            specular,
+        })
+        .expect("material");
+    let (q, mut sc) = quad_and_frame(mid);
+    let mesh = b
+        .create_mesh(&MeshDesc {
+            positions: &q.positions,
+            normals: &[[0., 0., 1.]; 4],
+            indices: &q.indices,
+            uv: &q.uv,
+        })
+        .unwrap();
+    if let DrawCommand::DrawMesh {
+        mesh: m, material, ..
+    } = &mut sc.frame.commands[1]
+    {
+        *m = mesh;
+        *material = mid;
+    }
+    b.render_to_pixels(&sc.frame).expect("render")
+}
+
 // spec: WGPU-14
 #[test]
 fn textured_pipeline_samples_checker_x_base_x_shade() {
@@ -303,4 +332,22 @@ fn material_unknown_texture_is_err() {
         specular: 0.0,
     });
     assert!(r.is_err(), "未知纹理引用不得静默降 Flat");
+}
+
+// spec: WGPU-14
+#[test]
+fn specular_mockup_boosts_lambert() {
+    // mock-up [4ab①]：specular 参与 Lambert 亮度系数（非 GGX）。
+    // 白基色无纹理平面：spec=0.8 的中心区最大值应比 spec=0 亮 ≥15%。
+    let bright = draw_flat_mat(0.8);
+    let plain = draw_flat_mat(0.0);
+    let mx = |img: &visiaengine_render_wgpu::OffscreenFrame| -> u32 {
+        (20..44)
+            .map(|y| (20..44).map(|x| px(img, x, y)[0] as u32).max().unwrap_or(0))
+            .max()
+            .unwrap_or(0)
+    };
+    let (b, p) = (mx(&bright), mx(&plain));
+    assert!(p > 60, "base 亮度 {p}");
+    assert!(b * 100 > p * 115, "mock-up 未生效 {b} vs {p}");
 }

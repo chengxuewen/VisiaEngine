@@ -114,17 +114,36 @@ impl ApplicationHandler for App {
                 return;
             }
         };
+        // GLTF-11 纹理槽位 → GPU 纹理（image 槽位序，与 capi mount 同构）
+        let mut tex_ids = Vec::with_capacity(doc.textures().len());
+        for t in doc.textures() {
+            match core.upload_texture(&visiaengine_render::TextureDesc {
+                rgba: &t.rgba,
+                width: t.width,
+                height: t.height,
+            }) {
+                Ok(id) => tex_ids.push(id),
+                Err(e) => eprintln!("skip texture: {e:?}"),
+            }
+        }
         for e in doc.entities() {
             let Ok(mesh) = core.upload_mesh(&MeshDesc {
                 positions: &e.mesh.positions,
                 normals: &e.mesh.normals,
                 indices: &e.mesh.indices,
-                uv: &[],
+                uv: &e.mesh.uv,
             }) else {
                 eprintln!("skip entity: mesh upload failed");
                 continue;
             };
-            let Ok(mat) = core.upload_material(e.mesh.base_color) else {
+            let mat = visiaengine_render::MaterialDesc {
+                base_color: e.mesh.base_color,
+                texture: e.mesh.texture.and_then(|s| tex_ids.get(s).copied()),
+                repeat: [1.0, 1.0],
+                // mock-up [4ab①]：(1-metallic)*roughness（WGPU-14 Lambert 系数）
+                specular: (1.0 - e.mesh.metallic_factor) * e.mesh.roughness_factor,
+            };
+            let Ok(mat) = core.upload_material_desc(&mat) else {
                 continue;
             };
             // D7：world 4x4 分解 = 平移列 origin + 纯位姿 local

@@ -4,8 +4,8 @@
 
 use visiaengine_core::{EntityId, Scene};
 use visiaengine_render::{
-    Camera, CameraRig, DrawCommand, Frame, MaterialId, MeshCandidate, MeshDesc, MeshId,
-    RenderBackend, Viewport, pick_meshes, screen_to_ray_ortho, screen_to_ray_persp,
+    Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MaterialId, MeshCandidate, MeshDesc,
+    MeshId, RenderBackend, Viewport, pick_meshes, screen_to_ray_ortho, screen_to_ray_persp,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::surface::Swapchain;
@@ -76,7 +76,8 @@ impl Engine {
         entity: EntityId,
         positions: &[[f32; 3]],
         indices: &[u32],
-        color: [f32; 4],
+        mat: &MaterialDesc,
+        uv: &[[f32; 2]],
         origin: [f64; 3],
     ) -> Result<(), String> {
         let mesh = self
@@ -85,13 +86,13 @@ impl Engine {
                 positions,
                 normals: &vec![[0.0, 0.0, 1.0]; positions.len()],
                 indices,
-                uv: &[],
+                uv,
             })
             .map_err(|e| format!("create_mesh: {e:?}"))?;
         let material = self
             .backend
-            .create_material(color)
-            .map_err(|e| format!("create_material: {e:?}"))?;
+            .create_material_desc(mat)
+            .map_err(|e| format!("create_material_desc: {e:?}"))?;
         self.items.push(DrawItem {
             mesh,
             material,
@@ -125,14 +126,35 @@ impl Engine {
         if n == 0 {
             return Err("no primitives".to_string());
         }
+        // GLTF-11 纹理槽位 → GPU 纹理 id（去重按 image 槽位；同图多 primitive 共享）
+        let mut tex_ids = Vec::with_capacity(doc.textures().len());
+        for t in doc.textures() {
+            tex_ids.push(
+                self.backend
+                    .upload_texture(&visiaengine_render::TextureDesc {
+                        rgba: &t.rgba,
+                        width: t.width,
+                        height: t.height,
+                    })
+                    .map_err(|e| format!("upload_texture: {e:?}"))?,
+            );
+        }
         for e in doc.entities() {
             let id = self.scene.spawn();
             // 局部顶点不变；headless persp 相机 ±10 域，twoprim/hierarchy 同尺度合法
+            let mat = MaterialDesc {
+                base_color: e.mesh.base_color,
+                texture: e.mesh.texture.and_then(|s| tex_ids.get(s).copied()),
+                repeat: [1.0, 1.0],
+                // mock-up [4ab①]：(1-metallic)*roughness 反向强度→Lambert 系数（WGPU-14）
+                specular: (1.0 - e.mesh.metallic_factor) * e.mesh.roughness_factor,
+            };
             self.upload(
                 id,
                 &e.mesh.positions,
                 &e.mesh.indices,
-                e.mesh.base_color,
+                &mat,
+                &e.mesh.uv,
                 [0.0; 3],
             )?;
         }
@@ -178,7 +200,13 @@ impl Engine {
                 if p.positions.is_empty() || p.indices.len() < 3 {
                     continue;
                 }
-                self.upload(id, &p.positions, &p.indices, p.color, origin)?;
+                let mat = MaterialDesc {
+                    base_color: p.color,
+                    texture: None,
+                    repeat: [1.0, 1.0],
+                    specular: 0.0,
+                };
+                self.upload(id, &p.positions, &p.indices, &mat, &[], origin)?;
             }
         }
         Ok(n)

@@ -17,4 +17,7 @@ echo "ABI-SYMBOLS=$N/14 | SO_SIZE=$(du -h "$SO" | cut -f1)"
       -L target/debug -lvisiaengine -o target/demo_headless || { echo "GATE-ABI ✗ demo 编译"; exit 1; }
 LD_LIBRARY_PATH=$PWD/target/debug ./target/demo_headless resources/data/twoprim.glb \
       || { echo "GATE-ABI ✗ demo 运行"; exit 1; }
+# M3 出口判据 4：纹理件链路（texquad=io-gltf builder 真源生成，GLTF-11 fixture）
+LD_LIBRARY_PATH=$PWD/target/debug ./target/demo_headless resources/data/texquad.glb \
+      || { echo "GATE-ABI ✗ demo 纹理件运行"; exit 1; }
 echo "GATE-ABI ✓"
