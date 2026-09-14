@@ -197,3 +197,30 @@ fn textured_glb_mount_renders_checker() {
     );
     assert_eq!(visiaengine_destroy(ve), 0);
 }
+
+// spec: CAPI-04
+#[test]
+fn viewport_resize_reconfigures_frame_dims() {
+    // Qt 轮 Q1 行为锁：viewport(w,h) 即 resize 合同（headless 面=target 重建
+    // 且 MeshCore 驻留；窗口面 sw.resize 路径由 smoke-x11/Qt demo 人验）。
+    // 锁点：①换尺寸后新 dims readback 通过 ②旧尺寸缓冲=VE_ERR_SIZE（证 dims 真变了）
+    // ③换回旧 dims 复现（可逆，非一次性重建事故）。
+    let ve = visiaengine_create_headless(64, 48);
+    assert_ne!(ve, 0);
+    assert_eq!(visiaengine_load_gltf(ve, fixture("twoprim.glb").as_ptr()), 0);
+    assert_eq!(visiaengine_render(ve), 0);
+    assert_eq!(visiaengine_viewport(ve, 80, 60), 0);
+    assert_eq!(visiaengine_render(ve), 0);
+    let mut big = vec![0u8; 80 * 60 * 4];
+    assert_eq!(visiaengine_readback(ve, big.as_mut_ptr(), big.len() as u64), 0);
+    let mut old = vec![0u8; 64 * 48 * 4];
+    assert_eq!(
+        visiaengine_readback(ve, old.as_mut_ptr(), old.len() as u64),
+        VE_ERR_SIZE,
+        "换尺寸后旧 dims 必须被拒（合同真变）"
+    );
+    assert_eq!(visiaengine_viewport(ve, 64, 48), 0);
+    assert_eq!(visiaengine_render(ve), 0);
+    assert_eq!(visiaengine_readback(ve, old.as_mut_ptr(), old.len() as u64), 0);
+    assert_eq!(visiaengine_destroy(ve), 0);
+}
