@@ -75,3 +75,27 @@
 - **根因**: 场景本身合法——13m 楼 × 低日角（ld 水平分量 0.5/0.79≈0.63）→ 影长 ≈10m；16×16 密排城的影带首尾相接，**前景本就是受影区**。「受光地应在此」是屏幕直觉，不是光线-几何推演。
 - **解法**: 像素断言失配时，先做光源几何计算（影长=Σh·|l.xy|/l.z 与城占位关系）再进参数二分；场景演示例的影子用**族计数**（本例 dark=影地+楼暗面族）不做位置点断言。
 - **验证**: 任何新增渲染 example 的人检图跑 `look_at` 式视觉复核（本次靠它发现真缺陷=底图被城压住→右偏置修复）；纯数值断言过≠图对。
+
+## PIT-11: API 台账以名判义不读实现=计划前提整块塌方（2026-09-14, Qt 轮 v1.0 REJECT）
+- **症状**: 计划断言「14 入口零 resize 通道，需新设第 15 符号 CAPI-10」；Momus 审核读实现推翻——`visiaengine_viewport(w,h)`（第 14 入口）即完整 resize 通道（ffi.rs:441 0 维拒 → engine.rs:405 w/h+backend.resize+Window sw.resize）。若按假前提开工=多一冗余符号+三锁返工。
+- **根因**: 取证只 grep 了**入口名集**，对 `viewport` 按字面名判为「视口查询」——名≠义；能力面台账的正确构建=读实现调用链，不是读函数名。
+- **解法**: 任何「能力缺失/需要新入口」断言，必须先 grep 该能力的**动词实现**（resize/reconfigure/set_size 字样）+ 读一条从入口到效果体的调用链再下结论。
+- **验证**: 计划 §0 锚点必须含文件:行到实现体（非仅符号表）；Momus 审核负责任的点名为「引用实测」正是本条的机器面。
+
+## PIT-12: conda-forge Qt6 双坑——包名正字法与 QX11Application 缺物（2026-09-14, Qt 轮 Q2）
+- **症状**: ①`qt-main` 装出来是 **Qt5**（5.15.15，lib/cmake 只有 Qt5*）；②改 `qt6-main` 后 Qt6Config/xcb 插件俱在，但 `<QNativeInterface/QX11Application>` 头**不存在**（x11extras 未打包）——widget 取 Display* 的公开 API 路线断头。
+- **根因**: conda-forge Qt 系包名历史分裂（qt-main=Qt5 遗产名，Qt6=qt6-main 前缀式）；「pixi search 模糊命中」包名坑族第二例（第一例 xorg-xvfb-server）。QX11Application 属 qtx11extras 模块，qt6-main 裁剪不含。
+- **解法**: 宿主 Xlib 自持 `Display*`（XOpenDisplay/XSync/CloseDisplay 三调用面）+ winId() 的 xid **跨 X 连接共享**（attach 合同 demo_x11 同机件实证）；QT_QPA_PLATFORM_PLUGIN_PATH 显式钉 `$CONDA_PREFIX/lib/qt6/plugins`。
+- **验证**: `ls $CONDA_PREFIX/lib/cmake/Qt6/Qt6Config.cmake && find $CONDA_PREFIX/include -name QX11Application`（后者应空→触发 Xlib 路线）；`pixi list -e qt-spike | grep qt6-main` 确认非 qt-main。
+
+## PIT-13: C ABI 手写头缺 extern "C" 护栏——纯 C 测试全绿掩盖 C++ 必炸（2026-09-14, CMake 层 C2）
+- **症状**: `visiaengine.h` 零 `extern "C"` 包裹；C demos（E701/702）与 14 入口 nm 门禁三轮全绿；C++ 消费者（ctest 探针 consume_capi.cpp）首链即 `undefined reference to 'visiaengine_abi_version()'`（C++ mangling）。
+- **根因**: 消费者测试面与 ABI 声明语言**同构偏差**——C 头配 C 测试=自证循环；C++/Rust FFI 才是真实宿主语言分布（Qt/Flutter/C# 全走 C++ 编译单元）。
+- **解法**: 手写头首行区加 `#ifdef __cplusplus extern "C" {` 护栏；消费者探针矩阵必须含 **≥1 个 C++ TU**（本仓=cmake/probe ctest 常驻）；新 C ABI 面的验收锚从「C demo 跑通」升「C+C++ 双语言跑通」。
+- **验证**: `grep -c 'extern "C"' crates/visiaengine-capi/include/visiaengine.h` ≥2；`pixi run ctest --test-dir target/cmake-bare` 1/1。
+
+## PIT-14: 环境态污染门禁断言——激活壳 PATH 让「强制模式」假通过 + 报文折行让全句 grep 漏失（2026-09-14, C1 审核期/C3）
+- **症状**: ①`-DRUST_SDK=SYSTEM` 在 pixi 激活 shell 下 find_program 命中 conda 树内 cargo，判成 [system] 通过——「强制系统」语义在该环境不可能为真却无报错；②逃生舱 FATAL 断言 grep 全句「无 capi 产物」漏失——cmake 把报文折成两行「无 capi\n产物」。
+- **根因**: ①解析器的查找域=当前环境，而环境的 PATH/PREFIX 受激活态污染——「强制 X」若不显式排除非 X 来源即名存实亡；②终端/日志折行对全文匹配是破坏性的。
+- **解法**: ①强制模式加**反污染双滤**（find_program 结果前缀比对 CONDA_PREFIX/.pixi、Qt6_DIR 同检，命中=拒收报文指名）；②门禁断言一律用**跨折行稳定短语**（"无 capi" 级），负路径断言同时接受 rc 与报文双条件。
+- **验证**: `pixi run bash scripts/cmake-smoke.sh`（双负路径报文在断言列）；SYSTEM 拒收报文在本机激活态必现。

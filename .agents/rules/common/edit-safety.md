@@ -143,7 +143,9 @@ grep -c "重复模式" <file>    # 期望 1；>1 = edit 重复插入
 
 ### 9. 同区域连续 edit 前必须 grep 现状
 
-**规则**: 对同一文件同一函数/区域做连续 edit 时，每次 edit 前先 `grep -c "<锚点行内容>" <file>` 确认唯一性；对"已有内容 + 插入"模式（在旧代码前加日志/改签名），优先用 python 精确字符串替换（读→replace→写回），不用 edit 的 lines 数组重复命中。
+**规则**: 对同一文件同一函数/区域做连续 edit 时，每次 edit 前先 `grep -c "<锚点行内容>" <file>` 确认唯一性；
+
+**扩（2026-09-14 三判）**: 跨步 python 批量编辑脚本的锚文本**必须写脚本当场从盘读取**（grep/sed 实况），禁止凭上一轮草稿记忆手敲——本会话 3 个脚本 assert 恰因此崩（rustfmt 重排「改 AUTO」→「改 PIXI」、D8 标题异文、smoke bullet 缩进层）；assert-first 模式已证明零损失，但崩一次=浪费一轮。对"已有内容 + 插入"模式（在旧代码前加日志/改签名），优先用 python 精确字符串替换（读→replace→写回），不用 edit 的 lines 数组重复命中。
 
 **先例**: 2026-08-11 调试轮 — edit 工具三次重复插入（stop() 函数签名 ×2、main 声明 ×2、日志行残留），每次 build 才暴露，浪费 3 轮。修复统一走 python replace（assert count==1）。
 
@@ -217,4 +219,5 @@ grep -c "重复模式" <file>    # 期望 1；>1 = edit 重复插入
 **规则**: 形如 `python3 - <<'EOF' ... EOF` 换行 `git add ... && git commit` 的组合中，**python 的 assert 失败不阻止后面的 git 链**（换行=分隔符，非 `&&`）。后果：编辑被拦截但提交照跑，commit message 声称的动作与实际产物脱节（先例：docs(memory) 笔声称"AGENTS 同步"而 AGENTS 未动，靠追加收口提交修正）。多步"编辑→提交"要么全链 `&&`，要么提交前重跑 `git status --short` 核对暂存面。
 **先例**: 2026-09-03 pixi 环境提交轮（锚行记忆不精确 → assert 拦截 → 消息/产物分叉）。
 **验证**: commit 前 `git diff --cached --stat` 与 message 声称文件清单逐项对得上。
+**口径扩展（2026-09-14）**: 同一实测纪律覆盖**计划文档与 README 的声明数字**（Momus 抓「六段」实为 9 段；gate-docs② 把 README 条款数变机器断言即本条的门禁化）。凡可校验数入文，先跑一遍拿真值。
 **阻塞条件**: message 含"N 文件同步"类复数声明而 cached diff 未逐一核验。
