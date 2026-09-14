@@ -446,7 +446,7 @@ impl MeshCore {
             .iter()
             .find_map(|c| match c {
                 DrawCommand::ClearColor { rgba } => Some(*rgba),
-                DrawCommand::DrawMesh { .. } => None,
+                DrawCommand::DrawMesh { .. } | DrawCommand::DrawInstances { .. } => None,
             })
             .unwrap_or([0.0; 4]);
         self.ensure_depth(width.max(1), height.max(1));

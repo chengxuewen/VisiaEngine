@@ -11,6 +11,8 @@ pub type MaterialId = u64;
 /// GPU 纹理资源标识（WGPU-14）。
 pub type TextureId = u64;
 
+/// GPU 实例表资源标识（REND-27，4c）。
+pub type InstanceId = u64;
 /// GPU 资源创建失败面（v0 仅承载后端拒绝；OOM 等设备丢失走 callback 侧）。
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 #[error("后端资源创建失败: {reason}")]
@@ -28,6 +30,39 @@ pub struct MeshDesc<'a> {
     pub indices: &'a [u32],
 }
 
+/// 楼块实例（REND-27，4c；范围裁决④：translate + z 挤出，无旋转仿射）。
+/// 布局钉 = WGSL `Instance` 32B 逐字节同形（[f32;3] 对齐 4 vs vec3 对齐 16 的
+/// 巧合互嵌：offset 0..12 / height 12..16 / color 16..28 / pad 28..32；
+/// Pod 编译期担保，异同即红——test_pod_layout_32b 双锁）。
+#[repr(C)]
+#[derive(bytemuck::Pod, bytemuck::Zeroable, Clone, Copy, Debug, PartialEq)]
+pub struct Instance {
+    /// origin-local 偏移（D7：世界远坐标住在 DrawCommand::origin，REND-28）
+    pub offset: [f32; 3],
+    /// z 挤出高度（单位盒底 z=0 对齐，≥0）
+    pub height: f32,
+    /// 实例色（与 material.base_color 相乘链，REND-27 裁决点 c：alpha 不实例化）
+    pub color: [f32; 3],
+    _pad: f32,
+}
+
+impl Instance {
+    #[must_use]
+    pub const fn new(offset: [f32; 3], height: f32, color: [f32; 3]) -> Self {
+        Self {
+            offset,
+            height,
+            color,
+            _pad: 0.0,
+        }
+    }
+}
+
+/// 实例表上传描述（借用式同 MeshDesc）。
+#[derive(Clone, Copy, Debug)]
+pub struct InstanceDesc<'a> {
+    pub data: &'a [Instance],
+}
 /// 能力位（Tier 矩阵钩子，architecture.md ⑥；v0 枚举从简）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Capability {
@@ -139,6 +174,16 @@ pub enum DrawCommand {
         /// origin-local 位姿，列主序 f64（REND-18）。
         transform: [[f64; 4]; 4],
     },
+    /// 实例化批量绘制（REND-28，4c）：同一 mesh×material 的 N 次实例，
+    /// origin D7 语义与 DrawMesh 同款（实例 offset 为 origin-local f32）。
+    DrawInstances {
+        mesh: MeshId,
+        material: MaterialId,
+        /// 实例表句柄（create_instances 产物，REND-27）。
+        instances: InstanceId,
+        origin: [f64; 3],
+        transform: [[f64; 4]; 4],
+    },
 }
 
 impl DrawCommand {
@@ -147,6 +192,7 @@ impl DrawCommand {
         match self {
             Self::ClearColor { .. } => "clear-color",
             Self::DrawMesh { .. } => "draw-mesh",
+            Self::DrawInstances { .. } => "draw-instances",
         }
     }
 }
@@ -187,10 +233,17 @@ pub trait RenderBackend {
             reason: "texture upload unsupported by this backend".into(),
         })
     }
+
+    /// 实例表上传（REND-27，4c）：默认=不支持（与 upload_texture 同款显式拒绝协议）。
+    fn create_instances(&mut self, _desc: &InstanceDesc<'_>) -> Result<InstanceId, BackendError> {
+        Err(BackendError {
+            reason: "instancing unsupported by this backend".into(),
+        })
+    }
 }
 
-/// 材质描述（WGPU-14 管线变体键源；`specular`=PBR 因子**收纳位**——
-/// 现 shader 无独立高光项，因子透传不生效，真 GGX=独立轮[FFI-R 诚实注记]）。
+/// 材质描述（WGPU-14 管线变体键源；`specular`=mock-up [4ab①]：参与既有 Lambert
+/// 亮度系数（非 GGX 高光项——真 PBR=独立轮，诚实注记 WGPU-14 条款体）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MaterialDesc {
     pub base_color: [f32; 4],

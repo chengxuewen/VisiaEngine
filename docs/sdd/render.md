@@ -81,3 +81,9 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-26: RenderBackend 纹理扩展默认体
 `create_material_desc(&MaterialDesc)` 默认 = 转发 `create_material(base_color)`（texture/repeat/specular 丢弃=安全降级）；`upload_texture(&TextureDesc)` 默认 = 显式 Err（无纹理面后端不假装成功）。两者皆默认体=trait 向后兼容，存量 impl 零改动。
+
+## REND-27: 实例表契约（4c）
+`create_instances(&InstanceDesc{data:&[Instance]}) -> Result<InstanceId, BackendError>` 默认体=显式 Err（无实例面后端不假装成功，upload_texture 同款协议）。`Instance` = 32B Pod（`repr(C)`：offset[0..12]/height[12..16]/color[16..28]/pad[28..32]，与 WGSL `struct Instance` 逐字节同形，offset_of+bytes 双断言锁）；仅经 `Instance::new` 构造（pad 归零担保）。实例色为 RGB——alpha 恒住材质（裁决点 c）。
+
+## REND-28: DrawInstances 变体（4c）
+`DrawCommand::DrawInstances{mesh, material, instances: InstanceId, origin, transform}`——D7 origin 语义与 DrawMesh 同款（f64 远坐标层，实例 offset 为 origin-local f32）；`kind()="draw-instances"`；消费端穷举 match 同步器扩臂（compile-time 逼显式处理，新后端漏臂=编译失败）。v0 无实例级剔除/排序（全量单 draw，DrawMesh 纪律同款）。

@@ -1,8 +1,8 @@
 //! visiaengine-render 契约测试（仅公开 API；// spec: 标签入双向追溯门禁）。
 
 use visiaengine_render::{
-    BackendError, Camera, Capability, DrawCommand, Frame, MaterialDesc, MaterialId, MeshDesc,
-    MeshId, RenderBackend, TextureDesc, Viewport,
+    BackendError, Camera, Capability, DrawCommand, Frame, Instance, InstanceDesc, MaterialDesc,
+    MaterialId, MeshDesc, MeshId, RenderBackend, TextureDesc, Viewport,
 };
 
 const IDENTITY4: [[f32; 4]; 4] = [
@@ -29,7 +29,9 @@ impl RenderBackend for Stub {
         for cmd in &frame.commands {
             // 穷举消费面：IR 加变体时此处编译失败=契约同步器
             match cmd {
-                DrawCommand::ClearColor { .. } | DrawCommand::DrawMesh { .. } => {}
+                DrawCommand::ClearColor { .. }
+                | DrawCommand::DrawMesh { .. }
+                | DrawCommand::DrawInstances { .. } => {}
             }
         }
     }
@@ -94,13 +96,27 @@ fn ir_variants_exhaustive_construct() {
                 [0.0, 0.0, 0.0, 1.0],
             ],
         },
+        DrawCommand::DrawInstances {
+            mesh: 1,
+            material: 2,
+            instances: 3,
+            origin: [0.0; 3],
+            transform: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+        },
     ];
     let kinds: Vec<&'static str> = cmds.iter().map(DrawCommand::kind).collect();
-    assert_eq!(kinds, vec!["clear-color", "draw-mesh"]);
+    assert_eq!(kinds, vec!["clear-color", "draw-mesh", "draw-instances"]);
     // 穷举面自检：match 未来加变体时此函数编译失败，逼 IR 消费端显式处理
     for c in &cmds {
         match c {
-            DrawCommand::ClearColor { .. } | DrawCommand::DrawMesh { .. } => {}
+            DrawCommand::ClearColor { .. }
+            | DrawCommand::DrawMesh { .. }
+            | DrawCommand::DrawInstances { .. } => {}
         }
     }
 }
@@ -224,7 +240,9 @@ fn drawmesh_carries_origin() {
     };
     match cmd {
         DrawCommand::DrawMesh { origin, .. } => assert_eq!(origin, [1.0e7, 0.0, 0.0]),
-        DrawCommand::ClearColor { .. } => panic!("expected mesh"),
+        DrawCommand::ClearColor { .. } | DrawCommand::DrawInstances { .. } => {
+            panic!("expected mesh")
+        }
     }
 }
 
@@ -266,11 +284,7 @@ fn create_instances_default_err() {
     // 未覆写后端的默认体=显式拒绝（upload_texture 同款协议，不假成功）
     let e = s
         .create_instances(&InstanceDesc {
-            data: &[Instance {
-                offset: [1.0, 2.0, 0.0],
-                height: 3.0,
-                color: [0.8, 0.8, 0.9],
-            }],
+            data: &[Instance::new([1.0, 2.0, 0.0], 3.0, [0.8, 0.8, 0.9])],
         })
         .unwrap_err();
     assert!(e.reason.contains("instancing"), "{e:?}");
@@ -305,4 +319,19 @@ fn draw_instances_carries_d7_origin_and_instance_table() {
         }
         _ => panic!("variant"),
     }
+}
+
+// spec: REND-27
+#[test]
+fn instance_pod_layout_32b() {
+    // CPU repr(C) ↔ WGSL struct 逐字节同形锁（offset 0..12/height 12/color 16..28/pad 28）
+    assert_eq!(std::mem::size_of::<Instance>(), 32);
+    assert_eq!(std::mem::offset_of!(Instance, offset), 0);
+    assert_eq!(std::mem::offset_of!(Instance, height), 12);
+    assert_eq!(std::mem::offset_of!(Instance, color), 16);
+    let inst = Instance::new([1.0, 2.0, 3.0], 4.0, [5.0, 6.0, 7.0]);
+    let raw: &[u8; 32] = bytemuck::bytes_of(&inst).try_into().unwrap();
+    let f = |o: usize| -> f32 { f32::from_le_bytes(raw[o..o + 4].try_into().unwrap()) };
+    assert_eq!((f(0), f(12), f(16)), (1.0, 4.0, 5.0));
+    assert_eq!(f(28), 0.0, "pad 归零（new 构造担保）");
 }
