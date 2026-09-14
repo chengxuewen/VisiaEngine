@@ -69,6 +69,18 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
 - 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
 
+## 批 4de VS 扩片族基线（2026-09-14 收官）
+
+- 计划 `.omo/plans/visiaengine-vs-expansion.md` v1.0（Momus OKAY 0B→批准→N1-N4 全落）
+- N1 IR（`73c9c39..`→`213edbc`）：REND-29 Frame.px_world_scale（26+ 构造点编译器兜底）/REND-30 StrokeSeg 48B+PointMark 32B Pod 布局锁+双命令+默认拒
+- N2/N3（`6d8559c→8ac0ffb`、`aee0bc4→20edd3c`）：View 块 128B（mat+right+up+px_scale+eye_local，三角系只读前 64B=零回归构造证明：golden 零重录）；vs_stroke perp 扩片 [E3D:B4] + 退化兜底 right + bias{−1,−1} 盖面 [E3D:B7③]；vs_point/fs_point 屏幕基 splat+discard 圆盘=真圆点
+- N4（`40115b3`）：geo GeoPart 输出切换（GEO-24：tess_stroke/quad 退役，px 单位纠偏 stroke_width_px=1.5/radius_px=4，键名/D9 别名不动）；capi extra_cmds+ortho px_scale=2·hw/W 精确路；geo_viewer 同款
+- 视觉战果：描边不再被同深度 fill 吞噬；点从方块→圆；线宽缩放恒定不重建（Frame 单字段）
+- 事故如实：#17 第五犯拦下（N3 首版未 fmt 即提交+空值假声称→二 amend 收编，消息内注记）；PIT-8 第 3 次踩中（strokes 位置窗口凭直觉→probe 修正；points 76° 俯角一次对）
+- 基线：**136 passed · spec-trace 105↔105 · ci exit=0 · GATE-ABI ✓ · smoke 七路 ✓ · SKIP 0 · web-check ✓（1053859B/424099B 同量级）**
+- 批次 4 队列：**4de ✓ → 4f Shadow/PCSS（[E3D:B3]，PIT-5 深度域换算写成条款）候计划轮**；批 5 触发早已满足（examples=7+4de 门禁例）
+- 提取位注记：LineStrip→StrokeSeg 三处同形（engine/geo_viewer/geo_pipeline）——第四消费者出现时抽 helper（tess.rs 内注释锚）
+
 ## 批 4c instancing+bench 基线（2026-09-14 收官）
 
 - 计划 `.omo/plans/visiaengine-instancing-bench.md` v1.0（Momus 0B→批准→K1-K3 全落）

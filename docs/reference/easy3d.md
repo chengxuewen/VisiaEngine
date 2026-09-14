@@ -11,7 +11,7 @@
 - **A1/A2 列式命名属性系统**：类型化闭合 enum 列 + 几何/用户属性同命名空间 → 直接解我方 geo `serde_json::Map` 样式热路径字符串化。证据 core/property.h L460/587/628、graph.cpp:37-41。排：样式轮。
 - **A4 加载报告+修复分型计数**：builder 保流形、end_surface(log) 报"修了什么多少"；我方 io-gltf/geo 返回 `LoadReport`+`RepairPolicy`。证据 surface_mesh_builder.h:40/122-125、5 loader 全走 builder。GIS 脏数据即此病。排：小片可做。
 - **B6 Camera 三增量**：透视/正交共享 zoom 因子（切换连续，GIS 刚需）、pivot turntable、dpi_scaling。证据 camera.h:143/342-354。排：camera 轮。
-- **B7 廉价值打包**：标量→色带 LUT+clamp（state.h:58-61 ✓ GeoJSON 热力图现成答案）、纹理 fractional repeat、polygon-offset 线面抗 Z-fighting（viewer.cpp:1805 ✓）、大图分条（texture.h:159）。排：随各属轮。
+- **B7 廉价值打包**：标量→色带 LUT+clamp（state.h:58-61 ✓ GeoJSON 热力图现成答案）、纹理 fractional repeat、polygon-offset 线面抗 Z-fighting（viewer.cpp:1805 ✓）【fractional repeat ✅ 4ab WGPU-15；polygon-offset ✅ 4de WGPU-17 bias{-1,-1}】、大图分条（texture.h:159）。排：随各属轮。
 - **C5 绑定面裁剪法**：39 renderer 头只手绑 4（camera/drawables/renderer/state，drawables 合并），unused/ 隔离带，GLOB 注释防全扫（python/CMakeLists.txt:6 ✓）→ **C ABI 首版=最小可用集+graveyard 流程**。排：capi 设计输入。
 - **D1 编号教程系列**：7 主题段+空号插入+每数据类型 4 连招+dir=target=标题=文档 ID 单源（CMakeLists 91 行 ✓/T101 仅 2 文件 ✓）→ examples 教学化蓝本；900s=GIS/孪生/AV/BIM 垂直切片。
 - **D3 零漂移文档管线**：Doxyfile EXAMPLE_PATH 收割教程源码（L854 ✓）→ mdbook `{{#include}}`+rustdoc+cbindgen 注释规范。排：文档轮。
@@ -21,6 +21,7 @@
 - **A5 渲染资源按实体挂载 + State 按属性名绑色**：换样式不碰几何层（renderer.h:138/154、state.h:49-61 ✓）。另：bbox 懒算（invalidate 后访问时重算，model.h:64-68 ✓——「即算不常存」概念出处，pick 用）。排：PBR 轮所有权重构。
 - **B3 pass 三件套**（GIS/孪生相关性排序）：Shadow/PCSS（⚠ **GL[-1,1]→wgpu[0,1] 即 PIT-5 雷区**）、3-pass SSAO+共享几何 FBO（ambient_occlusion.h:106-114 ✓）、DDP 透明（dual_depth_peeling.h:98 ✓；wgpu dual-source 可做，固定 peel 数，与 MSAA 互斥=我方 non-MSAA golden 线天然兼容）。排：Alpha 档。
 - **B4 线宽数学**：世界半径×距离相机空间扩片 `cross(view_dir,axes)*radius*0.5`（width_control.geom:67-68 ✓），GS→VS instancing。排：屏幕空间线宽项直接方案。
+  - ✅ **4de 已移植（2026-09-14，WGPU-17）**：vs_stroke `perp=cross(视向,轴)`+px 乘子（退化兜底 right）；深度偏置住 `DepthStencilState.bias`（wgpu-30 位置，非其 GL polygonOffset 直译）。
 - **B1 带名管线缓存+负缓存+F5 热重载**（shader_manager.h:119/124 ✓）。排：PBR 轮。
 - **D4 中央资源解析器**：compile-time 默认+env 覆盖+fixture <10MB 预算（其 27M 教训）（resource.h ✓）。排：examples 增多前。
 
