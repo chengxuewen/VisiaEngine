@@ -197,3 +197,29 @@ fn none_bit_produces_no_dark_patch() {
         .sum::<u32>();
     assert!(dark < 10, "None 位产生暗斑 {dark}");
 }
+
+/// 半影带（地面窗内中间灰 70<=r<=150）计数。
+fn penumbra_count(size: f32) -> u32 {
+    let img = scene(Some(setup(size)));
+    let mut mid = 0u32;
+    for y in 40..H {
+        for x in 0..W {
+            if let Some(r) = gray(&img, x, y) {
+                if (70..=150).contains(&r) {
+                    mid += 1;
+                }
+            }
+        }
+    }
+    mid
+}
+
+// spec: WGPU-20
+#[test]
+fn penumbra_grows_with_light_size() {
+    // PCSS [E3D:B3]：光源角尺寸↑ → 半影宽度↑（中间灰单调增）；且远小于实心带（有界）
+    let (hard, soft) = (penumbra_count(0.02), penumbra_count(1.5));
+    assert!(hard < 400, "近硬影中间灰过多 {hard}");
+    assert!(soft > hard * 2, "半影不随 size 扩展 hard={hard} soft={soft}");
+    assert!(soft < 6000, "半影爆炸（clamp 缺位）{soft}");
+}
