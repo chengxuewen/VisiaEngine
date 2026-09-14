@@ -1,4 +1,5 @@
-/* demo_x11.c —— attach 真窗口 demo（I3/smoke-x11；文档件：宿主集成骨架）。 */
+/* E702 · 绑定镜像·C X11 —— attach 真窗口 demo（I3/smoke-x11；宿主集成骨架；
+ * 跑不通即 API 未完成 [E3D:D7]）。 */
 #include <X11/Xlib.h>
 #include <stdio.h>
 #include <stdlib.h>

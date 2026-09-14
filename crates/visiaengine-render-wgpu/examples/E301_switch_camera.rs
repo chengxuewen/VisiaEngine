@@ -1,9 +1,10 @@
-//! L2：GeoJSON 装配示例——geo(解析/投影/细分/样式) × MeshCore(D7 上传) 合流，2D 鸟瞰 + 平移缩放。
-//! 用法: cargo run --example geo_viewer [path.geojson] [--frames N]（CI smoke: N=3）
+//! E301 · 相机与视图 —— 透视↔正交无级切换（mix_rig 插值，2D/2.5D/3D 三态演示）。
+//! 用法: cargo run --example E301_switch_camera [path.glb] [--frames N]（smoke: N=3）
+//! 头注纠偏：本件头注释自 G3 起系 load_gltf 复制粘贴残留（批 5 T1 发现即修）。
 
 use std::sync::Arc;
 
-use visiaengine_geo::{load_geojson, tessellate};
+use visiaengine_io_gltf::load_gltf;
 use visiaengine_render::{Camera, CameraRig, DrawCommand, Frame, MeshDesc, MeshId, Viewport};
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::application::ApplicationHandler;
@@ -16,13 +17,6 @@ use winit::window::{Window, WindowAttributes, WindowId};
 /// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
 type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
 
-const IDENT64: [[f64; 4]; 4] = [
-    [1.0, 0.0, 0.0, 0.0],
-    [0.0, 1.0, 0.0, 0.0],
-    [0.0, 0.0, 1.0, 0.0],
-    [0.0, 0.0, 0.0, 1.0],
-];
-
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
 
 struct App {
@@ -31,10 +25,13 @@ struct App {
     config: Option<wgpu::SurfaceConfiguration>,
     window: Option<Arc<Window>>,
     rig: CameraRig,
-    statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
-    extras: Vec<DrawCommand>, // 扩片族命令（GEO-24：表建一次性，逐帧重放）
+    statics: Vec<DrawRecord>, // mesh, material(复用 id), world
     frames_left: Option<u32>,
     glb_path: String,
+    rig_a: CameraRig,
+    rig_b: CameraRig,
+    t: f64,
+    dir: f64,
 }
 
 impl App {
@@ -57,15 +54,12 @@ impl App {
                 "s" => pitch = (pitch - 0.08).max(-1.5),
                 "e" => dist *= 1.12,
                 "q" => dist /= 1.12,
-                "z" => {
-                    self.rig.zoom *= 1.15;
-                }
-                "x" => {
-                    self.rig.zoom /= 1.15;
-                }
                 _ => return,
             },
-            Key::Named(NamedKey::Escape) => dist *= 0.9,
+            Key::Named(NamedKey::Tab) => {
+                self.dir = -self.dir;
+                return;
+            }
             _ => return,
         }
         self.rig.yaw = yaw;
@@ -120,7 +114,7 @@ impl ApplicationHandler for App {
         surface.configure(&core.device, &config);
 
         // 场景上传：每个 glTF 实体 → mesh + material
-        let doc = match load_geojson(self.glb_path()) {
+        let doc = match load_gltf(self.glb_path()) {
             Ok(d) => d,
             Err(e) => {
                 eprintln!("load failed: {e}");
@@ -128,88 +122,23 @@ impl ApplicationHandler for App {
                 return;
             }
         };
-        let bbox = doc.layer_bbox().expect("non-empty layer");
-        let origin = [(bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0, 0.0];
-        let neg = [-origin[0], -origin[1]];
-        for f in doc.features() {
-            for gp in match tessellate(&f.kind.shifted(neg), &f.style) {
-                Ok(v) => v,
-                Err(err) => {
-                    eprintln!("skip feature: {err}");
-                    continue;
-                }
-            } {
-                match gp {
-                    visiaengine_geo::GeoPart::Fill(p) => {
-                        if p.positions.is_empty() {
-                            continue;
-                        }
-                        let Ok(mesh) = core.upload_mesh(&MeshDesc {
-                            positions: &p.positions,
-                            normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
-                            indices: &p.indices,
-                            uv: &[],
-                        }) else {
-                            continue;
-                        };
-                        let Ok(mat) = core.upload_material(p.color) else {
-                            continue;
-                        };
-                        self.statics.push((mesh, mat, origin, IDENT64));
-                    }
-                    visiaengine_geo::GeoPart::Strokes(strips) => {
-                        let segs: Vec<visiaengine_render::StrokeSeg> = strips
-                            .iter()
-                            .flat_map(|s| {
-                                s.pts.windows(2).map(move |w| {
-                                    visiaengine_render::StrokeSeg::new(
-                                        [w[0][0], w[0][1], 0.0],
-                                        [w[1][0], w[1][1], 0.0],
-                                        s.color,
-                                        s.width_px,
-                                    )
-                                })
-                            })
-                            .collect();
-                        if segs.is_empty() {
-                            continue;
-                        }
-                        if let Ok(table) = core
-                            .create_strokes(&visiaengine_render::StrokeTableDesc { data: &segs })
-                        {
-                            self.extras.push(DrawCommand::DrawStrokes {
-                                table,
-                                origin,
-                                transform: IDENT64,
-                            });
-                        }
-                    }
-                    visiaengine_geo::GeoPart::Markers(ms) => {
-                        let marks: Vec<visiaengine_render::PointMark> = ms
-                            .iter()
-                            .map(|m| {
-                                visiaengine_render::PointMark::new(
-                                    [m.pos[0], m.pos[1], 0.0],
-                                    m.color,
-                                    m.radius_px,
-                                )
-                            })
-                            .collect();
-                        if marks.is_empty() {
-                            continue;
-                        }
-                        if let Ok(table) =
-                            core.create_points(&visiaengine_render::PointTableDesc { data: &marks })
-                        {
-                            self.extras.push(DrawCommand::DrawPoints {
-                                table,
-                                origin,
-                                transform: IDENT64,
-                            });
-                        }
-                    }
-                }
-            }
+        for e in doc.entities() {
+            let Ok(mesh) = core.upload_mesh(&MeshDesc {
+                positions: &e.mesh.positions,
+                normals: &e.mesh.normals,
+                indices: &e.mesh.indices,
+                uv: &[],
+            }) else {
+                eprintln!("skip entity: mesh upload failed");
+                continue;
+            };
+            let Ok(mat) = core.upload_material(e.mesh.base_color) else {
+                continue;
+            };
+            let origin = [e.world[3][0], e.world[3][1], e.world[3][2]];
+            let mut local = e.world;
+            local[3] = [0.0, 0.0, 0.0, 1.0];
+            self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
         self.window = Some(window);
@@ -258,29 +187,34 @@ impl ApplicationHandler for App {
                         }),
                 );
                 self.statics = st;
-                commands.extend(self.extras.clone());
+                self.t = (self.t + self.dir / 60.0).clamp(0.0, 1.0);
+                let rig = CameraRig::mix_rig(&self.rig_a, &self.rig_b, self.t);
                 let aspect = config.width as f32 / config.height.max(1) as f32;
-                let (near, far) = ((self.rig.dist * 0.01) as f32, (self.rig.dist * 30.0) as f32);
-                let Some(proj) = self
-                    .rig
-                    .perspective(self.rig.fov_y as f32, aspect, near, far)
-                else {
+                let (near, far) = ((rig.dist * 0.01) as f32, (rig.dist * 30.0) as f32);
+                // 投影型 t=0.5 处切换（rig 参数连续过渡；矩阵级连续混合属后续相机片）
+                let (camera, proj) = if self.t < 0.5 {
+                    let hw = rig.zoom as f32;
+                    (
+                        Camera::ortho(hw, hw * aspect, near, far),
+                        rig.ortho_frame(hw, config.width as f32, config.height as f32, near, far),
+                    )
+                } else {
+                    (
+                        Camera::perspective(rig.fov_y as f32, aspect, near, far),
+                        rig.perspective(rig.fov_y as f32, aspect, near, far),
+                    )
+                };
+                let Some(proj) = proj else {
                     event_loop.exit();
                     return;
                 };
                 let frame = Frame {
                     viewport: Viewport::new(config.width, config.height, 1.0),
-                    camera: Camera::ortho(
-                        self.rig.zoom as f32,
-                        self.rig.zoom as f32 * aspect,
-                        near,
-                        far,
-                    ),
-                    view_rot: self.rig.view_rotation(),
-                    eye: self.rig.eye(),
+                    camera,
+                    view_rot: rig.view_rotation(),
+                    eye: rig.eye(),
                     proj,
-                    // ortho 半宽=zoom → 世界宽 2·zoom 铺 width px（REND-29 精确路）
-                    px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
+                    px_world_scale: 1.0,
                     shadow: None,
                     commands,
                 };
@@ -326,7 +260,7 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut path = String::from("resources/data/park.geojson");
+    let mut path = String::from("resources/data/hierarchy.glb");
     let mut frames: Option<u32> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
@@ -347,11 +281,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         surface: None,
         config: None,
         window: None,
-        rig: CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0),
+        rig: CameraRig::orbit([0.0; 3], 0.7, 1.45, 24.0, 2.2, 1.1, 0.01, 500.0),
         statics: Vec::new(),
-        extras: Vec::new(),
         frames_left: frames,
         glb_path: path,
+        rig_a: CameraRig::orbit([0.0; 3], 0.001, 1.45, 24.0, 2.2, 1.1, 0.01, 500.0),
+        rig_b: CameraRig::orbit(
+            [0.0; 3],
+            0.7,
+            0.35,
+            9.0,
+            1.0,
+            std::f64::consts::FRAC_PI_3,
+            0.01,
+            500.0,
+        ),
+        t: 0.0,
+        dir: 1.0,
     };
     event_loop.run_app(&mut app)?;
     Ok(())

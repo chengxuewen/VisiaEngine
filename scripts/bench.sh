@@ -10,8 +10,8 @@ MACHINE=$(uname -n)
 DATE=$(date +%F)
 
 # 逐例执行 → 抓 RESULT 行 → 合并写 JSON（保留旧值做对比）
-for spec in "bench_twin:cargo run --release -p visiaengine-render-wgpu --example bench_twin -- --frames 3" \
-            "bench_pick:cargo run --release -p visiaengine-render-wgpu --example pick_demo -- --bench"; do
+for spec in "bench_twin:cargo run --release -p visiaengine-render-wgpu --example E601_bench_twin -- --frames 3" \
+            "bench_pick:cargo run --release -p visiaengine-render-wgpu --example E401_pick_demo -- --bench"; do
     name="${spec%%:*}"
     cmd="${spec#*:}"
     old_json="resources/bench/${name}.json"

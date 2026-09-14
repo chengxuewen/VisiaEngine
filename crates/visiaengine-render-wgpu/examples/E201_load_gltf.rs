@@ -1,5 +1,5 @@
-//! L2：glTF 装配示例——io-gltf × MeshCore 合流 + 键盘轨道。
-//! 用法: cargo run --example load_gltf [path.glb] [--frames N]（CI smoke: N=3 自动退出）
+//! E201 · 数据装载·glTF —— io-gltf × MeshCore 合流 + 键盘轨道（4 连招：装载→属性(E203)→样式→IO）。
+//! 用法: cargo run --example E201_load_gltf [path.glb] [--frames N]（smoke: N=3 自动退出）
 
 use std::sync::Arc;
 
@@ -24,13 +24,9 @@ struct App {
     config: Option<wgpu::SurfaceConfiguration>,
     window: Option<Arc<Window>>,
     rig: CameraRig,
-    statics: Vec<DrawRecord>, // mesh, material(复用 id), world
+    statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
     frames_left: Option<u32>,
     glb_path: String,
-    rig_a: CameraRig,
-    rig_b: CameraRig,
-    t: f64,
-    dir: f64,
 }
 
 impl App {
@@ -55,10 +51,7 @@ impl App {
                 "q" => dist /= 1.12,
                 _ => return,
             },
-            Key::Named(NamedKey::Tab) => {
-                self.dir = -self.dir;
-                return;
-            }
+            Key::Named(NamedKey::Escape) => dist *= 0.9,
             _ => return,
         }
         self.rig.yaw = yaw;
@@ -121,22 +114,46 @@ impl ApplicationHandler for App {
                 return;
             }
         };
+        // GLTF-11 纹理槽位 → GPU 纹理（image 槽位序，与 capi mount 同构）
+        let mut tex_ids = Vec::with_capacity(doc.textures().len());
+        for t in doc.textures() {
+            match core.upload_texture(&visiaengine_render::TextureDesc {
+                rgba: &t.rgba,
+                width: t.width,
+                height: t.height,
+            }) {
+                Ok(id) => tex_ids.push(id),
+                Err(e) => eprintln!("skip texture: {e:?}"),
+            }
+        }
         for e in doc.entities() {
             let Ok(mesh) = core.upload_mesh(&MeshDesc {
                 positions: &e.mesh.positions,
                 normals: &e.mesh.normals,
                 indices: &e.mesh.indices,
-                uv: &[],
+                uv: &e.mesh.uv,
             }) else {
                 eprintln!("skip entity: mesh upload failed");
                 continue;
             };
-            let Ok(mat) = core.upload_material(e.mesh.base_color) else {
+            let mat = visiaengine_render::MaterialDesc {
+                base_color: e.mesh.base_color,
+                texture: e.mesh.texture.and_then(|s| tex_ids.get(s).copied()),
+                repeat: [1.0, 1.0],
+                // mock-up [4ab①]：(1-metallic)*roughness（WGPU-14 Lambert 系数）
+                specular: (1.0 - e.mesh.metallic_factor) * e.mesh.roughness_factor,
+            };
+            let Ok(mat) = core.upload_material_desc(&mat) else {
                 continue;
             };
-            let origin = [e.world[3][0], e.world[3][1], e.world[3][2]];
-            let mut local = e.world;
-            local[3] = [0.0, 0.0, 0.0, 1.0];
+            // D7：world 4x4 分解 = 平移列 origin + 纯位姿 local
+            let mut origin = [e.world[3][0], e.world[3][1], e.world[3][2]];
+            let _ = &mut origin;
+            let local = {
+                let mut m = e.world;
+                m[3] = [0.0, 0.0, 0.0, 1.0];
+                m
+            };
             self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
@@ -186,32 +203,20 @@ impl ApplicationHandler for App {
                         }),
                 );
                 self.statics = st;
-                self.t = (self.t + self.dir / 60.0).clamp(0.0, 1.0);
-                let rig = CameraRig::mix_rig(&self.rig_a, &self.rig_b, self.t);
                 let aspect = config.width as f32 / config.height.max(1) as f32;
-                let (near, far) = ((rig.dist * 0.01) as f32, (rig.dist * 30.0) as f32);
-                // 投影型 t=0.5 处切换（rig 参数连续过渡；矩阵级连续混合属后续相机片）
-                let (camera, proj) = if self.t < 0.5 {
-                    let hw = rig.zoom as f32;
-                    (
-                        Camera::ortho(hw, hw * aspect, near, far),
-                        rig.ortho_frame(hw, config.width as f32, config.height as f32, near, far),
-                    )
-                } else {
-                    (
-                        Camera::perspective(rig.fov_y as f32, aspect, near, far),
-                        rig.perspective(rig.fov_y as f32, aspect, near, far),
-                    )
-                };
-                let Some(proj) = proj else {
+                let (near, far) = ((self.rig.dist * 0.01) as f32, (self.rig.dist * 30.0) as f32);
+                let Some(proj) = self
+                    .rig
+                    .perspective(self.rig.fov_y as f32, aspect, near, far)
+                else {
                     event_loop.exit();
                     return;
                 };
                 let frame = Frame {
                     viewport: Viewport::new(config.width, config.height, 1.0),
-                    camera,
-                    view_rot: rig.view_rotation(),
-                    eye: rig.eye(),
+                    camera: Camera::perspective(self.rig.fov_y as f32, aspect, near, far),
+                    view_rot: self.rig.view_rotation(),
+                    eye: self.rig.eye(),
                     proj,
                     px_world_scale: 1.0,
                     shadow: None,
@@ -280,23 +285,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         surface: None,
         config: None,
         window: None,
-        rig: CameraRig::orbit([0.0; 3], 0.7, 1.45, 24.0, 2.2, 1.1, 0.01, 500.0),
+        rig: CameraRig::orbit([0.0, 0.0, 0.0], 0.7, 0.35, 8.0, 1.0, 1.1, 0.01, 500.0),
         statics: Vec::new(),
         frames_left: frames,
         glb_path: path,
-        rig_a: CameraRig::orbit([0.0; 3], 0.001, 1.45, 24.0, 2.2, 1.1, 0.01, 500.0),
-        rig_b: CameraRig::orbit(
-            [0.0; 3],
-            0.7,
-            0.35,
-            9.0,
-            1.0,
-            std::f64::consts::FRAC_PI_3,
-            0.01,
-            500.0,
-        ),
-        t: 0.0,
-        dir: 1.0,
     };
     event_loop.run_app(&mut app)?;
     Ok(())

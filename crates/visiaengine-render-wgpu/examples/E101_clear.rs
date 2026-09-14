@@ -1,4 +1,4 @@
-//! L2 窗口 smoke：winit 0.30 + wgpu 30 清色循环。
+//! E101 · 窗口与首帧 —— winit 0.30 + wgpu 30 清色循环（最小可运行窗口）。
 //! `--frames N` 自动退出（SDD render-wgpu.md L2 叙述条款；CI xvfb-run 以 N=3 跑）。
 
 use std::sync::Arc;

@@ -1,6 +1,6 @@
-//! 4f 示例（E 系编号待批 5 归位）：instanced 楼块群 + 方向光 PCSS 软影——
-//! 白模光影演示兼公共 API（ShadowSetup）示例门禁消费面。headless 单帧出图+行为打印。
-//! 用法：`cargo run --example shadow_demo`（pixi task: smoke-shadow-demo）
+//! E501 · 材质与光影 —— instanced 楼块群 + 方向光 PCSS 软影（批 4 光影成果面）。
+//! 白模光影演示兼 ShadowSetup 公共 API 示例门禁消费面。headless 单帧出图+行为打印。
+//! 用法：`cargo run --example E501_shadow_demo`（pixi task: smoke-shadow-demo）
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, Instance, InstanceDesc, MeshDesc, RenderBackend,

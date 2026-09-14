@@ -1,4 +1,5 @@
-/* demo_headless.c —— canonical 10 行嵌入样板（文档件，[FFI-R:EP-附]）。
+/* E701 · 绑定镜像·C headless —— canonical 10 行嵌入样板（文档件，[FFI-R:EP-附]；
+ * 跑不通即 API 未完成 [E3D:D7]）。
  * 构建与运行见 scripts/gate-abi.sh；亦可直接：
  *   x86_64-conda-linux-gnu-cc -I include demo_headless.c -L target/debug \
  *     -lvisiaengine -o target/demo_headless && LD_LIBRARY_PATH=target/debug ./target/demo_headless */

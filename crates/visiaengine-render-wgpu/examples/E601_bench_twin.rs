@@ -1,5 +1,5 @@
-//! 4c 压力例（bench_twin）：10 万楼块实例化单 draw + [6b] `RESULT <name> <value> <unit>` 协议。
-//! 用法：`cargo run --release -p visiaengine-render-wgpu --example bench_twin -- [--count N] [--frames N]`
+//! E601 · 规模与性能 —— 10 万楼块实例化单 draw + [6b] `RESULT <name> <value> <unit>` 协议。
+//! 用法：`cargo run --release -p visiaengine-render-wgpu --example E601_bench_twin -- [--count N] [--frames N]`
 //! headless 形态（smoke-pick 同族免 xvfb）。**数字=本机 lavapipe 软光栅观测，非 CI 门禁** [6b]。
 
 use std::time::Instant;

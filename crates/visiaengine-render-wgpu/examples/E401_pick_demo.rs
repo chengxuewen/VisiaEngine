@@ -1,6 +1,6 @@
-//! E401 pick_demo：屏幕射线→pick_meshes→高亮覆写 全链演示（headless 形态，
+//! E401 · 交互·拾取高亮 —— 屏幕射线→pick_meshes→高亮覆写 全链演示（headless 形态，
 //! 零窗口依赖 → 本机/CI 直跑）。场景=双箱堆叠，拾取中心=视点近侧件。
-//! 用法：cargo run --example pick_demo -- [--frames N]
+//! 用法：cargo run --example E401_pick_demo -- [--frames N]
 
 use visiaengine_core::Scene;
 use visiaengine_render::{

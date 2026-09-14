@@ -8,7 +8,7 @@ CC=$(command -v cc || true);     [ -n "$CC" ]  || CC=.pixi/envs/host-spike/bin/x
 XMULTI=$(command -v Xvfb || true)
 if [ ! -x "$XVFB" ] || [ ! -x "$CC" ]; then echo "SMOKE-X11 SKIP (Xvfb/cc 不可用)"; exit 0; fi
 cargo build -p visiaengine-capi >/dev/null 2>&1 || { echo "SMOKE-X11 ✗ build"; exit 1; }
-"$CC" -I crates/visiaengine-capi/include crates/visiaengine-capi/examples/demo_x11.c \
+"$CC" -I crates/visiaengine-capi/include crates/visiaengine-capi/examples/E702_demo_x11.c \
       -I .pixi/envs/host-spike/include -L target/debug -L .pixi/envs/host-spike/lib \
       -lvisiaengine -lX11 -o target/demo_x11 || { echo "SMOKE-X11 ✗ 编译"; exit 1; }
 if [ -n "${DISPLAY:-}" ]; then

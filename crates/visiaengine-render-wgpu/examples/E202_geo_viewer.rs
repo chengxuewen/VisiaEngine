@@ -1,9 +1,9 @@
-//! L2：glTF 装配示例——io-gltf × MeshCore 合流 + 键盘轨道。
-//! 用法: cargo run --example load_gltf [path.glb] [--frames N]（CI smoke: N=3 自动退出）
+//! E202 · 数据装载·GeoJSON —— geo(解析/投影/细分/样式) × MeshCore(D7 上传) 合流，2D 鸟瞰 + 平移缩放。
+//! 用法: cargo run --example E202_geo_viewer [path.geojson] [--frames N]（smoke: N=3）
 
 use std::sync::Arc;
 
-use visiaengine_io_gltf::load_gltf;
+use visiaengine_geo::{load_geojson, tessellate};
 use visiaengine_render::{Camera, CameraRig, DrawCommand, Frame, MeshDesc, MeshId, Viewport};
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::application::ApplicationHandler;
@@ -16,6 +16,13 @@ use winit::window::{Window, WindowAttributes, WindowId};
 /// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
 type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
 
+const IDENT64: [[f64; 4]; 4] = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
 
 struct App {
@@ -25,6 +32,7 @@ struct App {
     window: Option<Arc<Window>>,
     rig: CameraRig,
     statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
+    extras: Vec<DrawCommand>, // 扩片族命令（GEO-24：表建一次性，逐帧重放）
     frames_left: Option<u32>,
     glb_path: String,
 }
@@ -49,6 +57,12 @@ impl App {
                 "s" => pitch = (pitch - 0.08).max(-1.5),
                 "e" => dist *= 1.12,
                 "q" => dist /= 1.12,
+                "z" => {
+                    self.rig.zoom *= 1.15;
+                }
+                "x" => {
+                    self.rig.zoom /= 1.15;
+                }
                 _ => return,
             },
             Key::Named(NamedKey::Escape) => dist *= 0.9,
@@ -106,7 +120,7 @@ impl ApplicationHandler for App {
         surface.configure(&core.device, &config);
 
         // 场景上传：每个 glTF 实体 → mesh + material
-        let doc = match load_gltf(self.glb_path()) {
+        let doc = match load_geojson(self.glb_path()) {
             Ok(d) => d,
             Err(e) => {
                 eprintln!("load failed: {e}");
@@ -114,47 +128,88 @@ impl ApplicationHandler for App {
                 return;
             }
         };
-        // GLTF-11 纹理槽位 → GPU 纹理（image 槽位序，与 capi mount 同构）
-        let mut tex_ids = Vec::with_capacity(doc.textures().len());
-        for t in doc.textures() {
-            match core.upload_texture(&visiaengine_render::TextureDesc {
-                rgba: &t.rgba,
-                width: t.width,
-                height: t.height,
-            }) {
-                Ok(id) => tex_ids.push(id),
-                Err(e) => eprintln!("skip texture: {e:?}"),
+        let bbox = doc.layer_bbox().expect("non-empty layer");
+        let origin = [(bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0, 0.0];
+        let neg = [-origin[0], -origin[1]];
+        for f in doc.features() {
+            for gp in match tessellate(&f.kind.shifted(neg), &f.style) {
+                Ok(v) => v,
+                Err(err) => {
+                    eprintln!("skip feature: {err}");
+                    continue;
+                }
+            } {
+                match gp {
+                    visiaengine_geo::GeoPart::Fill(p) => {
+                        if p.positions.is_empty() {
+                            continue;
+                        }
+                        let Ok(mesh) = core.upload_mesh(&MeshDesc {
+                            positions: &p.positions,
+                            normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
+                            indices: &p.indices,
+                            uv: &[],
+                        }) else {
+                            continue;
+                        };
+                        let Ok(mat) = core.upload_material(p.color) else {
+                            continue;
+                        };
+                        self.statics.push((mesh, mat, origin, IDENT64));
+                    }
+                    visiaengine_geo::GeoPart::Strokes(strips) => {
+                        let segs: Vec<visiaengine_render::StrokeSeg> = strips
+                            .iter()
+                            .flat_map(|s| {
+                                s.pts.windows(2).map(move |w| {
+                                    visiaengine_render::StrokeSeg::new(
+                                        [w[0][0], w[0][1], 0.0],
+                                        [w[1][0], w[1][1], 0.0],
+                                        s.color,
+                                        s.width_px,
+                                    )
+                                })
+                            })
+                            .collect();
+                        if segs.is_empty() {
+                            continue;
+                        }
+                        if let Ok(table) = core
+                            .create_strokes(&visiaengine_render::StrokeTableDesc { data: &segs })
+                        {
+                            self.extras.push(DrawCommand::DrawStrokes {
+                                table,
+                                origin,
+                                transform: IDENT64,
+                            });
+                        }
+                    }
+                    visiaengine_geo::GeoPart::Markers(ms) => {
+                        let marks: Vec<visiaengine_render::PointMark> = ms
+                            .iter()
+                            .map(|m| {
+                                visiaengine_render::PointMark::new(
+                                    [m.pos[0], m.pos[1], 0.0],
+                                    m.color,
+                                    m.radius_px,
+                                )
+                            })
+                            .collect();
+                        if marks.is_empty() {
+                            continue;
+                        }
+                        if let Ok(table) =
+                            core.create_points(&visiaengine_render::PointTableDesc { data: &marks })
+                        {
+                            self.extras.push(DrawCommand::DrawPoints {
+                                table,
+                                origin,
+                                transform: IDENT64,
+                            });
+                        }
+                    }
+                }
             }
-        }
-        for e in doc.entities() {
-            let Ok(mesh) = core.upload_mesh(&MeshDesc {
-                positions: &e.mesh.positions,
-                normals: &e.mesh.normals,
-                indices: &e.mesh.indices,
-                uv: &e.mesh.uv,
-            }) else {
-                eprintln!("skip entity: mesh upload failed");
-                continue;
-            };
-            let mat = visiaengine_render::MaterialDesc {
-                base_color: e.mesh.base_color,
-                texture: e.mesh.texture.and_then(|s| tex_ids.get(s).copied()),
-                repeat: [1.0, 1.0],
-                // mock-up [4ab①]：(1-metallic)*roughness（WGPU-14 Lambert 系数）
-                specular: (1.0 - e.mesh.metallic_factor) * e.mesh.roughness_factor,
-            };
-            let Ok(mat) = core.upload_material_desc(&mat) else {
-                continue;
-            };
-            // D7：world 4x4 分解 = 平移列 origin + 纯位姿 local
-            let mut origin = [e.world[3][0], e.world[3][1], e.world[3][2]];
-            let _ = &mut origin;
-            let local = {
-                let mut m = e.world;
-                m[3] = [0.0, 0.0, 0.0, 1.0];
-                m
-            };
-            self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
         self.window = Some(window);
@@ -203,6 +258,7 @@ impl ApplicationHandler for App {
                         }),
                 );
                 self.statics = st;
+                commands.extend(self.extras.clone());
                 let aspect = config.width as f32 / config.height.max(1) as f32;
                 let (near, far) = ((self.rig.dist * 0.01) as f32, (self.rig.dist * 30.0) as f32);
                 let Some(proj) = self
@@ -214,11 +270,17 @@ impl ApplicationHandler for App {
                 };
                 let frame = Frame {
                     viewport: Viewport::new(config.width, config.height, 1.0),
-                    camera: Camera::perspective(self.rig.fov_y as f32, aspect, near, far),
+                    camera: Camera::ortho(
+                        self.rig.zoom as f32,
+                        self.rig.zoom as f32 * aspect,
+                        near,
+                        far,
+                    ),
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
-                    px_world_scale: 1.0,
+                    // ortho 半宽=zoom → 世界宽 2·zoom 铺 width px（REND-29 精确路）
+                    px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
                     shadow: None,
                     commands,
                 };
@@ -264,7 +326,7 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut path = String::from("resources/data/hierarchy.glb");
+    let mut path = String::from("resources/data/park.geojson");
     let mut frames: Option<u32> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
@@ -285,8 +347,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         surface: None,
         config: None,
         window: None,
-        rig: CameraRig::orbit([0.0, 0.0, 0.0], 0.7, 0.35, 8.0, 1.0, 1.1, 0.01, 500.0),
+        rig: CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0),
         statics: Vec::new(),
+        extras: Vec::new(),
         frames_left: frames,
         glb_path: path,
     };
