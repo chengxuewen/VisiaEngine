@@ -226,7 +226,13 @@ impl ApplicationHandler for App {
                         let view = tex
                             .texture
                             .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view(&frame, &view, config.width, config.height.max(1));
+                        core.render_view_format(
+                            &frame,
+                            &view,
+                            config.width,
+                            config.height.max(1),
+                            config.format,
+                        );
                         core.queue.present(tex);
                     }
                     wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
