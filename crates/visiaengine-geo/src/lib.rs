@@ -10,7 +10,7 @@ mod tess;
 
 pub use measure::{planar_distance, ring_area};
 pub use style::parse_color;
-pub use tess::{PartKind, TessPart, tessellate};
+pub use tess::{GeoPart, LineStrip, Marker, PartKind, TessPart, tessellate};
 
 use thiserror::Error;
 use visiaengine_core::{AttrSet, Vec3};
@@ -81,9 +81,9 @@ pub struct StyleRecord {
     pub fill: [f32; 4],
     pub fill_opacity: f32,
     pub stroke: [f32; 4],
-    pub stroke_width_m: f32,
+    pub stroke_width_px: f32,
     pub marker_color: [f32; 4],
-    pub radius_m: f32,
+    pub radius_px: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -165,9 +165,9 @@ pub const fn default_style() -> StyleRecord {
         fill: [0.0, 0.45, 1.0, 1.0],
         fill_opacity: 1.0,
         stroke: [1.0, 1.0, 1.0, 1.0],
-        stroke_width_m: 3.0,
+        stroke_width_px: 1.5,
         marker_color: [0.0, 0.45, 1.0, 1.0],
-        radius_m: 4.0,
+        radius_px: 4.0,
     }
 }
 

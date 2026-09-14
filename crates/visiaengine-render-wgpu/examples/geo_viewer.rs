@@ -32,6 +32,7 @@ struct App {
     window: Option<Arc<Window>>,
     rig: CameraRig,
     statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
+    extras: Vec<DrawCommand>, // 扩片族命令（GEO-24：表建一次性，逐帧重放）
     frames_left: Option<u32>,
     glb_path: String,
 }
@@ -131,28 +132,83 @@ impl ApplicationHandler for App {
         let origin = [(bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0, 0.0];
         let neg = [-origin[0], -origin[1]];
         for f in doc.features() {
-            for p in match tessellate(&f.kind.shifted(neg), &f.style) {
+            for gp in match tessellate(&f.kind.shifted(neg), &f.style) {
                 Ok(v) => v,
                 Err(err) => {
                     eprintln!("skip feature: {err}");
                     continue;
                 }
             } {
-                if p.positions.is_empty() {
-                    continue;
+                match gp {
+                    visiaengine_geo::GeoPart::Fill(p) => {
+                        if p.positions.is_empty() {
+                            continue;
+                        }
+                        let Ok(mesh) = core.upload_mesh(&MeshDesc {
+                            positions: &p.positions,
+                            normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
+                            indices: &p.indices,
+                            uv: &[],
+                        }) else {
+                            continue;
+                        };
+                        let Ok(mat) = core.upload_material(p.color) else {
+                            continue;
+                        };
+                        self.statics.push((mesh, mat, origin, IDENT64));
+                    }
+                    visiaengine_geo::GeoPart::Strokes(strips) => {
+                        let segs: Vec<visiaengine_render::StrokeSeg> = strips
+                            .iter()
+                            .flat_map(|s| {
+                                s.pts.windows(2).map(move |w| {
+                                    visiaengine_render::StrokeSeg::new(
+                                        [w[0][0], w[0][1], 0.0],
+                                        [w[1][0], w[1][1], 0.0],
+                                        s.color,
+                                        s.width_px,
+                                    )
+                                })
+                            })
+                            .collect();
+                        if segs.is_empty() {
+                            continue;
+                        }
+                        if let Ok(table) = core
+                            .create_strokes(&visiaengine_render::StrokeTableDesc { data: &segs })
+                        {
+                            self.extras.push(DrawCommand::DrawStrokes {
+                                table,
+                                origin,
+                                transform: IDENT64,
+                            });
+                        }
+                    }
+                    visiaengine_geo::GeoPart::Markers(ms) => {
+                        let marks: Vec<visiaengine_render::PointMark> = ms
+                            .iter()
+                            .map(|m| {
+                                visiaengine_render::PointMark::new(
+                                    [m.pos[0], m.pos[1], 0.0],
+                                    m.color,
+                                    m.radius_px,
+                                )
+                            })
+                            .collect();
+                        if marks.is_empty() {
+                            continue;
+                        }
+                        if let Ok(table) =
+                            core.create_points(&visiaengine_render::PointTableDesc { data: &marks })
+                        {
+                            self.extras.push(DrawCommand::DrawPoints {
+                                table,
+                                origin,
+                                transform: IDENT64,
+                            });
+                        }
+                    }
                 }
-                let Ok(mesh) = core.upload_mesh(&MeshDesc {
-                    positions: &p.positions,
-                    normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
-                    indices: &p.indices,
-                    uv: &[],
-                }) else {
-                    continue;
-                };
-                let Ok(mat) = core.upload_material(p.color) else {
-                    continue;
-                };
-                self.statics.push((mesh, mat, origin, IDENT64));
             }
         }
         println!("loaded {} entities", self.statics.len());
@@ -202,6 +258,7 @@ impl ApplicationHandler for App {
                         }),
                 );
                 self.statics = st;
+                commands.extend(self.extras.clone());
                 let aspect = config.width as f32 / config.height.max(1) as f32;
                 let (near, far) = ((self.rig.dist * 0.01) as f32, (self.rig.dist * 30.0) as f32);
                 let Some(proj) = self
@@ -222,7 +279,8 @@ impl ApplicationHandler for App {
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
-                    px_world_scale: 1.0,
+                    // ortho 半宽=zoom → 世界宽 2·zoom 铺 width px（REND-29 精确路）
+                    px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
                     commands,
                 };
                 match surface.get_current_texture() {
@@ -290,6 +348,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         window: None,
         rig: CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0),
         statics: Vec::new(),
+        extras: Vec::new(),
         frames_left: frames,
         glb_path: path,
     };

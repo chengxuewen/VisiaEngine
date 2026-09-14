@@ -48,13 +48,13 @@ pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     }
     if let Some(v) = f64_first(a, row, "stroke-width", "line-width") {
         // simplestyle/v8 语义均为屏幕 px；v0 粗映射 1px≈1m（屏幕空间线宽=相机片，GEO-11 以默认宽断言）
-        s.stroke_width_m = (v as f32).max(0.5);
+        s.stroke_width_px = (v as f32).max(0.5);
     }
     if let Some(c) = str_first(a, row, "marker-color", "circle-color").and_then(parse_color) {
         s.marker_color = c;
     }
     if let Some(v) = f64_first(a, row, "marker-radius", "circle-radius") {
-        s.radius_m = v as f32;
+        s.radius_px = v as f32;
     }
     apply_scalar_ramp(a, row, &mut s);
     s

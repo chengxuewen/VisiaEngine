@@ -3,6 +3,13 @@
 use visiaengine_core::Vec3;
 use visiaengine_geo::{GeoKind, StyleRecord, load_geojson, tessellate};
 
+fn fill_positions(gp: &visiaengine_geo::GeoPart) -> &Vec<[f32; 3]> {
+    match gp {
+        visiaengine_geo::GeoPart::Fill(t) => &t.positions,
+        _ => panic!("期望 fill"),
+    }
+}
+
 fn poly(ext: Vec<[f64; 2]>, holes: Vec<Vec<[f64; 2]>>) -> GeoKind {
     GeoKind::Poly { ext, holes }
 }
@@ -16,13 +23,13 @@ fn square(half: f64) -> Vec<[f64; 2]> {
     ]
 }
 
-fn total_area_and_inside(parts: &[visiaengine_geo::TessPart], p: (f64, f64)) -> (f64, bool) {
+fn total_area_and_inside(parts: &[visiaengine_geo::GeoPart], p: (f64, f64)) -> (f64, bool) {
     let mut area = 0.0;
     let mut inside = false;
-    for part in parts
-        .iter()
-        .filter(|p| p.kind == visiaengine_geo::PartKind::Fill)
-    {
+    for part in parts.iter().filter_map(|gp| match gp {
+        visiaengine_geo::GeoPart::Fill(t) => Some(t),
+        _ => None,
+    }) {
         let (tri, _) = part.positions.as_chunks::<3>();
         for t in tri.iter().map(|sq| [sq[0], sq[1], sq[2]]) {
             let (a, b, c) = (t[0], t[1], t[2]);
@@ -65,23 +72,21 @@ fn hole_interior_uncovered() {
 
 // spec: GEO-11
 #[test]
-fn stroke_expands_to_width() {
+fn stroke_emits_linestrip_with_width_px() {
+    // GEO-24：线不再 CPU 扩条带；输出 LineStrip（位形 + width_px，扩片住 GPU）
     let line = GeoKind::Line(vec![Vec3::new(0.0, 0.0, 0.0), Vec3::new(10.0, 0.0, 0.0)]);
     let st2 = StyleRecord {
-        stroke_width_m: 2.0,
+        stroke_width_px: 2.0,
         ..StyleRecord::default()
     };
     let parts = tessellate(&line, &st2).unwrap();
-    let stroke = parts
-        .iter()
-        .find(|p| p.kind == visiaengine_geo::PartKind::Stroke)
-        .expect("stroke part");
-    let ys: Vec<f32> = stroke.positions.iter().map(|v| v[1]).collect();
-    let xs: Vec<f32> = stroke.positions.iter().map(|v| v[0]).collect();
-    let w = ys.iter().fold(f32::MIN, |a, &b| a.max(b)) - ys.iter().fold(f32::MAX, |a, &b| a.min(b));
-    let l = xs.iter().fold(f32::MIN, |a, &b| a.max(b)) - xs.iter().fold(f32::MAX, |a, &b| a.min(b));
-    assert!((w - 2.0).abs() < 0.1, "stroke 宽 {w}");
-    assert!((l - 10.0).abs() < 0.1, "stroke 长 {l}");
+    let strip = match &parts[0] {
+        visiaengine_geo::GeoPart::Strokes(s) => &s[0],
+        _ => panic!("期望 Strokes part"),
+    };
+    assert_eq!(strip.width_px, 2.0, "px 语义收纳");
+    assert_eq!(strip.pts.len(), 2, "中心线位形保序");
+    assert!((strip.pts[1][0] - 10.0).abs() < 1e-3, "长度住位形非几何");
 }
 
 // spec: GEO-12
@@ -128,7 +133,7 @@ fn tessellate_input_is_origin_local() {
     let local: Vec<[f64; 2]> = far.iter().map(|p| [p[0] - 1e7, p[1]]).collect();
     let a = tessellate(&poly(base, vec![]), &st).unwrap();
     let b = tessellate(&poly(local, vec![]), &st).unwrap();
-    let (pa, pb) = (&a[0].positions, &b[0].positions);
+    let (pa, pb) = (fill_positions(&a[0]), fill_positions(&b[0]));
     assert_eq!(pa.len(), pb.len());
     for (x, y) in pa.iter().zip(pb.iter()) {
         for k in 0..2 {
@@ -140,4 +145,42 @@ fn tessellate_input_is_origin_local() {
             );
         }
     }
+}
+
+// spec: GEO-24
+#[test]
+fn geopart_units_and_closure_semantics() {
+    // ① px 默认值（1.5/4.0——单位重释纠案的本体断言）
+    let st = StyleRecord::default();
+    assert_eq!(st.stroke_width_px, 1.5);
+    assert_eq!(st.radius_px, 4.0);
+    // ② 环输出闭合（首尾同点——消费者 windows(2) 展开的最后一段依赖）
+    let parts = tessellate(&poly(square(1.0), vec![]), &st).unwrap();
+    let visiaengine_geo::GeoPart::Strokes(strips) = &parts[1] else {
+        panic!("poly 默认样式必出 Strokes")
+    };
+    assert_eq!(strips[0].pts[0], *strips[0].pts.last().unwrap(), "环未闭合");
+    // ③ width=0 关描边 → 无 Strokes part
+    let st0 = StyleRecord {
+        stroke_width_px: 0.0,
+        ..StyleRecord::default()
+    };
+    let parts0 = tessellate(&poly(square(1.0), vec![]), &st0).unwrap();
+    assert!(
+        !parts0
+            .iter()
+            .any(|p| matches!(p, visiaengine_geo::GeoPart::Strokes(_))),
+        "width=0 仍出 strokes"
+    );
+    // ④ Point → Markers（真圆点的路：位形+px，无方块三角）
+    let pm = tessellate(
+        &GeoKind::Point(Vec3::new(0.5, 0.5, 0.0)),
+        &StyleRecord::default(),
+    )
+    .unwrap();
+    let visiaengine_geo::GeoPart::Markers(ms) = &pm[0] else {
+        panic!("point 必出 Markers")
+    };
+    assert_eq!(ms[0].radius_px, 4.0);
+    assert_eq!(ms[0].pos, [0.5, 0.5]);
 }

@@ -5,7 +5,8 @@
 use visiaengine_core::{EntityId, Scene};
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MaterialId, MeshCandidate, MeshDesc,
-    MeshId, RenderBackend, Viewport, pick_meshes, screen_to_ray_ortho, screen_to_ray_persp,
+    MeshId, PointMark, PointTableDesc, RenderBackend, StrokeSeg, StrokeTableDesc, Viewport,
+    pick_meshes, screen_to_ray_ortho, screen_to_ray_persp,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::surface::Swapchain;
@@ -49,6 +50,8 @@ pub struct Engine {
     target: TargetMode,
     scene: Scene, // EntityId 生成器（slot+gen 与 core slab 同空间，pick/entity_at 共用）
     items: Vec<DrawItem>,
+    /// geo 扩片族命令（GEO-24/WGPU-17/18：mount 期建表，逐帧随 items 重放）
+    extra_cmds: Vec<DrawCommand>,
     frame_cache: Option<Vec<u8>>,
 }
 
@@ -67,6 +70,7 @@ impl Engine {
             target: TargetMode::Headless,
             scene: Scene::new(),
             items: Vec::new(),
+            extra_cmds: Vec::new(),
             frame_cache: None,
         })
     }
@@ -196,17 +200,68 @@ impl Engine {
             n += 1;
             let parts = visiaengine_geo::tessellate(&f.kind.shifted(neg), &f.style)
                 .map_err(|e| format!("tessellate: {e}"))?;
-            for p in parts {
-                if p.positions.is_empty() || p.indices.len() < 3 {
-                    continue;
+            // [PIT-8 提取位] LineStrip→StrokeSeg / Marker→PointMark 转换与
+            // geo_viewer/geo_pipeline 同形三处——第三消费者已现，4de 后抽公共 helper。
+            for gp in parts {
+                match gp {
+                    visiaengine_geo::GeoPart::Fill(p) => {
+                        if p.positions.is_empty() || p.indices.len() < 3 {
+                            continue;
+                        }
+                        let mat = MaterialDesc {
+                            base_color: p.color,
+                            texture: None,
+                            repeat: [1.0, 1.0],
+                            specular: 0.0,
+                        };
+                        self.upload(id, &p.positions, &p.indices, &mat, &[], origin)?;
+                    }
+                    visiaengine_geo::GeoPart::Strokes(strips) => {
+                        let mut segs = Vec::new();
+                        for s in strips {
+                            for w in s.pts.windows(2) {
+                                segs.push(StrokeSeg::new(
+                                    [w[0][0], w[0][1], 0.0],
+                                    [w[1][0], w[1][1], 0.0],
+                                    s.color,
+                                    s.width_px,
+                                ));
+                            }
+                        }
+                        if segs.is_empty() {
+                            continue;
+                        }
+                        let table = self
+                            .backend
+                            .create_strokes(&StrokeTableDesc { data: &segs })
+                            .map_err(|e| format!("strokes: {e}"))?;
+                        self.extra_cmds.push(DrawCommand::DrawStrokes {
+                            table,
+                            origin,
+                            transform: IDENTITY,
+                        });
+                    }
+                    visiaengine_geo::GeoPart::Markers(ms) => {
+                        let marks: Vec<PointMark> = ms
+                            .iter()
+                            .map(|m| {
+                                PointMark::new([m.pos[0], m.pos[1], 0.0], m.color, m.radius_px)
+                            })
+                            .collect();
+                        if marks.is_empty() {
+                            continue;
+                        }
+                        let table = self
+                            .backend
+                            .create_points(&PointTableDesc { data: &marks })
+                            .map_err(|e| format!("points: {e}"))?;
+                        self.extra_cmds.push(DrawCommand::DrawPoints {
+                            table,
+                            origin,
+                            transform: IDENTITY,
+                        });
+                    }
                 }
-                let mat = MaterialDesc {
-                    base_color: p.color,
-                    texture: None,
-                    repeat: [1.0, 1.0],
-                    specular: 0.0,
-                };
-                self.upload(id, &p.positions, &p.indices, &mat, &[], origin)?;
             }
         }
         Ok(n)
@@ -276,6 +331,7 @@ impl Engine {
                 transform: IDENTITY,
             });
         }
+        commands.append(&mut self.extra_cmds.clone());
         let (hw, hh) = self.half_extents();
         let proj = match self.mode {
             Proj::Persp => self
@@ -308,7 +364,12 @@ impl Engine {
             view_rot: self.rig.view_rotation(),
             eye,
             proj,
-            px_world_scale: 1.0,
+            // ortho：世界宽 2·hw 铺 W px → px_world_scale=2·hw/W（REND-29 精确路）
+            px_world_scale: if matches!(self.mode, Proj::Ortho) {
+                2.0 * hw as f32 / self.w as f32
+            } else {
+                1.0
+            },
             commands,
         };
         match &mut self.target {
@@ -411,6 +472,7 @@ impl Engine {
             target: TargetMode::Window(sw),
             scene: Scene::new(),
             items: Vec::new(),
+            extra_cmds: Vec::new(),
             frame_cache: None,
         })
     }

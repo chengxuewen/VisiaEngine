@@ -44,7 +44,12 @@ fn golden_geo_fill_hit() {
     let neg = [-origin[0], -origin[1]];
     for f in doc.features() {
         let parts = tessellate(&f.kind.shifted(neg), &f.style).unwrap();
-        for p in parts {
+        for gp in parts {
+            let p = match gp {
+                visiaengine_geo::GeoPart::Fill(t) => t,
+                // WGPU-11 断言面=fill 命中；扩片族像素证据住 strokes.rs/points.rs
+                _ => continue,
+            };
             if p.positions.is_empty() {
                 continue;
             }
@@ -140,7 +145,12 @@ fn golden_scalar_ramp_pixels() {
     let neg = [-origin[0], -origin[1]];
     for f in doc.features() {
         let parts = tessellate(&f.kind.shifted(neg), &f.style).unwrap();
-        for p in parts {
+        for gp in parts {
+            let p = match gp {
+                visiaengine_geo::GeoPart::Fill(t) => t,
+                // WGPU-11 断言面=fill 命中；扩片族像素证据住 strokes.rs/points.rs
+                _ => continue,
+            };
             if p.positions.is_empty() {
                 continue;
             }

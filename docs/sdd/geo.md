@@ -72,3 +72,6 @@ simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` �
 
 ## GEO-23: 解析域全输入无 panic（属性面）
 `parse_geojson`（FastFail）与 `parse_geojson_lenient` 对**任意字节流与任意 f64 坐标域**（含 NaN/inf/越界/非法 JSON 结构）零 panic——Err/丢弃为合法出口，panic 为契约违反。proptest 512 例×3 性质覆盖（随机流/全 f64 坐标/干净域双策略一致性：无脏件时 total_dropped==0 且件数同）。
+
+## GEO-24: GeoPart 输出切换（4de）
+`tessellate → Vec<GeoPart>`：`{Fill(TessPart), Strokes(Vec<LineStrip>), Markers(Vec<Marker>)}`——线/点**不再 CPU 扩条带/方块**（`tess_stroke`/`quad` 退役，`PartKind` 缩至 `{Fill}`）。中立类型（geo 零 render-IR 依赖，分层不变式；扩片转换住消费者=三处同形注记 pending 4de 后提取）。`LineStrip{pts(相邻点=段，环输出闭合首尾同点), color:[f32;3], width_px}` / `Marker{pos, color, radius_px}`——**px 单位语义 [裁决点 a 纠偏]**：MapLibre stroke-width/circle-radius 本义像素，旧 `_m` 字段系误释；样式键名（含 D9 别名）不动，`stroke_width_px` 默认 1.5（原 3.0 世界单位随单位重释归正）、`radius_px` 默认 4.0，stroke-width 值 floor 0.5px。`stroke_width_px==0` → 不出 Strokes part（关描边语义保真）。

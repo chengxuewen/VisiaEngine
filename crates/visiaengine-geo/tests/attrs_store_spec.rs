@@ -83,7 +83,7 @@ fn v8_paint_alias_keys_are_accepted_as_fallback() {
     assert!((s.fill[2] - 1.0).abs() < 1e-6, "fill-color→fill");
     assert!((s.stroke[0] - 1.0).abs() < 1e-6, "line-color→stroke");
     assert!(
-        (s.stroke_width_m - 2.5).abs() < 1e-6,
+        (s.stroke_width_px - 2.5).abs() < 1e-6,
         "line-width→stroke-width"
     );
     assert!(
@@ -91,7 +91,7 @@ fn v8_paint_alias_keys_are_accepted_as_fallback() {
         "circle-color→marker-color"
     );
     assert!(
-        (s.radius_m - 7.0).abs() < 1e-6,
+        (s.radius_px - 7.0).abs() < 1e-6,
         "circle-radius→marker-radius"
     );
 }
