@@ -700,9 +700,25 @@ impl MeshCore {
         block
     }
 
-    /// 帧共享 shadow 资源（None=dummy/off 常驻位）：返回 (params buf, map view)。
+    /// [4f §2.4] GL 后端降级门（wgpu-30 中 GLES=Gl 子版本，单变体覆盖）：
+    /// 到达即 warn-once + 全链路按 None 处理（dummy/off 常驻位，不 panic 不黑屏）。
+    fn shadow_active(&self, frame: &Frame) -> bool {
+        if frame.shadow.is_none() {
+            return false;
+        }
+        if matches!(self.adapter.get_info().backend, wgpu::Backend::Gl) {
+            static ONCE: std::sync::Once = std::sync::Once::new();
+            ONCE.call_once(|| {
+                eprintln!("warn: shadow unsupported on GL backend, disabled [4f 降级]");
+            });
+            return false;
+        }
+        true
+    }
+
+    /// 帧共享 shadow 资源（非激活=dummy/off 常驻位）：返回 (params buf, map view)。
     fn shadow_frame_res(&mut self, frame: &Frame) -> (wgpu::Buffer, wgpu::TextureView) {
-        let Some(s) = &frame.shadow else {
+        let Some(s) = frame.shadow.filter(|_| self.shadow_active(frame)) else {
             return (self.sh_off.clone(), self.sh_dummy.clone());
         };
         const MAP: u32 = 1024;
@@ -879,7 +895,7 @@ impl MeshCore {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         // ===== WGPU-19 caster pre-pass（shadow=Some 才跑；DrawMesh/DrawInstances 投影，
         // 扩片族不投 [不装②]；无色彩目标 pass，bias 住 caster 管线 depth_stencil）=====
-        if frame.shadow.is_some() {
+        if frame.shadow.is_some() && self.shadow_active(frame) {
             let mut sp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow-pass"),
                 color_attachments: &[],
