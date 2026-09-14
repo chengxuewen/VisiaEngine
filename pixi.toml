@@ -73,7 +73,8 @@ gate-abi = "bash scripts/gate-abi.sh"   # 批2 I2：符号白名单+demo 编译�
 gate-trace = "bash scripts/spec-trace.sh"   # 批2 v1.4：追溯本机化入 ci 链（[FFI-R:FC-6] 假绿窗口封堵）
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # GEO-18 解析边界门禁（代码形态，注释豁免）
 gate-docs = "bash scripts/gate-docs.sh"   # 批 5 T3：文档零漂移四检
-ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs"] }
+cmake-smoke = "bash scripts/cmake-smoke.sh"   # CMake 层三态门（无 cmake 机 SKIP；含负路径报文）
+ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "cmake-smoke"] }
 smoke-clear = "cargo run -p visiaengine-render-wgpu --example E101_clear -- --frames 3"   # L2 窗口 smoke（S3 起有效；CI xvfb-run 调用）
 smoke-load-gltf = "cargo run -p visiaengine-render-wgpu --example E201_load_gltf -- resources/data/twoprim.glb --frames 3"   # L2：glTF 装配链路（G3）
 smoke-geo-viewer = "cargo run -p visiaengine-render-wgpu --example E202_geo_viewer -- resources/data/park.geojson --frames 3"   # L2：GeoJSON 链路（H4）

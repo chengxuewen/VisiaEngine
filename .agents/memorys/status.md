@@ -69,6 +69,15 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
 - 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
 
+## CMake 工程化层基线（2026-09-14，C1-C3；Qt 轮 v1.3 消费面待跑）
+
+- 计划 `.omo/plans/visiaengine-cmake-project.md` v1.0（Momus OKAY 0B；六→十段口径修）+ Qt 轮 v1.3（构建面交公）
+- C1：根门面（版本单源 Cargo.toml 硬错锁）+ SDK 三级解析（AUTO/PIXI/SYSTEM/路径 × Rust/Qt 双通道）+ presets；**审核期实测语义洞**：pixi 激活 PATH 使 SYSTEM 假通过→反污染双滤（拒收报文指名）；tools+cmake,ninja,gxx_linux-64（R1 实测 add 2.6s/首装 ~3min）
+- C2：cargo-step（仓级共享 target-dir，复跑 0.16s）+ 伞 `visiaengine::capi`（rpath 注入免 LD_LIBRARY_PATH）+ 树内假 Config + ctest 探针——**首跑抓到真缺口：手写头零 extern "C" 护栏（纯 C demos 三轮全绿掩盖），补后 Qt 面预埋清账**；links 账不立实证销（cargo 须配 build script）
+- C3：cmake-smoke 三态入 ci（第 10 段；无 cmake 机 SKIP）+ gate-docs ⑤门面纯度（≤60 行/禁编译规则字样）+ README 双入口
+- 基线：**142 passed · 108↔108 零触 · ci 十段 ✓ · GATE-ABI 14/14 · ctest 1/1 · 双负路径报文 ✓**
+- 插曲如实：cmake 报文折行致全句 grep 断言漏失（短语断言修正）；预设 schema 字段 `output.outputOnFailure` 两连错；未激活 shell 直调 conda cargo 假 rustc-missing（PATH 语义，教训在 pytest 族同款）
+
 ## 批 5 文档/教程归位基线（2026-09-14 收官）
 
 - 计划 `.omo/plans/visiaengine-docs-tutorials.md` v1.0（Momus OKAY→批准→T1-T4 全落；纠偏注记：cbindgen→手写头+签名门禁、mdbook 不做=站点轮）

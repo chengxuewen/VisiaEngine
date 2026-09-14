@@ -42,6 +42,15 @@ while IFS= read -r f; do
     done < <(grep -oE '\]\(([^)#?]+\.md)' "$f" 2>/dev/null | sed 's/^](//')
 done < <(ls README.md docs/*.md docs/sdd/*.md docs/reference/*.md 2>/dev/null)
 
+# ⑤ 门面纯度（CMake 层纪律：根文件 ≤60 行且禁载编译规则——权威=cargo/pixi）
+if [ -f CMakeLists.txt ]; then
+    rl=$(wc -l < CMakeLists.txt)
+    [ "$rl" -le 60 ] || { echo "GATE-DOCS ✗ ⑤根 CMakeLists ${rl} 行超 60（门面纪律）"; fail=1; }
+    if grep -qE 'add_executable|add_library\(' CMakeLists.txt; then
+        echo "GATE-DOCS ✗ ⑤根门面含编译规则字样（越权 cargo 权威）"; fail=1
+    fi
+fi
+
 if [ "$fail" = 0 ]; then
     echo "GATE-DOCS ✓（E $(echo "$files" | wc -l) 件三方 / README=${rn}↔spec=${sn} / 头签名 $(echo "$hs" | wc -l) 名 / 链接存活）"
 fi

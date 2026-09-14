@@ -85,4 +85,5 @@
 **决策**：Qt widget 轮的宿主消费面用 iceoryx2 形薄自管 CMake（~60 行）：`add_custom_target` cargo 步 + `RUST_BUILD_ARTIFACT_PATH` 逃生舱 + INTERFACE 伞 `visiaengine::capi`（BUILD/INSTALL 双 genex）+ 树内假 Config 花招（find_package 消费代码树内/装后同文）；`visiaengineConfig.cmake.in` 模板随写但 install 树/.pc/SOVERSION 不做。g++ 脚本案（A）与 corrosion 直上案（C）弃。
 **理由**：demo 必被真实宿主以 cmake 消费——现在写一次 vs 打包轮重写+重验证两次；find_package 冒烟由 demo 天然承担（前作头号教训：cmake 包从未被编译过）。依据=团队调研四案对比（docs/reference/cmake-integration-patterns.md，iceoryx2 :153-205/:38-78/install.cmake:17-21、slint :16-26 及其 corrosion 坑 :427-466 实证）。
 **影响**：Qt 轮 +1 文件级增量；capi Cargo.toml 顺手加 `links = "visiaengine_c"`（重复静态链防呆）。
+**落地续（同日）**：B 案承接地=CMake 工程化层（.omo/plans/visiaengine-cmake-project.md C1-C3 已落，Qt 轮 v1.3 起为纯消费方）；links 账不立（cargo 硬校验无 build script）由 gate-abi nm 集继续覆盖。
 **复评触发器（打包轮议题）**：转 corrosion 或维持薄自管——触发=第二 C++ 消费者 / Windows 矩阵 / install-tree 真需求；corrosion 转正需先立「conda 无包→cargo-binstall/GitHub 镜像 vendor」D5 例外账（FetchContent configure 期联网与离线纪律相抵）。伞接口 `visiaengine::capi` 为稳定合同，届时换内核消费面零改动。

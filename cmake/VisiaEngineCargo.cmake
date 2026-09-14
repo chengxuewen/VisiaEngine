@@ -7,7 +7,8 @@ function(visiaengine_setup_cargo)
     set(_dir "${VISIAENGINE_ARTIFACT_PATH}")
     set(_flags "")
   else()
-    set(_dir "${CMAKE_BINARY_DIR}/rust")
+    set(_rust_dir "${CMAKE_SOURCE_DIR}/target/cmake-rust") # 仓级共享 target-dir：
+    # 多构建目录复用同一 cargo 增量面（cargo 按 profile 子目录隔离 debug/release，锁串行安全）
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
       set(_profile "release")
       set(_flags "--release")
@@ -15,7 +16,7 @@ function(visiaengine_setup_cargo)
       set(_profile "debug")
       set(_flags "")
     endif()
-    set(_dir "${CMAKE_BINARY_DIR}/rust/${_profile}")
+    set(_dir "${_rust_dir}/${_profile}")
   endif()
 
   # 逐 OS 产物名（仅命名表六行，无安装语义）
@@ -33,7 +34,7 @@ function(visiaengine_setup_cargo)
   if(NOT VISIAENGINE_ARTIFACT_PATH)
     add_custom_target(visiaengine-cargo-step ALL
       COMMAND ${VISIAENGINE_CARGO} build -p visiaengine-capi ${_flags}
-              --target-dir ${CMAKE_BINARY_DIR}/rust
+              --target-dir ${_rust_dir}
       BYPRODUCTS ${_dir}/${_shared} ${_dir}/${_static}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       VERBATIM USES_TERMINAL)
