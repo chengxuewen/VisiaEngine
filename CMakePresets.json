@@ -1,0 +1,36 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "bare",
+      "displayName": "Rust-only（Qt OFF，纯 cargo-step 验证）",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/target/cmake-bare",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VISIAENGINE_QT_SDK": "OFF"
+      }
+    },
+    {
+      "name": "qt-pixi",
+      "displayName": "Qt demo（pixi 环境 SDK；仓内 .pixi/envs 兜底可裸开）",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/target/qt-build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VISIAENGINE_QT_SDK": "PIXI",
+        "VISIAENGINE_RUST_SDK": "PIXI"
+      },
+      "environment": {
+        "CMAKE_PREFIX_PATH": "$penv{CONDA_PREFIX}"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "bare", "configurePreset": "bare" },
+    { "name": "qt-pixi", "configurePreset": "qt-pixi" }
+  ],
+  "testPresets": [
+    { "name": "bare", "configurePreset": "bare", "output": { "outputOnFailure": true } }
+  ]
+}

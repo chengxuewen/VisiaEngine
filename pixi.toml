@@ -18,6 +18,11 @@ nodejs = ">=22,<23"
 
 [feature.tools.dependencies]
 cargo-deny = ">=0.20,<0.21"
+cmake = ">=4.4.3,<5"
+ninja = ">=1.13.2,<2"
+
+[feature.tools.target.linux-64.dependencies]
+gxx_linux-64 = "*"   # CMake 消费面 C++ 编译器（仅 linux-64 目标位；Win/mac 不装[计划§1③]）
 
 [feature.tools.tasks]
 audit = "cargo deny check"
