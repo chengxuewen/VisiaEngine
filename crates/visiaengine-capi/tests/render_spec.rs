@@ -207,12 +207,18 @@ fn viewport_resize_reconfigures_frame_dims() {
     // ③换回旧 dims 复现（可逆，非一次性重建事故）。
     let ve = visiaengine_create_headless(64, 48);
     assert_ne!(ve, 0);
-    assert_eq!(visiaengine_load_gltf(ve, fixture("twoprim.glb").as_ptr()), 0);
+    assert_eq!(
+        visiaengine_load_gltf(ve, fixture("twoprim.glb").as_ptr()),
+        0
+    );
     assert_eq!(visiaengine_render(ve), 0);
     assert_eq!(visiaengine_viewport(ve, 80, 60), 0);
     assert_eq!(visiaengine_render(ve), 0);
     let mut big = vec![0u8; 80 * 60 * 4];
-    assert_eq!(visiaengine_readback(ve, big.as_mut_ptr(), big.len() as u64), 0);
+    assert_eq!(
+        visiaengine_readback(ve, big.as_mut_ptr(), big.len() as u64),
+        0
+    );
     let mut old = vec![0u8; 64 * 48 * 4];
     assert_eq!(
         visiaengine_readback(ve, old.as_mut_ptr(), old.len() as u64),
@@ -221,6 +227,9 @@ fn viewport_resize_reconfigures_frame_dims() {
     );
     assert_eq!(visiaengine_viewport(ve, 64, 48), 0);
     assert_eq!(visiaengine_render(ve), 0);
-    assert_eq!(visiaengine_readback(ve, old.as_mut_ptr(), old.len() as u64), 0);
+    assert_eq!(
+        visiaengine_readback(ve, old.as_mut_ptr(), old.len() as u64),
+        0
+    );
     assert_eq!(visiaengine_destroy(ve), 0);
 }
