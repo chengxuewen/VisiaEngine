@@ -308,6 +308,7 @@ impl Engine {
             view_rot: self.rig.view_rotation(),
             eye,
             proj,
+            px_world_scale: 1.0,
             commands,
         };
         match &mut self.target {

@@ -359,6 +359,7 @@ fn render_offscreen_cube_at_with(base_color: [f32; 4], offset: [f64; 3]) -> Opti
         view_rot: view,
         eye,
         proj,
+        px_world_scale: 1.0,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.05, 0.07, 0.10, 1.0],

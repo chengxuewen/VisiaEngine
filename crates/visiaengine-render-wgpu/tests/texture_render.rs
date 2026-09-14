@@ -52,6 +52,7 @@ fn quad_and_frame(tex_mat: u64) -> (QuadMesh, Scene) {
         view_rot: rig.view_rotation(),
         eye: rig.eye(),
         proj,
+        px_world_scale: 1.0,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0., 0., 0., 1.],
@@ -285,6 +286,7 @@ fn flat_pipeline_zero_regression_marker() {
         view_rot: rig.view_rotation(),
         eye: rig.eye(),
         proj,
+        px_world_scale: 1.0,
         commands,
     };
     let img = b.render_to_pixels(&frame).expect("render flat");

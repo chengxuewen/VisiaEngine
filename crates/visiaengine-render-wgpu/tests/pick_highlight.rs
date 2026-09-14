@@ -124,6 +124,7 @@ fn selected_entity_renders_highlight_overlay() {
         view_rot: rig.view_rotation(),
         eye: [4.0, 0.0, 20.0],
         proj,
+        px_world_scale: 1.0,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -189,6 +190,7 @@ fn occlusion_independent_of_draw_order() {
             view_rot: rig.view_rotation(),
             eye: [4.0, 0.0, 20.0],
             proj,
+            px_world_scale: 1.0,
             commands,
         };
         let img = backend.render_to_pixels(&frame).expect("render");

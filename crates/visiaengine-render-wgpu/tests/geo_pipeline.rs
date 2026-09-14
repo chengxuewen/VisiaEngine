@@ -85,6 +85,7 @@ fn golden_geo_fill_hit() {
         view_rot: rig.view_rotation(),
         eye: [origin[0], origin[1], 10.0],
         proj,
+        px_world_scale: 1.0,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -179,6 +180,7 @@ fn golden_scalar_ramp_pixels() {
         view_rot: rig.view_rotation(),
         eye: [origin[0], origin[1], 10.0],
         proj,
+        px_world_scale: 1.0,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");

@@ -63,6 +63,66 @@ impl Instance {
 pub struct InstanceDesc<'a> {
     pub data: &'a [Instance],
 }
+
+/// 扩片表句柄（REND-30，4de；与 InstanceId 同计数域，命名表达新资源族 [裁决点 c]）。
+pub type TableId = u64;
+
+/// 线段（WGPU-17 扩片源）。布局=vec4 同宽字段消 CPU/GPU 对齐歧义 [4de R1]：
+/// `a[0..16] b[16..32] color[32..44] width_px[44..48]`，WGSL struct 同形 48B。
+#[repr(C)]
+#[derive(bytemuck::Pod, bytemuck::Zeroable, Clone, Copy, Debug, PartialEq)]
+pub struct StrokeSeg {
+    pub a: [f32; 4],
+    pub b: [f32; 4],
+    pub color: [f32; 3],
+    pub width_px: f32,
+}
+
+impl StrokeSeg {
+    #[must_use]
+    pub const fn new(a: [f32; 3], b: [f32; 3], color: [f32; 3], width_px: f32) -> Self {
+        Self {
+            a: [a[0], a[1], a[2], 0.0],
+            b: [b[0], b[1], b[2], 0.0],
+            color,
+            width_px,
+        }
+    }
+}
+
+/// 线段表上传描述。
+#[derive(Clone, Copy, Debug)]
+pub struct StrokeTableDesc<'a> {
+    pub data: &'a [StrokeSeg],
+}
+
+/// 点标记（WGPU-18 splat 源；32B 同 Instance 族形态）。
+#[repr(C)]
+#[derive(bytemuck::Pod, bytemuck::Zeroable, Clone, Copy, Debug, PartialEq)]
+pub struct PointMark {
+    pub pos: [f32; 3],
+    pub radius_px: f32,
+    pub color: [f32; 3],
+    _pad: f32,
+}
+
+impl PointMark {
+    #[must_use]
+    pub const fn new(pos: [f32; 3], color: [f32; 3], radius_px: f32) -> Self {
+        Self {
+            pos,
+            radius_px,
+            color,
+            _pad: 0.0,
+        }
+    }
+}
+
+/// 点表上传描述。
+#[derive(Clone, Copy, Debug)]
+pub struct PointTableDesc<'a> {
+    pub data: &'a [PointMark],
+}
 /// 能力位（Tier 矩阵钩子，architecture.md ⑥；v0 枚举从简）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Capability {
@@ -184,6 +244,18 @@ pub enum DrawCommand {
         origin: [f64; 3],
         transform: [[f64; 4]; 4],
     },
+    /// 线段批量扩片（REND-30，4de）：色/宽住表，材质不挂 [裁决点 a]。
+    DrawStrokes {
+        table: TableId,
+        origin: [f64; 3],
+        transform: [[f64; 4]; 4],
+    },
+    /// 点标记批量 splat（REND-30）：圆 mask 于 FS，色/半径住表。
+    DrawPoints {
+        table: TableId,
+        origin: [f64; 3],
+        transform: [[f64; 4]; 4],
+    },
 }
 
 impl DrawCommand {
@@ -193,6 +265,8 @@ impl DrawCommand {
             Self::ClearColor { .. } => "clear-color",
             Self::DrawMesh { .. } => "draw-mesh",
             Self::DrawInstances { .. } => "draw-instances",
+            Self::DrawStrokes { .. } => "draw-strokes",
+            Self::DrawPoints { .. } => "draw-points",
         }
     }
 }
@@ -208,6 +282,9 @@ pub struct Frame {
     /// 世界相机位，f64（与 DrawMesh.origin f64 相减后才降 f32）。
     pub eye: [f64; 3],
     pub proj: [[f32; 4]; 4],
+    /// 1 屏幕像素 ≙ 世界单位数 @参考深度（REND-29，宿主给；扩片族宽度乘子。
+    /// ortho 顶视=2·zoom/width 精确；透视=近似 [4de 不装①]。平铺三角系不读=零影响）。
+    pub px_world_scale: f32,
     pub commands: Vec<DrawCommand>,
 }
 
@@ -238,6 +315,20 @@ pub trait RenderBackend {
     fn create_instances(&mut self, _desc: &InstanceDesc<'_>) -> Result<InstanceId, BackendError> {
         Err(BackendError {
             reason: "instancing unsupported by this backend".into(),
+        })
+    }
+
+    /// 线段表上传（REND-30，4de）：默认=不支持（族协议）。
+    fn create_strokes(&mut self, _desc: &StrokeTableDesc<'_>) -> Result<TableId, BackendError> {
+        Err(BackendError {
+            reason: "strokes unsupported by this backend".into(),
+        })
+    }
+
+    /// 点表上传（REND-30）：默认=不支持（族协议）。
+    fn create_points(&mut self, _desc: &PointTableDesc<'_>) -> Result<TableId, BackendError> {
+        Err(BackendError {
+            reason: "points unsupported by this backend".into(),
         })
     }
 }

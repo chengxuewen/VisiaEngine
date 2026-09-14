@@ -509,7 +509,10 @@ impl MeshCore {
             .iter()
             .find_map(|c| match c {
                 DrawCommand::ClearColor { rgba } => Some(*rgba),
-                DrawCommand::DrawMesh { .. } | DrawCommand::DrawInstances { .. } => None,
+                DrawCommand::DrawMesh { .. }
+                | DrawCommand::DrawInstances { .. }
+                | DrawCommand::DrawStrokes { .. }
+                | DrawCommand::DrawPoints { .. } => None,
             })
             .unwrap_or([0.0; 4]);
         self.ensure_depth(width.max(1), height.max(1));
@@ -550,7 +553,11 @@ impl MeshCore {
             });
             for cmd in &frame.commands {
                 match cmd {
-                    DrawCommand::ClearColor { .. } => {}
+                    // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
+                    // 漏臂=编译失败（契约面兑现，非静默跳过）
+                    DrawCommand::ClearColor { .. }
+                    | DrawCommand::DrawStrokes { .. }
+                    | DrawCommand::DrawPoints { .. } => {}
                     DrawCommand::DrawMesh {
                         mesh,
                         material,

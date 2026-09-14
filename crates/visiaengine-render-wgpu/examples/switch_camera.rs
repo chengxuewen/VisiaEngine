@@ -213,6 +213,7 @@ impl ApplicationHandler for App {
                     view_rot: rig.view_rotation(),
                     eye: rig.eye(),
                     proj,
+                    px_world_scale: 1.0,
                     commands,
                 };
                 match surface.get_current_texture() {

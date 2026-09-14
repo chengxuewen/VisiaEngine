@@ -151,6 +151,7 @@ fn main() {
         view_rot: rig.view_rotation(),
         eye: [4.0, 0.0, 20.0],
         proj,
+        px_world_scale: 1.0,
         commands,
     };
     for f in 0..frames {

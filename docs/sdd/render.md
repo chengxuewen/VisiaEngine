@@ -87,3 +87,9 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-28: DrawInstances 变体（4c）
 `DrawCommand::DrawInstances{mesh, material, instances: InstanceId, origin, transform}`——D7 origin 语义与 DrawMesh 同款（f64 远坐标层，实例 offset 为 origin-local f32）；`kind()="draw-instances"`；消费端穷举 match 同步器扩臂（compile-time 逼显式处理，新后端漏臂=编译失败）。v0 无实例级剔除/排序（全量单 draw，DrawMesh 纪律同款）。
+
+## REND-29: Frame.px_world_scale（4de）
+`Frame +{ px_world_scale: f32 }`——1 屏幕像素≙多少世界单位 @参考深度（**宿主给**：ortho 顶视=2·zoom/width 精确；透视近似=4de 不装①注记）。扩片族（Strokes/Points）宽度/半径乘子；三角系管线不读=零影响。默认构造点=1.0。
+
+## REND-30: 扩片表与命令族（4de）
+`TableId=u64` 别名（与 InstanceId 同计数域，新资源族命名）。`StrokeSeg` 48B Pod（`a[0..16] b[16..32] color[32..44] width_px[44..48]`——vec4 同宽字段消 CPU/GPU 对齐歧义 [R1]）/`PointMark` 32B Pod（pos/radius_px/color/pad）；`create_strokes`/`create_points` 默认体=显式 Err（族协议第 4/5 员）。`DrawStrokes{table,origin,transform}`/`DrawPoints{...}`：**色/宽住表不挂材质** [裁决点 a]（材质对扩片族无 base/shade 语义——光照链不参与，色直出）；D7 origin 同款；kind()="draw-strokes"/"draw-points"。

@@ -32,7 +32,9 @@ impl RenderBackend for Stub {
             match cmd {
                 DrawCommand::ClearColor { .. }
                 | DrawCommand::DrawMesh { .. }
-                | DrawCommand::DrawInstances { .. } => {}
+                | DrawCommand::DrawInstances { .. }
+                | DrawCommand::DrawStrokes { .. }
+                | DrawCommand::DrawPoints { .. } => {}
             }
         }
     }
@@ -72,6 +74,7 @@ fn stub_impl_without_wgpu() {
         view_rot: IDENTITY4,
         eye: [0.0; 3],
         proj: IDENTITY4,
+        px_world_scale: 1.0,
         commands: vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.1, 1.0],
         }],
@@ -205,6 +208,7 @@ fn frame_view_proj_fields_roundtrip() {
         view_rot: IDENTITY4,
         eye: [3.0, 4.0, 5.0],
         proj: IDENTITY4,
+        px_world_scale: 1.0,
         commands: vec![],
     };
     assert_eq!(f.view_rot, IDENTITY4);
@@ -221,6 +225,7 @@ fn frame_camera_split_roundtrip() {
         view_rot: IDENTITY4,
         eye: [1.5e7, -2.5, 3.25],
         proj: IDENTITY4,
+        px_world_scale: 1.0,
         commands: vec![],
     };
     assert_eq!(f.eye, [1.5e7, -2.5, 3.25]);
@@ -243,7 +248,10 @@ fn drawmesh_carries_origin() {
     };
     match cmd {
         DrawCommand::DrawMesh { origin, .. } => assert_eq!(origin, [1.0e7, 0.0, 0.0]),
-        DrawCommand::ClearColor { .. } | DrawCommand::DrawInstances { .. } => {
+        DrawCommand::ClearColor { .. }
+        | DrawCommand::DrawInstances { .. }
+        | DrawCommand::DrawStrokes { .. }
+        | DrawCommand::DrawPoints { .. } => {
             panic!("expected mesh")
         }
     }
@@ -370,7 +378,12 @@ fn expansion_tables_default_err_and_layout_locked() {
     };
     let e = s
         .create_strokes(&StrokeTableDesc {
-            data: &[StrokeSeg::new([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0], 2.0)],
+            data: &[StrokeSeg::new(
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                2.0,
+            )],
         })
         .unwrap_err();
     assert!(e.reason.contains("strokes"), "{e:?}");
