@@ -13,8 +13,22 @@ struct View {
     up: vec3<f32>,
     px_scale: f32,
     eye_local: vec3<f32>,
+    _pad: f32,
+    // WGPU-19：光源合成阵（compose_mvp 同机件，D7 全链）；shadow=None 时零填+
+    // enabled 关闭+消费点早退——前 128B 位序不变=三角系零回归构造保证续存
+    light_view_proj: mat4x4<f32>,
 };
 @group(0) @binding(0) var<uniform> view: View;
+
+// WGPU-19 shadow 资源面：params/map/sampler 恒绑（dummy 常驻）——动态 enabled 分支
+// 非布局分支（[E3D:B2] mega-bool 令辖=着色布局域，注记防误读）
+struct ShadowParams {
+    a: vec4<f32>,  // (light_dir, enabled)
+    b: vec4<f32>,  // (size, texel, bias_c, bias_s)
+};
+@group(0) @binding(1) var<uniform> sp: ShadowParams;
+@group(0) @binding(7) var shadow_map: texture_depth_2d;
+@group(0) @binding(8) var shadow_smp: sampler_comparison;
 @group(0) @binding(2) var<uniform> mat: Mat;
 // Textured layout 专属槽位（Flat layout 不含 3/4——两 pipeline 两 layout，
 // mega-bool 分支否决 [E3D:B2]）
@@ -57,16 +71,17 @@ struct FsIn {
     @builtin(position) pos: vec4<f32>,
     @location(0) color: vec3<f32>,
     @location(1) uv: vec2<f32>,
+    @location(2) light_clip: vec4<f32>,
 };
-
-const LIGHT: vec3<f32> = vec3<f32>(0.5, 0.7, 0.4);
 
 @vertex
 fn vs(in: VsIn) -> FsIn {
     var out: FsIn;
     out.pos = view.view_proj * vec4<f32>(in.pos, 1.0);
+    out.light_clip = view.light_view_proj * vec4<f32>(in.pos, 1.0);
     let n = normalize(in.normal);
-    let l = normalize(LIGHT);
+    // LIGHT 常数退役入 UBO [R4]：dummy params 载默认位型 (0.5,0.7,0.4) → 存量逐位不变
+    let l = normalize(sp.a.rgb);
     // mock-up [4ab①/WGPU-14]：specular 参与 Lambert 亮度系数（非 GGX）。
     // 存量材质 specular=0 → `s + 0.0` 逐位恒等=Flat 零回归不受累。
     let ndl = max(dot(n, l), 0.0);
@@ -74,6 +89,26 @@ fn vs(in: VsIn) -> FsIn {
     out.color = mat.base_color.rgb * shade;
     out.uv = in.uv * mat.repeat;
     return out;
+}
+
+/// P2 硬 PCF 4-tap（P3 升 PCSS 三阶段）。返回可见度 ∈[0,1]；1=全亮。
+fn shadow_vis(lc: vec4<f32>) -> f32 {
+    if (sp.a.w < 0.5 || lc.w <= 0.0) {
+        return 1.0;
+    }
+    let l = lc / lc.w;
+    let uv = vec2(l.x * 0.5 + 0.5, 0.5 - l.y * 0.5);
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+        return 1.0; // 光锥外=判亮（v0 无级联 [不装④]）
+    }
+    let z = l.z - 0.0015; // 接收端常数偏置（caster 侧 bias 在建图 pass）
+    let t = sp.b.y; // texel
+    var acc = 0.0;
+    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(-0.5, -0.5) * t, z);
+    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(0.5, -0.5) * t, z);
+    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(-0.5, 0.5) * t, z);
+    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(0.5, 0.5) * t, z);
+    return acc * 0.25;
 }
 
 /// Instanced 变体 vs（WGPU-16）：底对齐 z 挤出 + 实例色乘法链。
@@ -85,8 +120,9 @@ fn vs_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
     let inst = insts[ii];
     let p = vec3<f32>(in.pos.x, in.pos.y, in.pos.z * inst.height) + inst.offset;
     out.pos = view.view_proj * vec4<f32>(p, 1.0);
+    out.light_clip = view.light_view_proj * vec4<f32>(p, 1.0);
     let n = normalize(in.normal);
-    let l = normalize(LIGHT);
+    let l = normalize(sp.a.rgb);
     let ndl = max(dot(n, l), 0.0);
     let shade = 0.35 + 0.65 * ndl + mat.specular * ndl;
     out.color = mat.base_color.rgb * inst.color * shade;
@@ -117,6 +153,7 @@ fn vs_stroke(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     let along = mid + axis * (in.side.x * 0.5 * distance(s.b.xyz, s.a.xyz));
     let p = along + perp * (in.side.y * halfw);
     out.pos = view.view_proj * vec4<f32>(p, 1.0);
+    out.light_clip = vec4<f32>(0.0);
     out.color = s.color;
     out.uv = in.side;
     return out;
@@ -136,6 +173,7 @@ fn vs_point(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     let r = m.radius_px * view.px_scale;
     let p = m.pos + view.right * (in.side.x * r) + view.up * (in.side.y * r);
     out.pos = view.view_proj * vec4<f32>(p, 1.0);
+    out.light_clip = vec4<f32>(0.0);
     out.color = m.color;
     out.uv = in.side;
     return out;
@@ -150,15 +188,43 @@ fn fs_point(in: FsIn) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color, 1.0);
 }
 
-/// Flat 变体（现状逐像素一致：alpha 式、光照、乘法序全保留）。
+/// Flat 变体（shadow 关闭=`× mix(0.25,1,1.0)=×1.0` 逐位恒等=零回归续存）。
 @fragment
 fn fs(in: FsIn) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.color, mat.base_color.a);
+    let vis = shadow_vis(in.light_clip);
+    return vec4<f32>(in.color * mix(0.25, 1.0, vis), mat.base_color.a);
 }
 
 /// Textured 变体：采样×base×shade（WGPU-14 亮度链）。
 @fragment
 fn fs_textured(in: FsIn) -> @location(0) vec4<f32> {
     let t = textureSample(diffuse, samp, in.uv);
-    return vec4<f32>(in.color * t.rgb, mat.base_color.a * t.a);
+    let vis = shadow_vis(in.light_clip);
+    return vec4<f32>(in.color * t.rgb * mix(0.25, 1.0, vis), mat.base_color.a * t.a);
 }
+
+/// WGPU-19 caster pass：光空间位置直写（无色彩目标，深度即输出）。
+@vertex
+fn vs_shadow(in: VsIn) -> FsIn {
+    var out: FsIn;
+    out.pos = view.light_view_proj * vec4<f32>(in.pos, 1.0);
+    out.color = vec3<f32>(0.0);
+    out.uv = vec2<f32>(0.0);
+    out.light_clip = vec4<f32>(0.0);
+    return out;
+}
+
+@vertex
+fn vs_shadow_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
+    var out: FsIn;
+    let inst = insts[ii];
+    let p = vec3<f32>(in.pos.x, in.pos.y, in.pos.z * inst.height) + inst.offset;
+    out.pos = view.light_view_proj * vec4<f32>(p, 1.0);
+    out.color = vec3<f32>(0.0);
+    out.uv = vec2<f32>(0.0);
+    out.light_clip = vec4<f32>(0.0);
+    return out;
+}
+
+@fragment
+fn fs_shadow() {}

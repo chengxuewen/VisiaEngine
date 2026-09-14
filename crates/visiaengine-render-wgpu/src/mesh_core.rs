@@ -55,6 +55,16 @@ pub struct MeshCore {
     bgl_point: wgpu::BindGroupLayout,
     /// 深度面缓存（WGPU-13：尺寸变更重建；pipeline 与 attachment 格式同源）
     depth_cache: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
+    /// WGPU-19：shadow map（1024²，懒建常驻）+ dummy 1×1（None 位恒绑）+ 比较采样器
+    /// + params-off UBO（enabled=0，light_dir 载默认位型=旧 LIGHT 常数逐位）
+    shadow_map: Option<(wgpu::Texture, wgpu::TextureView)>,
+    sh_dummy: wgpu::TextureView,
+    sh_sampler: wgpu::Sampler,
+    sh_off: wgpu::Buffer,
+    layout_shadow: wgpu::PipelineLayout,
+    layout_shadow_inst: wgpu::PipelineLayout,
+    bgl_shadow: wgpu::BindGroupLayout,
+    bgl_shadow_inst: wgpu::BindGroupLayout,
 }
 
 /// 材质 GPU 态：32B uniform 块 + 可选纹理 view（textured 变体键源）。
@@ -72,6 +82,9 @@ enum Variant {
     Instanced,
     Strokes,
     Points,
+    /// WGPU-19 caster pass（无色彩目标；Mesh=DrawMesh 源，Inst=DrawInstances 源）
+    ShadowMesh,
+    ShadowInst,
 }
 
 /// GPU 实例表（WGPU-16）：32B/条 storage 缓冲 + 条数。
@@ -148,8 +161,8 @@ impl MeshCore {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        // View 块 112B（WGSL 对齐规约）→ 128 下限（uniform() 本就补到 256）
-                        min_binding_size: wgpu::BufferSize::new(128),
+                        // View 块 176B（WGPU-19 含 light_view_proj）→ 192 下限
+                        min_binding_size: wgpu::BufferSize::new(192),
                     },
                     count: None,
                 },
@@ -208,6 +221,8 @@ impl MeshCore {
                         count: None,
                     });
                 }
+                // WGPU-19 接收端三元在 match 后统一追加（dummy 常驻=动态分支非布局分支）
+                Variant::ShadowMesh | Variant::ShadowInst => unreachable!("caster bgl 独立造"),
                 // WGPU-17 线段表 storage（48B/条下限）；材质 binding2 不参与 [裁决点 a]
                 Variant::Strokes => {
                     entries.remove(1);
@@ -223,11 +238,78 @@ impl MeshCore {
                     });
                 }
             }
+            if matches!(
+                variant,
+                Variant::Flat | Variant::Textured | Variant::Instanced
+            ) {
+                entries.extend_from_slice(&[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(32),
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 7,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Depth,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 8,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                        count: None,
+                    },
+                ]);
+            }
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some(label),
                 entries: &entries,
             })
         };
+        // WGPU-19 caster bgl 对（binding0 [+5]；无色彩目标管线用）
+        let mk_shadow_entries = |inst: bool| {
+            let mut e = vec![wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(192),
+                },
+                count: None,
+            }];
+            if inst {
+                e.push(wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(32),
+                    },
+                    count: None,
+                });
+            }
+            e
+        };
+        let bgl_shadow = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("mesh-bgl-shadow"),
+            entries: &mk_shadow_entries(false),
+        });
+        let bgl_shadow_inst = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("mesh-bgl-shadow-inst"),
+            entries: &mk_shadow_entries(true),
+        });
         let bgl_flat = mk_bgl("mesh-bgl", Variant::Flat);
         let bgl_tex = mk_bgl("mesh-bgl-tex", Variant::Textured);
         let bgl_inst = mk_bgl("mesh-bgl-inst", Variant::Instanced);
@@ -269,6 +351,43 @@ impl MeshCore {
             bind_group_layouts: &[Some(&bgl_point)],
             immediate_size: 0,
         });
+        let layout_shadow = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("mesh-pl-shadow"),
+            bind_group_layouts: &[Some(&bgl_shadow)],
+            immediate_size: 0,
+        });
+        let layout_shadow_inst = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("mesh-pl-shadow-inst"),
+            bind_group_layouts: &[Some(&bgl_shadow_inst)],
+            immediate_size: 0,
+        });
+        let sh_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("shadow-cmp"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            compare: Some(wgpu::CompareFunction::Less),
+            ..Default::default()
+        });
+        let dummy = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("shadow-dummy"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let sh_dummy = dummy.create_view(&wgpu::TextureViewDescriptor::default());
+        let sh_off = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("shadow-off"),
+            contents: bytemuck::cast_slice(&[0.5f32, 0.7, 0.4, 0.0, 0.0, 1.0, 0.0, 0.0]),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
         let mut pipelines = HashMap::new();
         for (variant, pl) in [
             (Variant::Flat, &layout),
@@ -288,6 +407,22 @@ impl MeshCore {
                 ),
             );
         }
+        for (variant, pl) in [
+            (Variant::ShadowMesh, &layout_shadow),
+            (Variant::ShadowInst, &layout_shadow_inst),
+        ] {
+            pipelines.insert(
+                (wgpu::TextureFormat::Rgba8Unorm, variant),
+                build_pipeline(
+                    &device,
+                    pl,
+                    &shader,
+                    wgpu::TextureFormat::Rgba8Unorm,
+                    variant,
+                ),
+            );
+        }
+        let _ = dummy;
         Self {
             device,
             queue,
@@ -317,6 +452,14 @@ impl MeshCore {
             bgl_stroke,
             bgl_point,
             depth_cache: None,
+            shadow_map: None,
+            sh_dummy,
+            sh_sampler,
+            sh_off,
+            layout_shadow,
+            layout_shadow_inst,
+            bgl_shadow,
+            bgl_shadow_inst,
         }
     }
 
@@ -522,7 +665,7 @@ impl MeshCore {
     /// View uniform 块 128B（REND-29 兑现；[f32;32] 与 WGSL struct 同布局）：
     /// mat@0..16 / right@16 / up@20 / px_scale@23 / eye_local@24..27（世界 eye−origin f32）。
     /// right/up=view_rot 行抽取——与 screen_to_ray_* 同一 view_rot 单一事实源。
-    fn view_block(frame: &Frame, origin: &[f64; 3], transform: &[[f64; 4]; 4]) -> [f32; 32] {
+    fn view_block(frame: &Frame, origin: &[f64; 3], transform: &[[f64; 4]; 4]) -> [f32; 48] {
         let mvp = visiaengine_render::rebase::compose_mvp(
             &frame.proj,
             &frame.view_rot,
@@ -530,7 +673,7 @@ impl MeshCore {
             origin,
             transform,
         );
-        let mut block = [0.0f32; 32];
+        let mut block = [0.0f32; 48];
         block[..16].copy_from_slice(bytemuck::cast_slice(&mvp));
         let r = &frame.view_rot;
         // 列主序 m[col][row]：世界 right=行0=(m00,m10,m20)；up=行1
@@ -544,7 +687,57 @@ impl MeshCore {
         block[24] = (frame.eye[0] - origin[0]) as f32;
         block[25] = (frame.eye[1] - origin[1]) as f32;
         block[26] = (frame.eye[2] - origin[2]) as f32;
+        if let Some(s) = &frame.shadow {
+            let lvp = visiaengine_render::rebase::compose_mvp(
+                &s.proj,
+                &s.view_rot,
+                &s.eye,
+                origin,
+                transform,
+            );
+            block[28..44].copy_from_slice(bytemuck::cast_slice(&lvp));
+        }
         block
+    }
+
+    /// 帧共享 shadow 资源（None=dummy/off 常驻位）：返回 (params buf, map view)。
+    fn shadow_frame_res(&mut self, frame: &Frame) -> (wgpu::Buffer, wgpu::TextureView) {
+        let Some(s) = &frame.shadow else {
+            return (self.sh_off.clone(), self.sh_dummy.clone());
+        };
+        const MAP: u32 = 1024;
+        if self.shadow_map.is_none() {
+            let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("shadow-map"),
+                size: wgpu::Extent3d {
+                    width: MAP,
+                    height: MAP,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: DEPTH_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+            let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+            self.shadow_map = Some((tex, view));
+        }
+        let mview = self.shadow_map.as_ref().expect("just built").1.clone();
+        let params = [
+            s.light_dir[0],
+            s.light_dir[1],
+            s.light_dir[2],
+            1.0, // enabled
+            s.size,
+            1.0 / MAP as f32,
+            s.bias.constant,
+            s.bias.slope,
+        ];
+        let buf = self.uniform(bytemuck::cast_slice(&params), "shadow-params");
+        (buf, mview)
     }
 
     /// 线段表上传（WGPU-17）：48B/条；空表建期拒（4c 同纪律）。
@@ -680,9 +873,110 @@ impl MeshCore {
             .as_ref()
             .map(|(_, _, _, v)| v.clone())
             .expect("depth just ensured");
+        let (sh_params, sh_view) = self.shadow_frame_res(frame);
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        // ===== WGPU-19 caster pre-pass（shadow=Some 才跑；DrawMesh/DrawInstances 投影，
+        // 扩片族不投 [不装②]；无色彩目标 pass，bias 住 caster 管线 depth_stencil）=====
+        if frame.shadow.is_some() {
+            let mut sp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("shadow-pass"),
+                color_attachments: &[],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &sh_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                ..Default::default()
+            });
+            for cmd in &frame.commands {
+                let (mesh, origin, transform, inst_id) = match *cmd {
+                    DrawCommand::DrawMesh {
+                        mesh,
+                        origin,
+                        transform,
+                        ..
+                    } => (mesh, origin, transform, None),
+                    DrawCommand::DrawInstances {
+                        mesh,
+                        origin,
+                        transform,
+                        instances,
+                        ..
+                    } => (mesh, origin, transform, Some(instances)),
+                    _ => continue,
+                };
+                let vblock = self.uniform(
+                    bytemuck::cast_slice(&Self::view_block(frame, &origin, &transform)),
+                    "view-shadow",
+                );
+                let Some(gm) = self.meshes.get(&mesh) else {
+                    continue;
+                };
+                let (vbuf, ibuf, index_count) = (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count);
+                let variant = if inst_id.is_some() {
+                    Variant::ShadowInst
+                } else {
+                    Variant::ShadowMesh
+                };
+                let pipeline = match self.pipelines.get(&(color_format, variant)) {
+                    Some(p) => p.clone(),
+                    None => {
+                        let layout = if inst_id.is_some() {
+                            &self.layout_shadow_inst
+                        } else {
+                            &self.layout_shadow
+                        };
+                        let p = build_pipeline(
+                            &self.device,
+                            layout,
+                            &self.shader,
+                            color_format,
+                            variant,
+                        );
+                        self.pipelines.insert((color_format, variant), p.clone());
+                        p
+                    }
+                };
+                sp.set_pipeline(&pipeline);
+                let mut inst_buf: Option<wgpu::Buffer> = None;
+                let mut inst_count = 1u32;
+                if let Some(iid) = inst_id {
+                    let Some(gi) = self.instances.get(&iid) else {
+                        continue;
+                    };
+                    inst_buf = Some(gi.buf.clone());
+                    inst_count = gi.count;
+                }
+                let mut entries = vec![wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: vblock.as_entire_binding(),
+                }];
+                if let Some(ib) = &inst_buf {
+                    entries.push(wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: ib.as_entire_binding(),
+                    });
+                }
+                let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("shadow-caster-bg"),
+                    layout: if inst_id.is_some() {
+                        &self.bgl_shadow_inst
+                    } else {
+                        &self.bgl_shadow
+                    },
+                    entries: &entries,
+                });
+                sp.set_bind_group(0, &bg, &[]);
+                sp.set_vertex_buffer(0, vbuf.slice(..));
+                sp.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
+                sp.draw_indexed(0..index_count, 0, 0..inst_count);
+            }
+        }
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("mesh-pass"),
@@ -832,6 +1126,18 @@ impl MeshCore {
                                         binding: 4,
                                         resource: wgpu::BindingResource::Sampler(&sampler),
                                     },
+                                    wgpu::BindGroupEntry {
+                                        binding: 1,
+                                        resource: sh_params.as_entire_binding(),
+                                    },
+                                    wgpu::BindGroupEntry {
+                                        binding: 7,
+                                        resource: wgpu::BindingResource::TextureView(&sh_view),
+                                    },
+                                    wgpu::BindGroupEntry {
+                                        binding: 8,
+                                        resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
+                                    },
                                 ],
                             })
                         } else {
@@ -846,6 +1152,18 @@ impl MeshCore {
                                     wgpu::BindGroupEntry {
                                         binding: 2,
                                         resource: buf.as_entire_binding(),
+                                    },
+                                    wgpu::BindGroupEntry {
+                                        binding: 1,
+                                        resource: sh_params.as_entire_binding(),
+                                    },
+                                    wgpu::BindGroupEntry {
+                                        binding: 7,
+                                        resource: wgpu::BindingResource::TextureView(&sh_view),
+                                    },
+                                    wgpu::BindGroupEntry {
+                                        binding: 8,
+                                        resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
                                     },
                                 ],
                             })
@@ -913,6 +1231,18 @@ impl MeshCore {
                                 wgpu::BindGroupEntry {
                                     binding: 5,
                                     resource: inst_buf.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 1,
+                                    resource: sh_params.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 7,
+                                    resource: wgpu::BindingResource::TextureView(&sh_view),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 8,
+                                    resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
                                 },
                             ],
                         });
@@ -1003,6 +1333,17 @@ fn build_pipeline(
                 attributes: &mesh_attrs,
             })]
         };
+    let cts = [Some(wgpu::ColorTargetState {
+        format: color_format,
+        blend: None,
+        write_mask: wgpu::ColorWrites::ALL,
+    })];
+    let color_targets: &[Option<wgpu::ColorTargetState>] =
+        if matches!(variant, Variant::ShadowMesh | Variant::ShadowInst) {
+            &[]
+        } else {
+            &cts
+        };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("mesh-pipeline"),
         layout: Some(layout),
@@ -1012,6 +1353,8 @@ fn build_pipeline(
                 Variant::Instanced => "vs_inst",
                 Variant::Strokes => "vs_stroke",
                 Variant::Points => "vs_point",
+                Variant::ShadowMesh => "vs_shadow",
+                Variant::ShadowInst => "vs_shadow_inst",
                 _ => "vs",
             }),
             compilation_options: Default::default(),
@@ -1033,6 +1376,13 @@ fn build_pipeline(
                     slope_scale: -1.0,
                     ..Default::default()
                 }
+            } else if matches!(variant, Variant::ShadowMesh | Variant::ShadowInst) {
+                // caster 侧 acne 双保险（接收端另有常数偏置 [R2]；与 DEFAULT_BIAS 同步）
+                wgpu::DepthBiasState {
+                    constant: -1,
+                    slope_scale: -1.5,
+                    ..Default::default()
+                }
             } else {
                 wgpu::DepthBiasState::default()
             },
@@ -1044,14 +1394,11 @@ fn build_pipeline(
                 Variant::Textured => "fs_textured",
                 Variant::Strokes => "fs_stroke",
                 Variant::Points => "fs_point",
+                Variant::ShadowMesh | Variant::ShadowInst => "fs_shadow",
                 _ => "fs",
             }),
             compilation_options: Default::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format: color_format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
+            targets: color_targets,
         }),
         multiview_mask: None,
         cache: None,

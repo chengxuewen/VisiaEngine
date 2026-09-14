@@ -60,3 +60,6 @@ mesh 管线挂 Depth32Float 面（pipeline `Less`+write on；pass 每帧 Clear(1
 
 ## WGPU-18: Points splat 管线（4de）
 点表 32B/条（`PointMark` Pod）入 binding6 storage；四边形常设顶点源屏幕基展开 `p = pos + right·(sx·r) + up·(sy·r)`，`r = radius_px·px_scale`；**FS 单位盘 mask `length(local)>1 → discard`=真圆点**（纠 geo 方块存量）。色直出 alpha=1（同 WGPU-17 链）；depth-bias 伴生同 Strokes（盖面）。空表建期拒/缺表 skip/族位右上一致性锁（right/up 符号面）。
+
+## WGPU-19: shadow pre-pass 与接收 PCF（4f）
+caster pass：无色彩目标 RenderPass（Depth32Float 1024² 懒建常驻，store=Store）+ 两 caster 管线（`ShadowMesh{vs_shadow}`/`ShadowInst{vs_shadow_inst}`，复用 mesh 顶点布局与 binding0；**depth bias 住 caster** `{-1,-1.5}` 与接收端常数偏置 `z−0.0015` 双保险 [R2]）。光源 mvp=**per-draw `compose_mvp(setup 三元组, draw.origin, draw.transform)`**（D7 全链零特例 [裁决点 a]），住 View 块 `light_view_proj`（176B，`[f32;48]`——前 128B 位序不变=三角系零回归续存）。接收端：三主 bgl **恒绑三元**（binding1 params/binding7 map/binding8 comparison sampler）——None=dummy 1×1+params-off（enabled=0 且 light_dir 载**旧 LIGHT 常数同位型** → Lambert `normalize(sp.a.rgb)` 逐位不变，R4 护栏）；fs `× mix(0.25,1.0,vis)`（vis=1 时 ×1.0 恒等）。P2=4-tap PCF（P3 升 PCSS）；光锥外=判亮（无级联 [不装④]）。像素四锁：亮暗两态（PIT-5 症状级死锁）/质心反侧/地面 patch 平滑/None 无暗斑。
