@@ -152,6 +152,7 @@ fn main() {
         eye: [4.0, 0.0, 20.0],
         proj,
         px_world_scale: 1.0,
+        shadow: None,
         commands,
     };
     for f in 0..frames {

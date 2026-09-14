@@ -370,6 +370,7 @@ impl Engine {
             } else {
                 1.0
             },
+            shadow: None,
             commands,
         };
         match &mut self.target {

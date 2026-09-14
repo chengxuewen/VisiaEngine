@@ -214,6 +214,7 @@ impl ApplicationHandler for App {
                     eye: rig.eye(),
                     proj,
                     px_world_scale: 1.0,
+                    shadow: None,
                     commands,
                 };
                 match surface.get_current_texture() {

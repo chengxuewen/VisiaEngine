@@ -285,6 +285,8 @@ pub struct Frame {
     /// 1 屏幕像素 ≙ 世界单位数 @参考深度（REND-29，宿主给；扩片族宽度乘子。
     /// ortho 顶视=2·zoom/width 精确；透视=近似 [4de 不装①]。平铺三角系不读=零影响）。
     pub px_world_scale: f32,
+    /// 方向光阴影（REND-31）：None=关闭且**逐位零回归**（后端 dummy 早退位）。
+    pub shadow: Option<ShadowSetup>,
     pub commands: Vec<DrawCommand>,
 }
 
@@ -331,6 +333,36 @@ pub trait RenderBackend {
             reason: "points unsupported by this backend".into(),
         })
     }
+}
+
+/// 阴影深度偏置（[0,1] 约定；负值=向光拉离，防自影 acne）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShadowBias {
+    pub constant: f32,
+    pub slope: f32,
+}
+
+/// 方向光阴影配置（REND-31，4f）。**构造契约**：`proj/view_rot/eye` 只许经
+/// `CameraRig::perspective/ortho_frame` 产出（PIT-5 教训升契约——GL [-1,1] 域手工矩阵
+/// 进管线=静默整帧裁剪/全影，症状级死锁在 WGPU-19 像素面）；eye 走 f64 D7 同 Frame。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShadowSetup {
+    pub proj: [[f32; 4]; 4],
+    pub view_rot: [[f32; 4]; 4],
+    pub eye: [f64; 3],
+    /// 归一化光向（fs Lambert 与 shadow 数学同源；LIGHT shader 常数退役入 UBO）
+    pub light_dir: [f32; 3],
+    /// 光源角尺寸（世界单位；PCSS 半影源，0=硬 PCF）
+    pub size: f32,
+    pub bias: ShadowBias,
+}
+
+impl ShadowSetup {
+    /// 调参基线（P2 实测定数后若变，此常数与条款体同步改）。
+    pub const DEFAULT_BIAS: ShadowBias = ShadowBias {
+        constant: -1.2,
+        slope: -1.5,
+    };
 }
 
 /// 材质描述（WGPU-14 管线变体键源；`specular`=mock-up [4ab①]：参与既有 Lambert

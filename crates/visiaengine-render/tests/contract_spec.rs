@@ -1,9 +1,9 @@
 //! visiaengine-render 契约测试（仅公开 API；// spec: 标签入双向追溯门禁）。
 
 use visiaengine_render::{
-    BackendError, Camera, Capability, DrawCommand, Frame, Instance, InstanceDesc, MaterialDesc,
-    MaterialId, MeshDesc, MeshId, PointMark, PointTableDesc, RenderBackend, StrokeSeg,
-    StrokeTableDesc, TextureDesc, Viewport,
+    BackendError, Camera, CameraRig, Capability, DrawCommand, Frame, Instance, InstanceDesc,
+    MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark, PointTableDesc, RenderBackend,
+    ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc, TextureDesc, Viewport,
 };
 
 const IDENTITY4: [[f32; 4]; 4] = [
@@ -75,6 +75,7 @@ fn stub_impl_without_wgpu() {
         eye: [0.0; 3],
         proj: IDENTITY4,
         px_world_scale: 1.0,
+        shadow: None,
         commands: vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.1, 1.0],
         }],
@@ -209,6 +210,7 @@ fn frame_view_proj_fields_roundtrip() {
         eye: [3.0, 4.0, 5.0],
         proj: IDENTITY4,
         px_world_scale: 1.0,
+        shadow: None,
         commands: vec![],
     };
     assert_eq!(f.view_rot, IDENTITY4);
@@ -226,6 +228,7 @@ fn frame_camera_split_roundtrip() {
         eye: [1.5e7, -2.5, 3.25],
         proj: IDENTITY4,
         px_world_scale: 1.0,
+        shadow: None,
         commands: vec![],
     };
     assert_eq!(f.eye, [1.5e7, -2.5, 3.25]);
@@ -364,6 +367,7 @@ fn frame_carries_px_world_scale() {
         eye: [0.0; 3],
         proj: IDENTITY4,
         px_world_scale: 0.25, // 1px ≙ 0.25 世界单位（宿主给，GPU 乘子）
+        shadow: None,
         commands: vec![],
     };
     assert_eq!(f.px_world_scale, 0.25);

@@ -93,3 +93,6 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-30: 扩片表与命令族（4de）
 `TableId=u64` 别名（与 InstanceId 同计数域，新资源族命名）。`StrokeSeg` 48B Pod（`a[0..16] b[16..32] color[32..44] width_px[44..48]`——vec4 同宽字段消 CPU/GPU 对齐歧义 [R1]）/`PointMark` 32B Pod（pos/radius_px/color/pad）；`create_strokes`/`create_points` 默认体=显式 Err（族协议第 4/5 员）。`DrawStrokes{table,origin,transform}`/`DrawPoints{...}`：**色/宽住表不挂材质** [裁决点 a]（材质对扩片族无 base/shade 语义——光照链不参与，色直出）；D7 origin 同款；kind()="draw-strokes"/"draw-points"。
+
+## REND-31: ShadowSetup 契约（4f）
+`Frame +{ shadow: Option<ShadowSetup> }`：`None`=关闭且**逐位零回归**（后端 dummy 早退位，key位 语义入 WGPU-19）；`Some`=方向光。`ShadowSetup{proj, view_rot, eye(f64 D7 同 Frame), light_dir, size, bias}`——**构造契约 [PIT-5 升约]**：三元组只许 `CameraRig::perspective/ortho_frame` 产出（其 wgpu [0,1] 域由 REND-11/12 行为断言锁死）；手工 GL [-1,1] 矩阵=症状级死亡（全黑/全亮），像素死锁住 WGPU-19 面。`size`=光源角尺寸世界单位（0→硬 PCF）；`bias` 默认 `ShadowSetup::DEFAULT_BIAS{-1.2,-1.5}`（调参基线，P2 实测定数后两处同步）。

@@ -281,6 +281,7 @@ impl ApplicationHandler for App {
                     proj,
                     // ortho 半宽=zoom → 世界宽 2·zoom 铺 width px（REND-29 精确路）
                     px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
+                    shadow: None,
                     commands,
                 };
                 match surface.get_current_texture() {

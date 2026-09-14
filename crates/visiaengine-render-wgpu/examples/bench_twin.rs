@@ -106,6 +106,7 @@ fn main() {
         eye: rig.eye(),
         proj,
         px_world_scale: 1.0,
+        shadow: None,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.02, 0.02, 0.03, 1.0],

@@ -28,6 +28,7 @@ fn frame_with(commands: Vec<DrawCommand>) -> Frame {
         eye: rig.eye(),
         proj,
         px_world_scale: PX_SCALE,
+        shadow: None,
         commands,
     }
 }

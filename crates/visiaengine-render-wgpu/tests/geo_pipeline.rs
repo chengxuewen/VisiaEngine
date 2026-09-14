@@ -91,6 +91,7 @@ fn golden_geo_fill_hit() {
         eye: [origin[0], origin[1], 10.0],
         proj,
         px_world_scale: 1.0,
+        shadow: None,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -191,6 +192,7 @@ fn golden_scalar_ramp_pixels() {
         eye: [origin[0], origin[1], 10.0],
         proj,
         px_world_scale: 1.0,
+        shadow: None,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
