@@ -51,3 +51,6 @@ mesh 管线挂 Depth32Float 面（pipeline `Less`+write on；pass 每帧 Clear(1
 
 ## WGPU-15: repeat=采样相位倍率
 顶点 `out.uv = uv·mat.repeat`，sampler 全局单例 REPEAT/Linear：repeat=k → 视口内采样频率 ×k。机器 oracle：水平渐变纹理（R=4i）单行回绕断崖数 repeat=1 为 0、repeat=2 恰 1（棋盘奇偶对照在线性滤波下不成立——弃）。
+
+## WGPU-16: Instanced 管线（4c）
+`create_instances`：32B/条 storage 表（`STORAGE|COPY_DST`，REND-27 Pod 同形）；**空表建期即拒**；id 与 mesh/material 同计数域。`Variant::Instanced` 独立 bgl/pipeline（binding 0/2/**5 storage**，vs_inst 入口，组合 Textured 不装——材质 texture 位忽略）：`p=(x, y, z·height)+offset` 底对齐挤出、法向直传零误差（轴对齐盒 z 缩放不变向）、链 `out = base·inst.color·shade`、alpha=材质。消费面 match 三分支显式处理 DrawInstances（let-else 静默跳过=已封堵）；缺表=skip（mesh 缺失同纪律）。像素证据：三实例三色族 + 列高单调（挤出语义）+ 空表/缺表两语义锁。

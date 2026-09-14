@@ -1,8 +1,8 @@
 //! L1 无头后端：MeshCore + 离屏 target + 回读（golden 测试消费面）。
 
 use visiaengine_render::{
-    BackendError, Capability, Frame, MaterialDesc, MaterialId, MeshDesc, MeshId, RenderBackend,
-    TextureDesc, TextureId, Viewport,
+    BackendError, Capability, Frame, InstanceDesc, InstanceId, MaterialDesc, MaterialId, MeshDesc,
+    MeshId, RenderBackend, TextureDesc, TextureId, Viewport,
 };
 
 use crate::mesh_core::MeshCore;
@@ -193,6 +193,10 @@ impl RenderBackend for HeadlessBackend {
 
     fn upload_texture(&mut self, desc: &TextureDesc<'_>) -> Result<TextureId, BackendError> {
         self.core.upload_texture(desc)
+    }
+
+    fn create_instances(&mut self, desc: &InstanceDesc<'_>) -> Result<InstanceId, BackendError> {
+        self.core.create_instances(desc)
     }
 }
 

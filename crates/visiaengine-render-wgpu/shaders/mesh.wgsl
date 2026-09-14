@@ -11,6 +11,14 @@ struct Mat {
 // mega-bool 分支否决 [E3D:B2]）
 @group(0) @binding(3) var diffuse: texture_2d<f32>;
 @group(0) @binding(4) var samp: sampler;
+// Instanced layout 专属槽位（WGPU-16）：32B/条实例表（CPU Instance 逐字节同形，REND-27 布局锁）
+struct Inst {
+    offset: vec3<f32>,
+    height: f32,
+    color: vec3<f32>,
+    _pad: f32,
+};
+@group(0) @binding(5) var<storage, read> insts: array<Inst>;
 
 struct VsIn {
     @location(0) pos: vec3<f32>,
@@ -38,6 +46,24 @@ fn vs(in: VsIn) -> FsIn {
     let shade = 0.35 + 0.65 * ndl + mat.specular * ndl;
     out.color = mat.base_color.rgb * shade;
     out.uv = in.uv * mat.repeat;
+    return out;
+}
+
+/// Instanced 变体 vs（WGPU-16）：底对齐 z 挤出 + 实例色乘法链。
+/// 轴对齐盒法向在 z 缩放下不变向（侧面无 z 分量、顶面恒 +z）——法线直传零误差 [4c 裁决④]。
+/// 与 Textured 组合不装 [四不装②]：材质 texture 位在本入口忽略。
+@vertex
+fn vs_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
+    var out: FsIn;
+    let inst = insts[ii];
+    let p = vec3<f32>(in.pos.x, in.pos.y, in.pos.z * inst.height) + inst.offset;
+    out.pos = view_proj * vec4<f32>(p, 1.0);
+    let n = normalize(in.normal);
+    let l = normalize(LIGHT);
+    let ndl = max(dot(n, l), 0.0);
+    let shade = 0.35 + 0.65 * ndl + mat.specular * ndl;
+    out.color = mat.base_color.rgb * inst.color * shade;
+    out.uv = in.uv;
     return out;
 }
 
