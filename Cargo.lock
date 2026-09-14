@@ -2160,6 +2160,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "glam",
+ "image",
  "pollster",
  "raw-window-handle",
  "visiaengine-core",

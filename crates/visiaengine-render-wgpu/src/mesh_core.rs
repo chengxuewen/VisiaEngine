@@ -1396,7 +1396,7 @@ fn build_pipeline(
                 // caster 侧 acne 双保险（接收端另有常数偏置 [R2]；与 DEFAULT_BIAS 同步）
                 wgpu::DepthBiasState {
                     constant: -1,
-                    slope_scale: -1.5,
+                    slope_scale: -0.5,
                     ..Default::default()
                 }
             } else {
