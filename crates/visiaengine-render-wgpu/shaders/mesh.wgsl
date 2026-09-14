@@ -24,7 +24,7 @@ struct View {
 // 非布局分支（[E3D:B2] mega-bool 令辖=着色布局域，注记防误读）
 struct ShadowParams {
     a: vec4<f32>,  // (light_dir, enabled)
-    b: vec4<f32>,  // (size, texel, bias_c, bias_s)
+    b: vec4<f32>,  // (size→半影比例, texel, bias_c[收纳], bias_s[收纳])
 };
 @group(0) @binding(1) var<uniform> sp: ShadowParams;
 @group(0) @binding(7) var shadow_map: texture_depth_2d;
@@ -91,7 +91,9 @@ fn vs(in: VsIn) -> FsIn {
     return out;
 }
 
-/// P2 硬 PCF 4-tap（P3 升 PCSS 三阶段）。返回可见度 ∈[0,1]；1=全亮。
+/// PCSS 三阶段 [E3D:B3 移植]（WGPU-20）：① blocker 搜索(8 环)→② 相似三角形半影
+/// 估计→③ 16-tap 泊松 PCF。返回可见度 ∈[0,1]；1=全亮。map 边长 1024 与后端
+/// `shadow_frame_res::MAP` 成对耦合（改动必同步两处）。
 fn shadow_vis(lc: vec4<f32>) -> f32 {
     if (sp.a.w < 0.5 || lc.w <= 0.0) {
         return 1.0;
@@ -102,14 +104,53 @@ fn shadow_vis(lc: vec4<f32>) -> f32 {
         return 1.0; // 光锥外=判亮（v0 无级联 [不装④]）
     }
     let z = l.z - 0.0015; // 接收端常数偏置（caster 侧 bias 在建图 pass）
-    let t = sp.b.y; // texel
+    let texel = sp.b.y;
+    let light_size = sp.b.x;
+    // ① blocker 搜索：环半径随光源尺寸放大（texel 单位，下限 1.5=近硬影）
+    let r1 = max(1.5, light_size * 220.0 * (1.0 - z));
+    let off8 = array<vec2<f32>, 8>(
+        vec2(1.0, 0.0), vec2(0.71, 0.71), vec2(0.0, 1.0), vec2(-0.71, 0.71),
+        vec2(-1.0, 0.0), vec2(-0.71, -0.71), vec2(0.0, -1.0), vec2(0.71, -0.71),
+    );
+    var bsum = 0.0;
+    var bfound = 0.0;
+    for (var i = 0; i < 8; i = i + 1) {
+        let o = off8[u32(i)] * r1;
+        let c = vec2<i32>(
+            i32(round((uv.x + o.x * texel) * 1024.0)),
+            i32(round((uv.y + o.y * texel) * 1024.0)),
+        );
+        let d = textureLoad(shadow_map, c, 0);
+        if (d < z) {
+            bsum = bsum + d;
+            bfound = bfound + 1.0;
+        }
+    }
+    if (bfound < 1.0) {
+        return 1.0; // 无遮挡者=全亮
+    }
+    // ② 半影估计（相似三角形比例；uv 单位，上限 0.06=爆炸护栏 [P3 有界性]）
+    let blocker = bsum / bfound;
+    let pen = clamp(light_size * (z - blocker) / max(blocker, 0.001) * 2.5, texel, 0.06);
+    // ③ 16-tap 泊松过滤
+    let off16 = array<vec2<f32>, 16>(
+        vec2(-0.94201624, -0.39906216), vec2(0.94558609, -0.76890725),
+        vec2(-0.09418410, -0.92938870), vec2(0.34495938, 0.29387760),
+        vec2(-0.91588032, 0.45771432), vec2(-0.81544000, -0.87912430),
+        vec2(-0.38277543, 0.27676845), vec2(0.97484398, 0.75966610),
+        vec2(0.44344293, -0.97560616), vec2(0.93747580, 0.61648620),
+        vec2(-0.14020140, 0.91047400), vec2(-0.79791000, -0.31438850),
+        vec2(-0.65675550, 0.74012000), vec2(0.78506600, -0.44712450),
+        vec2(-0.25946690, -0.09117550), vec2(0.40687080, -0.45018580),
+    );
     var acc = 0.0;
-    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(-0.5, -0.5) * t, z);
-    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(0.5, -0.5) * t, z);
-    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(-0.5, 0.5) * t, z);
-    acc += textureSampleCompareLevel(shadow_map, shadow_smp, uv + vec2(0.5, 0.5) * t, z);
-    return acc * 0.25;
+    for (var i = 0; i < 16; i = i + 1) {
+        let o = off16[u32(i)] * pen;
+        acc = acc + textureSampleCompareLevel(shadow_map, shadow_smp, uv + o, z);
+    }
+    return acc / 16.0;
 }
+
 
 /// Instanced 变体 vs（WGPU-16）：底对齐 z 挤出 + 实例色乘法链。
 /// 轴对齐盒法向在 z 缩放下不变向（侧面无 z 分量、顶面恒 +z）——法线直传零误差 [4c 裁决④]。
