@@ -78,3 +78,11 @@
 ## D10: Web/wasm 绑定=路线 A（双面口单源）（2026-09-11 J1-J3 落地转正）
 - **预登记内容**: ① 浏览器面=capi crate 的 `wasm` feature，js.rs 与 ffi.rs 双叶共 engine.rs（单 crate 双面，非 per-repo——单厂商全控面下更懒且免疫 MapLibre 式"同名异核"）；② 薄口纪律：js.rs 只限编组/生命周期/常量再导出/错误翻译，语义唯一住 engine.rs；常量 Rust pub const 单源进 .d.ts 与 C 头（镜像 CAPI-09 机器守卫）；③ 无 free 函数纪律维持（borrowed + caller-alloc 两式，SQLite/[MS] 双派实证）；④ emscripten 路线否决（语言匹配律：C/C++ 核心→emscripten，Rust 核心→wasm-bindgen，三例全合）；⑤ u64≡BigInt、异步工厂（web GPU 交互无同步路径，wgpu 30 Future 实证）。
 - **转正增补（J1-J3）**：① js 面冻结清单=类 VisiaEngine（fromCanvas 异步工厂/扁平 input/pick→bigint）+11 常量 getter+abiVersion 静态；.d.ts 为锁定档（web-mirror.mjs 编译面断言守卫）；② **修订面（被否路线记录）**：wasm-pack 未死但 D5 无包直用 CLI；`visiaengine_input_struct_size()` 导出否决（14 符号面）；playwright CI 自动化归 M2（本机 timebox 放弃实录）；③ 尺寸实录 **raw 733KB/gz 294KB**（wgpu web 全家，≤10MB 目标的 web 半边提前达标）；④ 隔离终形：capi(native C ABI)+visiaengine-wasm(bindgen) 两 crate，**单源=Engine**，CAPI-09 机器对账。证据链 docs/reference/ffi-patterns.md [FFI-R:BS-5/6/7, v13-FEAS-2/7]。
+
+
+## D11: Qt 轮 demo 构建集成=薄自管 CMake（B 案）（2026-09-14）
+
+**决策**：Qt widget 轮的宿主消费面用 iceoryx2 形薄自管 CMake（~60 行）：`add_custom_target` cargo 步 + `RUST_BUILD_ARTIFACT_PATH` 逃生舱 + INTERFACE 伞 `visiaengine::capi`（BUILD/INSTALL 双 genex）+ 树内假 Config 花招（find_package 消费代码树内/装后同文）；`visiaengineConfig.cmake.in` 模板随写但 install 树/.pc/SOVERSION 不做。g++ 脚本案（A）与 corrosion 直上案（C）弃。
+**理由**：demo 必被真实宿主以 cmake 消费——现在写一次 vs 打包轮重写+重验证两次；find_package 冒烟由 demo 天然承担（前作头号教训：cmake 包从未被编译过）。依据=团队调研四案对比（docs/reference/cmake-integration-patterns.md，iceoryx2 :153-205/:38-78/install.cmake:17-21、slint :16-26 及其 corrosion 坑 :427-466 实证）。
+**影响**：Qt 轮 +1 文件级增量；capi Cargo.toml 顺手加 `links = "visiaengine_c"`（重复静态链防呆）。
+**复评触发器（打包轮议题）**：转 corrosion 或维持薄自管——触发=第二 C++ 消费者 / Windows 矩阵 / install-tree 真需求；corrosion 转正需先立「conda 无包→cargo-binstall/GitHub 镜像 vendor」D5 例外账（FetchContent configure 期联网与离线纪律相抵）。伞接口 `visiaengine::capi` 为稳定合同，届时换内核消费面零改动。
