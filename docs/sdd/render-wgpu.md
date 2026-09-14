@@ -54,3 +54,6 @@ mesh 管线挂 Depth32Float 面（pipeline `Less`+write on；pass 每帧 Clear(1
 
 ## WGPU-16: Instanced 管线（4c）
 `create_instances`：32B/条 storage 表（`STORAGE|COPY_DST`，REND-27 Pod 同形）；**空表建期即拒**；id 与 mesh/material 同计数域。`Variant::Instanced` 独立 bgl/pipeline（binding 0/2/**5 storage**，vs_inst 入口，组合 Textured 不装——材质 texture 位忽略）：`p=(x, y, z·height)+offset` 底对齐挤出、法向直传零误差（轴对齐盒 z 缩放不变向）、链 `out = base·inst.color·shade`、alpha=材质。消费面 match 三分支显式处理 DrawInstances（let-else 静默跳过=已封堵）；缺表=skip（mesh 缺失同纪律）。像素证据：三实例三色族 + 列高单调（挤出语义）+ 空表/缺表两语义锁。
+
+## WGPU-17: Strokes 扩片管线（4de）
+线段表 48B/条（`StrokeSeg` Pod，REND-30）入 binding5 storage；共享单位四边形（side∈±1，2 三角）常设顶点源 [E3D:B4 GS→VS 移植]。VS：`perp = normalize(cross(视向, 轴))`（视向=eye_local−mid，**eye_local 与 right/up/px_scale 同住 View 块 @binding0 128B——REND-29 兑现，三角系入口只读前 64B=零回归构造保证**）；退化 `|dot|>0.999 → perp=right`（NaN 不得污染同批 [R2 实义：视向平行段投影=点属几何事实，测面锁"整批存活"）；`halfw = width_px·px_scale·0.5`。FS 色直出（光照链不参与）。polygon-offset `bias{constant:-1, slope:-1}` 伴生件 [E3D:B7③]——盖同深度 fill 不 z-fight。缺表=skip；空表建期拒。像素证据四锁：族位（right/up 基符号）、宽度阶梯、offset 盖面、退化污染控制组。

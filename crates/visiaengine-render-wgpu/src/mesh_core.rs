@@ -3,9 +3,11 @@
 
 use std::collections::HashMap;
 
+use wgpu::util::DeviceExt as _;
+
 use visiaengine_render::{
     BackendError, Capability, DrawCommand, Frame, InstanceDesc, MaterialDesc, MaterialId, MeshDesc,
-    MeshId, TextureDesc, TextureId, Viewport,
+    MeshId, StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport,
 };
 
 struct GpuMesh {
@@ -30,6 +32,11 @@ pub struct MeshCore {
     sampler: Option<wgpu::Sampler>,
     /// 实例表（WGPU-16）：id → (storage buffer, 实例数)
     instances: HashMap<u64, GpuInstances>,
+    /// 线段表（WGPU-17）：id → (storage buffer, 段数)
+    strokes_t: HashMap<TableId, GpuInstances>,
+    /// 共享扩片四边形（side∈±1，2 三角）——strokes/points 常设顶点源
+    quad_vb: wgpu::Buffer,
+    quad_ib: wgpu::Buffer,
     /// (色彩格式, 变体) → 管线（三 layout 三管线族：mega-bool 否决 [E3D:B2]；
     /// 格式维=I3 surface 遗产 [Momus-R3]；Instanced=4c/WGPU-16）
     pipelines: HashMap<(wgpu::TextureFormat, Variant), wgpu::RenderPipeline>,
@@ -37,9 +44,11 @@ pub struct MeshCore {
     layout: wgpu::PipelineLayout,
     layout_tex: wgpu::PipelineLayout,
     layout_inst: wgpu::PipelineLayout,
+    layout_stroke: wgpu::PipelineLayout,
     bgl: wgpu::BindGroupLayout,
     bgl_tex: wgpu::BindGroupLayout,
     bgl_inst: wgpu::BindGroupLayout,
+    bgl_stroke: wgpu::BindGroupLayout,
     /// 深度面缓存（WGPU-13：尺寸变更重建；pipeline 与 attachment 格式同源）
     depth_cache: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
 }
@@ -57,6 +66,7 @@ enum Variant {
     Flat,
     Textured,
     Instanced,
+    Strokes,
 }
 
 /// GPU 实例表（WGPU-16）：32B/条 storage 缓冲 + 条数。
@@ -133,7 +143,8 @@ impl MeshCore {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(64),
+                        // View 块 112B（WGSL 对齐规约）→ 128 下限（uniform() 本就补到 256）
+                        min_binding_size: wgpu::BufferSize::new(128),
                     },
                     count: None,
                 },
@@ -178,6 +189,20 @@ impl MeshCore {
                     },
                     count: None,
                 }),
+                // WGPU-17 线段表 storage（48B/条下限）；材质 binding2 不参与 [裁决点 a]
+                Variant::Strokes => {
+                    entries.remove(1);
+                    entries.push(wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(48),
+                        },
+                        count: None,
+                    });
+                }
             }
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some(label),
@@ -187,6 +212,7 @@ impl MeshCore {
         let bgl_flat = mk_bgl("mesh-bgl", Variant::Flat);
         let bgl_tex = mk_bgl("mesh-bgl-tex", Variant::Textured);
         let bgl_inst = mk_bgl("mesh-bgl-inst", Variant::Instanced);
+        let bgl_stroke = mk_bgl("mesh-bgl-stroke", Variant::Strokes);
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("mesh-pl"),
             bind_group_layouts: &[Some(&bgl_flat)],
@@ -202,11 +228,28 @@ impl MeshCore {
             bind_group_layouts: &[Some(&bgl_inst)],
             immediate_size: 0,
         });
+        let layout_stroke = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("mesh-pl-stroke"),
+            bind_group_layouts: &[Some(&bgl_stroke)],
+            immediate_size: 0,
+        });
+        // 共享扩片四边形（[E3D:B4] GS→VS 形态的常设顶点源）
+        let quad_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("quad-vb"),
+            contents: bytemuck::cast_slice(&[-1.0f32, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0]),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let quad_ib = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("quad-ib"),
+            contents: bytemuck::cast_slice(&[0u32, 1, 2, 0, 2, 3]),
+            usage: wgpu::BufferUsages::INDEX,
+        });
         let mut pipelines = HashMap::new();
         for (variant, pl) in [
             (Variant::Flat, &layout),
             (Variant::Textured, &layout_tex),
             (Variant::Instanced, &layout_inst),
+            (Variant::Strokes, &layout_stroke),
         ] {
             pipelines.insert(
                 (wgpu::TextureFormat::Rgba8Unorm, variant),
@@ -227,6 +270,9 @@ impl MeshCore {
             meshes: HashMap::new(),
             materials: HashMap::new(),
             instances: HashMap::new(),
+            strokes_t: HashMap::new(),
+            quad_vb,
+            quad_ib,
             next_id: 0,
             textures: HashMap::new(),
             next_tex: 0,
@@ -236,9 +282,11 @@ impl MeshCore {
             layout,
             layout_tex,
             layout_inst,
+            layout_stroke,
             bgl: bgl_flat,
             bgl_tex,
             bgl_inst,
+            bgl_stroke,
             depth_cache: None,
         }
     }
@@ -442,6 +490,61 @@ impl MeshCore {
         Ok(id)
     }
 
+    /// View uniform 块 128B（REND-29 兑现；[f32;32] 与 WGSL struct 同布局）：
+    /// mat@0..16 / right@16 / up@20 / px_scale@23 / eye_local@24..27（世界 eye−origin f32）。
+    /// right/up=view_rot 行抽取——与 screen_to_ray_* 同一 view_rot 单一事实源。
+    fn view_block(frame: &Frame, origin: &[f64; 3], transform: &[[f64; 4]; 4]) -> [f32; 32] {
+        let mvp = visiaengine_render::rebase::compose_mvp(
+            &frame.proj,
+            &frame.view_rot,
+            &frame.eye,
+            origin,
+            transform,
+        );
+        let mut block = [0.0f32; 32];
+        block[..16].copy_from_slice(bytemuck::cast_slice(&mvp));
+        let r = &frame.view_rot;
+        // 列主序 m[col][row]：世界 right=行0=(m00,m10,m20)；up=行1
+        block[16] = r[0][0];
+        block[17] = r[1][0];
+        block[18] = r[2][0];
+        block[20] = r[0][1];
+        block[21] = r[1][1];
+        block[22] = r[2][1];
+        block[23] = frame.px_world_scale;
+        block[24] = (frame.eye[0] - origin[0]) as f32;
+        block[25] = (frame.eye[1] - origin[1]) as f32;
+        block[26] = (frame.eye[2] - origin[2]) as f32;
+        block
+    }
+
+    /// 线段表上传（WGPU-17）：48B/条；空表建期拒（4c 同纪律）。
+    pub fn create_strokes(&mut self, desc: &StrokeTableDesc<'_>) -> Result<TableId, BackendError> {
+        if desc.data.is_empty() {
+            return Err(BackendError {
+                reason: "empty stroke table".into(),
+            });
+        }
+        let bytes = bytemuck::cast_slice(desc.data);
+        let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("strokes"),
+            size: bytes.len() as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.queue.write_buffer(&buf, 0, bytes);
+        self.next_id += 1;
+        let id = self.next_id;
+        self.strokes_t.insert(
+            id,
+            GpuInstances {
+                buf,
+                count: desc.data.len() as u32,
+            },
+        );
+        Ok(id)
+    }
+
     fn ensure_sampler(&mut self) {
         if self.sampler.is_none() {
             self.sampler = Some(self.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -555,23 +658,17 @@ impl MeshCore {
                 match cmd {
                     // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
                     // 漏臂=编译失败（契约面兑现，非静默跳过）
-                    DrawCommand::ClearColor { .. }
-                    | DrawCommand::DrawStrokes { .. }
-                    | DrawCommand::DrawPoints { .. } => {}
+                    DrawCommand::ClearColor { .. } | DrawCommand::DrawPoints { .. } => {}
                     DrawCommand::DrawMesh {
                         mesh,
                         material,
                         origin,
                         transform,
                     } => {
-                        let mvp = visiaengine_render::rebase::compose_mvp(
-                            &frame.proj,
-                            &frame.view_rot,
-                            &frame.eye,
-                            origin,
-                            transform,
+                        let mvp_buf = self.uniform(
+                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                            "view",
                         );
-                        let mvp_buf = self.uniform(bytemuck::cast_slice(&mvp), "mvp");
                         let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
                             Some(gm) => (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count),
                             None => continue,
@@ -662,14 +759,10 @@ impl MeshCore {
                         origin,
                         transform,
                     } => {
-                        let mvp = visiaengine_render::rebase::compose_mvp(
-                            &frame.proj,
-                            &frame.view_rot,
-                            &frame.eye,
-                            origin,
-                            transform,
+                        let mvp_buf = self.uniform(
+                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                            "view",
                         );
-                        let mvp_buf = self.uniform(bytemuck::cast_slice(&mvp), "mvp");
                         let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
                             Some(gm) => (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count),
                             None => continue,
@@ -723,6 +816,55 @@ impl MeshCore {
                         pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
                         pass.draw_indexed(0..index_count, 0, 0..count);
                     }
+                    DrawCommand::DrawStrokes {
+                        table,
+                        origin,
+                        transform,
+                    } => {
+                        let mvp_buf = self.uniform(
+                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                            "view",
+                        );
+                        let Some(gi) = self.strokes_t.get(table) else {
+                            continue; // 缺表=skip（族纪律，WGPU-17）
+                        };
+                        let tbuf = gi.buf.clone();
+                        let count = gi.count;
+                        let pipeline = match self.pipelines.get(&(color_format, Variant::Strokes)) {
+                            Some(p) => p.clone(),
+                            None => {
+                                let p = build_pipeline(
+                                    &self.device,
+                                    &self.layout_stroke,
+                                    &self.shader,
+                                    color_format,
+                                    Variant::Strokes,
+                                );
+                                self.pipelines
+                                    .insert((color_format, Variant::Strokes), p.clone());
+                                p
+                            }
+                        };
+                        pass.set_pipeline(&pipeline);
+                        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("stroke-bg"),
+                            layout: &self.bgl_stroke,
+                            entries: &[
+                                wgpu::BindGroupEntry {
+                                    binding: 0,
+                                    resource: mvp_buf.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 5,
+                                    resource: tbuf.as_entire_binding(),
+                                },
+                            ],
+                        });
+                        pass.set_bind_group(0, &bg, &[]);
+                        pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+                        pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(0..6, 0, 0..count);
+                    }
                 }
             }
         }
@@ -740,22 +882,33 @@ fn build_pipeline(
     color_format: wgpu::TextureFormat,
     variant: Variant,
 ) -> wgpu::RenderPipeline {
+    let stroke_attrs = wgpu::vertex_attr_array![0 => Float32x2];
+    let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+    let buffers: [Option<wgpu::VertexBufferLayout>; 1] = if variant == Variant::Strokes {
+        [Some(wgpu::VertexBufferLayout {
+            array_stride: (2 * std::mem::size_of::<f32>()) as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &stroke_attrs,
+        })]
+    } else {
+        [Some(wgpu::VertexBufferLayout {
+            array_stride: (8 * std::mem::size_of::<f32>()) as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &mesh_attrs,
+        })]
+    };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("mesh-pipeline"),
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module: shader,
-            entry_point: Some(if variant == Variant::Instanced {
-                "vs_inst"
-            } else {
-                "vs"
+            entry_point: Some(match variant {
+                Variant::Instanced => "vs_inst",
+                Variant::Strokes => "vs_stroke",
+                _ => "vs",
             }),
             compilation_options: Default::default(),
-            buffers: &[Some(wgpu::VertexBufferLayout {
-                array_stride: (8 * std::mem::size_of::<f32>()) as u64,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2],
-            })],
+            buffers: &buffers,
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -766,15 +919,24 @@ fn build_pipeline(
             depth_write_enabled: Some(true),
             depth_compare: Some(wgpu::CompareFunction::Less),
             stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
+            // polygon-offset 伴生件 [E3D:B7③]：扩片族盖面不斗同深度 z-fight
+            bias: if variant == Variant::Strokes {
+                wgpu::DepthBiasState {
+                    constant: -1,
+                    slope_scale: -1.0,
+                    ..Default::default()
+                }
+            } else {
+                wgpu::DepthBiasState::default()
+            },
         }),
         multisample: Default::default(),
         fragment: Some(wgpu::FragmentState {
             module: shader,
-            entry_point: Some(if variant == Variant::Textured {
-                "fs_textured"
-            } else {
-                "fs"
+            entry_point: Some(match variant {
+                Variant::Textured => "fs_textured",
+                Variant::Strokes => "fs_stroke",
+                _ => "fs",
             }),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {

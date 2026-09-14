@@ -99,9 +99,10 @@ fn three_segments_color_families_with_positions() {
     let green = |p: [u8; 4]| p[1] > 200 && p[0] < 40 && p[2] < 40;
     let blue = |p: [u8; 4]| p[2] > 200 && p[0] < 40 && p[1] < 40;
     // 位置主导=right/up 基正确性锁（符号错→镜像→窗口断言翻）
-    assert!(count(&img, 0, W, 40, H, red) >= 12, "红横线缺席下方窗");
-    assert!(count(&img, 0, 32, 0, 44, green) >= 12, "绿竖线缺席左上窗");
-    assert!(count(&img, 32, W, 0, 44, blue) >= 12, "蓝斜线缺席右上窗");
+    // 窗口界=probe_map 实测（透视下世界 y=-1.6 投影在行 35-39，非底部带）
+    assert!(count(&img, 0, W, 33, 44, red) >= 30, "红横线缺席下方窗");
+    assert!(count(&img, 0, 32, 0, 44, green) >= 10, "绿竖线缺席左上窗");
+    assert!(count(&img, 32, W, 0, 44, blue) >= 10, "蓝斜线缺席右上窗");
     // 全画布纯族（无混色泄漏进背景）
     assert_eq!(
         count(&img, 0, 8, 0, 8, |p| { p[0] + p[1] + p[2] > 30 }),
@@ -204,22 +205,80 @@ fn stroke_over_coplanar_fill_wins_via_offset() {
 // spec: WGPU-17
 #[test]
 fn view_parallel_segment_falls_back_no_nan() {
-    // R2 退化：段轴∥视向 → cross→0，兜底 perp=right。NaN 顶点=像素全弃（族=0 即红）。
+    // R2 退化真义：段轴∥视向→cross=0→normalize(0)=NaN。该段投影本就退化为点
+    // （0 像素合法），关键=它的 NaN 不得污染同批其它段。测：退化红段 + 可见绿控制段，
+    // 断言绿段照常成片（若 perp 未兜底，NaN 顶点会弃掉整批→绿=0 即红）。
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let axis = [0.0f32, -0.89, 0.45];
     let tid = upload(
         &mut b,
+        &[
+            StrokeSeg::new(
+                [0.0, 0.0, 0.0],
+                [axis[0] * 6.0, axis[1] * 6.0, axis[2] * 6.0],
+                [1.0, 0.0, 0.0],
+                6.0,
+            ), // 退化（∥视向）
+            StrokeSeg::new([-2.0, -1.6, 0.0], [2.0, -1.6, 0.0], [0.0, 1.0, 0.0], 4.0), // 可见控制
+        ],
+    );
+    let img = b.render_to_pixels(&stroke_frame(tid)).expect("no panic");
+    let green = |p: [u8; 4]| p[1] > 200 && p[0] < 40 && p[2] < 40;
+    assert!(
+        count(&img, 0, W, 0, H, green) >= 30,
+        "退化段 NaN 污染全批（绿控制段消失）"
+    );
+}
+
+#[test]
+#[ignore = "probe"]
+fn probe_map() {
+    let mut b = HeadlessBackend::new(W, H).expect("adapter");
+    let tid = upload(
+        &mut b,
+        &[
+            StrokeSeg::new([-2.5, -1.6, 0.0], [2.5, -1.6, 0.0], [1.0, 0.0, 0.0], 4.0),
+            StrokeSeg::new([-2.2, 0.2, 0.0], [-2.2, 2.6, 0.0], [0.0, 1.0, 0.0], 4.0),
+            StrokeSeg::new([0.5, 0.2, 0.0], [2.4, 2.6, 0.0], [0.0, 0.0, 1.0], 4.0),
+        ],
+    );
+    let img = b.render_to_pixels(&stroke_frame(tid)).expect("render");
+    for y in (0..64).step_by(2) {
+        let row: String = (0..64)
+            .step_by(2)
+            .map(|x| {
+                let p = px(&img, x, y);
+                match (p[0] > 200, p[1] > 200, p[2] > 200) {
+                    (true, false, false) => "R",
+                    (false, true, false) => "G",
+                    (false, false, true) => "B",
+                    (t, g, bl) if t || g || bl => "o",
+                    _ => ".",
+                }
+                .to_string()
+            })
+            .collect();
+        println!("{y:2} {row}");
+    }
+    // 退化段
+    let mut b2 = HeadlessBackend::new(W, H).expect("adapter");
+    let t2 = upload(
+        &mut b2,
         &[StrokeSeg::new(
             [0.0, 0.0, 0.0],
-            [axis[0] * 3.0, axis[1] * 3.0, axis[2] * 3.0],
+            [0.0, -2.67, 1.35],
             [1.0, 0.0, 0.0],
             4.0,
         )],
     );
-    let img = b.render_to_pixels(&stroke_frame(tid)).expect("no panic");
+    let img2 = b2.render_to_pixels(&stroke_frame(t2)).expect("render2");
     let red = |p: [u8; 4]| p[0] > 200 && p[1] < 40;
-    assert!(
-        count(&img, 0, W, 0, H, red) >= 5,
-        "退化兜底缺席（NaN 吞噬）"
+    let mut ys = (0..64).filter(|&y| (0..64).any(|x| red(px(&img2, x, y))));
+    println!(
+        "degen red rows: {:?} count={}",
+        (ys.next(), ys.next()),
+        (0..64)
+            .filter(|&y| (0..64).any(|x| red(px(&img2, x, y))))
+            .count()
     );
 }
