@@ -2,7 +2,8 @@
 
 use visiaengine_render::{
     BackendError, Camera, Capability, DrawCommand, Frame, Instance, InstanceDesc, MaterialDesc,
-    MaterialId, MeshDesc, MeshId, RenderBackend, TextureDesc, Viewport,
+    MaterialId, MeshDesc, MeshId, PointMark, PointTableDesc, RenderBackend, StrokeSeg,
+    StrokeTableDesc, TextureDesc, Viewport,
 };
 
 const IDENTITY4: [[f32; 4]; 4] = [
@@ -116,7 +117,9 @@ fn ir_variants_exhaustive_construct() {
         match c {
             DrawCommand::ClearColor { .. }
             | DrawCommand::DrawMesh { .. }
-            | DrawCommand::DrawInstances { .. } => {}
+            | DrawCommand::DrawInstances { .. }
+            | DrawCommand::DrawStrokes { .. }
+            | DrawCommand::DrawPoints { .. } => {}
         }
     }
 }
@@ -334,4 +337,74 @@ fn instance_pod_layout_32b() {
     let f = |o: usize| -> f32 { f32::from_le_bytes(raw[o..o + 4].try_into().unwrap()) };
     assert_eq!((f(0), f(12), f(16)), (1.0, 4.0, 5.0));
     assert_eq!(f(28), 0.0, "pad 归零（new 构造担保）");
+}
+
+const T4F64: [[f64; 4]; 4] = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
+
+// spec: REND-29
+#[test]
+fn frame_carries_px_world_scale() {
+    let f = Frame {
+        viewport: Viewport::new(8, 8, 1.0),
+        camera: Camera::perspective(60.0, 1.0, 0.1, 100.0),
+        view_rot: IDENTITY4,
+        eye: [0.0; 3],
+        proj: IDENTITY4,
+        px_world_scale: 0.25, // 1px ≙ 0.25 世界单位（宿主给，GPU 乘子）
+        commands: vec![],
+    };
+    assert_eq!(f.px_world_scale, 0.25);
+}
+
+// spec: REND-30
+#[test]
+fn expansion_tables_default_err_and_layout_locked() {
+    let mut s = Stub {
+        meshes: 0,
+        materials: 0,
+    };
+    let e = s
+        .create_strokes(&StrokeTableDesc {
+            data: &[StrokeSeg::new([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0], 2.0)],
+        })
+        .unwrap_err();
+    assert!(e.reason.contains("strokes"), "{e:?}");
+    let e = s
+        .create_points(&PointTableDesc {
+            data: &[PointMark::new([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], 3.0)],
+        })
+        .unwrap_err();
+    assert!(e.reason.contains("points"), "{e:?}");
+    // 布局锁（WGSL 同形：vec4 同宽字段消对齐歧义 [4de R1]）
+    assert_eq!(std::mem::size_of::<StrokeSeg>(), 48);
+    assert_eq!(std::mem::offset_of!(StrokeSeg, a), 0);
+    assert_eq!(std::mem::offset_of!(StrokeSeg, b), 16);
+    assert_eq!(std::mem::offset_of!(StrokeSeg, color), 32);
+    assert_eq!(std::mem::offset_of!(StrokeSeg, width_px), 44);
+    assert_eq!(std::mem::size_of::<PointMark>(), 32);
+    assert_eq!(std::mem::offset_of!(PointMark, pos), 0);
+    assert_eq!(std::mem::offset_of!(PointMark, radius_px), 12);
+    assert_eq!(std::mem::offset_of!(PointMark, color), 16);
+}
+
+// spec: REND-30
+#[test]
+fn draw_strokes_and_points_kinds() {
+    let a = DrawCommand::DrawStrokes {
+        table: 5,
+        origin: [1.0e7, 0.0, 0.0],
+        transform: T4F64,
+    };
+    let b = DrawCommand::DrawPoints {
+        table: 6,
+        origin: [0.0; 3],
+        transform: T4F64,
+    };
+    assert_eq!(a.kind(), "draw-strokes");
+    assert_eq!(b.kind(), "draw-points");
 }
