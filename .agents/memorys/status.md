@@ -69,6 +69,14 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
 - 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
 
+## Qt widget 轮基线（2026-09-14，v1.3 Q1-Q3 全落）
+
+- Q1（`render_spec` 锁）：viewport 换 dims 三面断言直绿——「行为既有、锁缺席」如实记
+- Q2/Q3（本笔）：widget.hpp（header-only 零 moc/PaintOnScreen 三件套）+ qt_app 真窗（texquad+park）+ smoke-qt 三态；QTimer 60Hz 拉泵跑通=**D8 触发器① 复评：维持挂起**（无帧跳过协商需求；再触发=视频解码对齐类宿主）
+- conda Qt 双坑入档：qt-main=Qt5 正名 qt6-main；QX11Application 未打包→Xlib 自持 Display*（跨连接 xid 合同兑现）
+- 基线刷新：**143 passed · ci 十段 ✓ · SMOKE-QT ✓(真窗@:0) · 108↔108 · 14/14**
+- Alpha 余账：npm/pip 打包（含 cmake install 树/corrosion 复评 D-11）、真 PBR、站点、E402、wayland/Win/mac 矩阵
+
 ## CMake 工程化层基线（2026-09-14，C1-C3；Qt 轮 v1.3 消费面待跑）
 
 - 计划 `.omo/plans/visiaengine-cmake-project.md` v1.0（Momus OKAY 0B；六→十段口径修）+ Qt 轮 v1.3（构建面交公）
