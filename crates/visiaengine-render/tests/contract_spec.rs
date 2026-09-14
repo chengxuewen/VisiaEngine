@@ -421,3 +421,39 @@ fn draw_strokes_and_points_kinds() {
     assert_eq!(a.kind(), "draw-strokes");
     assert_eq!(b.kind(), "draw-points");
 }
+
+// spec: REND-31
+#[test]
+fn shadow_setup_is_frame_option_and_none_default_regression_key() {
+    // Frame.shadow=Option：None=现行为逐位不变（4f 零回归钥匙位）；
+    // 深度域构造路=CameraRig 系（REND-11/12 行为断言域）——本测试锁类型轮转，
+    // 症状级死锁（非全黑非全亮）在 WGPU-19 像素面（shadows.rs）。
+    let rig = CameraRig::look_at([0.0, -10.0, 10.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    let setup = ShadowSetup {
+        proj: rig.ortho_frame(8.0, 64.0, 64.0, 1.0, 100.0).unwrap(),
+        view_rot: rig.view_rotation(),
+        eye: rig.eye(),
+        light_dir: [0.3, 0.5, 0.7],
+        size: 0.4,
+        bias: ShadowBias {
+            constant: -1.2,
+            slope: -1.5,
+        },
+    };
+    assert_eq!(setup, setup); // PartialEq（帧缓存对比面）
+    let mut f = Frame {
+        viewport: Viewport::new(8, 8, 1.0),
+        camera: Camera::perspective(60.0, 1.0, 0.1, 100.0),
+        view_rot: IDENTITY4,
+        eye: [0.0; 3],
+        proj: IDENTITY4,
+        px_world_scale: 1.0,
+        shadow: Some(setup),
+        commands: vec![],
+    };
+    assert!(f.shadow.is_some());
+    f.shadow = None;
+    assert_eq!(f.shadow, None);
+    // 默认 bias 常数在案（调参基线）
+    assert_eq!(ShadowSetup::DEFAULT_BIAS.constant, -1.2);
+}
