@@ -60,3 +60,11 @@
 - **根因**: RED 写断言时凭 uv/投影直觉推像素，未先测「四边形屏幕 bbox」「texel×base×shade 通道乘积」。像素测试的谓词是**三条乘法链的交点**，任一链猜错即假红。
 - **解法**: 先跑一次性 dump 探针（区域步进打印 R/G 值或 bbox 统计），从实测值反推谓词阈值与窗口；探针删除、断言改写为**区域族统计**（count≥N 双族并存）而非单像素；fixture 尺寸让 texel≥16px 屏宽（滤波混合带吞 <8px 纯度核心）。
 - **验证**: 新像素断言首次运行前先 `-- --nocapture` 看数值带；计划期 [四个不装/诚实面] 禁止用调阈值掩盖断链——判据须保留判别力（uv 断链→某族恒 0 的不变式，M3 红=20/紫=304 即链路未通的证据形态）。
+
+## PIT-9: L2 smoke 段不入本机 ci 链=窗口格式类回归的假绿窗口（2026-09-14, 4c 七路首爆）
+- **症状**: 三窗口 example 在 I3 表面格式对齐后仍直挂 `render_view`（内部写死 Rgba8Unorm），x11 实配 Bgra8UnormSrgb → wgpu validation panic；该 bug 跨 3 轮 T1 全绿存活（ci 链不含 smoke）。
+- **根因**: 本机门禁=`pixi run ci`（fmt/lint/test/audit/gates），smoke-* 七路=手动段——镜像日现役化前无人跑；「六路 smoke ✓」基线声明=上次手跑日期的快照，非持续断言。
+- **解法**: ① 任何触 render 路径的轮次，合并前必须实跑七路（DISPLAY=:0 直跑，勿套 timeout——timeout 不解析 shell 函数/alias 版 pixi，用绝对路径或裸跑）；② example/attach 消费格式一律 `config.format` 直传 render_view_format，禁走写死便捷口。
+- **验证**: `for t in smoke-*; do pixi run $t; done`（真执行≠编译，E3D:D2 纪律）；镜像日 ci.yml L2 段接线后本条 ① 转机器门禁。
+
+**来源**: 4c K3 smoke-bench-twin 接入时全量复跑首爆。

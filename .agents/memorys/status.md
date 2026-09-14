@@ -69,6 +69,16 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
 - 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
 
+## 批 4c instancing+bench 基线（2026-09-14 收官）
+
+- 计划 `.omo/plans/visiaengine-instancing-bench.md` v1.0（Momus 0B→批准→K1-K3 全落）
+- K1 IR（`73c9c39`→`3fe7ccf`）：Instance 32B Pod（offset/height/color+pad，布局三重锁）/DrawInstances D7 同款/create_instances 默认拒
+- K2 管线（`3f08d2d`→`d5062a5`）：Variant{Flat,Textured,Instanced} 三 layout 族（WGPU-14 编号零破坏）；storage binding5；vs_inst 底对齐挤出（轴对齐法向零误差论证）；静默跳过封堵
+- K3 制品（`4d34bd7`+`aeb5a37`）：bench_twin headless 100k（release 本机 lavapipe：upload 3.8ms/frame 217ms/单 draw）；pick_demo --bench 结 3.5b 欠账；scripts/bench.sh→resources/bench/*.json（劣化>20% 红字非门禁）；unit_box_mesh 公共化
+- 存量战果：三窗口 example Bgra/Rgba 错配根修（I3 漏同步，跨 3 轮存活——PIT-9 入档：smoke 七路合并前必跑）
+- 基线：**124 passed · spec-trace 100↔100 · ci ✓（audit=PIT-7 重试 1 次后绿）· GATE-ABI ✓ · 七路 smoke 真跑 ✓ · golden SKIP 0**
+- 批次 4 队列态：4ab ✓ 4c ✓ → **4de（VS 扩片族：线宽+点 splat+polygon-offset+真点）候计划轮**；4f Shadow/PCSS 其后；批 5 文档归位触发已满足（examples≥6：现 7 个）——最迟批 4 完强制归位
+
 ## 批 4ab 材质纹理片基线（2026-09-12 收官）
 
 - M1 io-gltf（`2f293fe`）· M2 RED→GREEN（`4449fb3`→`c9d80f3`）· M3（`434e56e`+`7b92676` 条款体同步）
