@@ -255,3 +255,54 @@ fn trait_defaults_texture_extension() {
         .unwrap_err();
     assert!(e.reason.contains("unsupported"), "{e:?}");
 }
+
+// spec: REND-27
+#[test]
+fn create_instances_default_err() {
+    let mut s = Stub {
+        meshes: 0,
+        materials: 0,
+    };
+    // 未覆写后端的默认体=显式拒绝（upload_texture 同款协议，不假成功）
+    let e = s
+        .create_instances(&InstanceDesc {
+            data: &[Instance {
+                offset: [1.0, 2.0, 0.0],
+                height: 3.0,
+                color: [0.8, 0.8, 0.9],
+            }],
+        })
+        .unwrap_err();
+    assert!(e.reason.contains("instancing"), "{e:?}");
+}
+
+// spec: REND-28
+#[test]
+fn draw_instances_carries_d7_origin_and_instance_table() {
+    let cmd = DrawCommand::DrawInstances {
+        mesh: 11,
+        material: 22,
+        instances: 33,
+        origin: [1.0e7, 0.0, 0.0],
+        transform: [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+    };
+    assert_eq!(cmd.kind(), "draw-instances");
+    match cmd {
+        DrawCommand::DrawInstances {
+            mesh,
+            material,
+            instances,
+            origin,
+            ..
+        } => {
+            assert_eq!((mesh, material, instances), (11, 22, 33));
+            assert_eq!(origin, [1.0e7, 0.0, 0.0], "D7 语义与 DrawMesh 同款");
+        }
+        _ => panic!("variant"),
+    }
+}
