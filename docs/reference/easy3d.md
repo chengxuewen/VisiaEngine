@@ -13,7 +13,7 @@
 - **B6 Camera 三增量**：透视/正交共享 zoom 因子（切换连续，GIS 刚需）、pivot turntable、dpi_scaling。证据 camera.h:143/342-354。排：camera 轮。
 - **B7 廉价值打包**：标量→色带 LUT+clamp（state.h:58-61 ✓ GeoJSON 热力图现成答案）、纹理 fractional repeat、polygon-offset 线面抗 Z-fighting（viewer.cpp:1805 ✓）【fractional repeat ✅ 4ab WGPU-15；polygon-offset ✅ 4de WGPU-17 bias{-1,-1}】、大图分条（texture.h:159）。排：随各属轮。
 - **C5 绑定面裁剪法**：39 renderer 头只手绑 4（camera/drawables/renderer/state，drawables 合并），unused/ 隔离带，GLOB 注释防全扫（python/CMakeLists.txt:6 ✓）→ **C ABI 首版=最小可用集+graveyard 流程**。排：capi 设计输入。
-- **D1 编号教程系列**：7 主题段+空号插入+每数据类型 4 连招+dir=target=标题=文档 ID 单源（CMakeLists 91 行 ✓/T101 仅 2 文件 ✓）→ examples 教学化蓝本；900s=GIS/孪生/AV/BIM 垂直切片。
+- **D1 编号教程系列**：7 主题段+空号插入+每数据类型 4 连招+dir=target=标题=文档 ID 单源（CMakeLists 91 行 ✓/T101 仅 2 文件 ✓）→ examples 教学化蓝本；900s=GIS/孪生/AV/BIM 垂直切片。 ✅ **批 5 已落地（2026-09-14）**：E101..E901 十一件+空号 E402+gate-docs 三方锁；E901=孪生垂直切片 seed（PNG 人检）。
 - **D3 零漂移文档管线**：Doxyfile EXAMPLE_PATH 收割教程源码（L854 ✓）→ mdbook `{{#include}}`+rustdoc+cbindgen 注释规范。排：文档轮。
 - **D5 测试三层法**：单元/帧预算 auto-smoke（duration=1500ms ✓ main.cpp:107）/**显式标注人工交互+诚实横幅**（L133 ✓）。排：即刻采纳（纪律零成本）。
 
