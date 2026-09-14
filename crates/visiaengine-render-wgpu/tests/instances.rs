@@ -12,69 +12,7 @@ use visiaengine_render_wgpu::HeadlessBackend;
 const W: u32 = 64;
 const H: u32 = 64;
 
-/// 单位盒：xy∈[-0.5,0.5]，**z∈[0,1] 底对齐**（Instance 挤出语义的几何前提），
-/// 24 顶点每面独立法线，36 索引。
-fn unit_box() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
-    let mut pos = Vec::new();
-    let mut nrm = Vec::new();
-    let faces: [([f32; 3], [[f32; 3]; 4]); 5] = [
-        (
-            [0.0, 0.0, -1.0],
-            [
-                [-0.5, -0.5, 0.],
-                [0.5, -0.5, 0.],
-                [0.5, 0.5, 0.],
-                [-0.5, 0.5, 0.],
-            ],
-        ), // 底（不可见亦入册保法线穷举）
-        (
-            [0.0, -1.0, 0.0],
-            [
-                [-0.5, -0.5, 1.],
-                [0.5, -0.5, 1.],
-                [0.5, -0.5, 0.],
-                [-0.5, -0.5, 0.],
-            ],
-        ), // 前（相机侧）
-        (
-            [1.0, 0.0, 0.0],
-            [
-                [0.5, -0.5, 1.],
-                [0.5, 0.5, 1.],
-                [0.5, 0.5, 0.],
-                [0.5, -0.5, 0.],
-            ],
-        ),
-        (
-            [0.0, 1.0, 0.0],
-            [
-                [0.5, 0.5, 1.],
-                [-0.5, 0.5, 1.],
-                [-0.5, 0.5, 0.],
-                [0.5, 0.5, 0.],
-            ],
-        ),
-        (
-            [0.0, 0.0, 1.0],
-            [
-                [-0.5, 0.5, 1.],
-                [0.5, 0.5, 1.],
-                [0.5, -0.5, 1.],
-                [-0.5, -0.5, 1.],
-            ],
-        ), // 顶
-    ];
-    let mut idx = Vec::new();
-    for (n, quad) in faces {
-        for v in quad {
-            pos.push(v);
-            nrm.push(n);
-        }
-        let b = idx.len() as u32 / 4 * 4;
-        idx.extend_from_slice(&[b, b + 1, b + 2, b, b + 2, b + 3]);
-    }
-    (pos, nrm, idx)
-}
+use visiaengine_render_wgpu::unit_box_mesh;
 
 fn px(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] {
     let i = ((y * W + x) * 4) as usize;
@@ -89,7 +27,7 @@ fn px(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] 
 /// 三栋楼：x=-2/0/+2，高 1/2/3，色 红/绿/蓝。返回渲染帧。
 fn city() -> visiaengine_render_wgpu::OffscreenFrame {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
-    let (pos, nrm, idx) = unit_box();
+    let (pos, nrm, idx) = unit_box_mesh();
     let mesh = b
         .create_mesh(&MeshDesc {
             positions: &pos,
@@ -202,7 +140,7 @@ fn empty_instance_table_rejected_on_create() {
 #[test]
 fn missing_instance_table_skips_not_panics() {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
-    let (pos, nrm, idx) = unit_box();
+    let (pos, nrm, idx) = unit_box_mesh();
     let mesh = b
         .create_mesh(&MeshDesc {
             positions: &pos,

@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-14",
+  "machine": "visiaengine-ubuntu20",
+  "gpu": "lavapipe (Mesa software Vulkan; 本机独有，非 CI)",
+  "values": {
+    "bench_twin_upload": [3.831, "ms"],
+    "bench_twin_frame": [217.505, "ms"],
+    "bench_twin_instances": [100000, "count"]
+  }
+}

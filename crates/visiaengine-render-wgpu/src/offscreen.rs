@@ -265,6 +265,63 @@ pub fn cube_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     (pos, nrm, idx)
 }
 
+/// 单位盒：xy∈[-0.5,0.5]、**z∈[0,1] 底对齐**（WGPU-16 挤出语义的几何前提），
+/// 5 面 24 顶点/30 索引（底面省略——顶视/斜视永远不可见，白模压力例体积减半）。
+/// tests/instances.rs 与 examples/bench_twin.rs 双消费（DRY，[E3D:A5] 教学件同区）。
+#[must_use]
+pub fn unit_box_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
+    let faces: [([f32; 3], [[f32; 3]; 4]); 4] = [
+        (
+            [0.0, -1.0, 0.0],
+            [
+                [-0.5, -0.5, 1.0],
+                [0.5, -0.5, 1.0],
+                [0.5, -0.5, 0.0],
+                [-0.5, -0.5, 0.0],
+            ],
+        ),
+        (
+            [1.0, 0.0, 0.0],
+            [
+                [0.5, -0.5, 1.0],
+                [0.5, 0.5, 1.0],
+                [0.5, 0.5, 0.0],
+                [0.5, -0.5, 0.0],
+            ],
+        ),
+        (
+            [0.0, 1.0, 0.0],
+            [
+                [0.5, 0.5, 1.0],
+                [-0.5, 0.5, 1.0],
+                [-0.5, 0.5, 0.0],
+                [0.5, 0.5, 0.0],
+            ],
+        ),
+        (
+            [0.0, 0.0, 1.0],
+            [
+                [-0.5, 0.5, 1.0],
+                [0.5, 0.5, 1.0],
+                [0.5, -0.5, 1.0],
+                [-0.5, -0.5, 1.0],
+            ],
+        ),
+    ];
+    let mut pos = Vec::with_capacity(16);
+    let mut nrm = Vec::with_capacity(16);
+    let mut idx = Vec::with_capacity(24);
+    for (n, quad) in faces {
+        let b = idx.len() as u32 / 4 * 4;
+        for v in quad {
+            pos.push(v);
+            nrm.push(n);
+        }
+        idx.extend_from_slice(&[b, b + 1, b + 2, b, b + 2, b + 3]);
+    }
+    (pos, nrm, idx)
+}
+
 /// 离屏渲染 640×480 单立方（正交正面，L1 golden 入口；无适配器=None）。
 #[must_use]
 pub fn render_offscreen_cube(base_color: [f32; 4]) -> Option<OffscreenFrame> {

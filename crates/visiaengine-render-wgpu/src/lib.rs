@@ -16,6 +16,7 @@ mod offscreen;
 pub use headless::HeadlessBackend;
 pub use offscreen::{
     OffscreenFrame, render_offscreen_cube, render_offscreen_cube_at, render_offscreen_triangle,
+    unit_box_mesh,
 };
 
 /// 以 PRIMARY 后端族构造 Instance（Vulkan/Metal/DX12/GL）。

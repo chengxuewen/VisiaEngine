@@ -6,7 +6,7 @@ use visiaengine_core::Scene;
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, Viewport,
 };
-use visiaengine_render::{MeshCandidate, pick_meshes, screen_to_ray_ortho};
+use visiaengine_render::{MeshCandidate, pick_meshes, screen_to_ray_ortho, screen_to_ray_persp};
 use visiaengine_render_wgpu::HeadlessBackend;
 
 const W: u32 = 256; // readback 行对齐（1024B=4×256）
@@ -43,13 +43,20 @@ fn cube() -> (Vec<[f32; 3]>, Vec<u32>) {
 
 fn main() {
     let mut frames = 3u32;
+    let mut bench = false;
     let mut args = std::env::args();
     while let Some(a) = args.next() {
         if a == "--frames"
             && let Some(n) = args.next()
         {
             frames = n.parse().unwrap_or(1);
+        } else if a == "--bench" {
+            bench = true;
         }
+    }
+    if bench {
+        bench_pick_10k();
+        return;
     }
     let Some(mut backend) = HeadlessBackend::new(W, H) else {
         eprintln!("ERROR: no adapter");
@@ -158,4 +165,56 @@ fn main() {
         );
     }
     println!("OK pick_demo");
+}
+
+/// [6b/3.5b 欠账结账] 10k 候选拾取压力一行：透视射线 ×100，
+/// 全扫+即算 AABB 剪枝（CORE-14/15 路，scan-first 纪律的 bench 证据面）。
+/// `RESULT bench_pick_10k <ms> ms`=每射线均值。
+fn bench_pick_10k() {
+    use std::time::Instant;
+    let (pos, idx) = cube();
+    let (side, step) = (100usize, 1.0f64);
+    assert_eq!(side * side, 10_000, "候选数=10k 面值");
+    let worlds: Vec<[[f64; 4]; 4]> = (0..side)
+        .flat_map(|gy| (0..side).map(move |gx| [gx as f64 * step, gy as f64 * step, 0.0]))
+        .map(|t| {
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [t[0], t[1], t[2], 1.0],
+            ]
+        })
+        .collect();
+    let mut scene = Scene::new();
+    let ents: Vec<visiaengine_core::EntityId> = (0..10_000).map(|_| scene.spawn()).collect();
+    let cands: Vec<MeshCandidate<'_>> = ents
+        .iter()
+        .zip(&worlds)
+        .map(|(e, w)| MeshCandidate {
+            entity: *e,
+            positions: &pos,
+            indices: &idx,
+            world: w,
+        })
+        .collect();
+    let rig = CameraRig::look_at([50.0, -80.0, 60.0], [50.0, 50.0, 0.0], [0.0, 1.0, 0.0]);
+    let rays: Vec<_> = (0..100u32)
+        .filter_map(|i| screen_to_ray_persp(&rig, 20.0 + i as f32 * 2.5, 128.0, W as f32, H as f32))
+        .collect();
+    assert!(!rays.is_empty(), "射线生成");
+    let t0 = Instant::now();
+    let hits: usize = rays
+        .iter()
+        .map(|&r| pick_meshes(r, &cands).is_some() as usize)
+        .sum();
+    // 命中自检：全漏=bench 只测剪枝路径，掩盖三角面成本面（诚实性锁）
+    assert!(
+        hits * 2 > rays.len(),
+        "射线族命中过少 {hits}/{}",
+        rays.len()
+    );
+    let ms = t0.elapsed().as_secs_f64() * 1000.0 / rays.len() as f64;
+    println!("RESULT bench_pick_10k {ms:.3} ms");
+    println!("ok bench_pick_10k rays={} hits={}", rays.len(), hits);
 }

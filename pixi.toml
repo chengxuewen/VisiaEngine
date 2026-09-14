@@ -74,4 +74,6 @@ smoke-geo-viewer = "cargo run -p visiaengine-render-wgpu --example geo_viewer --
 smoke-switch-camera = "cargo run -p visiaengine-render-wgpu --example switch_camera -- resources/data/twoprim.glb --frames 3"   # L2：2D↔3D 切换（G4）
 smoke-pick = "cargo run -p visiaengine-render-wgpu --example pick_demo -- --frames 2"   # L2：拾取→高亮链（headless 免 xvfb）
 smoke-measure = "cargo run -p visiaengine-geo --example measure_cli"   # L2：量测 CLI（纯 CPU）
+smoke-bench-twin = "cargo run -p visiaengine-render-wgpu --example bench_twin -- --count 5000 --frames 1"   # L2：实例化链路（debug 体积帽，真 100k 走 pixi run bench）
+bench = "bash scripts/bench.sh"   # [6b] 制品链（release 双例；本机 lavapipe 观测档，非门禁）
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"
