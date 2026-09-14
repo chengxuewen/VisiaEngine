@@ -2,7 +2,7 @@
 
 > **多维空间可视化引擎** — 统一的 2D / 2.5D / 3D 渲染管线，为"看见数据的本质"而生。
 
-**状态：白皮书 v0.1.0 定稿 + 工程骨架落地（workspace/契约/渲染管线冒烟）。** 完整定位见 [docs/whitepaper.md](docs/whitepaper.md)。
+**状态：白皮书 v0.1.0 定稿 + Phase 1 MVP 完成 + 批 4 渲染强化 + 批 5 文档归位（2026-09）。** 完整定位见 [docs/whitepaper.md](docs/whitepaper.md)。
 
 ## 它是什么
 
@@ -21,7 +21,7 @@
 
 ```
 ├── AGENTS.md / SKILL.md   # 代理知识库与技能注册表
-├── crates/                # core / render / render-wgpu / io-gltf / geo（五 crate，D6 命名）
+├── crates/                # core / render / render-wgpu / io-gltf / geo / capi / wasm（七 crate，D6 命名）
 ├── pixi.toml / pixi.lock  # 开发环境单源（D5：conda-forge，含 rust 工具链）
 ├── docs/sdd/              # 行为契约条款（与测试双向追溯）
 ├── docs/
@@ -33,8 +33,9 @@
 
 ## 开发状态
 
-**Phase 1 MVP 收口：宿主嵌入（C ABI+web/wasm）落地。** 当前态：5 crate workspace、**83 条** SDD 行为契约全绿（spec-trace 双向追溯）、glTF+GeoJSON+AttrSet 属性列化+v8 别名+数据驱动色带、2D↔3D 切换、平面量测、拾取→高亮闭环（E401/E403 示例）、**mesh 管线深度面补齐**（WGPU-13）、D7 分层 origin 重基（远坐标像素级验证）、离屏 golden 真机无 SKIP、六路 smoke+双 gate 机器门禁（90 测试）。**宿主嵌入销账**：C ABI 14 入口（gate-abi 符号白名单+headless/X11 双 C demo 真跑）+ Web 面（visiaengine-wasm：733KB wasm，CAPI-09 双面镜像，demo 页可跑）——Qt widget 轮与 npm/pip 打包挂 Alpha。
+**Phase 1 现状（数字以门禁实报为准）**：7 crate workspace、**108 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON 装载 + 材质纹理（PBR mock-up）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 方向光 PCSS 软影 + 2D↔3D 无级切换 + 拾取/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**九路 smoke + 三 gate（abi/trace/docs）+ bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。**宿主嵌入**：C ABI 14 入口（人审手写头 + 双 C demo 真跑）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt widget 轮与 npm/pip 打包挂 Alpha。
 
+```bash
 ```bash
 bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
 ```

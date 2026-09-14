@@ -1,7 +1,7 @@
 # VisiaEngine 架构设计
 
-**v0.1 | 2026-09-03** | 输入：D2（栈=Rust/wgpu/SDK/Open Core）+ D4（终裁：wgpu 直用自研，不采用 Bevy）+ 证据链（`reference/evidence/` 4 份 + 参考项目库 19 篇）
-状态：**设计基线，未动工**——本文是 MVP 开工的设计入口，决策点见文末表格。
+**v0.2 | 2026-09-14**（v0.1=2026-09-03 设计基线）| 输入：D2 + D4 + 证据链（`reference/evidence/` + 参考项目库 19 篇）
+状态：**批 0..5 已落地**（骨架/内容/geo/交互/宿主嵌入/wasm/渲染强化 4ab·4c·4de·4f/文档归位）。本文=设计基线+**落地校正**双层：图示为设计目标（含未建件如 style/proj 拆分），当前实况以 AGENTS.md + `.agents/memorys/status.md` 为准；决策演进走 decisions.md（D7-D10 已入册）。
 
 ## 设计不变式（优先级高于一切图示）
 
@@ -37,7 +37,8 @@
 ## ② Crate 依赖方向
 
 ```
-                 visiaengine-capi ─(cdylib/staticlib + cbindgen 头)
+                 visiaengine-capi ─(cdylib/staticlib + 手写人审头 14 入口
+                     │              gate-abi nm 符号数 + gate-docs 签名名集双锁)
                      │
    ┌───────┬────────┼─────────┬──────────┬──────────┐
 visiaengine-core  visiaengine-geo  visiaengine-style   visiaengine-io-*   visiaengine-proj
@@ -62,7 +63,7 @@ host 事件 ──▶ 输入泵 ──▶ 交互/相机状态 (主世界)
         │ 2 STREAM   瓦片调度器(需求−缓存→合并→限并发) │──▶ 后台线程 IO
         │ 3 PREPARE  脏标记 → 渲染条目抽取(视口快照)    │
         │ 4 BUILD    frame graph 记录(自研薄层)         │
-        │            pass: shadow?→tile-2D→3D→text     │
+        │            pass: shadow✓(PCSS 4f)→tile-2D→3D→text │
         │ 5 ENCODE   → wgpu command buffer              │
         │ 6 SUBMIT/PRESENT (非阻塞 poll 语义)           │
         └────────────────────────────────────┘
@@ -133,8 +134,8 @@ StyleSpec(声明式, 可 diff): type(fill|line|symbol|heatmap|model|volume)
 ## ⑨ 构建交付矩阵
 
 ```
-cargo ──▶ visiaengine-capi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h(cbindgen)
-      ──▶ wasm: npm 包（webgpu | webgl2 双 feature）
+cargo ──▶ visiaengine-capi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h(手写人审，I0)
+      ──▶ wasm: visiaengine-wasm 独立 crate（CAPI-09 双面镜像）已落地；npm 打包=Alpha
 打包: vcpkg/NuGet/pub 镜像；体积预算核心 .so ≤6MB，总量标 ≤10MB（MVP 实测复核）
 CI 矩阵: 全量测试跑 T1；T2 在 LLVMPipe/Mesa 软渲 + Android 模拟器抽查；WebGL2 浏览器
 pin 纪律: wgpu 季度破坏 → 主版本 pin + 每季度升级窗口（全 tier re-verify）

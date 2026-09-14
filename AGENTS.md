@@ -1,18 +1,19 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-09-03 | **Branch:** main | 仓库已初始化：6 提交（见 git log），工作区 clean
+**Generated:** 2026-09-03（批 5 校正 2026-09-14）| **Branch:** main | 提交/工作区状态以 `git log`/`git status` 实测为准
 
 ## OVERVIEW
 
-VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**开工骨架已落地（S0-S4，2026-09-03）**：三 crate workspace + 20 测试 + golden/不变式/追溯三门禁；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
+VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**批 0-5 已收官（2026-09-14）**：七 crate workspace、**108 条** SDD 契约（spec-trace 双向锁）、九路 smoke + 四 gate（style/trace/abi/docs）；golden 真机无 SKIP；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
 
 ## STRUCTURE
 
 ```
 ./
 ├── Cargo.toml/lock   # workspace（crates/* 三成员，版本 pin 见计划锚点）；deny.toml licenses/bans
-├── crates/           # core（场景图/坐标）→ render（trait+IR/camera/rebase 数学）→ render-wgpu（wgpu 后端/mesh_core/examples×4/offscreen）+ io-gltf（GLB→CPU）+ geo（GeoJSON→3857→细分→样式，D7 shifted）
+├── crates/           # core→render（trait+IR/camera/rebase）→render-wgpu（wgpu 后端/管线/E 系 example×7/offscreen）+ io-gltf + geo（GeoJSON→3857→细分→样式/GPU 扩片输出 GEO-24）+ capi（C ABI 14 入口+双 C demo）+ wasm（CAPI-09 镜像）
 ├── docs/sdd/         # 行为契约条款（CORE/REND/WGPU-NN，与测试 // spec: 双向追溯：scripts/spec-trace.sh）
+├── docs/tutorials.md # E 编号教程索引（文件名=头注=索引三方锁=scripts/gate-docs.sh）
 ├── .github/workflows # ci.yml 待命（GitHub 镜像日激活；本机等价=pixi run ci+同款 grep）
 ├── .agents/          # 项目记忆+规则+技能（见其 AGENTS.md）
 ├── .opencode/        # opencode.json（instructions/MCP/LSP 装配点）+ init-mcp-*.mjs / init-lsp-wrap.mjs 桥脚本
@@ -25,7 +26,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 └── README.md         # 白皮书摘要版
 ```
 
-有完整工程层：Cargo workspace（3 crate，~1.1k 行）+ pixi 环境（D5）+ SDD 契约 + CI 待命 + 双许可。Phase 1 MVP 功能片（glTF/GeoJSON/2D-3D）未动工——待新计划轮。
+工程层：Cargo workspace（7 crate，规模以 `cargo test --workspace` 实报为准）+ pixi 环境（D5）+ SDD 契约 + CI 待命 + 双许可。Phase 1 MVP 已收口（批 2 宿主嵌入/批 7 Web/批 4 渲染强化/批 5 文档归位）；批 4g/4h 与 Alpha 档（Qt widget、npm/pip 打包、真 PBR）候令。
 
 ## WHERE TO LOOK
 
