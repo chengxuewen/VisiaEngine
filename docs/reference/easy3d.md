@@ -19,7 +19,7 @@
 
 ### 移植（机制级照搬，语言重写）
 - **A5 渲染资源按实体挂载 + State 按属性名绑色**：换样式不碰几何层（renderer.h:138/154、state.h:49-61 ✓）。另：bbox 懒算（invalidate 后访问时重算，model.h:64-68 ✓——「即算不常存」概念出处，pick 用）。排：PBR 轮所有权重构。
-- **B3 pass 三件套**（GIS/孪生相关性排序）：Shadow/PCSS（⚠ **GL[-1,1]→wgpu[0,1] 即 PIT-5 雷区**）、3-pass SSAO+共享几何 FBO（ambient_occlusion.h:106-114 ✓）、DDP 透明（dual_depth_peeling.h:98 ✓；wgpu dual-source 可做，固定 peel 数，与 MSAA 互斥=我方 non-MSAA golden 线天然兼容）。排：Alpha 档。
+- **B3 pass 三件套**（GIS/孪生相关性排序）：Shadow/PCSS（⚠ **GL[-1,1]→wgpu[0,1] 即 PIT-5 雷区**）【✅ Shadow/PCSS 已落地 4f（2026-09-14，WGPU-19/20+REND-31 深度域升约）；SSAO/DDP=4g backlog】、3-pass SSAO+共享几何 FBO（ambient_occlusion.h:106-114 ✓）、DDP 透明（dual_depth_peeling.h:98 ✓；wgpu dual-source 可做，固定 peel 数，与 MSAA 互斥=我方 non-MSAA golden 线天然兼容）。排：Alpha 档。
 - **B4 线宽数学**：世界半径×距离相机空间扩片 `cross(view_dir,axes)*radius*0.5`（width_control.geom:67-68 ✓），GS→VS instancing。排：屏幕空间线宽项直接方案。
   - ✅ **4de 已移植（2026-09-14，WGPU-17）**：vs_stroke `perp=cross(视向,轴)`+px 乘子（退化兜底 right）；深度偏置住 `DepthStencilState.bias`（wgpu-30 位置，非其 GL polygonOffset 直译）。
 - **B1 带名管线缓存+负缓存+F5 热重载**（shader_manager.h:119/124 ✓）。排：PBR 轮。

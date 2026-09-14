@@ -69,6 +69,17 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
 - 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
 
+## 批 4f Shadow/PCSS 基线 + 批次 4 收口（2026-09-14）
+
+- 计划 `.omo/plans/visiaengine-shadow-pcss.md` v1.0（Momus OKAY 0B 13 引用实测命中→批准→P1-P4 全落）
+- P1（`73c9c39..`→`7845601`）：REND-31 ShadowSetup/Frame.shadow Option（33 构造点兜底 21 实插）+ PIT-5 深度域教训升契约（rig 三元组专用路）
+- P2（`f7e8..`→`3361392`）：caster pre-pass（无色彩目标双管线 ShadowMesh/ShadowInst、bias{-1,-1.5}、1024² map 懒建）；View 块 176B（light_view_proj per-draw compose_mvp 复用 [裁决点 a]）；接收三 bgl 恒绑 params/map/cmp-sampler（dummy 常驻=动态分支非布局分支）；params-off 载旧 LIGHT 同位型=sp.a.rgb 退役路逐位不变（R4 护栏 golden 全绿自证）
+- P3（`f91f759`）：PCSS 三阶段 [E3D:B3 单 pass 移植]（8 环 blocker textureLoad→半影 clamp[texel,0.06]→16-tap 泊松比较）；单调性双边锁 soft>2×hard ∧ hard<400 ∧ soft<6000
+- P4（本笔）：shadow_demo 例（16×16 城 dark=22647 断言）+ GL 降级守卫（wgpu-30 实况：GLES=Gl 子版本单变体）+ smoke 第八路
+- **批次 4 全收口**：4ab✓ 4c✓ 4de✓ 4f✓ → 批 5（文档归位）强制触发成立；SSAO/DDP/大图分条/热重载=4g/4h backlog（排序器不承诺）
+- 事故如实：naga 两实锤入档注记（`0u32` 字面量后缀拒收→i32 推断+u32() 索引；重复 match 臂遮蔽=三元组未推静默失效，binding-missing 报错定位）；splice 切位吃正则前瞻留孤儿函数（切除）；PIT-7 第 3 见（audit 重试 2 绿）；clippy 二清（needless_borrow/collapsible_if/chunks_exact 三度同款）
+- 基线：**142 passed · spec-trace 108↔108 · ci exit=0 · GATE-ABI ✓ · smoke 八路 ✓ · SKIP 0 · web-check ✓（1069627B/429401B 同量级）**
+
 ## 批 4de VS 扩片族基线（2026-09-14 收官）
 
 - 计划 `.omo/plans/visiaengine-vs-expansion.md` v1.0（Momus OKAY 0B→批准→N1-N4 全落）
