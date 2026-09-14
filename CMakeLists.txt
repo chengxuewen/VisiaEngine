@@ -13,6 +13,9 @@ project(visiaengine VERSION ${CMAKE_MATCH_1} LANGUAGES CXX)
 include(cmake/VisiaEngineSDK.cmake)
 visiaengine_resolve_sdks() # 汇报行：Rust/Qt 解析结果与来源（auto|pixi|system|prebuilt）
 
+include(cmake/VisiaEngineCargo.cmake)
+visiaengine_setup_cargo()  # cargo-step + 伞 visiaengine::capi + 假 Config 桥
+
 if(NOT VISIAENGINE_QT_SDK STREQUAL "OFF")
   add_subdirectory(platform/qt) # Qt 轮 v1.3 落地后自然点亮（本批 bare 预设=OFF）
 endif()

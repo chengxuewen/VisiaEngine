@@ -6,6 +6,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {   /* C++ 宿主护栏（Qt/Flutter 嵌入面；批 C2 ctest 探针实证缺口） */
+#endif
+
 /* 句柄为不透明值：仅 0=无效/失败、UINT64_MAX=未命中哨兵有公共语义；
  * 禁拆解、禁跨进程/跨重启持久化（编码与世代规则住 CAPI-01 合同，不外露位布局
  * [FFI-R:CS-R1]）。 */
@@ -43,5 +47,9 @@ const char *visiaengine_last_error(uint64_t ve);                /* 线程绑定�
 int32_t    visiaengine_entity_count(uint64_t ve);
 uint64_t   visiaengine_pick(uint64_t ve, float px, float py);   /* 实体句柄（异空间）；VE_MISS=未命中 */
 uint64_t   visiaengine_entity_at(uint64_t ve, uint32_t index);
+
+#ifdef __cplusplus
+}  /* extern "C" */
+#endif
 
 #endif /* VISIAENGINE_H */
