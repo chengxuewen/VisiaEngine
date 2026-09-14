@@ -39,7 +39,12 @@ fn upload(b: &mut HeadlessBackend, marks: &[PointMark]) -> TableId {
 
 fn px(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] {
     let i = ((y * W + x) * 4) as usize;
-    [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2], img.rgba[i + 3]]
+    [
+        img.rgba[i],
+        img.rgba[i + 1],
+        img.rgba[i + 2],
+        img.rgba[i + 3],
+    ]
 }
 
 fn count(
@@ -78,7 +83,10 @@ fn mark_frame(table: TableId) -> Frame {
 #[test]
 fn single_mark_is_round_not_square() {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
-    let t = upload(&mut b, &[PointMark::new([0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 8.0)]);
+    let t = upload(
+        &mut b,
+        &[PointMark::new([0.0, 0.0, 0.0], [0.0, 1.0, 0.0], 8.0)],
+    );
     let img = b.render_to_pixels(&mark_frame(t)).expect("render");
     let g = |p: [u8; 4]| p[1] > 200 && p[0] < 40 && p[2] < 40;
     let (cx, cy) = (32i32, 32i32);
@@ -98,22 +106,25 @@ fn single_mark_is_round_not_square() {
 fn radius_ladder_scales_area() {
     let small = {
         let mut b = HeadlessBackend::new(W, H).expect("adapter");
-        let t = upload(&mut b, &[PointMark::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 2.0)]);
+        let t = upload(
+            &mut b,
+            &[PointMark::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 2.0)],
+        );
         b.render_to_pixels(&mark_frame(t)).expect("small")
     };
     let big = {
         let mut b = HeadlessBackend::new(W, H).expect("adapter");
-        let t = upload(&mut b, &[PointMark::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 10.0)]);
+        let t = upload(
+            &mut b,
+            &[PointMark::new([0.0, 0.0, 0.0], [1.0, 1.0, 1.0], 10.0)],
+        );
         b.render_to_pixels(&mark_frame(t)).expect("big")
     };
     let w = |p: [u8; 4]| p[0] > 200 && p[1] > 200 && p[2] > 200;
-    let (s, l) = (
-        count(&small, 0, W, 0, H, w),
-        count(&big, 0, W, 0, H, w),
-    );
+    let (s, l) = (count(&small, 0, W, 0, H, w), count(&big, 0, W, 0, H, w));
     assert!(s >= 5, "小点缺席 {s}");
     // 面积比 (10/2)²=25，透视/椭圆微损 → ≥8 保守
-    assert!(l * 1 > s * 8, "半径阶梯失真 {s}→{l}");
+    assert!(l > s * 8, "半径阶梯失真 {s}→{l}");
 }
 
 // spec: WGPU-18

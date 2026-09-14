@@ -7,7 +7,7 @@ use wgpu::util::DeviceExt as _;
 
 use visiaengine_render::{
     BackendError, Capability, DrawCommand, Frame, InstanceDesc, MaterialDesc, MaterialId, MeshDesc,
-    MeshId, StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport,
+    MeshId, PointTableDesc, StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport,
 };
 
 struct GpuMesh {
@@ -34,6 +34,8 @@ pub struct MeshCore {
     instances: HashMap<u64, GpuInstances>,
     /// 线段表（WGPU-17）：id → (storage buffer, 段数)
     strokes_t: HashMap<TableId, GpuInstances>,
+    /// 点表（WGPU-18）：id → (storage buffer, 点数)
+    points_t: HashMap<TableId, GpuInstances>,
     /// 共享扩片四边形（side∈±1，2 三角）——strokes/points 常设顶点源
     quad_vb: wgpu::Buffer,
     quad_ib: wgpu::Buffer,
@@ -45,10 +47,12 @@ pub struct MeshCore {
     layout_tex: wgpu::PipelineLayout,
     layout_inst: wgpu::PipelineLayout,
     layout_stroke: wgpu::PipelineLayout,
+    layout_point: wgpu::PipelineLayout,
     bgl: wgpu::BindGroupLayout,
     bgl_tex: wgpu::BindGroupLayout,
     bgl_inst: wgpu::BindGroupLayout,
     bgl_stroke: wgpu::BindGroupLayout,
+    bgl_point: wgpu::BindGroupLayout,
     /// 深度面缓存（WGPU-13：尺寸变更重建；pipeline 与 attachment 格式同源）
     depth_cache: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
 }
@@ -67,6 +71,7 @@ enum Variant {
     Textured,
     Instanced,
     Strokes,
+    Points,
 }
 
 /// GPU 实例表（WGPU-16）：32B/条 storage 缓冲 + 条数。
@@ -189,6 +194,20 @@ impl MeshCore {
                     },
                     count: None,
                 }),
+                // WGPU-18 点表 storage（32B/条下限，binding6；材质不参与同裁决点 a）
+                Variant::Points => {
+                    entries.remove(1);
+                    entries.push(wgpu::BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(32),
+                        },
+                        count: None,
+                    });
+                }
                 // WGPU-17 线段表 storage（48B/条下限）；材质 binding2 不参与 [裁决点 a]
                 Variant::Strokes => {
                     entries.remove(1);
@@ -213,6 +232,7 @@ impl MeshCore {
         let bgl_tex = mk_bgl("mesh-bgl-tex", Variant::Textured);
         let bgl_inst = mk_bgl("mesh-bgl-inst", Variant::Instanced);
         let bgl_stroke = mk_bgl("mesh-bgl-stroke", Variant::Strokes);
+        let bgl_point = mk_bgl("mesh-bgl-point", Variant::Points);
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("mesh-pl"),
             bind_group_layouts: &[Some(&bgl_flat)],
@@ -244,12 +264,18 @@ impl MeshCore {
             contents: bytemuck::cast_slice(&[0u32, 1, 2, 0, 2, 3]),
             usage: wgpu::BufferUsages::INDEX,
         });
+        let layout_point = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("mesh-pl-point"),
+            bind_group_layouts: &[Some(&bgl_point)],
+            immediate_size: 0,
+        });
         let mut pipelines = HashMap::new();
         for (variant, pl) in [
             (Variant::Flat, &layout),
             (Variant::Textured, &layout_tex),
             (Variant::Instanced, &layout_inst),
             (Variant::Strokes, &layout_stroke),
+            (Variant::Points, &layout_point),
         ] {
             pipelines.insert(
                 (wgpu::TextureFormat::Rgba8Unorm, variant),
@@ -271,6 +297,7 @@ impl MeshCore {
             materials: HashMap::new(),
             instances: HashMap::new(),
             strokes_t: HashMap::new(),
+            points_t: HashMap::new(),
             quad_vb,
             quad_ib,
             next_id: 0,
@@ -283,10 +310,12 @@ impl MeshCore {
             layout_tex,
             layout_inst,
             layout_stroke,
+            layout_point,
             bgl: bgl_flat,
             bgl_tex,
             bgl_inst,
             bgl_stroke,
+            bgl_point,
             depth_cache: None,
         }
     }
@@ -545,6 +574,33 @@ impl MeshCore {
         Ok(id)
     }
 
+    /// 点表上传（WGPU-18）：32B/条；空表建期拒（族纪律）。
+    pub fn create_points(&mut self, desc: &PointTableDesc<'_>) -> Result<TableId, BackendError> {
+        if desc.data.is_empty() {
+            return Err(BackendError {
+                reason: "empty point table".into(),
+            });
+        }
+        let bytes = bytemuck::cast_slice(desc.data);
+        let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("points"),
+            size: bytes.len() as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.queue.write_buffer(&buf, 0, bytes);
+        self.next_id += 1;
+        let id = self.next_id;
+        self.points_t.insert(
+            id,
+            GpuInstances {
+                buf,
+                count: desc.data.len() as u32,
+            },
+        );
+        Ok(id)
+    }
+
     fn ensure_sampler(&mut self) {
         if self.sampler.is_none() {
             self.sampler = Some(self.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -658,7 +714,56 @@ impl MeshCore {
                 match cmd {
                     // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
                     // 漏臂=编译失败（契约面兑现，非静默跳过）
-                    DrawCommand::ClearColor { .. } | DrawCommand::DrawPoints { .. } => {}
+                    DrawCommand::ClearColor { .. } => {}
+                    DrawCommand::DrawPoints {
+                        table,
+                        origin,
+                        transform,
+                    } => {
+                        let mvp_buf = self.uniform(
+                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                            "view",
+                        );
+                        let Some(gi) = self.points_t.get(table) else {
+                            continue; // 缺表=skip（族纪律，WGPU-18）
+                        };
+                        let tbuf = gi.buf.clone();
+                        let count = gi.count;
+                        let pipeline = match self.pipelines.get(&(color_format, Variant::Points)) {
+                            Some(p) => p.clone(),
+                            None => {
+                                let p = build_pipeline(
+                                    &self.device,
+                                    &self.layout_point,
+                                    &self.shader,
+                                    color_format,
+                                    Variant::Points,
+                                );
+                                self.pipelines
+                                    .insert((color_format, Variant::Points), p.clone());
+                                p
+                            }
+                        };
+                        pass.set_pipeline(&pipeline);
+                        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("point-bg"),
+                            layout: &self.bgl_point,
+                            entries: &[
+                                wgpu::BindGroupEntry {
+                                    binding: 0,
+                                    resource: mvp_buf.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 6,
+                                    resource: tbuf.as_entire_binding(),
+                                },
+                            ],
+                        });
+                        pass.set_bind_group(0, &bg, &[]);
+                        pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+                        pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(0..6, 0, 0..count);
+                    }
                     DrawCommand::DrawMesh {
                         mesh,
                         material,
@@ -884,19 +989,20 @@ fn build_pipeline(
 ) -> wgpu::RenderPipeline {
     let stroke_attrs = wgpu::vertex_attr_array![0 => Float32x2];
     let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
-    let buffers: [Option<wgpu::VertexBufferLayout>; 1] = if variant == Variant::Strokes {
-        [Some(wgpu::VertexBufferLayout {
-            array_stride: (2 * std::mem::size_of::<f32>()) as u64,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &stroke_attrs,
-        })]
-    } else {
-        [Some(wgpu::VertexBufferLayout {
-            array_stride: (8 * std::mem::size_of::<f32>()) as u64,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &mesh_attrs,
-        })]
-    };
+    let buffers: [Option<wgpu::VertexBufferLayout>; 1] =
+        if matches!(variant, Variant::Strokes | Variant::Points) {
+            [Some(wgpu::VertexBufferLayout {
+                array_stride: (2 * std::mem::size_of::<f32>()) as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &stroke_attrs,
+            })]
+        } else {
+            [Some(wgpu::VertexBufferLayout {
+                array_stride: (8 * std::mem::size_of::<f32>()) as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &mesh_attrs,
+            })]
+        };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("mesh-pipeline"),
         layout: Some(layout),
@@ -905,6 +1011,7 @@ fn build_pipeline(
             entry_point: Some(match variant {
                 Variant::Instanced => "vs_inst",
                 Variant::Strokes => "vs_stroke",
+                Variant::Points => "vs_point",
                 _ => "vs",
             }),
             compilation_options: Default::default(),
@@ -920,7 +1027,7 @@ fn build_pipeline(
             depth_compare: Some(wgpu::CompareFunction::Less),
             stencil: wgpu::StencilState::default(),
             // polygon-offset 伴生件 [E3D:B7③]：扩片族盖面不斗同深度 z-fight
-            bias: if variant == Variant::Strokes {
+            bias: if matches!(variant, Variant::Strokes | Variant::Points) {
                 wgpu::DepthBiasState {
                     constant: -1,
                     slope_scale: -1.0,
@@ -936,6 +1043,7 @@ fn build_pipeline(
             entry_point: Some(match variant {
                 Variant::Textured => "fs_textured",
                 Variant::Strokes => "fs_stroke",
+                Variant::Points => "fs_point",
                 _ => "fs",
             }),
             compilation_options: Default::default(),

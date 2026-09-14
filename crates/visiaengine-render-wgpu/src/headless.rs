@@ -2,7 +2,8 @@
 
 use visiaengine_render::{
     BackendError, Capability, Frame, InstanceDesc, InstanceId, MaterialDesc, MaterialId, MeshDesc,
-    MeshId, RenderBackend, StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport,
+    MeshId, PointTableDesc, RenderBackend, StrokeTableDesc, TableId, TextureDesc, TextureId,
+    Viewport,
 };
 
 use crate::mesh_core::MeshCore;
@@ -201,6 +202,10 @@ impl RenderBackend for HeadlessBackend {
 
     fn create_strokes(&mut self, desc: &StrokeTableDesc<'_>) -> Result<TableId, BackendError> {
         self.core.create_strokes(desc)
+    }
+
+    fn create_points(&mut self, desc: &PointTableDesc<'_>) -> Result<TableId, BackendError> {
+        self.core.create_points(desc)
     }
 }
 

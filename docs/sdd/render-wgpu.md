@@ -57,3 +57,6 @@ mesh 管线挂 Depth32Float 面（pipeline `Less`+write on；pass 每帧 Clear(1
 
 ## WGPU-17: Strokes 扩片管线（4de）
 线段表 48B/条（`StrokeSeg` Pod，REND-30）入 binding5 storage；共享单位四边形（side∈±1，2 三角）常设顶点源 [E3D:B4 GS→VS 移植]。VS：`perp = normalize(cross(视向, 轴))`（视向=eye_local−mid，**eye_local 与 right/up/px_scale 同住 View 块 @binding0 128B——REND-29 兑现，三角系入口只读前 64B=零回归构造保证**）；退化 `|dot|>0.999 → perp=right`（NaN 不得污染同批 [R2 实义：视向平行段投影=点属几何事实，测面锁"整批存活"）；`halfw = width_px·px_scale·0.5`。FS 色直出（光照链不参与）。polygon-offset `bias{constant:-1, slope:-1}` 伴生件 [E3D:B7③]——盖同深度 fill 不 z-fight。缺表=skip；空表建期拒。像素证据四锁：族位（right/up 基符号）、宽度阶梯、offset 盖面、退化污染控制组。
+
+## WGPU-18: Points splat 管线（4de）
+点表 32B/条（`PointMark` Pod）入 binding6 storage；四边形常设顶点源屏幕基展开 `p = pos + right·(sx·r) + up·(sy·r)`，`r = radius_px·px_scale`；**FS 单位盘 mask `length(local)>1 → discard`=真圆点**（纠 geo 方块存量）。色直出 alpha=1（同 WGPU-17 链）；depth-bias 伴生同 Strokes（盖面）。空表建期拒/缺表 skip/族位右上一致性锁（right/up 符号面）。

@@ -38,6 +38,15 @@ struct Seg {
 };
 @group(0) @binding(5) var<storage, read> segs: array<Seg>;
 
+// WGPU-18 点表（Points bgl binding6；32B 同 PointMark 布局锁）
+struct Mark {
+    pos: vec3<f32>,
+    radius_px: f32,
+    color: vec3<f32>,
+    _pad: f32,
+};
+@group(0) @binding(6) var<storage, read> marks: array<Mark>;
+
 struct VsIn {
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -116,6 +125,28 @@ fn vs_stroke(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
 /// 色直出（光照链不参与 [4de 裁决点 a]——线色=所见（GIS 约定））。
 @fragment
 fn fs_stroke(in: FsIn) -> @location(0) vec4<f32> {
+    return vec4<f32>(in.color, 1.0);
+}
+
+/// 点 splat vs：屏幕基展开（right/up×radius_px×px_scale）——真圆点的路 A（FS 距离弃片）。
+@vertex
+fn vs_point(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
+    var out: FsIn;
+    let m = marks[ii];
+    let r = m.radius_px * view.px_scale;
+    let p = m.pos + view.right * (in.side.x * r) + view.up * (in.side.y * r);
+    out.pos = view.view_proj * vec4<f32>(p, 1.0);
+    out.color = m.color;
+    out.uv = in.side;
+    return out;
+}
+
+/// 圆 mask：local 单位盘外弃片（方块纠案）；alpha=1 色直出。
+@fragment
+fn fs_point(in: FsIn) -> @location(0) vec4<f32> {
+    if (length(in.uv) > 1.0) {
+        discard;
+    }
     return vec4<f32>(in.color, 1.0);
 }
 
