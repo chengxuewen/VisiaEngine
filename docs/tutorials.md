@@ -17,3 +17,19 @@
 | E701 | 绑定镜像·C headless（10 行嵌入样板；跑不通=API 未完成 [E3D:D7]） | `crates/visiaengine-capi/examples/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗口宿主骨架） | `crates/visiaengine-capi/examples/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
 | E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS×PNG） | `crates/visiaengine-render-wgpu/examples/E901_twin_city.rs` | 批 4 全成果面 | `pixi run smoke-twin-city`（T2 新增） |
+
+## IDE 运行（CMake target 面）
+
+`pixi run cmake --preset bare`（或 IDE 直接打开工程选 bare/qt-pixi 预设）后，
+每件 E 系例同时是：
+
+- **可运行 target**（FOLDER `examples/<带>` 分组）：launcher stub 自动 chdir 仓根
+  （数据路径零改动）、转发参数（例表默认值即入口，也可自行加 `--frames N`）；
+  构建 target 即触发对应 crate 的 cargo example 增量编译
+- **ctest 一条** `example_E*`：headless 族恒真跑；显示族无 DISPLAY 时预检
+  exit 77 → ctest 记 Skipped（`ctest --preset bare` 全族 / `-L example -LE display`
+  headless 子集；qt-pixi 预设 testPreset 已排除 display 族，E703 真窗件由
+  smoke-qt 三态门专职）
+
+E703（Qt 宿主带）仅 qt-pixi 预设下存在；新增例必须同轮入
+`cmake/VisiaEngineExamples.cmake` 契约表（configure 硬错兜底，禁注释式禁用）。

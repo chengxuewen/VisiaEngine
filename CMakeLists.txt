@@ -16,11 +16,13 @@ visiaengine_resolve_sdks() # 汇报行：Rust/Qt 解析结果与来源（auto|pi
 include(cmake/VisiaEngineCargo.cmake)
 visiaengine_setup_cargo()  # cargo-step + 伞 visiaengine::capi + 假 Config 桥
 
+# enable_testing() 必在全部 add_subdirectory 前（Qt 目录的 add_test 晚调即静默丢——实锤）
+enable_testing()
+
 if(NOT VISIAENGINE_QT_SDK STREQUAL "OFF")
   add_subdirectory(platform/qt) # Qt 轮 v1.3 落地后自然点亮（本批 bare 预设=OFF）
 endif()
 
-enable_testing()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/probe/CMakeLists.txt")
   add_subdirectory(cmake/probe) # ctest 探针（C2 落地前自动跳过）
 endif()

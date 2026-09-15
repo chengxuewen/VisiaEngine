@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "configurePresets": [
     {
       "name": "bare",
@@ -27,10 +27,34 @@
     }
   ],
   "buildPresets": [
-    { "name": "bare", "configurePreset": "bare" },
-    { "name": "qt-pixi", "configurePreset": "qt-pixi" }
+    {
+      "name": "bare",
+      "configurePreset": "bare"
+    },
+    {
+      "name": "qt-pixi",
+      "configurePreset": "qt-pixi"
+    }
   ],
   "testPresets": [
-    { "name": "bare", "configurePreset": "bare", "output": { "outputOnFailure": true } }
+    {
+      "name": "bare",
+      "configurePreset": "bare",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "qt-pixi",
+      "configurePreset": "qt-pixi",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "exclude": {
+          "label": "display"
+        }
+      }
+    }
   ]
 }
