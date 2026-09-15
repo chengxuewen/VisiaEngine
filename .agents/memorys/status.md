@@ -162,4 +162,4 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - S1+S2 `a5a830e`：Engine geo_docs+attr_of（**u64 位形直通键**零解码）+ FFI attr_f64/str/bool（1/0/-5 零部分写参表）+ 十二处连带（头/版本 0x00010001/gate-abi 17/CAPI-01·02 修订句/README/AGENTS/wasm 镜像）+ 条款 10/11/12 双靶测
 - S3 `17e4e35`：E701 属性闭环段 park 实键 + 故意读缺=missing-intact 活广告；双路（手工 cc/cmake stub）同输出实测
 - 新坑：PIT-17（harness 共享 pid tmp 竞态，pid+纳秒双缀）；PIT-7 第 6 见（audit TLS try3 绿）
-- 基线：**147 passed（+4 内联+4 FFI=155? 未重跑全和——S2 提交含 147 口径为 capi 局部；以门禁实报为准）· spec-trace 111↔111 · GATE-ABI 17/17 ✓ · ci 十段 ✓ · web_capi_pair_mirror ✓ · ctest example 族不回退**
+- 基线：**151 passed（143+4 内联+4 FFI，全和实算自 ci 日志 44 目标；S2 commit message 写 147=局部口径，#17 第六犯如实纠于本笔）· spec-trace 111↔111 · GATE-ABI 17/17 ✓ · ci 十段 ✓ · web_capi_pair_mirror ✓ · ctest example 族不回退**
