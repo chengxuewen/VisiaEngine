@@ -47,6 +47,11 @@ const char *visiaengine_last_error(uint64_t ve);                /* 线程绑定�
 int32_t    visiaengine_entity_count(uint64_t ve);
 uint64_t   visiaengine_pick(uint64_t ve, float px, float py);   /* 实体句柄（异空间）；VE_MISS=未命中 */
 uint64_t   visiaengine_entity_at(uint64_t ve, uint32_t index);
+/* 属性读（CAPI-10/11）：entity=pick/entity_at 出口位形；返回 1=命中 0=缺失(out/缓冲不动) <0=错误。
+   str: NUL 终止写 buf[cap]，cap 不足=-5 零部分写（无探长模式），宿主习惯 256B。 */
+int32_t    visiaengine_attr_f64(uint64_t ve, uint64_t entity, const char *key, double *out);
+int32_t    visiaengine_attr_str(uint64_t ve, uint64_t entity, const char *key, char *buf, uint64_t cap);
+int32_t    visiaengine_attr_bool(uint64_t ve, uint64_t entity, const char *key, int32_t *out);
 
 #ifdef __cplusplus
 }  /* extern "C" */

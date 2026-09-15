@@ -133,7 +133,7 @@ fn set_err(msg: String) {
     });
 }
 
-/// 栅栏单宏（CAPI-02）：全 14 入口 + 实现体统一经此，panic 不外溢、写诊断。
+/// 栅栏单宏（CAPI-02）：全 17 入口 + 实现体统一经此，panic 不外溢、写诊断。
 macro_rules! capi_guard {
     ($body:expr, $err_val:expr) => {{
         match std::panic::catch_unwind(AssertUnwindSafe(|| $body)) {
@@ -152,11 +152,11 @@ macro_rules! capi_guard {
     }};
 }
 
-// ===== 14 入口 =====
+// ===== 17 入口 =====
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    1 << 16 // v0 = major 1（demo/宿主校验 >>16==1）
+    (1 << 16) | 1 // major 1 · minor 1（CAPI-10..12 +3 口=MAJOR 内追加，宿主校验面 >>16==1 不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -515,6 +515,152 @@ pub extern "C" fn visiaengine_entity_at(ve: u64, index: u32) -> u64 {
             _ => MISS,
         },
         MISS
+    )
+}
+
+/// CAPI-10 共用入参解析：null key/非 UTF-8 → None（调用方返 -1；错误串已写）。
+fn parse_attr_key<'a>(key: *const c_char) -> Option<&'a str> {
+    if key.is_null() {
+        set_err("attr: null key".to_string());
+        return None;
+    }
+    match unsafe { std::ffi::CStr::from_ptr(key) }.to_str() {
+        Ok(s) => Some(s),
+        Err(_) => {
+            set_err("attr: key not utf-8".to_string());
+            None
+        }
+    }
+}
+
+/// CAPI-10：f64 属性读。1=命中（out 写）/ 0=缺失（out 不动，缺失≠零值）/ <0=错误。
+/// entity=宿主自 pick/entity_at 所得位形（键含代际，旧代句柄永不撞新代行）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_attr_f64(
+    ve: u64,
+    entity: u64,
+    key: *const c_char,
+    out: *mut f64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    let Some(k) = parse_attr_key(key) else {
+                        return VE_ERR_ARG;
+                    };
+                    if out.is_null() {
+                        set_err("attr_f64: null out".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| Ok(e.attr_f64(entity, k))) {
+                        Ok(Some(v)) => {
+                            unsafe { *out = v };
+                            1
+                        }
+                        Ok(None) => 0,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_STATE
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-11：str 属性读。NUL 终止写 buf[cap]；1=命中 / 0=缺失 / -5=cap 不足（零部分写，无探长子模式）/ -1=空指针。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_attr_str(
+    ve: u64,
+    entity: u64,
+    key: *const c_char,
+    buf: *mut c_char,
+    cap: u64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    let Some(k) = parse_attr_key(key) else {
+                        return VE_ERR_ARG;
+                    };
+                    if buf.is_null() {
+                        set_err("attr_str: null buf".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    let got = with_engine(i, |e| Ok(e.attr_str(entity, k).map(str::to_owned)));
+                    match got {
+                        Ok(None) => 0,
+                        Ok(Some(s)) => {
+                            let need = s.len() + 1; // NUL
+                            if cap < need as u64 {
+                                set_err(format!("attr_str: cap {cap} < {need}"));
+                                return VE_ERR_SIZE;
+                            }
+                            let dst =
+                                unsafe { std::slice::from_raw_parts_mut(buf as *mut u8, need) };
+                            dst[..s.len()].copy_from_slice(s.as_bytes());
+                            dst[s.len()] = 0;
+                            1
+                        }
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_STATE
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-10：bool 属性读（out=0/1）；口径同 attr_f64。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_attr_bool(
+    ve: u64,
+    entity: u64,
+    key: *const c_char,
+    out: *mut i32,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    let Some(k) = parse_attr_key(key) else {
+                        return VE_ERR_ARG;
+                    };
+                    if out.is_null() {
+                        set_err("attr_bool: null out".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| Ok(e.attr_bool(entity, k))) {
+                        Ok(Some(v)) => {
+                            unsafe { *out = i32::from(v) };
+                            1
+                        }
+                        Ok(None) => 0,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_STATE
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
     )
 }
 

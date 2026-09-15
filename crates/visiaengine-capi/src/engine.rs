@@ -3,6 +3,8 @@
 //! bytes-first load 口为批 7 预留（[FFI-R:EP-附]/P2）：I2 走 path，J1 前升 bytes。
 
 use visiaengine_core::{EntityId, Scene};
+
+use crate::ffi::enc_entity; // CAPI-10 反标键=宿主可见位形（CAPI-08 编码单源）
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MaterialId, MeshCandidate, MeshDesc,
     MeshId, PointMark, PointTableDesc, RenderBackend, StrokeSeg, StrokeTableDesc, Viewport,
@@ -52,6 +54,10 @@ pub struct Engine {
     items: Vec<DrawItem>,
     /// geo 扩片族命令（GEO-24/WGPU-17/18：mount 期建表，逐帧随 items 重放）
     extra_cmds: Vec<DrawCommand>,
+    /// CAPI-12: load_geojson 保留面（每载一 doc，行=feature 下标 GEO-17）
+    geo_docs: Vec<visiaengine_geo::GeoDocument>,
+    /// CAPI-10: entity（C u64 位形，与 pick 出口同编码；含 gen=ABA 免疫）→ (doc 序号, 行)
+    attr_of: std::collections::HashMap<u64, (usize, usize)>,
     frame_cache: Option<Vec<u8>>,
 }
 
@@ -71,6 +77,8 @@ impl Engine {
             scene: Scene::new(),
             items: Vec::new(),
             extra_cmds: Vec::new(),
+            geo_docs: Vec::new(),
+            attr_of: std::collections::HashMap::new(),
             frame_cache: None,
         })
     }
@@ -168,7 +176,7 @@ impl Engine {
     /// GeoJSON path 口（CAPI-04）。
     pub fn load_geojson(&mut self, path: &str) -> Result<usize, String> {
         let doc = visiaengine_geo::load_geojson(path).map_err(|e| format!("{path}: {e}"))?;
-        self.mount_geo(&doc)
+        self.mount_geo(doc)
     }
 
     /// GeoJSON bytes 口（js 面；Lenient 策略——脏件丢弃不因数据拖死整层，
@@ -177,12 +185,12 @@ impl Engine {
     pub fn load_geojson_bytes(&mut self, data: &[u8]) -> Result<usize, String> {
         let (doc, _rep) =
             visiaengine_geo::parse_geojson_lenient(data).map_err(|e| format!("bytes: {e}"))?;
-        self.mount_geo(&doc)
+        self.mount_geo(doc)
     }
 
     /// feature 粒度=实体（一件可多 part 共享 id）；layer bbox 中心
     /// =origin（D7 shifted 纪律，geo_viewer 同款）；正交 fit 取景。
-    fn mount_geo(&mut self, doc: &visiaengine_geo::GeoDocument) -> Result<usize, String> {
+    fn mount_geo(&mut self, doc: visiaengine_geo::GeoDocument) -> Result<usize, String> {
         let [x0, y0, x1, y1] = doc.layer_bbox().ok_or("empty layer")?;
         let origin = [(x0 + x1) / 2.0, (y0 + y1) / 2.0, 0.0];
         let radius = ((x1 - x0) / 2.0).max((y1 - y0) / 2.0) * FIT_PAD;
@@ -194,9 +202,12 @@ impl Engine {
         );
         self.mode = Proj::Ortho;
         let neg = [-origin[0], -origin[1]];
+        let doc_no = self.geo_docs.len(); // CAPI-12: 本次装载在保留面中的序号
+        let mut rows: Vec<(u64, (usize, usize))> = Vec::new();
         let mut n = 0usize;
-        for f in doc.features() {
+        for (row, f) in doc.features().iter().enumerate() {
             let id = self.scene.spawn();
+            rows.push((enc_entity(id), (doc_no, row))); // CAPI-10: 键=宿主可见位形；行=GEO-17 展平下标
             n += 1;
             let parts = visiaengine_geo::tessellate(&f.kind.shifted(neg), &f.style)
                 .map_err(|e| format!("tessellate: {e}"))?;
@@ -263,6 +274,10 @@ impl Engine {
                     }
                 }
             }
+        }
+        self.geo_docs.push(doc); // CAPI-12 保留面（部分失败=未 push，反标同步不发布）
+        for (id, r) in rows {
+            self.attr_of.insert(id, r);
         }
         Ok(n)
     }
@@ -451,6 +466,26 @@ impl Engine {
             .collect();
         pick_meshes(ray, &cands).map(|hit| hit.entity)
     }
+
+    /// CAPI-10: entity 键控三型属性读（位形与 pick 出口同编码）；
+    /// 缺失四径（无行/无列/异型/空格）一律 None 非零值。
+    #[must_use]
+    pub fn attr_f64(&self, entity: u64, name: &str) -> Option<f64> {
+        let (d, r) = *self.attr_of.get(&entity)?;
+        self.geo_docs.get(d)?.attr_f64(r, name)
+    }
+
+    #[must_use]
+    pub fn attr_str(&self, entity: u64, name: &str) -> Option<&str> {
+        let (d, r) = *self.attr_of.get(&entity)?;
+        self.geo_docs.get(d)?.attr_str(r, name)
+    }
+
+    #[must_use]
+    pub fn attr_bool(&self, entity: u64, name: &str) -> Option<bool> {
+        let (d, r) = *self.attr_of.get(&entity)?;
+        self.geo_docs.get(d)?.attr_bool(r, name)
+    }
 }
 
 #[cfg(all(feature = "web", target_arch = "wasm32"))]
@@ -474,6 +509,8 @@ impl Engine {
             scene: Scene::new(),
             items: Vec::new(),
             extra_cmds: Vec::new(),
+            geo_docs: Vec::new(),
+            attr_of: std::collections::HashMap::new(),
             frame_cache: None,
         })
     }
@@ -501,7 +538,14 @@ mod attr_tests {
     ]}"#;
 
     fn tmp_layer(tag: &str, body: &str) -> String {
-        let dir = std::env::temp_dir().join(format!("ve-attr-{tag}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "ve-attr-{tag}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.subsec_nanos())
+                .unwrap_or(0),
+        ));
         fs::create_dir_all(dir.clone()).unwrap();
         let path = dir.join("layer.geojson");
         fs::write(&path, body).unwrap();
@@ -518,8 +562,8 @@ mod attr_tests {
     fn attr_three_types_hit_via_entity() {
         // spec: CAPI-10
         let e = loaded();
-        let a = e.entity_at(0).expect("feature 0 entity");
-        let b = e.entity_at(1).expect("feature 1 entity");
+        let a = enc_entity(e.entity_at(0).expect("feature 0 entity"));
+        let b = enc_entity(e.entity_at(1).expect("feature 1 entity"));
         assert_eq!(e.attr_str(a, "name"), Some("buildingA"));
         assert_eq!(e.attr_f64(a, "height"), Some(12.5));
         assert_eq!(e.attr_bool(a, "active"), Some(true));
@@ -530,7 +574,7 @@ mod attr_tests {
     fn attr_missing_is_none_never_zero() {
         // spec: CAPI-10
         let e = loaded();
-        let b = e.entity_at(1).expect("feature 1 entity");
+        let b = enc_entity(e.entity_at(1).expect("feature 1 entity"));
         assert_eq!(e.attr_f64(b, "height"), None); // 行在，格空
         assert_eq!(e.attr_f64(b, "nope"), None); // 列不存在
         assert_eq!(e.attr_f64(b, "name"), None); // 异型（str 列问 f64）
@@ -541,7 +585,7 @@ mod attr_tests {
     fn attr_str_content_exact() {
         // spec: CAPI-11
         let e = loaded();
-        let a = e.entity_at(0).expect("entity");
+        let a = enc_entity(e.entity_at(0).expect("entity"));
         assert_eq!(e.attr_str(a, "name"), Some("buildingA"));
         assert_eq!(e.attr_str(a, "missing"), None);
     }
@@ -550,14 +594,14 @@ mod attr_tests {
     fn attr_multi_load_rows_independent() {
         // spec: CAPI-12
         let mut e = loaded();
-        let old = e.entity_at(0).expect("old entity");
+        let old = enc_entity(e.entity_at(0).expect("old entity"));
         let second = r#"{"type":"FeatureCollection","features":[
           {"type":"Feature","properties":{"name":"towerC","height":99.0},
            "geometry":{"type":"Polygon","coordinates":[[[5.0,5.0],[6.0,5.0],[6.0,6.0],[5.0,5.0]]]}}
         ]}"#;
         assert_eq!(e.load_geojson(&tmp_layer("b", second)), Ok(1));
         assert_eq!(e.attr_str(old, "name"), Some("buildingA")); // 旧行不串
-        let c = e.entity_at(2).expect("new entity");
+        let c = enc_entity(e.entity_at(2).expect("new entity"));
         assert_eq!(e.attr_f64(c, "height"), Some(99.0));
         assert_eq!(e.attr_str(c, "name"), Some("towerC"));
         assert_eq!(e.attr_bool(old, "active"), Some(true)); // 跨 doc 列隔离
