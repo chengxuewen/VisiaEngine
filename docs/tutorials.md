@@ -25,7 +25,7 @@
 
 - **可运行 target**（FOLDER `examples/<带>` 分组）：launcher stub 自动 chdir 仓根
   （数据路径零改动）、转发参数（例表默认值即入口，也可自行加 `--frames N`）；
-  构建 target 即触发对应 crate 的 cargo example 增量编译
+  构建 target 即触发对应 crate 的 cargo example 增量编译（cargo 调用环境自足：裸 PATH 下 rustc 可达已由 cmake-smoke 第四态锁死——IDE 直调无需 pixi 激活）
 - **ctest 一条** `example_E*`：headless 族恒真跑；显示族无 DISPLAY 时预检
   exit 77 → ctest 记 Skipped（`ctest --preset bare` 全族 / `-L example -LE display`
   headless 子集；qt-pixi 预设 testPreset 已排除 display 族，E703 真窗件由

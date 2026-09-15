@@ -117,3 +117,9 @@
 - **根因**: `format!("ve-attr-{tag}-{}", process::id())` 在**同一测试二进制**内所有线程 pid 相同 → 多线程并行 `fs::write`（truncate-then-write 非原子）互踩，读方可见半空文件。
 - **解法**: 唯一性 = pid + SystemTime 纳秒双缀（engine 内联与 attr_ffi_spec 两处同款）；或每测试专属 tag。
 - **验证**: `for i in $(seq 6); do cargo test -p visiaengine-capi | grep -c 'test result: ok'; done` 全等（6×6 实测绿）。
+
+## PIT-18: `pixi run` 包装验证 ≠ 用户面验证——IDE 直调构建首爆 rustc-missing（2026-09-15, 用户实锤）
+- **症状**: 全部经 `pixi run cmake --build` + ctest 验证「13 条全绿」后，用户 VS Code（CMake Tools 直调 /usr/bin/cmake，无 pixi PATH）构建 E301 → `error: could not execute process rustc -vV (never executed)`。
+- **根因**: conda cargo 按 PATH 找兄弟 rustc；`pixi run` 激活恰好把 rustc 塞进 PATH=每步都绿。构建期 COMMAND 的运行时环境与配置期解析是两回事——**验证通道与被验证据通道重合时，环境差异盲区全掩盖**（verification-honesty 的构建面投影；与「未激活 shell 直调 conda cargo 假 rustc-missing」旧案同源反向）。
+- **解法**: cargo 调用点 `${CMAKE_COMMAND} -E env "PATH=<cargo 同目录>:$ENV{PATH}"` 前缀（cargo-step + examples-step，SYSTEM 真系统件无害）；IDE 用户面=裸环境，一切构建门禁必须以裸 PATH 复测。
+- **验证**: `env PATH=/usr/bin:/bin cmake --build target/cmake-bare --target visiaengine-examples-step` 过；已固化为 cmake-smoke 第四态双 target（守卫回归锁）。

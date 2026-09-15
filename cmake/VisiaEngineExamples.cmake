@@ -108,6 +108,7 @@ function(visiaengine_setup_examples)
   endforeach()
 
   # 构建步：按 crate 分组，每组单发 cargo（共享 target/cmake-rust 增量面）
+  get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)  # rustc 兄弟目录入 PATH（IDE 直调守卫，cargo-step 同款）
   set(_rflags "")
   if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(_rflags "--release")
@@ -126,7 +127,8 @@ function(visiaengine_setup_examples)
       endif()
     endforeach()
     if(_sel)
-      list(APPEND _cmds COMMAND ${VISIAENGINE_CARGO} build ${_rflags}
+      list(APPEND _cmds COMMAND ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}"
+                   ${VISIAENGINE_CARGO} build ${_rflags}
                    --target-dir ${VISIAENGINE_RUST_DIR} -p ${_crate} ${_sel})
     endif()
   endforeach()

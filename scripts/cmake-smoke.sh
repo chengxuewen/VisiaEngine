@@ -20,6 +20,13 @@ rm -rf "$B" "$B-neg"
     || { echo "CMAKE-SMOKE ✗ ctest（探针/headless example 未过）"; exit 1; }
 # ↑ -LE display：探针无标签+headless example 真跑；显示族（弹窗）由 smoke-x11/smoke-qt 专职 xvfb 覆盖
 
+# 第四态：裸 PATH 构建段（IDE 直调形态守卫）——cargo 命令须自带 rustc 兄弟目录 PATH 前缀
+# （2026-09-15 实锤：pixi run 包装掩盖，用户 IDE /usr/bin/cmake 直调爆「could not execute rustc」）
+env PATH=/usr/bin:/bin "$CM" --build "$B" --target visiaengine-examples-step >/dev/null 2>&1 \
+    || { echo "CMAKE-SMOKE ✗ 裸 PATH examples-step（cargo 环境自足性破坏=IDE 必炸）"; exit 1; }
+env PATH=/usr/bin:/bin "$CM" --build "$B" --target visiaengine-cargo-step >/dev/null 2>&1 \
+    || { echo "CMAKE-SMOKE ✗ 裸 PATH cargo-step（同上守卫）"; exit 1; }
+
 # 负路径 1：SYSTEM 语义（激活壳=拒收污染；真系统 cargo=合法通过；其余=必错且报文含 SYSTEM）
 out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_RUST_SDK=SYSTEM 2>&1)
 rc=$?
@@ -33,4 +40,4 @@ out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_ART
 [ $? -ne 0 ] && grep -q "无 capi" <<<"$out" \
     || { echo "CMAKE-SMOKE ✗ 逃生舱缺物未硬错（静默消费回潮）"; exit 1; }  # 短语断言：cmake 报文会折行，全句 grep 必漏
 
-echo "CMAKE-SMOKE ✓（bare 全链 + 双负路径报文）"
+echo "CMAKE-SMOKE ✓（bare 全链 + 双负路径报文 + 裸 PATH 守卫双态）"

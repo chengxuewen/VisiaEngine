@@ -35,8 +35,13 @@ function(visiaengine_setup_cargo)
   endif()
 
   if(NOT VISIAENGINE_ARTIFACT_PATH)
+    # IDE 直调守卫：conda cargo 按 PATH 找 rustc，裸 PATH 下=「could not execute rustc」
+    # （2026-09-15 实锤：pixi run 包装验证掩盖，用户 IDE /usr/bin/cmake 直调首爆）——
+    # 构建命令恒定前缀 cargo 同目录（rustc 兄弟件实测在场），SYSTEM 态无害。
+    get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)
     add_custom_target(visiaengine-cargo-step ALL
-      COMMAND ${VISIAENGINE_CARGO} build -p visiaengine-capi ${_flags}
+      COMMAND ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}"
+              ${VISIAENGINE_CARGO} build -p visiaengine-capi ${_flags}
               --target-dir ${_rust_dir}
       BYPRODUCTS ${_dir}/${_shared} ${_dir}/${_static}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
