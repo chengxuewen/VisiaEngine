@@ -15,9 +15,9 @@ if [ ! -S "/tmp/.X11-unix/X${DISP#:}" ]; then
 fi
 cmake --preset qt-pixi >/dev/null || { echo "SMOKE-QT ✗ configure"; exit 1; }
 cmake --build --preset qt-pixi >/dev/null || { echo "SMOKE-QT ✗ build"; exit 1; }
-out=$(QT_QPA_PLATFORM=xcb \
+out=$(DISPLAY=$DISP QT_QPA_PLATFORM=xcb \
       QT_QPA_PLATFORM_PLUGIN_PATH="$CONDA_PREFIX/lib/qt6/plugins" \
-      timeout -k 5 120 ./target/qt-build/platform/qt/qt_app --frames 6 2>&1) \
+      timeout -k 5 120 ./target/qt-build/platform/qt/E703_qt_viewer --frames 6 2>&1) \
     || { echo "SMOKE-QT ✗ run"; echo "$out" | tail -3; exit 1; }
 grep -q "OK qt pump" <<<"$out" || { echo "SMOKE-QT ✗ 出口断言缺失"; echo "$out" | tail -3; exit 1; }
 echo "SMOKE-QT ✓（真窗 6 帧 @ $DISP，$out" | head -1

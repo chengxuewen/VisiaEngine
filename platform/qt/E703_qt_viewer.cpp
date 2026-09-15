@@ -1,5 +1,5 @@
-// qt_app —— Qt6 真窗 demo（[E3D:C3] 几行接入配方兑现；跑不通即 API 未完成 [E3D:D7]）。
-// 用法：qt_app [--frames N]（0=交互）；载入 texquad.glb（纹理族）+ park.geojson（扩片族）。
+// E703_qt_viewer —— Qt6 真窗 demo（E 系宿主带；原 qt_app）（[E3D:C3] 几行接入配方兑现；跑不通即 API 未完成 [E3D:D7]）。
+// 用法：E703_qt_viewer [--frames N]（0=交互）；载入 texquad.glb（纹理族）+ park.geojson（扩片族）。
 #include <QApplication>
 #include <cstdio>
 #include <cstdlib>
