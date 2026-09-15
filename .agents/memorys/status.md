@@ -155,3 +155,11 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 基线：**143 passed · 108↔108 · ci 十段 ✓（PIT-7 第 5 见：audit TLS 抖 3 红退避绿）· ctest bare 12 注册（@:0 11+probe 全 Passed 2.4s；无 X 6P/5S）· qt-build 13 注册 preset 跑 7 · E703 ctest 真窗 ✓ · SMOKE-QT ✓**
 - 新坑入档：PIT-15（enable_testing 序静默丢）、PIT-16（function 内 enable_language 不外传；presets 权威=随包 schema.yaml 离线正本）；D-12 转正
 - 缺口表存档 docs/reference/easy3d-tutorial-gap.md（7 带映射+立项建议序 5 项）
+
+## capi 属性读轮基线（2026-09-15，D13）
+
+- 团队模式：就绪度探针（点云=PURE-DEMO 但与 E202 重叠→用户裁跳过；属性=分裂判定→capi 版批准）→ 计划 v1.0→Momus OKAY(0B/5A 修入 v1.1)→终审 C-1=3 口/C-2=256B/C-3=E701 追加段
+- S1+S2 `a5a830e`：Engine geo_docs+attr_of（**u64 位形直通键**零解码）+ FFI attr_f64/str/bool（1/0/-5 零部分写参表）+ 十二处连带（头/版本 0x00010001/gate-abi 17/CAPI-01·02 修订句/README/AGENTS/wasm 镜像）+ 条款 10/11/12 双靶测
+- S3 `17e4e35`：E701 属性闭环段 park 实键 + 故意读缺=missing-intact 活广告；双路（手工 cc/cmake stub）同输出实测
+- 新坑：PIT-17（harness 共享 pid tmp 竞态，pid+纳秒双缀）；PIT-7 第 6 见（audit TLS try3 绿）
+- 基线：**147 passed（+4 内联+4 FFI=155? 未重跑全和——S2 提交含 147 口径为 capi 局部；以门禁实报为准）· spec-trace 111↔111 · GATE-ABI 17/17 ✓ · ci 十段 ✓ · web_capi_pair_mirror ✓ · ctest example 族不回退**

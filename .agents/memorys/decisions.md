@@ -95,3 +95,9 @@
 - **决策**: A=launcher stub（~40 行 C++ 单源）承载 IDE Run 真身：chdir 仓根 + 显示族 DISPLAY 预检 exit 77 + argv 透传；注册=契约表（glob⇄表双向校验，缺项 configure 硬错）；ctest example_* 与 target 同源。弃 B=仅 custom target+ctest（CLion 无 Run 按钮）。
 - **原因**: CLion Run 只认常规可执行目标（imported/custom 不出运行配置）；Easy3D 实证「名=目录=标题」零维护（探针 A file:line）；77=ctest SKIP 原生约定（SKIP_RETURN_CODE 需 ≥3.24）。G8 修订：gate-abi/smoke-x11 的手工 cc 路=纯 C 消费者可编译性门禁属性，非冗余平行，保留。
 - **影响**: 新增 example 义务三处（源文件入盘 / 契约表登记 / tutorials.md 索引）；examples 族需 CMake ≥3.24；三方锁面扩到 cmake 入口（configure 即门，不另立 gate-docs⑥）。
+
+## D13: ABI 属性读三口 14→17（裁决链闭环，2026-09-15）
+- **背景**: 宿主面属性查询缺失（capi 14 口零读口，探针实锤）；缺口表荐「AttrSet 属性例」。
+- **决策**: 用户方向批准（问题呈「第 15 口」字样）→ 计划显式摊牌容量差 → C-1 终审=**3 typed 口 14→17**；C-2 str 无探长（cap 不足=-5 零部分写，256B 文档约定）；C-3 E701 追加段不新开 E 号；点云独立例**跳过**（与 E202 重叠且无专有数据源）。
+- **原因**: 三型镜像 CORE-12 闭合口，宿主一次学全；单变体型口 C 侧丑（型双关）；键=enc_entity 位形直通（零解码、ABA 免疫=代际在键内）。
+- **影响**: D6「14 入口」锁正式改写（CAPI-01/02 条款修订句 + 十二处连带面清单已销）；后续扩口先例=**必须先摊容量差再请批**；wasm 面维持常量镜像（函数不镜像现状）；`attr_of` 保留面为批 7 js 属性口预留同构形状。

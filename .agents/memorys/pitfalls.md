@@ -111,3 +111,9 @@
 - **根因**: ①enable_language 的编译器变量落 function 作用域，出函数即丢——**语言启用必须文件/目录作用域**；②presets v6 无标签过滤、v7 正形= `filter.exclude.label`（**字符串正则**）；记忆/搜索均不可靠。
 - **解法**: ①enable_language(C) 上提至 .cmake 文件顶层 if(VISIAENGINE_EXAMPLES) 块；②离线正本读 `$CMAKE_HOME/share/cmake-*/Help/manual/presets/schema.yaml`（或同目录 exclude-properties.rst）；外网断联（context7/webfetch 双失）时此路 0 成本。
 - **验证**: configure 过 + `ctest --preset qt-pixi` 计数=排除 display 后 7；schema.yaml grep "``label``"。
+
+## PIT-17: cargo harness 多线程共享 pid——tmp 路径唯一性 pid 不够须 pid+纳秒（2026-09-15, S1 闪断）
+- **症状**: attr_three_types 首跑 FAILED、单跑/复跑绿（flaky 假象）；同 tmp 前缀的 3 测试并行。
+- **根因**: `format!("ve-attr-{tag}-{}", process::id())` 在**同一测试二进制**内所有线程 pid 相同 → 多线程并行 `fs::write`（truncate-then-write 非原子）互踩，读方可见半空文件。
+- **解法**: 唯一性 = pid + SystemTime 纳秒双缀（engine 内联与 attr_ffi_spec 两处同款）；或每测试专属 tag。
+- **验证**: `for i in $(seq 6); do cargo test -p visiaengine-capi | grep -c 'test result: ok'; done` 全等（6×6 实测绿）。

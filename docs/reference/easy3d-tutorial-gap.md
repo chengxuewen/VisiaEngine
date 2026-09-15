@@ -8,7 +8,7 @@
 
 | Easy3D 带 | 件数 | 我方对应 | 缺口（立项候选择） |
 |---|---|---|---|
-| 1xx 数据类型（cloud/mesh/graph/poly × base/connectivity/property/IO） | 15 | E201/E202/E203 | **点云例**（point marks 无独立演示）；**AttrSet 属性查询例**（CORE-11..13 有契约无演示面）；GeoJSON 写回 IO |
+| 1xx 数据类型（cloud/mesh/graph/poly × base/connectivity/property/IO） | 15 | E201/E202/E203 **+ E701 属性读段（D13 落地）** | ~~AttrSet 属性查询例~~ ✅2026-09-15 capi 三口；**点云例=用户裁决跳过**（与 E202 重叠无专有源）；GeoJSON 写回 IO |
 | 2xx viewer/UI（默认/imgui/wx/Qt/多视口/相机插值/真相机） | 7 | E101/E301/E702/E703 | 多视口（一场景双视图）；相机插值漫游；HUD 叠加层 |
 | 3xx drawables（纹理/标量场/向量场/IMG viewer/剖面/动画/文本） | 12 | E201 texquad | **剖面裁切**（clip plane）；标量场着色；文本渲染（依赖字体面，长期） |
 | 4xx interaction（picker×2/点选/虚拟扫描/物体操控/碰撞） | 6 | E401/E203（+E402 空号预留） | hover/多选 UI（=E402 既定候补）；物体操控（gizmo→D7 rebase 面）；碰撞查询 |
