@@ -17,6 +17,9 @@ function(visiaengine_setup_cargo)
       set(_flags "")
     endif()
     set(_dir "${_rust_dir}/${_profile}")
+    # 暴露给 examples 层（VisiaEngineExamples.cmake 复用同一产物目录合同）
+    set(VISIAENGINE_RUST_DIR "${_rust_dir}" PARENT_SCOPE)
+    set(VISIAENGINE_RUST_PROFILE "${_profile}" PARENT_SCOPE)
   endif()
 
   # 逐 OS 产物名（仅命名表六行，无安装语义）

@@ -24,3 +24,6 @@ enable_testing()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/probe/CMakeLists.txt")
   add_subdirectory(cmake/probe) # ctest 探针（C2 落地前自动跳过）
 endif()
+
+include(cmake/VisiaEngineExamples.cmake)
+visiaengine_setup_examples()  # E 系例→IDE 可跑 target（VISIAENGINE_EXAMPLES=OFF 退役）
