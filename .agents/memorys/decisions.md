@@ -89,3 +89,9 @@
 **影响**：Qt 轮 +1 文件级增量；capi Cargo.toml 顺手加 `links = "visiaengine_c"`（重复静态链防呆）。
 **落地续（同日）**：B 案承接地=CMake 工程化层（.omo/plans/visiaengine-cmake-project.md C1-C3 已落，Qt 轮 v1.3 起为纯消费方）；links 账不立（cargo 硬校验无 build script）由 gate-abi nm 集继续覆盖。
 **复评触发器（打包轮议题）**：转 corrosion 或维持薄自管——触发=第二 C++ 消费者 / Windows 矩阵 / install-tree 真需求；corrosion 转正需先立「conda 无包→cargo-binstall/GitHub 镜像 vendor」D5 例外账（FetchContent configure 期联网与离线纪律相抵）。伞接口 `visiaengine::capi` 为稳定合同，届时换内核消费面零改动。
+
+## D12: CMake 示例入口工程=stub launcher + 契约表 + ctest 同源（2026-09-15 落地转正）
+- **背景**: 11 件 E 系 example 对 CMake 透明，IDE 无运行入口；CWD 数据路径（7 件）与 DISPLAY（5 件）两合同破裂面大。
+- **决策**: A=launcher stub（~40 行 C++ 单源）承载 IDE Run 真身：chdir 仓根 + 显示族 DISPLAY 预检 exit 77 + argv 透传；注册=契约表（glob⇄表双向校验，缺项 configure 硬错）；ctest example_* 与 target 同源。弃 B=仅 custom target+ctest（CLion 无 Run 按钮）。
+- **原因**: CLion Run 只认常规可执行目标（imported/custom 不出运行配置）；Easy3D 实证「名=目录=标题」零维护（探针 A file:line）；77=ctest SKIP 原生约定（SKIP_RETURN_CODE 需 ≥3.24）。G8 修订：gate-abi/smoke-x11 的手工 cc 路=纯 C 消费者可编译性门禁属性，非冗余平行，保留。
+- **影响**: 新增 example 义务三处（源文件入盘 / 契约表登记 / tutorials.md 索引）；examples 族需 CMake ≥3.24；三方锁面扩到 cmake 入口（configure 即门，不另立 gate-docs⑥）。

@@ -39,6 +39,7 @@
 ```bash
 bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
 pixi run cmake --preset bare && pixi run cmake --build --preset bare   # C++/IDE 入口（根 CMake 门面）
+# IDE 打开工程即得：每件 E 系例=可运行 target（FOLDER examples/ 分组）+ ctest 族（ctest --preset bare）
 ```
 
 ## 商业模型

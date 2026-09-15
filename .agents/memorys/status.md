@@ -145,3 +145,13 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 基线：**90↔90 · 100 passed · ci exit=0 · SMOKE-X11 ✓ web-check ✓**
 - D8/D10 已转正（修订面记录齐）；README MVP 四件套销账完成
 - 余账：push 待令（本地领先持续增长）· 批 4 渲染强化/批 5 文档/批 6 基建候令 · smoke-x11/web-check 的 CI 现役=镜像仓日
+
+## CMake 示例入口轮基线（2026-09-15，S1-S5 全落）
+
+- 团队模式：探针 A（Easy3D 解剖，采纳 6 拒 5）+ 探针 B（gap 矩阵 G1-G8）→ 计划 v1.0→Momus OKAY(0B/3A 修入 v1.1)→用户批准（C-1 stub/C-2 E703/C-3 存档）
+- S2 `be4f970`：VisiaEngineExamples.cmake 契约表+glob⇄表双验（负路径双向实测）+ ve_example_launcher.cpp（chdir/DISPLAY-77/argv 透传）；S1 spike 实证 cargo unix 无哈希硬链同 inode
+- S3 `59f5b61`：E701/702 原生 cmake 化（ve_real_+OUTPUT_NAME 规范名+伞 rpath）；qt_app→**E703_qt_viewer** 归 7x 带；tools +xorg-libx11/xproto；G8 修订如实记（cc 路=gate 属性保留）
+- S4 `ac60a07`：cmake-smoke `-LE display`（ci 不弹真窗）；presets v7+qt-pixi testPreset（filter.exclude.label=字符串正则）；**真缺口=enable_testing 序**修复（PIT-15）；tutorials.md IDE 运行节
+- 基线：**143 passed · 108↔108 · ci 十段 ✓（PIT-7 第 5 见：audit TLS 抖 3 红退避绿）· ctest bare 12 注册（@:0 11+probe 全 Passed 2.4s；无 X 6P/5S）· qt-build 13 注册 preset 跑 7 · E703 ctest 真窗 ✓ · SMOKE-QT ✓**
+- 新坑入档：PIT-15（enable_testing 序静默丢）、PIT-16（function 内 enable_language 不外传；presets 权威=随包 schema.yaml 离线正本）；D-12 转正
+- 缺口表存档 docs/reference/easy3d-tutorial-gap.md（7 带映射+立项建议序 5 项）

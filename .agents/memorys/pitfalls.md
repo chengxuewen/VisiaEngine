@@ -99,3 +99,15 @@
 - **根因**: ①解析器的查找域=当前环境，而环境的 PATH/PREFIX 受激活态污染——「强制 X」若不显式排除非 X 来源即名存实亡；②终端/日志折行对全文匹配是破坏性的。
 - **解法**: ①强制模式加**反污染双滤**（find_program 结果前缀比对 CONDA_PREFIX/.pixi、Qt6_DIR 同检，命中=拒收报文指名）；②门禁断言一律用**跨折行稳定短语**（"无 capi" 级），负路径断言同时接受 rc 与报文双条件。
 - **验证**: `pixi run bash scripts/cmake-smoke.sh`（双负路径报文在断言列）；SYSTEM 拒收报文在本机激活态必现。
+
+## PIT-15: enable_testing() 晚于 add_subdirectory=该目录 add_test 静默丢（2026-09-15, S4 真机实锤）
+- **症状**: platform/qt 的 example_E703 add_test 注册后 ctest -N 永不见之，亦不产 platform/qt/CTestTestfile.cmake；零报错零提示。
+- **根因**: 根门面 enable_testing() 排在 add_subdirectory(platform/qt) 之后（C2 期 probe 恰在其后故未暴露）；CMake 对该顺序问题不告警。
+- **解法**: enable_testing() 必置于**所有** add_subdirectory 之前（已前移+注释钉死）。
+- **验证**: `ctest --test-dir target/qt-build -N | grep -c "Test #"` == 注册数（13）；`ls target/qt-build/platform/qt/CTestTestfile.cmake` 存在。
+
+## PIT-16: 两个「作用域/形状」坑——function 内 enable_language 不外传；presets 字段以随包 schema 为权威（2026-09-15）
+- **症状**: ①function() 内 enable_language(C) 后，函数里 add_executable(.c) 报「can not determine linker language」；②CMakePresets testPreset 标签过滤字段四连猜全拒（excludeLabels/labelExclude/exclude.label 数组/filter.exclude.labels）。
+- **根因**: ①enable_language 的编译器变量落 function 作用域，出函数即丢——**语言启用必须文件/目录作用域**；②presets v6 无标签过滤、v7 正形= `filter.exclude.label`（**字符串正则**）；记忆/搜索均不可靠。
+- **解法**: ①enable_language(C) 上提至 .cmake 文件顶层 if(VISIAENGINE_EXAMPLES) 块；②离线正本读 `$CMAKE_HOME/share/cmake-*/Help/manual/presets/schema.yaml`（或同目录 exclude-properties.rst）；外网断联（context7/webfetch 双失）时此路 0 成本。
+- **验证**: configure 过 + `ctest --preset qt-pixi` 计数=排除 display 后 7；schema.yaml grep "``label``"。
