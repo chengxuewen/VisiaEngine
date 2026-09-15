@@ -40,5 +40,22 @@ jobs:
           xvfb-run -a pixi run smoke-geo-viewer
           pixi run smoke-x11   # attach 三帧 present（脚本自管 Xvfb/复用系统 DISPLAY）
           pixi run -e wasm-spike web-check   # J2′：wasm 构建+CAPI-09 双面镜像
-          xvfb-run -a pixi run smoke-pick   # headless 形态免 xvfb，统一跑法
-          xvfb-run -a pixi run smoke-measure
+          xvfb-run -a pixi run smoke-pick
+          pixi run smoke-bench-twin    # 4c：headless 实例化压力（debug 帽 5000）
+          pixi run smoke-shadow-demo   # 4f：PCSS 影斑面积断言
+          pixi run smoke-twin-city     # 批5：垂直切片 PNG 出口断言
+          xvfb-run -a pixi run smoke-measure   # 纯 CPU（统一挂 xvfb 无害）
+          # cmake example 族不另列：pixi run ci 第十段 cmake-smoke 内含 ctest -LE display
+
+  qt:
+    name: Qt widget 消费面（E703 真窗）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.78.0
+          cache: true
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers xvfb
+      - run: pixi install --frozen && pixi install -e qt-spike --frozen
+      - run: xvfb-run -a pixi run -e qt-spike smoke-qt   # 三态门：环境缺失=SKIP exit0，真机必真窗

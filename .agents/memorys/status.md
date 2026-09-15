@@ -94,7 +94,7 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - T3：gate-docs 四检入 ci（上线即抓 README 83≠108 实证门禁价值）+ README/architecture v0.2/AGENTS 零漂移
 - 基线：**142 passed · spec-trace 108↔108 · ci exit=0（四 gate）· smoke 九路 ✓ · SKIP 0 · 漂移字样 grep=0**
 - 教训：PIT-10 入档（场景人检三探针教训：像素谓词正确但受光区位置假设错——低日角×楼高→前景合法长影带）
-- **批 4/5 之后队列**：4g/4h SSAO/DDP/大图分条/热重载=backlog（排序器不承诺）；Alpha 档=Qt widget 轮/npm-pip 打包/真 PBR(GGX)/站点基建/E402 交互件——均候用户裁决；R2 WEB-SIZE 仍待裁（荐 A）；push 候令
+- **批 4/5 之后队列**：4g/4h SSAO/DDP/大图分条/热重载=backlog（排序器不承诺）；Alpha 档=Qt widget 轮/npm-pip 打包/真 PBR(GGX)/站点基建/E402 交互件——均候用户裁决；R2 已裁=A 接受现状（2026-09-15 用户令，包体增量=纹理面合理代价，退路口维持不开）；push 候令
 
 ## 批 4f Shadow/PCSS 基线 + 批次 4 收口（2026-09-14）
 
@@ -135,7 +135,7 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 管线：32B 材质块双 layout（Flat 逐像素零回归=构造保证）+ upload_texture(256 行距补零)+textured 双管线 (format,textured) 键；REND-25/26+WGPU-14/15 条款体入册（specular=mock-up Lambert 系数，非 GGX）
 - capi/example 纹理链路实装；texquad.glb=io-gltf builder #[ignore] emit 真源可再生；gate-abi 双 demo 路
 - 基线：**117 passed · ci exit=0 · spec-trace 97↔97 · golden SKIP 0 · GATE-ABI 14/14 · web-check ✓**
-- **R2 超阈待裁决**：WEB-SIZE raw=1062807B gz=431472B（基线 733KB/294KB gz **+47% > 15%**）；退路=「纹理解码仅 native，wasm 收 RGBA 裸字节口」**未擅自启用**，数字已记录待用户裁
+- **R2 超阈待裁决**：WEB-SIZE raw=1062807B gz=431472B（基线 733KB/294KB gz **+47% > 15%**）；退路=「纹理解码仅 native，wasm 收 RGBA 裸字节口」**未擅自启用**，数字已记录。**2026-09-15 用户裁决=A 接受**（退路「纹理解码仅 native」维持不开）
 - 教训：PIT-8 入档（像素断言首版谓词=几何覆盖×滤波×通道乘法链，先探针实测再写断言；两轮各 1 次踩中）
 
 ## 批 2+批 7 落地基线（2026-09-11 收官）
