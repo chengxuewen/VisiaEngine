@@ -485,3 +485,81 @@ const IDENTITY: [[f64; 4]; 4] = [
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
+
+#[cfg(test)]
+mod attr_tests {
+    //! CAPI-10/11/12（RED 先行）：保留面 + entity→(doc,row) 反标 + 三型读口。
+    use super::*;
+    use std::fs;
+
+    /// 最小两层件：A 三型齐（str/f64/bool），B 仅 name（空格= None 契约面）。
+    const GEO: &str = r#"{"type":"FeatureCollection","features":[
+     {"type":"Feature","properties":{"name":"buildingA","height":12.5,"active":true},
+      "geometry":{"type":"Polygon","coordinates":[[[0.0,0.0],[1.0,0.0],[1.0,1.0],[0.0,0.0]]]}},
+     {"type":"Feature","properties":{"name":"buildingB"},
+      "geometry":{"type":"Polygon","coordinates":[[[2.0,2.0],[3.0,2.0],[3.0,3.0],[2.0,2.0]]]}}
+    ]}"#;
+
+    fn tmp_layer(tag: &str, body: &str) -> String {
+        let dir = std::env::temp_dir().join(format!("ve-attr-{tag}-{}", std::process::id()));
+        fs::create_dir_all(dir.clone()).unwrap();
+        let path = dir.join("layer.geojson");
+        fs::write(&path, body).unwrap();
+        path.to_str().unwrap().to_owned()
+    }
+
+    fn loaded() -> Engine {
+        let mut e = Engine::new_headless(8, 8).expect("headless engine");
+        e.load_geojson(&tmp_layer("a", GEO)).expect("load geojson");
+        e
+    }
+
+    #[test]
+    fn attr_three_types_hit_via_entity() {
+        // spec: CAPI-10
+        let e = loaded();
+        let a = e.entity_at(0).expect("feature 0 entity");
+        let b = e.entity_at(1).expect("feature 1 entity");
+        assert_eq!(e.attr_str(a, "name"), Some("buildingA"));
+        assert_eq!(e.attr_f64(a, "height"), Some(12.5));
+        assert_eq!(e.attr_bool(a, "active"), Some(true));
+        assert_eq!(e.attr_str(b, "name"), Some("buildingB"));
+    }
+
+    #[test]
+    fn attr_missing_is_none_never_zero() {
+        // spec: CAPI-10
+        let e = loaded();
+        let b = e.entity_at(1).expect("feature 1 entity");
+        assert_eq!(e.attr_f64(b, "height"), None); // 行在，格空
+        assert_eq!(e.attr_f64(b, "nope"), None); // 列不存在
+        assert_eq!(e.attr_f64(b, "name"), None); // 异型（str 列问 f64）
+        assert_eq!(e.attr_bool(b, "name"), None); // 异型（str 列问 bool）
+    }
+
+    #[test]
+    fn attr_str_content_exact() {
+        // spec: CAPI-11
+        let e = loaded();
+        let a = e.entity_at(0).expect("entity");
+        assert_eq!(e.attr_str(a, "name"), Some("buildingA"));
+        assert_eq!(e.attr_str(a, "missing"), None);
+    }
+
+    #[test]
+    fn attr_multi_load_rows_independent() {
+        // spec: CAPI-12
+        let mut e = loaded();
+        let old = e.entity_at(0).expect("old entity");
+        let second = r#"{"type":"FeatureCollection","features":[
+          {"type":"Feature","properties":{"name":"towerC","height":99.0},
+           "geometry":{"type":"Polygon","coordinates":[[[5.0,5.0],[6.0,5.0],[6.0,6.0],[5.0,5.0]]]}}
+        ]}"#;
+        assert_eq!(e.load_geojson(&tmp_layer("b", second)), Ok(1));
+        assert_eq!(e.attr_str(old, "name"), Some("buildingA")); // 旧行不串
+        let c = e.entity_at(2).expect("new entity");
+        assert_eq!(e.attr_f64(c, "height"), Some(99.0));
+        assert_eq!(e.attr_str(c, "name"), Some("towerC"));
+        assert_eq!(e.attr_bool(old, "active"), Some(true)); // 跨 doc 列隔离
+    }
+}
