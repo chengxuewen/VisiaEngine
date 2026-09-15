@@ -39,7 +39,28 @@ int main(int argc, char **argv) {
     if (visiaengine_readback(ve, buf, sizeof buf) != VE_OK) { puts("FAIL readback2"); return 1; }
     in_.struct_size = 1; /* 演进锚探针：过小必拒 */
     if (visiaengine_on_input(ve, &in_) != VE_ERR_ARG) { puts("FAIL struct_size gate"); return 1; }
+    /* 属性读段（CAPI-10/11）：geo 加性装载→按 entity 句柄读列；
+       故意读缺键 height=0 且 out 不动=缺失≠零值的活广告 */
+    int32_t base = visiaengine_entity_count(ve);
+    if (visiaengine_load_geojson(ve, "resources/data/park.geojson") != VE_OK) {
+        printf("FAIL geo load: %s\n", visiaengine_last_error(ve));
+        return 1;
+    }
+    uint64_t feat = visiaengine_entity_at(ve, (uint32_t)base);
+    char nm[64];
+    if (visiaengine_attr_str(ve, feat, "name", nm, sizeof nm) != 1) { puts("FAIL attr name"); return 1; }
+    double op = -1.0;
+    if (visiaengine_attr_f64(ve, feat, "fill-opacity", &op) != 1 || op < 0.79 || op > 0.81) {
+        puts("FAIL attr opacity");
+        return 1;
+    }
+    double ghost = -1.0;
+    if (visiaengine_attr_f64(ve, feat, "height", &ghost) != 0 || ghost != -1.0) {
+        puts("FAIL missing-not-zero breach");
+        return 1;
+    }
+    printf("OK attrs name=%s opacity=%.2f missing-intact\n", nm, op);
     visiaengine_destroy(ve);
-    puts("OK capi headless input+pick");
+    puts("OK capi headless input+pick+attrs");
     return 0;
 }

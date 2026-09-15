@@ -14,7 +14,7 @@
 | E402 | 交互·hover/多选 UI —— **空号预留** | — | — | — |
 | E501 | 材质与光影（instanced 城 + PCSS 软影） | `crates/visiaengine-render-wgpu/examples/E501_shadow_demo.rs` | REND-31 / WGPU-14..20 | `pixi run smoke-shadow-demo` |
 | E601 | 规模与性能（10 万楼块单 draw 压力例） | `crates/visiaengine-render-wgpu/examples/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin`（`pixi run bench` 出制品） |
-| E701 | 绑定镜像·C headless（10 行嵌入样板；跑不通=API 未完成 [E3D:D7]） | `crates/visiaengine-capi/examples/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
+| E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `crates/visiaengine-capi/examples/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗口宿主骨架） | `crates/visiaengine-capi/examples/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
 | E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS×PNG） | `crates/visiaengine-render-wgpu/examples/E901_twin_city.rs` | 批 4 全成果面 | `pixi run smoke-twin-city`（T2 新增） |
 
