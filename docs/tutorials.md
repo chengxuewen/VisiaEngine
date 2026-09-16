@@ -18,6 +18,10 @@
 | E702 | 绑定镜像·C X11（attach 真窗口宿主骨架） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
 | E703 | 绑定镜像·Qt6 真窗（widget 宿主带；texquad+park 双族） | `examples/qt/E703_qt_viewer.cpp` | CAPI-06 | `pixi run smoke-qt` |
 | E801 | SDK 消费·C+SDL3 真窗（双模式=无参交互窗含 resize 联动/`--frames` 快退） | `examples/c/E801_sdl_window.c` | CAPI-06 | `ctest -L display`（cmake-smoke xvfb 子态） |
+| E810 | SDK 消费·C 属性遍历 survey（name/opacity/缺失≠零值现场） | `examples/c/E810_attr_survey.c` | CAPI-04/10/11 | `ctest -R example_E810` |
+| E811 | SDK 消费·显隐孪生（C 面；枚举域不变/查询往返/越值拒） | `examples/c/E811_entity_hide_c.c` | CAPI-13/14 | `ctest -R example_E811_entity_hide_c` |
+| E811 | SDK 消费·显隐孪生（C++ 面；hpp 转发验收） | `examples/cpp/E811_entity_hide_cpp.cpp` | CAPI-13/14 | `ctest -R example_E811_entity_hide_cpp` |
+| E812 | SDK 消费·程序化增删（位形互异/退化零提交/再入拒） | `examples/cpp/E812_mesh_add.cpp` | CAPI-15/16 | `ctest -R example_E812` |
 | E802 | SDK 消费·C++ headless（hpp 门面活体验收；readback→PPM 落盘） | `examples/cpp/E802_offscreen.cpp` | CAPI-04/05 | `ctest -R example_E802` |
 | E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS×PNG） | `examples/rs/E901_twin_city.rs` | 批 4 全成果面 | `pixi run smoke-twin-city`（T2 新增） |
 

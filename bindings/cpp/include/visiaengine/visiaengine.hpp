@@ -16,8 +16,9 @@
 
 namespace visiaengine {
 
-// 非拥有位形转发（VeInput/错误码直接穿壳）
+// 非拥有位形转发（VeInput/VeMeshDesc/错误码直接穿壳）
 using Input = VeInput;
+using MeshDesc = VeMeshDesc;  // CAPI-15 值结构（C 头 typedef 别名入命名空间）
 inline constexpr uint64_t kMiss = VE_MISS;
 
 class Engine {
@@ -51,7 +52,7 @@ public:
         return visiaengine_entity_set_visible(h_, entity, visible ? 1 : 0);
     }
     int32_t entity_visible(std::uint64_t entity) { return visiaengine_entity_visible(h_, entity); }
-    int32_t add_mesh(const VeMeshDesc &desc, std::uint64_t *out_entity) {
+    int32_t add_mesh(const MeshDesc &desc, std::uint64_t *out_entity) {
         return visiaengine_add_mesh(h_, &desc, out_entity);
     }
     int32_t remove_entity(std::uint64_t entity) { return visiaengine_remove_entity(h_, entity); }

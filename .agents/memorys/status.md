@@ -174,3 +174,9 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 新坑三件入档：PIT-19（pixi clobber→conda Xvfb XKB 死）/ PIT-20（幽灵 API 族立族）/ PIT-21（编辑残留+grep -E 断言，升 edit-safety ###18）
 - 基线：**151 passed · spec-trace 111↔111 · GATE-ABI ✓ · GATE-DOCS ✓（E 14 件三方）· CMAKE-SMOKE ✓ · web ✓ · smoke 11/11 · prebuilt 退场真验 · 工作区 clean**
 - 待办：push 候令（本地领先 += 本轮）· Phase B 首带（E8xx 数据带 API 缺口清单→capi 扩口）候令 · RA example Run lens 人验（T3，风险④已降辅助轨）· 打包轮三件（install 树/corrosion 复评/npm-pip）
+
+## B1 数据带基线（2026-09-16，Phase B 首带：CAPI-13..16 四口 + E8xx 例子四件）
+- 口面：显隐（严格 0/1、枚举域不变、render/pick 过滤）/ 查询 / add_mesh（VeMeshDesc struct_size 前瞻门、返回码+out 谱、退化零提交）/ remove（双销毁同谱、ABA 隔离）；abi minor=2（0x00010002），17→21 入口，双面镜像（wasm 4 桥 + d.ts 在场断言）+ hpp 4 薄转发
+- 例子：E810 attr survey（零新口验收例）/ E811 显隐孪生（c/cpp，目标名带语言尾首用）/ E812 程序化增删；ctest 14→18 条（17 编号）
+- 设计反转实录：add_mesh 初版 0=失败哨兵撞 CAPI-01「实体位形 0 合法=有意分工」条款——返回码+out 改谱；测试两处哨兵断言随条款纠偏（幽灵 API 教训的接口设计分册）
+- 基线：**160 passed（+7）· 115↔115 · GATE-ABI 21/21 · GATE-DOCS ✓ 17 件 · CMAKE-SMOKE ✓ · web MIRROR ✓ · ci 十段全绿**
