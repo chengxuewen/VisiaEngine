@@ -53,7 +53,7 @@ Thumbs.db
 .vs
 .idea
 .cache
-.vscode
+.vscode/*
 !.vscode/settings.json
 
 # Build dirs
@@ -81,7 +81,6 @@ node_modules
 
 # Don't ignore files
 # --------
-!.vscode/settings.json
 
 # Agent dirs
 .venv-openspace

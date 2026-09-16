@@ -61,5 +61,13 @@ function(visiaengine_setup_cargo)
   # 树内假 Config（iceoryx2 双态花招，install 生成版=打包轮）：
   # 子目录 find_package(visiaengine) 命中本文件 → 目标已在树内定义即成功
   set(visiaengine_DIR "${CMAKE_SOURCE_DIR}/cmake" CACHE PATH "visiaengine in-tree config" FORCE)
-  message(STATUS "visiaengine::capi 伞就位：${_dir}/${_shared}")
+
+  # C++ header-only RAII 门面（S4；常驻面=消费者拿 ::capi 也拿 ::cpp，不随例子门）
+  add_library(visiaengine_cpp_iface INTERFACE)
+  add_library(visiaengine::cpp ALIAS visiaengine_cpp_iface)
+  target_include_directories(visiaengine_cpp_iface INTERFACE
+    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/bindings/cpp/include>")
+  target_link_libraries(visiaengine_cpp_iface INTERFACE visiaengine::capi)
+
+  message(STATUS "visiaengine::capi 伞就位：${_dir}/${_shared} · visiaengine::cpp 头面就位")
 endfunction()

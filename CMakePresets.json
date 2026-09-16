@@ -8,6 +8,7 @@
       "binaryDir": "${sourceDir}/target/cmake-bare",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "VISIAENGINE_QT_SDK": "OFF"
       }
     },
@@ -18,6 +19,7 @@
       "binaryDir": "${sourceDir}/target/qt-build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "VISIAENGINE_QT_SDK": "PIXI",
         "VISIAENGINE_RUST_SDK": "PIXI"
       },

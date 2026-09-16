@@ -47,4 +47,33 @@ out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_ART
 [ $? -ne 0 ] && grep -q "无 capi" <<<"$out" \
     || { echo "CMAKE-SMOKE ✗ 逃生舱缺物未硬错（静默消费回潮）"; exit 1; }  # 短语断言：cmake 报文会折行，全句 grep 必漏
 
-echo "CMAKE-SMOKE ✓（bare 全链 + 双负路径报文 + 裸 PATH 三锚）"
+# 负路径 3：install 门面必 fail-loud（S-c β；静默 exit-0 说谎回潮=红。短语断言，报文折行教训同款）
+"$CM" --install "$B" --prefix "$B-inst" >"$B-inst.out" 2>&1; i_rc=$?
+rm -rf "$B-inst" "$B-inst.out"
+[ $i_rc -ne 0 ] || { echo "CMAKE-SMOKE ✗ install 静默说谎回潮（应非零）"; exit 1; }
+
+# display 子态（B2）：Xvfb 自启真跑窗口族（E702/E801 自动执行轨；apt CI 同款形）
+# 起不来=XKB/pixi clobber 坑（PIT-19）→ note 不假绿；xvfb-run 系 Debian 包裹，conda 无=直启 Xvfb
+XV=$(command -v Xvfb || true); [ -n "$XV" ] || XV=.pixi/envs/default/bin/Xvfb
+XRV=$(command -v xvfb-run || true)
+if [ -n "$XRV" ]; then
+    "$XRV" -a "$CT" --test-dir "$B" -L display --output-on-failure >/dev/null 2>&1 \
+        || { echo "CMAKE-SMOKE ✗ xvfb display 族（窗口例真跑失败）"; exit 1; }
+    DISPLAY_NOTE="xvfb display ✓"
+elif [ -x "$XV" ]; then
+    "$XV" :78 -screen 0 1024x768x24 >/tmp/cmake-smoke-xvfb.log 2>&1 & XPID=$!
+    sleep 1.5
+    if kill -0 $XPID 2>/dev/null; then
+        DISPLAY=:78 "$CT" --test-dir "$B" -L display --output-on-failure >/dev/null 2>&1
+        DRV=$?
+        kill $XPID 2>/dev/null; wait $XPID 2>/dev/null
+        [ $DRV -eq 0 ] && DISPLAY_NOTE="Xvfb:78 display ✓" || { echo "CMAKE-SMOKE ✗ display 族（Xvfb:78 真跑失败）"; exit 1; }
+    else
+        kill $XPID 2>/dev/null; wait $XPID 2>/dev/null
+        DISPLAY_NOTE="display 族未执行（Xvfb 起不来=PIT-19 clobber，非通过）"
+    fi
+else
+    DISPLAY_NOTE="display 族未执行（无 Xvfb——非通过）"
+fi
+
+echo "CMAKE-SMOKE ✓（bare 全链 + 三负路径报文 + 裸 PATH 三锚 + ${DISPLAY_NOTE}）"

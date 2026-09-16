@@ -1,0 +1,4 @@
+# C/C++ 门面与例子风格（S4 批；LLVM 基底 + 4 空格随现役 5 文件实测零冲突；CI 门禁=例子 >500 行再议）
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 100
