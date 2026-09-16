@@ -133,7 +133,11 @@ impl ApplicationHandler for App {
                 return;
             }
         };
+        let mut bbox = examples::BBox::new();
         for e in doc.entities() {
+            for pt in &e.mesh.positions {
+                bbox.push(*pt, &e.world);
+            }
             let Ok(mesh) = core.upload_mesh(&MeshDesc {
                 positions: &e.mesh.positions,
                 normals: &e.mesh.normals,
@@ -152,6 +156,15 @@ impl ApplicationHandler for App {
             self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
+        // 装载期取景拟合（BBox 门）：三 rig 共 target；2D 正交 zoom=半径×1.35，3D 透视 dist=×2.6
+        let r = bbox.radius();
+        for rig in [&mut self.rig, &mut self.rig_a, &mut self.rig_b] {
+            rig.target = bbox.center();
+        }
+        self.rig.dist = r * 2.6;
+        self.rig_b.dist = r * 2.6;
+        self.rig_a.zoom = (r * 1.35).max(0.2);
+        self.rig.zoom = self.rig_a.zoom;
         self.window = Some(window);
         self.core = Some(core);
         self.surface = Some(surface);

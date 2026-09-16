@@ -137,7 +137,11 @@ impl ApplicationHandler for App {
                 Err(e) => eprintln!("skip texture: {e:?}"),
             }
         }
+        let mut bbox = examples::BBox::new();
         for e in doc.entities() {
+            for pt in &e.mesh.positions {
+                bbox.push(*pt, &e.world);
+            }
             let Ok(mesh) = core.upload_mesh(&MeshDesc {
                 positions: &e.mesh.positions,
                 normals: &e.mesh.normals,
@@ -168,6 +172,12 @@ impl ApplicationHandler for App {
             self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
+        // 装载期取景拟合（BBox 门）：target=场景中心、dist=半径×2.8——任意 glb 均成景
+        let r = bbox.radius();
+        self.rig.target = bbox.center();
+        self.rig.dist = r * 2.2;
+        self.rig.zoom = (r * 1.2).max(0.2);
+        self.rig.pitch = self.rig.pitch.max(0.95); // 薄平面场景：低俯角=贴地细条（扫描实锤 .35→红仅 205px）
         self.window = Some(window);
         self.core = Some(core);
         self.surface = Some(surface);
