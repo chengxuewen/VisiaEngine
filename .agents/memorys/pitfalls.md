@@ -123,3 +123,17 @@
 - **根因**: conda cargo 按 PATH 找兄弟 rustc；`pixi run` 激活恰好把 rustc 塞进 PATH=每步都绿。构建期 COMMAND 的运行时环境与配置期解析是两回事——**验证通道与被验证据通道重合时，环境差异盲区全掩盖**（verification-honesty 的构建面投影；与「未激活 shell 直调 conda cargo 假 rustc-missing」旧案同源反向）。
 - **解法**: cargo 调用点 `${CMAKE_COMMAND} -E env "PATH=<cargo 同目录>:$ENV{PATH}"` 前缀（cargo-step + examples-step，SYSTEM 真系统件无害）；IDE 用户面=裸环境，一切构建门禁必须以裸 PATH 复测。
 - **验证**: `env PATH=/usr/bin:/bin cmake --build target/cmake-bare --target visiaengine-examples-step` 过；已固化为 cmake-smoke 第四态双 target（守卫回归锁）。
+
+## PIT-19: pixi 文件 clobber 致 conda 版 Xvfb 恒炸 XKB（2026-09-16，S0 spike 实锤）
+- **症状**: `pixi add` 后 default 环境 `.pixi/envs/default/bin/Xvfb :77 …` 起服即
+  `XKB: Failed to compile keymap` → `Failed to activate virtual core keyboard: 2`；
+  `share/X11/xkb/` 目录仅剩 `compiled/`，rules/keycodes/symbols 全失踪。
+- **根因**: `xorg-xvfb-server` 包携文件 `share/X11/xkb/compiled/.keep` 与 `xkeyboard-config`
+  的树路径冲突 → pixi 0.78 clobber 处置=把 xkeyboard-config **整树重定向**至
+  `share/xkeyboard-config-2/`（conda-meta 出现 `__clobbers__/xkeyboard-config/share/X11/xkb` 标记），
+  Xvfb 按编译期正位找不到 keymap。host-spike 环境同款；历史未暴露=本机 smoke-x11 恒走 :0 分支。
+- **解法**: 环境为本机态，重建后重放一次合并：
+  `cp -a .pixi/envs/<env>/share/xkeyboard-config-2/. .pixi/envs/<env>/share/X11/xkb/`。
+  display 测试子态优先级=系统 `command -v Xvfb`（apt CI 免疫）→ conda 兜底（须随附修树重放）→ 皆无=SKIP note。
+- **验证**: `Xvfb :77 -screen 0 1024x768x24` 起服 2s 后 `kill -0` 存活；`DISPLAY=:77` 跑 SDL3×attach spike 绿。
+  防复发检查: `ls .pixi/envs/default/share/X11/xkb | grep -q rules || cp -a …xkeyboard-config-2/. …X11/xkb/`。
