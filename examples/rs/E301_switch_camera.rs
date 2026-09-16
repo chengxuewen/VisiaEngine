@@ -25,7 +25,6 @@ struct App {
     config: Option<wgpu::SurfaceConfiguration>,
     window: Option<Arc<Window>>,
     dragging: Option<(f64, f64)>,
-    rig: CameraRig,
     statics: Vec<DrawRecord>, // mesh, material(复用 id), world
     frames_left: Option<u32>,
     glb_path: String,
@@ -42,38 +41,42 @@ impl App {
 }
 
 impl App {
-    fn handle_key(&mut self, key: &KeyEvent) {
-        if key.state != ElementState::Pressed {
-            return;
+    /// 输入统一路由（E301 病根）：渲染相机 = mix_rig(rig_a, rig_b, t)——
+    /// 旧件写 self.rig = 每帧被 mix 覆盖，键盘与鼠标同一条死路（拟合亦走双端）。
+    fn orbit_view(&mut self, dyaw: f64, dpitch: f64) {
+        for r in [&mut self.rig_a, &mut self.rig_b] {
+            r.orbit_delta(dyaw, dpitch);
         }
-        let (mut yaw, mut pitch, mut dist) = (self.rig.yaw, self.rig.pitch, self.rig.dist);
-        match &key.logical_key {
-            Key::Character(s) => match s.as_str() {
-                "a" => yaw += 0.12,
-                "d" => yaw -= 0.12,
-                "w" => pitch = (pitch + 0.08).min(1.5),
-                "s" => pitch = (pitch - 0.08).max(-1.5),
-                "e" => dist *= 1.12,
-                "q" => dist /= 1.12,
-                _ => return,
-            },
-            Key::Named(NamedKey::Tab) => {
-                self.dir = -self.dir;
-                return;
-            }
-            _ => return,
-        }
-        self.rig.yaw = yaw;
-        self.rig.pitch = pitch;
-        self.rig.dist = dist;
     }
-}
-
-impl App {
+    fn zoom_view(&mut self, f: f64) {
+        for r in [&mut self.rig_a, &mut self.rig_b] {
+            r.dist = (r.dist * f).clamp(1.0, 600.0);
+            r.zoom = (r.zoom * f).clamp(0.05, 4000.0);
+        }
+    }
     fn request_redraw(&self) {
         if let Some(w) = &self.window {
             w.request_redraw();
         }
+    }
+    fn handle_key(&mut self, key: &KeyEvent) {
+        if key.state != ElementState::Pressed {
+            return;
+        }
+        match &key.logical_key {
+            Key::Character(s) => match s.as_str() {
+                "a" => self.orbit_view(0.12, 0.0),
+                "d" => self.orbit_view(-0.12, 0.0),
+                "w" => self.orbit_view(0.0, 0.08),
+                "s" => self.orbit_view(0.0, -0.08),
+                "e" => self.zoom_view(1.12),
+                "q" => self.zoom_view(1.0 / 1.12),
+                _ => return,
+            },
+            Key::Named(NamedKey::Tab) => self.dir = -self.dir,
+            _ => return,
+        }
+        self.request_redraw();
     }
 }
 
@@ -158,13 +161,11 @@ impl ApplicationHandler for App {
         println!("loaded {} entities", self.statics.len());
         // 装载期取景拟合（BBox 门）：三 rig 共 target；2D 正交 zoom=半径×1.35，3D 透视 dist=×2.6
         let r = bbox.radius();
-        for rig in [&mut self.rig, &mut self.rig_a, &mut self.rig_b] {
+        for rig in [&mut self.rig_a, &mut self.rig_b] {
             rig.target = bbox.center();
+            rig.dist = r * 2.6;
+            rig.zoom = (r * 1.35).max(0.2);
         }
-        self.rig.dist = r * 2.6;
-        self.rig_b.dist = r * 2.6;
-        self.rig_a.zoom = (r * 1.35).max(0.2);
-        self.rig.zoom = self.rig_a.zoom;
         self.window = Some(window);
         self.core = Some(core);
         self.surface = Some(surface);
@@ -203,8 +204,7 @@ impl ApplicationHandler for App {
                 if let Some((lx, ly)) = self.dragging {
                     let (x, y) = (position.x, position.y);
                     if lx >= 0.0 {
-                        self.rig.orbit_delta((x - lx) * 0.006, (y - ly) * 0.006);
-                        self.request_redraw();
+                        self.orbit_view((x - lx) * 0.006, (y - ly) * 0.006);
                     }
                     self.dragging = Some((x, y));
                 }
@@ -214,8 +214,7 @@ impl ApplicationHandler for App {
                     MouseScrollDelta::LineDelta(_, y) => -f64::from(y) * 40.0,
                     MouseScrollDelta::PixelDelta(p) => -p.y,
                 };
-                self.rig.dist = (self.rig.dist * (1.0 - d * 0.0012)).clamp(0.3, 400.0);
-                self.request_redraw();
+                self.zoom_view(1.0 - d * 0.0012);
             }
             WindowEvent::RedrawRequested => {
                 let (Some(core), Some(surface), Some(config)) =
@@ -331,7 +330,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: None,
         window: None,
         dragging: None,
-        rig: CameraRig::orbit([0.0; 3], 0.7, 1.45, 24.0, 2.2, 1.1, 0.01, 500.0),
         statics: Vec::new(),
         frames_left: frames,
         glb_path: path,
