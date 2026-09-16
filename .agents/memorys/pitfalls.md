@@ -137,3 +137,15 @@
   display 测试子态优先级=系统 `command -v Xvfb`（apt CI 免疫）→ conda 兜底（须随附修树重放）→ 皆无=SKIP note。
 - **验证**: `Xvfb :77 -screen 0 1024x768x24` 起服 2s 后 `kill -0` 存活；`DISPLAY=:77` 跑 SDL3×attach spike 绿。
   防复发检查: `ls .pixi/envs/default/share/X11/xkb | grep -q rules || cp -a …xkeyboard-config-2/. …X11/xkb/`。
+
+## PIT-20: 「幽灵 API」族——凭记忆书写的接口名/参数名 ≥3 例（2026-09-16 立族）
+- **症状**: 计划/代码引用不存在的外部接口：`corrosion_add_test_crate`（上游 #13 自 2018 从未实现）、`CORROSION_CARGO` 用户缓存（0.3 起即移除）、`crates_only`（真名 CRATES）、conda 无 corrosion 包（实有 0.6.1）——每次都在执行带撞墙或静默绕路。
+- **根因**: 把「记得它存在」当「验证过名字」。
+- **解法**: 凡外部 API 句柄（函数/参数/包名/文件路径）落纸当场抓正本（docs/源码 grep/API 实测），引用带 verbatim 片段；无锚=标 [UNCERTAIN] 不许进计划正文。
+- **验证**: 本轮教训源自动画：写计划前 context7/源码/`pixi search` 三查已在 Momus 两轮救回 4 错；残留错=未查句。
+
+## PIT-21: 编辑工具插入式改写的「新旧并存」残留 + grep 断言的 BRE 假绿（2026-09-16 四连实锤）
+- **症状**: 同文件批量 replace 只吞首锚行，被替换块「第二行旧内容」存活 → 僵尸行×4（IDE 终态双行/门禁双行/if 行被吞致 || 悬空/示例双锚）；同族：`grep 'a|b'` 无 -E 时交替失效=恒零匹配=「清零断言」假绿。
+- **根因**: 插入式改写未声明 end 范围；断言谓词用 BRE 裸 |。
+- **解法**: ①插入式改写必 `pos+end` 吞全旧范围，改毕 `sort|uniq -d` 查重 + 旧名 grep=0；②交替断言一律 `grep -E`/`grep -c` 先证「能命中正例」再断零；③守卫「如果报错再补」句式=条件分支悬念，改「出生预置」消灭分支。
+- **验证**: `bash -n` + 手工同参复跑当带；S3/S4 各撞一次全部当带收（未过夜=合格，教训=模式已在 edit-safety #18 固化）。

@@ -163,3 +163,14 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - S3 `17e4e35`：E701 属性闭环段 park 实键 + 故意读缺=missing-intact 活广告；双路（手工 cc/cmake stub）同输出实测
 - 新坑：PIT-17（harness 共享 pid tmp 竞态，pid+纳秒双缀）；PIT-7 第 6 见（audit TLS try3 绿）
 - 基线：**151 passed（143+4 内联+4 FFI，全和实算自 ci 日志 44 目标；S2 commit message 写 147=局部口径，#17 第六犯如实纠于本笔）· spec-trace 111↔111 · GATE-ABI 17/17 ✓ · ci 十段 ✓ · web_capi_pair_mirror ✓ · ctest example 族不回退**
+
+## CMake 结构轮基线（2026-09-16，v1.3 S0–S5 全落）
+
+- 团队模式两轮审（红队 27 项 + 定稿复审 10 项，逐项用户裁决）→ 计划 `.omo/plans/bindings-restructure-cpp-examples.md` v1.3（corrosion 判退：八税单+conda 首蟹+CTest #13 空转；c+ 自写步骤采纳其命名文法）
+- 目录终形：`examples/{rs,c,cpp,qt}`（Rust 例=cargo example [[example]]×9 不 bin 化；C/C++/Qt=cmake 真身）+ `bindings/{c,cpp,qt,js}`（capi/wasm 一窝同栖，crates/=纯核心 5）+ `cmake/VisiaEngineBindings.cmake`（R9 注册表=argv 唯一户口，反-glob 双向硬错）
+- 跑面收敛：ctest 统一清单（bare 14 条：rs 转发 9 + native + probe）；pixi smoke 9 条=转发壳（`smoke-rs.sh` 带「≥1 被选」断言堵 ctest 空匹配假绿）；cmake-smoke=三态三锚（裸 PATH {configure 探+cargo-build_capi+cargo-build_examples}）+三负路径（SYSTEM/prebuilt 缺物/install 说谎）+Xvfb:78 display 子态（窗口族首获自动执行轨；conda 无 xvfb-run=直启形，PIT-19 机=PIT-19 clobber note 不假绿）
+- C++ 面开张：`visiaengine.hpp`（76 行 RAII，三壳语义住头注释，B9 不开 SDD 账）+ `visiaengine::cpp`；E801(SDL3 x11 三帧)/E802(hpp→readback→PPM) 出生即锁；template.c/.cpp 骨架（B8 不建库保 gate-abi 全眼）
+- 工具链：presets 双配 EXPORT_COMPILE + bare testPreset -LE display + `.clang-format`(LLVM+4 随现役) + `.vscode/settings.json`(presets always) + `.gitignore` L56 negation 死锁修复（B4）+ install fail-loud 守卫（S-c β；树=打包轮硬债带验收模板）
+- 新坑三件入档：PIT-19（pixi clobber→conda Xvfb XKB 死）/ PIT-20（幽灵 API 族立族）/ PIT-21（编辑残留+grep -E 断言，升 edit-safety ###18）
+- 基线：**151 passed · spec-trace 111↔111 · GATE-ABI ✓ · GATE-DOCS ✓（E 14 件三方）· CMAKE-SMOKE ✓ · web ✓ · smoke 11/11 · prebuilt 退场真验 · 工作区 clean**
+- 待办：push 候令（本地领先 += 本轮）· Phase B 首带（E8xx 数据带 API 缺口清单→capi 扩口）候令 · RA example Run lens 人验（T3，风险④已降辅助轨）· 打包轮三件（install 树/corrosion 复评/npm-pip）

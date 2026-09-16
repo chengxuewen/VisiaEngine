@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**批 0-5 已收官（2026-09-14）**：七 crate workspace、**111 条** SDD 契约（spec-trace 双向锁）、九路 smoke + 四 gate（style/trace/abi/docs）；golden 真机无 SKIP；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
+VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**批 0-5 已收官（2026-09-14）**：七 crate workspace、**111 条** SDD 契约（spec-trace 双向锁）、ctest 统一例子清单（14 条）+ 四 gate（style/trace/abi/docs）+ cmake-smoke 三态三锚；golden 真机无 SKIP；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
 
 ## STRUCTURE
 
@@ -42,7 +42,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 
 ## CODE MAP
 
-`Scene/EntityId`(core/src/scene.rs：slab+代际+脏标记，100k 实体 ~12ms spike 实测) → `RenderBackend/MeshDesc/CameraRig`(render/src/{contract,camera}.rs：object-safe，深度变体锁 [0,1] 见 PIT-5) → `MeshCore/headless/offscreen`(render-wgpu/src/：真网格管线+立方 golden) + `load_gltf`(io-gltf/src/lib.rs：gltf from_slice+util::Iter，GLB-only)。examples 四件套：clear/load_gltf/switch_camera/geo_viewer（皆 --frames N 可 CI 化）。依赖单向 core←{render, io-gltf}←render-wgpu(dev 合流)。
+`Scene/EntityId`(core/src/scene.rs：slab+代际+脏标记，100k 实体 ~12ms spike 实测) → `RenderBackend/MeshDesc/CameraRig`(render/src/{contract,camera}.rs：object-safe，深度变体锁 [0,1] 见 PIT-5) → `MeshCore/headless/offscreen`(render-wgpu/src/：真网格管线+立方 golden) + `load_gltf`(io-gltf/src/lib.rs：gltf from_slice+util::Iter，GLB-only)。例子域（v1.3 起）：examples/rs ×9 cargo example（[[example]] 注册壳包，ctest 转发壳跑）+ examples/{c,cpp,qt} 原生真身（E70x/E80x）。依赖单向 core←{render, io-gltf}←render-wgpu(dev 合流)。
 
 ## CONVENTIONS
 

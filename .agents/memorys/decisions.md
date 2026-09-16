@@ -101,3 +101,15 @@
 - **决策**: 用户方向批准（问题呈「第 15 口」字样）→ 计划显式摊牌容量差 → C-1 终审=**3 typed 口 14→17**；C-2 str 无探长（cap 不足=-5 零部分写，256B 文档约定）；C-3 E701 追加段不新开 E 号；点云独立例**跳过**（与 E202 重叠且无专有数据源）。
 - **原因**: 三型镜像 CORE-12 闭合口，宿主一次学全；单变体型口 C 侧丑（型双关）；键=enc_entity 位形直通（零解码、ABA 免疫=代际在键内）。
 - **影响**: D6「14 入口」锁正式改写（CAPI-01/02 条款修订句 + 十二处连带面清单已销）；后续扩口先例=**必须先摊容量差再请批**；wasm 面维持常量镜像（函数不镜像现状）；`attr_of` 保留面为批 7 js 属性口预留同构形状。
+
+## D14: 根 examples 目录法 + c+ 统一例子面 + stub 体系退役（supersede D12，2026-09-16 v1.3 落地）
+- **背景**: 用户判 CMake 工程混乱（目录/target/例子三诉）；红队两轮 27+10 项实证：stub launcher=「例子是假的」病根、corrosion 导例进 IDE 主流零先例（slint/iceoryx2 例子皆留 cargo 世界）且自带八税（cargo-build_* 假名/always-dirty #624/双缓存/conda 首蟹/无 CTest #13 拖 2018 至今）。
+- **决策**: ①launcher+189 行契约表+旧 ctest example_* 全废；②根 `examples/{rs,c,cpp,qt}/` 按语言分层，Rust 例保 **cargo example 语义**（[[example]] 显式块，不 bin 化——bin 吃不了 dev-deps 的 v1.1 死结随之消解）；③Rust 例进 IDE 经 **c+**：`cargo-build_*/cargo-run_*` 自写步骤（R10 采纳 corrosion 命名文法、零依赖）+ ctest `example_<茎>` 统一清单，pixi smoke 九条降转发壳（argv 单源=R9 注册表）；④corrosion 议题挂打包轮（引入日=自写步骤整批退场日，同名绊线）。
+- **原因**: 主流形态+税单实测；c+ 体验 90%/成本 19 行，b 路线招牌被其价目表自贬。逐项裁决全程用户过目（含「说人话」四轮收束）。
+- **影响**: cmake-smoke 三态三锚（裸 PATH configure 探+双构建锚——B1「守卫别跟着裁丢」）；D11 复评同步刷新（conda 有 corrosion 包=当初「无包」判据系误，本轮仍弃于税表）；RA Run 降辅助轨。
+
+## D15: bindings 一窝同栖 + SDL3 窗口宿主 + E8xx/孪生编号法（2026-09-16 v1.3 落地）
+- **背景**: MediaServo 形采纳裁「全盘一窝同栖」；窗口例宿主需跨平台件；E8xx 新带需编号法。
+- **决策**: ①`crates/`=纯核心 5 库；capi→`bindings/c/visiaengine-capi`（src+手写头+tests 同栖，probe 同级），wasm→`bindings/js/rust/`（实测路径引用=0，仅 members+一行 path 地雷），`bindings/cpp`(hpp)/`bindings/qt`(widget.hpp)/`bindings/js/demo`；目录法一句话：examples/=教学例、bindings/=实现+头+验收+包壳。②宿主三分：headless 主力（readback 断言）+ **SDL3**（conda 3.4.16，xid 属性=attach 合同同构，S0 双态实证）+ Qt 专带演示；FetchContent 兜底不建（D5 单源）。③C/C++ SDK 例=**E8xx 带**；孪生共号 `.c/.cpp` 分家（目标名 `_c/_cpp` 尾）；资产逃生口=目录名=文件茎。④hpp 不开 SDD 账（widget.hpp 先例；三壳语义住头注释、活体锚 CAPI-nn；触发器=壳长新行为时建 cpp.md+扩 spec-trace 双正则，30 分钟无利息）。⑤install 树=S-c β：本轮仅 fail-loud 守卫，树+树外演练=打包轮硬债（模板钉 §7）。
+- **原因**: 主流六仓实测（iceoryx2/slint/SDL3/Vulkan-Hpp/Sascha/filament）+ 红队 G 组缺口全收编；examples 中心化=6/6 主流一致，「tests 栖绑定价、examples 集中」两分法。
+- **影响**: 例子门禁=可 ctest 枚举单源；toolchain 批（compile_commands/.clang-format/.vscode presets always+.gitignore L56 negation 死锁修复）；PIT-19（pixi clobber→conda Xvfb XKB 死）入账。
