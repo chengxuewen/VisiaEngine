@@ -151,7 +151,7 @@ WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 
   # ── C demo 族：真身=原生 target 链伞（rpath 免 LD_LIBRARY_PATH），E702 需 X11 ──
   find_package(X11 QUIET)   # E702 消费面；缺位=该件优雅跳过（双层门控）
-  file(GLOB _cs "${CMAKE_SOURCE_DIR}/crates/visiaengine-capi/examples/*.c")
+  file(GLOB _cs "${CMAKE_SOURCE_DIR}/examples/c/*.c")
   list(SORT _cs)
   set(_realdir "${CMAKE_BINARY_DIR}/ve-real")
   set(_cok "")

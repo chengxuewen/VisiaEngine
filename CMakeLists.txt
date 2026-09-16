@@ -20,11 +20,11 @@ visiaengine_setup_cargo()  # cargo-step + 伞 visiaengine::capi + 假 Config 桥
 enable_testing()
 
 if(NOT VISIAENGINE_QT_SDK STREQUAL "OFF")
-  add_subdirectory(platform/qt) # Qt 轮 v1.3 落地后自然点亮（本批 bare 预设=OFF）
+  add_subdirectory(bindings/qt) # Qt 轮 v1.3 落地后自然点亮（本批 bare 预设=OFF）
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/probe/CMakeLists.txt")
-  add_subdirectory(cmake/probe) # ctest 探针（C2 落地前自动跳过）
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/c/probe/CMakeLists.txt")
+  add_subdirectory(bindings/c/probe) # ctest 探针（C2 落地前自动跳过）
 endif()
 
 include(cmake/VisiaEngineExamples.cmake)

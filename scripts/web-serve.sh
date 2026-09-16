@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 D=target/web/demo
 mkdir -p "$D"
-cp web/demo/index.html "$D/"
+cp bindings/js/demo/index.html "$D/"
 cp -r target/web/pkg-web "$D/pkg"
 cp resources/data/park.geojson "$D/"
 echo "▶ http://127.0.0.1:8017 （T3 人检清单见页面；退出 Ctrl-C）"

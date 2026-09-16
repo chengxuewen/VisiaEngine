@@ -8,7 +8,7 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 fail=0
-EXDIRS=(examples/rs crates/visiaengine-capi/examples)   # S1: rs 入表，两个已搬空旧目录退场；capi 条 S2 退
+EXDIRS=(examples/rs examples/c)   # S1: rs 入表，两个已搬空旧目录退场；capi 条 S2 退
 
 # ① E 三方
 files=$(for d in "${EXDIRS[@]}"; do ls "$d" 2>/dev/null; done | grep -oE '^E[0-9]{3}' | sort -u)
@@ -29,8 +29,8 @@ sn=$(bash scripts/spec-trace.sh 2>/dev/null | grep -oE '[0-9]+ 条双向' | grep
 [ "${rn:-x}" = "${sn:-y}" ] || { echo "GATE-DOCS ✗ ②README '${rn:-缺}' ≠ spec-trace '${sn:-缺}'"; fail=1; }
 
 # ③ 头签名名集
-hs=$(grep -oE 'visiaengine_[a-z0-9_]+\(' crates/visiaengine-capi/include/visiaengine.h | sed 's/(//' | sort -u)
-rs=$(grep -rhoE 'fn visiaengine_[a-z0-9_]+' crates/visiaengine-capi/src/ | sed 's/^fn //' | sort -u)
+hs=$(grep -oE 'visiaengine_[a-z0-9_]+\(' bindings/c/visiaengine-capi/include/visiaengine.h | sed 's/(//' | sort -u)
+rs=$(grep -rhoE 'fn visiaengine_[a-z0-9_]+' bindings/c/visiaengine-capi/src/ | sed 's/^fn //' | sort -u)
 [ "$hs" = "$rs" ] || { echo "GATE-DOCS ✗ ③.h 原型集 ≠ Rust extern 集:"; diff <(echo "$hs") <(echo "$rs"); fail=1; }
 
 # ④ 相对链接

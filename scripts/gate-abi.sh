@@ -13,7 +13,7 @@ SO=target/debug/libvisiaengine.so
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
 echo "ABI-SYMBOLS=$N/17 | SO_SIZE=$(du -h "$SO" | cut -f1)"
 [ "$N" = "17" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
-"$CC" -I crates/visiaengine-capi/include crates/visiaengine-capi/examples/E701_demo_headless.c \
+"$CC" -I bindings/c/visiaengine-capi/include examples/c/E701_demo_headless.c \
       -L target/debug -lvisiaengine -o target/demo_headless || { echo "GATE-ABI ✗ demo 编译"; exit 1; }
 LD_LIBRARY_PATH=$PWD/target/debug ./target/demo_headless resources/data/twoprim.glb \
       || { echo "GATE-ABI ✗ demo 运行"; exit 1; }

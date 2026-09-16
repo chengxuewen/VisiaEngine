@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "examples/rs"]
+members = ["crates/*", "examples/rs", "bindings/c/visiaengine-capi", "bindings/js/rust/visiaengine-wasm"]
 
 [workspace.package]
 version = "0.1.0"

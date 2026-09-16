@@ -10,8 +10,10 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 
 ```
 ./
-├── Cargo.toml/lock   # workspace（crates/* 三成员，版本 pin 见计划锚点）；deny.toml licenses/bans
-├── crates/           # core→render（trait+IR/camera/rebase）→render-wgpu（wgpu 后端/管线/E 系 example×7/offscreen）+ io-gltf + geo（GeoJSON→3857→细分→样式/GPU 扩片输出 GEO-24）+ capi（C ABI 17 入口+双 C demo）+ wasm（CAPI-09 镜像）
+├── Cargo.toml/lock   # workspace（members=crates/*+examples/rs+bindings 两 FFI crate，S1/S2 定）；deny.toml licenses/bans
+├── crates/           # 纯核心 5：core→render（trait+IR/camera/rebase）→render-wgpu（wgpu 后端/管线/offscreen）+ io-gltf + geo（GeoJSON→3857→细分→样式/GPU 扩片输出 GEO-24）
+├── examples/         # 例子按语言：rs=cargo example 教程系×9（[[example]] 注册壳包）；c=C 例（E701/702；S4 起 E8xx+template）；cpp/qt 随 S4 开；跑面单源=ctest/pixi smoke
+├── bindings/         # 实现面一窝同栖：c/visiaengine-capi（C ABI 17 入口+手写头+CAPI 条款测试）· c/probe · cpp/include（S4 hpp）· qt/widget.hpp · js/rust/visiaengine-wasm（CAPI-09 镜像）+ js/demo
 ├── docs/sdd/         # 行为契约条款（CORE/REND/WGPU-NN，与测试 // spec: 双向追溯：scripts/spec-trace.sh）
 ├── docs/tutorials.md # E 编号教程索引（文件名=头注=索引三方锁=scripts/gate-docs.sh）
 ├── .github/workflows # ci.yml 待命（GitHub 镜像日激活；本机等价=pixi run ci+同款 grep）

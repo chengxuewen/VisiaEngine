@@ -4,7 +4,16 @@
 #[test]
 #[ignore = "web-check 链：需 scripts/web-build.sh 产物先行 [FFI-R:v13-FEAS-7]"]
 fn web_capi_pair_mirror() {
-    let script = concat!(env!("CARGO_MANIFEST_DIR"), "/../../scripts/web-mirror.mjs");
+    let script = {
+        fn repo_root() -> std::path::PathBuf {
+            let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            while !p.join("Cargo.lock").exists() {
+                assert!(p.pop(), "Cargo.lock 上溯不中");
+            }
+            p
+        }
+        repo_root().join("scripts/web-mirror.mjs")
+    };
     let out = std::process::Command::new("node")
         .arg(script)
         .output()

@@ -7,12 +7,16 @@ use visiaengine::{
     visiaengine_readback, visiaengine_render, visiaengine_viewport,
 };
 
+fn repo_root() -> std::path::PathBuf {
+    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    while !p.join("Cargo.lock").exists() {
+        assert!(p.pop(), "Cargo.lock 上溯不中");
+    }
+    p
+}
+
 fn fixture(name: &str) -> CString {
-    CString::new(format!(
-        "{}/../../resources/data/{name}",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .unwrap()
+    CString::new(format!("{}/resources/data/{name}", repo_root().display())).unwrap()
 }
 
 // spec: CAPI-04

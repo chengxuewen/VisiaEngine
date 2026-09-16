@@ -2,7 +2,7 @@
 # 设计=.omo/plans/visiaengine-cmake-project.md v1.0）
 
 function(visiaengine_setup_cargo)
-  set(_src ${CMAKE_SOURCE_DIR}/crates/visiaengine-capi)
+  set(_src ${CMAKE_SOURCE_DIR}/bindings/c/visiaengine-capi)
   if(VISIAENGINE_ARTIFACT_PATH)
     set(_dir "${VISIAENGINE_ARTIFACT_PATH}")
     set(_flags "")

@@ -21,7 +21,9 @@
 
 ```
 ├── AGENTS.md / SKILL.md   # 代理知识库与技能注册表
-├── crates/                # core / render / render-wgpu / io-gltf / geo / capi / wasm（七 crate，D6 命名）
+├── crates/                # 纯核心 5：core / render / render-wgpu / io-gltf / geo（D6 命名）
+├── examples/              # 例子按语言分层：rs（Rust 教程系）/ c / cpp / qt——ctest 统一清单一键跑
+├── bindings/              # 对外实现面：c（capi crate+手写头+探针）/ cpp（RAII 头）/ qt（widget）/ js（wasm+demo）
 ├── pixi.toml / pixi.lock  # 开发环境单源（D5：conda-forge，含 rust 工具链）
 ├── docs/sdd/              # 行为契约条款（与测试双向追溯）
 ├── docs/
@@ -33,7 +35,7 @@
 
 ## 开发状态
 
-**Phase 1 现状（数字以门禁实报为准）**：7 crate workspace、**111 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON 装载 + 材质纹理（PBR mock-up）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 方向光 PCSS 软影 + 2D↔3D 无级切换 + 拾取/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**九路 smoke + 三 gate（abi/trace/docs）+ bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。**宿主嵌入**：C ABI 17 入口（人审手写头 + 双 C demo 真跑；含属性读三口）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt 宿主实证 ✅（header-only widget+真窗 smoke 三态）；npm/pip 打包挂 Alpha。
+**Phase 1 现状（数字以门禁实报为准）**：7 crate workspace（核心 5 + bindings 面 2）、**111 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON 装载 + 材质纹理（PBR mock-up）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 方向光 PCSS 软影 + 2D↔3D 无级切换 + 拾取/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**九路 smoke + 三 gate（abi/trace/docs）+ bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。**宿主嵌入**：C ABI 17 入口（人审手写头 + 双 C demo 真跑；含属性读三口）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt 宿主实证 ✅（header-only widget+真窗 smoke 三态）；npm/pip 打包挂 Alpha。
 
 ```bash
 ```bash
