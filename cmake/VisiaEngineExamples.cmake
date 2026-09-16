@@ -132,11 +132,14 @@ function(visiaengine_setup_examples)
                    --target-dir ${VISIAENGINE_RUST_DIR} -p ${_crate} ${_sel})
     endif()
   endforeach()
+  # S1 后 Rust 族 glob 恒空=零 COMMAND；USES_TERMINAL 无 COMMAND 系 CMake 硬错（实测撞中）→ 空集整块不建；本文件 S3 全废，此守卫系过渡桥。
+  if(_cmds)
   add_custom_target(visiaengine-examples-step ALL
-    ${_cmds}
-    BYPRODUCTS ${_bins}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+${_cmds}
+BYPRODUCTS ${_bins}
+WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     VERBATIM USES_TERMINAL)
+  endif()
   foreach(_n ${_items})
     if(_ex_DISPLAY_${_n})
       set(_nd 1)

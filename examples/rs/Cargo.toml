@@ -1,0 +1,50 @@
+[package]
+name = "examples"
+description = "Rust 例教程壳：E 系 example 的 [[example]] 注册包（cargo 轨；不进 CMake 构建图，跑面=ctest 转发/pixi smoke/RA）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+visiaengine-core.workspace = true
+visiaengine-render.workspace = true
+visiaengine-render-wgpu.workspace = true
+visiaengine-io-gltf.workspace = true
+visiaengine-geo.workspace = true
+# 三方直用面 = examples/rs/*.rs 顶行+全路径引用实扫（S1 清点：image×1 pollster×4 wgpu×4 winit×4）
+wgpu.workspace = true
+winit.workspace = true
+pollster.workspace = true
+image.workspace = true
+
+# 显式注册（bevy 形）：文件栖包根非 examples/ 自动发现位；E 号三方锁（文件名=头注=索引）在 gate-docs。
+[[example]]
+name = "E101_clear"
+path = "E101_clear.rs"
+[[example]]
+name = "E201_load_gltf"
+path = "E201_load_gltf.rs"
+[[example]]
+name = "E202_geo_viewer"
+path = "E202_geo_viewer.rs"
+[[example]]
+name = "E203_measure_cli"
+path = "E203_measure_cli.rs"
+[[example]]
+name = "E301_switch_camera"
+path = "E301_switch_camera.rs"
+[[example]]
+name = "E401_pick_demo"
+path = "E401_pick_demo.rs"
+[[example]]
+name = "E501_shadow_demo"
+path = "E501_shadow_demo.rs"
+[[example]]
+name = "E601_bench_twin"
+path = "E601_bench_twin.rs"
+[[example]]
+name = "E901_twin_city"
+path = "E901_twin_city.rs"

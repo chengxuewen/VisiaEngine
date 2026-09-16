@@ -22,10 +22,8 @@ rm -rf "$B" "$B-neg"
 
 # 第四态：裸 PATH 构建段（IDE 直调形态守卫）——cargo 命令须自带 rustc 兄弟目录 PATH 前缀
 # （2026-09-15 实锤：pixi run 包装掩盖，用户 IDE /usr/bin/cmake 直调爆「could not execute rustc」）
-env PATH=/usr/bin:/bin "$CM" --build "$B" --target visiaengine-examples-step >/dev/null 2>&1 \
-    || { echo "CMAKE-SMOKE ✗ 裸 PATH examples-step（cargo 环境自足性破坏=IDE 必炸）"; exit 1; }
 env PATH=/usr/bin:/bin "$CM" --build "$B" --target visiaengine-cargo-step >/dev/null 2>&1 \
-    || { echo "CMAKE-SMOKE ✗ 裸 PATH cargo-step（同上守卫）"; exit 1; }
+    || { echo "CMAKE-SMOKE ✗ 裸 PATH cargo-step（cargo 环境自足性破坏=IDE 必炸）"; exit 1; }  # examples-step 锚随 S1 Rust 例退场（S3 换挂 rs 总步+configure 探）
 
 # 负路径 1：SYSTEM 语义（激活壳=拒收污染；真系统 cargo=合法通过；其余=必错且报文含 SYSTEM）
 out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_RUST_SDK=SYSTEM 2>&1)

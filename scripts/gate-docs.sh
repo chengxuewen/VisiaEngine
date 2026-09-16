@@ -8,7 +8,7 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 fail=0
-EXDIRS=(crates/visiaengine-render-wgpu/examples crates/visiaengine-geo/examples crates/visiaengine-capi/examples)
+EXDIRS=(examples/rs crates/visiaengine-capi/examples)   # S1: rs 入表，两个已搬空旧目录退场；capi 条 S2 退
 
 # ① E 三方
 files=$(for d in "${EXDIRS[@]}"; do ls "$d" 2>/dev/null; done | grep -oE '^E[0-9]{3}' | sort -u)
