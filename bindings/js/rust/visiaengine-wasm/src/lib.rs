@@ -119,13 +119,21 @@ impl VisiaEngine {
         if positions.len() % 3 != 0 || base_color.len() != 4 || origin.len() != 3 {
             return 0;
         }
-        let pos: Vec<[f32; 3]> = positions.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let pos: Vec<[f32; 3]> = positions
+            .chunks_exact(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .collect();
         let nrm: Option<Vec<[f32; 3]>> = if normals.is_empty() {
             None
         } else if normals.len() != positions.len() {
             return 0;
         } else {
-            Some(normals.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect())
+            Some(
+                normals
+                    .chunks_exact(3)
+                    .map(|c| [c[0], c[1], c[2]])
+                    .collect(),
+            )
         };
         let col = [base_color[0], base_color[1], base_color[2], base_color[3]];
         let org = [origin[0], origin[1], origin[2]];
