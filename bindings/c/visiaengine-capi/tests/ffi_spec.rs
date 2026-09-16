@@ -3,11 +3,12 @@
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VeInput, visiaengine_abi_version, visiaengine_attach, visiaengine_attr_bool,
-    visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy,
-    visiaengine_entity_at, visiaengine_entity_count, visiaengine_last_error, visiaengine_load_gltf,
-    visiaengine_on_input, visiaengine_pick, visiaengine_readback, visiaengine_render,
-    visiaengine_viewport,
+    VeInput, VeMeshDescC, visiaengine_abi_version, visiaengine_add_mesh, visiaengine_attach,
+    visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless,
+    visiaengine_destroy, visiaengine_entity_at, visiaengine_entity_count,
+    visiaengine_entity_set_visible, visiaengine_entity_visible, visiaengine_last_error,
+    visiaengine_load_gltf, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
+    visiaengine_remove_entity, visiaengine_render, visiaengine_viewport,
 };
 
 /// 全 17 入口对 stale/foreign 句柄必须 -1（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -34,6 +35,14 @@ fn stale_doors(ve: u64) {
         visiaengine_attr_bool(ve, 0, std::ptr::null(), std::ptr::null_mut()),
         VE_ERR_ARG
     );
+    assert_eq!(visiaengine_entity_set_visible(ve, 0, 1), VE_ERR_ARG);
+    assert_eq!(visiaengine_entity_visible(ve, 0), VE_ERR_ARG);
+    assert_eq!(
+        visiaengine_add_mesh(ve, std::ptr::null()),
+        0,
+        "句柄返回族：stale 哨兵统一 0（0=非常成柄）"
+    );
+    assert_eq!(visiaengine_remove_entity(ve, 0), VE_ERR_ARG);
 }
 
 #[must_use]
@@ -214,11 +223,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0001,
-        "major 1 · minor 1（属性三口=MAJOR 内追加；demo assert >>16==1 的源头）"
+        0x0001_0002,
+        "major 1 · minor 2（显隐/增删四口=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0001, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0002, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -234,7 +243,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        17,
+        21,
         "extern 入口计数（cfg-gated 行首式）"
     );
     assert_eq!(
@@ -246,4 +255,93 @@ fn symbol_surface_grep_gate() {
         src.contains("visiaengine_") && !src.contains("cbindgen"),
         "手写头纪律"
     );
+}
+
+// ── B1 数据带四口（RED 先行；门表/abi/计数为联动面）──
+
+fn mesh_desc(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32]) -> VeMeshDescC {
+    VeMeshDescC {
+        struct_size: std::mem::size_of::<VeMeshDescC>(),
+        positions: pos.as_ptr().cast(),
+        normals: nrm.as_ptr().cast(),
+        indices: idx.as_ptr(),
+        n_positions: pos.len() as u64,
+        n_indices: idx.len() as u64,
+        base_color: [1.0f32, 1.0, 1.0, 1.0].as_ptr(),
+        origin: [0.0f64; 3].as_ptr(),
+    }
+}
+
+fn load_twoprim(ve: u64) {
+    let path = std::ffi::CString::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../resources/data/twoprim.glb"
+    ))
+    .unwrap();
+    assert_eq!(visiaengine_load_gltf(ve, path.as_ptr()), VE_OK);
+}
+
+// spec: CAPI-13
+// spec: CAPI-14
+#[test]
+fn entity_visibility_ffi_roundtrip() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    load_twoprim(ve);
+    let h0 = visiaengine_entity_at(ve, 0);
+    assert_ne!(h0, 0);
+    assert_eq!(visiaengine_entity_visible(ve, h0), 1, "默认可见");
+    assert_eq!(visiaengine_entity_set_visible(ve, h0, 0), VE_OK);
+    assert_eq!(visiaengine_entity_visible(ve, h0), 0);
+    assert_eq!(visiaengine_entity_set_visible(ve, h0, 2), VE_ERR_ARG, "严格 0/1 入参");
+    assert_eq!(visiaengine_entity_set_visible(ve, h0, -1), VE_ERR_ARG);
+    assert_eq!(visiaengine_entity_set_visible(ve, 777, 1), VE_ERR_ARG, "未知位形");
+    assert_eq!(visiaengine_entity_visible(ve, 777), VE_ERR_ARG);
+    assert_eq!(visiaengine_entity_set_visible(ve, h0, 1), VE_OK, "复原可见");
+    assert_eq!(visiaengine_entity_count(ve), 2, "显隐不动枚举域");
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-15
+#[test]
+fn add_mesh_ffi_struct_contract() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    let pos = [[0f32, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]];
+    let nrm = [[0f32, 0.0, 1.0]; 4];
+    let idx = [0u32, 1, 2, 0, 2, 3];
+    let h = visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx));
+    assert_ne!(h, 0, "成功给位形");
+    assert_eq!(visiaengine_entity_count(ve), 1);
+    assert_eq!(visiaengine_add_mesh(ve, std::ptr::null()), 0, "NULL 结构=0 哨兵");
+    let small = VeMeshDescC {
+        struct_size: 4,
+        ..mesh_desc(&pos, &nrm, &idx)
+    };
+    assert_eq!(visiaengine_add_mesh(ve, &small), 0, "struct_size 门=拒（前瞻纪律）");
+    assert_eq!(visiaengine_render(ve), VE_OK, "加入件即入帧命令流");
+    assert_eq!(visiaengine_remove_entity(ve, h), VE_OK);
+    assert_eq!(visiaengine_entity_count(ve), 0, "退化/失败路零提交（计数全程可追溯）");
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-16
+#[test]
+fn remove_entity_ffi_reentry_aba() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    load_twoprim(ve);
+    let h0 = visiaengine_entity_at(ve, 0);
+    assert_eq!(visiaengine_remove_entity(ve, h0), VE_OK);
+    assert_eq!(visiaengine_entity_count(ve), 1);
+    assert_eq!(visiaengine_remove_entity(ve, h0), VE_ERR_ARG, "旧句柄再入=双销毁同谱");
+    assert_eq!(visiaengine_entity_visible(ve, h0), VE_ERR_ARG);
+    let pos = [[0f32, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]];
+    let nrm = [[0f32, 0.0, 1.0]; 4];
+    let idx = [0u32, 1, 2, 0, 2, 3];
+    let h_new = visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx));
+    assert_ne!(h_new, h0, "ABA：同槽新代际不撞旧位形");
+    assert_eq!(visiaengine_remove_entity(ve, h0), VE_ERR_ARG, "新实体在场，旧句柄仍死");
+    assert_eq!(visiaengine_remove_entity(ve, h_new), VE_OK);
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

@@ -31,3 +31,15 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-12: 属性保留与加性复载行
 `load_geojson*` 成功即 move `GeoDocument` 入保留面（`geo_docs` 追加，与 items 加性语义同构）；entity→(装载序号, feature 行) mount 期反标，行=GEO-17 展平下标；**mount 失败=零发布**（doc 不保留、反标不插入，中途 spawn 随现行孤儿语义）。复载隔离：旧 entity 读不漂不乱，跨 doc 列空间独立。
+
+## CAPI-13: 实体显隐（render/pick 过滤，枚举域不变）
+`entity_set_visible(ve, entity_bits, visible)`：visible=严格 0/1（其余取值=VE_ERR_ARG）；未知位形（枚举域外/旧代际）=VE_ERR_ARG；成功=0、重复设同值幂等=0。隐藏语义三契约：**render 命令排除、pick 不命中、属性读与 entity_count/entity_at 枚举域不变**（宿主图层开关依赖索引稳定；隐藏件的旧句柄命中面=MISS）。线/点扩片表等不带 entity 位形的附件不在本口管辖（CAPI-10 域划分沿用）。
+
+## CAPI-14: 显隐查询
+`entity_visible(ve, entity_bits) -> int32`：可见=1、隐藏=0、未知位形=-1（编码含代际=ABA 免疫，与 CAPI-13 setter 同域同谱）。
+
+## CAPI-15: 程序化加网格（VeMeshDescC 值结构，调用期拷贝）
+`add_mesh(ve, *const VeMeshDescC) -> uint64`：首字段 struct_size（VeInput 族前瞻门，过小=拒→返回 0 并写 last_error）；positions/normals(可 NULL=零填充，MeshDesc 契约投影)/indices/base_color[4]/origin[3] **调用期读拷贝**，返回后宿主即释放合法（load_* bytes 同构）。退化输入（空 positions/空 indices/索引越界/normals 长度与 positions 不一致）=返回 0（0 非常成柄），无部分状态提交。成功=新实体位形：枚举域即时 +1、render 即时生效、无属性行（attr 读=CAPI-10 缺失路）。
+
+## CAPI-16: 实体删除（代际再入，双销毁同谱）
+`remove_entity(ve, entity_bits) -> int32`：成功=0——items 摘除、属性反标表清理、显隐表清理、core `despawn` 槽位代际 +1；未知位形/旧句柄再入=VE_ERR_ARG。ABA 免疫显式化：删除→再增加同槽→**旧句柄仍死**（新实体新位形不撞）。`entity_at` 下标域压缩重排：删除后宿主必须重枚举（本条显式警示，索引不承诺稳定仅对显隐承诺，CAPI-13 分野）。

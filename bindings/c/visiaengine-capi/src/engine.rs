@@ -607,3 +607,105 @@ mod attr_tests {
         assert_eq!(e.attr_bool(old, "active"), Some(true)); // 跨 doc 列隔离
     }
 }
+
+#[cfg(test)]
+mod mut_spec_tests {
+    //! CAPI-13..16（RED 先行）：显隐过滤 / 查询 / 程序化增 / 删-ABA。
+    use super::*;
+    use crate::ffi::enc_entity;
+
+    const TWOPRIM: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../resources/data/twoprim.glb"
+    );
+
+    fn eng() -> Engine {
+        let mut e = Engine::new_headless(160, 120).expect("adapter");
+        assert_eq!(e.load_gltf(TWOPRIM).unwrap(), 2, "twoprim=2 实体");
+        e
+    }
+
+    fn quad() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
+        (
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            vec![[0.0, 0.0, 1.0]; 4],
+            vec![0, 1, 2, 0, 2, 3],
+        )
+    }
+
+    // spec: CAPI-13
+    #[test]
+    fn hide_filters_pick_keeps_enumeration() {
+        let mut e = eng();
+        let hit = e.pick(80.0, 60.0).expect("中心命中（CAPI-04 族）");
+        let h = enc_entity(hit);
+        assert_eq!(e.set_visible(h, true), Ok(()), "默认可见域重复设=幂等");
+        assert_eq!(e.set_visible(h, false), Ok(()));
+        assert_eq!(e.set_visible(h, false), Ok(()), "重复隐藏幂等");
+        assert_ne!(
+            e.pick(80.0, 60.0).map(enc_entity).unwrap_or(u64::MAX),
+            h,
+            "隐藏后中心不得命中本体"
+        );
+        assert_eq!(e.entity_count(), 2, "枚举域不变");
+        assert!(
+            (0..2u32).any(|k| e.entity_at(k) == Some(hit)),
+            "隐藏件仍可枚举"
+        );
+        assert_eq!(e.is_visible(h), Some(false));
+    }
+
+    // spec: CAPI-14
+    #[test]
+    fn visible_getter_roundtrip_and_unknown() {
+        let mut e = eng();
+        let h0 = enc_entity(e.entity_at(0).unwrap());
+        assert_eq!(e.is_visible(h0), Some(true), "默认可见");
+        assert_eq!(e.set_visible(h0, false), Ok(()));
+        assert_eq!(e.is_visible(h0), Some(false));
+        assert_eq!(e.is_visible(u64::MAX >> 1), None, "未知位形=None（FFI 层投影 -1）");
+    }
+
+    // spec: CAPI-15
+    #[test]
+    fn add_mesh_enumeration_and_degenerate_no_partial() {
+        let mut e = eng();
+        let (pos, nrm, idx) = quad();
+        let h = e
+            .add_mesh(&pos, &nrm, &idx, [1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 0.0])
+            .expect("add ok");
+        assert_ne!(h, 0, "0=失败哨兵，成功必给位形");
+        assert_eq!(e.entity_count(), 3);
+        assert!(e.render().is_ok(), "加入件即入命令流");
+        // 退化三路：索引越界 / 空几何 / normals 长度失配——均无部分提交
+        assert!(e.add_mesh(&pos, &nrm, &[0, 9, 2], [1.0; 4], [0.0; 3]).is_err());
+        assert!(e.add_mesh(&[], &[], &[], [1.0; 4], [0.0; 3]).is_err());
+        assert!(e.add_mesh(&pos, &[[0.0, 0.0, 1.0]; 3], &idx, [1.0; 4], [0.0; 3]).is_err());
+        assert_eq!(e.entity_count(), 3, "退化零提交");
+        assert!(e.remove_entity(h).is_ok());
+        assert_eq!(e.entity_count(), 2);
+    }
+
+    // spec: CAPI-16
+    #[test]
+    fn remove_reentry_and_aba_isolation() {
+        let mut e = eng();
+        let h0 = enc_entity(e.entity_at(0).unwrap());
+        assert_eq!(e.remove_entity(h0), Ok(()));
+        assert_eq!(e.entity_count(), 1);
+        assert!(e.remove_entity(h0).is_err(), "旧句柄再入=VE_ERR_ARG 谱");
+        assert_eq!(e.is_visible(h0), None, "已删位形查询同谱拒绝");
+        let (pos, nrm, idx) = quad();
+        let h_new = e
+            .add_mesh(&pos, &nrm, &idx, [1.0; 4], [0.0; 3])
+            .expect("同槽再_spawn：代际+1 新位形");
+        assert_ne!(h_new, h0, "ABA：旧句柄永不撞新代行");
+        assert!(e.remove_entity(h0).is_err(), "新实体在场，旧句柄仍死");
+        assert_eq!(e.remove_entity(h_new), Ok(()));
+    }
+}
