@@ -11,7 +11,7 @@ if(DEFINED VISIAENGINE_CARGO_STEP)
 endif()
 set_target_properties(E703_qt_viewer PROPERTIES
   BUILD_RPATH "${Qt6_DIR}/../../../lib"
-  FOLDER "examples/7x-宿主")
+  FOLDER "examples/qt")  # 词汇表=磁盘语言目录（本件走宏外自注册，勿再手写带号）
 add_test(NAME example_E703_qt_viewer COMMAND E703_qt_viewer --frames 6)
 set_tests_properties(example_E703_qt_viewer PROPERTIES
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
