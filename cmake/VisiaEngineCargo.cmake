@@ -46,7 +46,7 @@ function(visiaengine_setup_cargo)
       BYPRODUCTS ${_dir}/${_shared} ${_dir}/${_static}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       VERBATIM USES_TERMINAL)
-    set_target_properties(cargo-build_capi PROPERTIES FOLDER "visiaengine")  # engine 件不入 examples/ 域
+    set_target_properties(cargo-build_capi PROPERTIES FOLDER "visiaengine/_bridge")  # 构建桥（examples/ 域外，与 _probe 分格）
     set(VISIAENGINE_CARGO_STEP "cargo-build_capi" PARENT_SCOPE)
   endif()
 
