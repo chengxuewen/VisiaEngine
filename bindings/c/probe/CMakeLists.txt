@@ -5,4 +5,5 @@ target_link_libraries(consume_capi PRIVATE visiaengine::capi)
 if(DEFINED VISIAENGINE_CARGO_STEP)
   add_dependencies(consume_capi ${VISIAENGINE_CARGO_STEP}) # 排序桥（prebuilt 模式无 step）
 endif()
+set_target_properties(consume_capi PROPERTIES FOLDER "visiaengine")
 add_test(NAME probe_abi COMMAND consume_capi)

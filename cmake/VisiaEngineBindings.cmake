@@ -41,8 +41,8 @@ function(visiaengine_add_example _n)
   if(DEFINED VISIAENGINE_CARGO_STEP)
     add_dependencies(${_n} ${VISIAENGINE_CARGO_STEP})  # 伞 .so 排序桥（probe 同款）
   endif()
-  string(SUBSTRING ${_n} 1 1 _band)
-  set_target_properties(${_n} PROPERTIES FOLDER "examples/${_band}x")
+  get_filename_component(_lang "${CMAKE_CURRENT_SOURCE_DIR}" NAME)  # FOLDER=磁盘语言目录同律（带号已编码在 E 号首位，不重复建词表）
+  set_target_properties(${_n} PROPERTIES FOLDER "examples/${_lang}")
   add_test(NAME example_${_n} COMMAND ${_n} ${_A_ARGS})
   set_tests_properties(example_${_n} PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -103,7 +103,7 @@ function(visiaengine_setup_bindings)
               ${_cenv} ${VISIAENGINE_CARGO} run -p examples --example ${_n} -- ${_args_${_n}}
       VERBATIM USES_TERMINAL)  # USES_TERMINAL 只挂 run（要见声）；build/ALL 步不挂（Ninja 串行池自伤）
     foreach(_t cargo-build_${_n} cargo-run_${_n})
-      set_target_properties(${_t} PROPERTIES FOLDER "examples/_rs-steps")
+      set_target_properties(${_t} PROPERTIES FOLDER "examples/rs")
     endforeach()
     add_test(NAME example_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
@@ -114,9 +114,11 @@ function(visiaengine_setup_bindings)
   add_custom_target(cargo-build_examples ALL
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} build -p examples --examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
+  set_target_properties(cargo-build_examples PROPERTIES FOLDER "examples/rs")
   add_custom_target(cargo-clean_examples
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} clean -p examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
+  set_target_properties(cargo-clean_examples PROPERTIES FOLDER "examples/rs")
 
   # 中央盘⇄表终账：examples/{c,cpp}/ 全部源文件必须在宏注册名单内（qt 件自注册同款在 examples/qt）
   set(_skip_note "")
