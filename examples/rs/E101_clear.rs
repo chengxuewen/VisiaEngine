@@ -116,7 +116,7 @@ impl ApplicationHandler for App {
                 .create_window(
                     WindowAttributes::default()
                         .with_inner_size(winit::dpi::PhysicalSize::new(640, 480))
-                        .with_title("VisiaEngine L2 smoke"),
+                        .with_title("VisiaEngine E101 · 清色窗口（关窗退出）"),
                 )
                 .expect("create_window"),
         );

@@ -17,7 +17,7 @@
 | E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗口宿主骨架） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
 | E703 | 绑定镜像·Qt6 真窗（widget 宿主带；texquad+park 双族） | `examples/qt/E703_qt_viewer.cpp` | CAPI-06 | `pixi run smoke-qt` |
-| E801 | SDK 消费·C+SDL3 真窗（8x 带首婴；xid attach 三帧 present） | `examples/c/E801_sdl_window.c` | CAPI-06 | `ctest -L display`（cmake-smoke xvfb 子态） |
+| E801 | SDK 消费·C+SDL3 真窗（双模式=无参交互窗含 resize 联动/`--frames` 快退） | `examples/c/E801_sdl_window.c` | CAPI-06 | `ctest -L display`（cmake-smoke xvfb 子态） |
 | E802 | SDK 消费·C++ headless（hpp 门面活体验收；readback→PPM 落盘） | `examples/cpp/E802_offscreen.cpp` | CAPI-04/05 | `ctest -R example_E802` |
 | E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS×PNG） | `examples/rs/E901_twin_city.rs` | 批 4 全成果面 | `pixi run smoke-twin-city`（T2 新增） |
 

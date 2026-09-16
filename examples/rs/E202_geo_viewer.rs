@@ -8,7 +8,7 @@ use visiaengine_render::{Camera, CameraRig, DrawCommand, Frame, MeshDesc, MeshId
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event::{ElementState, KeyEvent, WindowEvent};
+use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
@@ -30,6 +30,7 @@ struct App {
     surface: Option<wgpu::Surface<'static>>,
     config: Option<wgpu::SurfaceConfiguration>,
     window: Option<Arc<Window>>,
+    dragging: Option<(f64, f64)>,
     rig: CameraRig,
     statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
     extras: Vec<DrawCommand>, // 扩片族命令（GEO-24：表建一次性，逐帧重放）
@@ -74,6 +75,14 @@ impl App {
     }
 }
 
+impl App {
+    fn request_redraw(&self) {
+        if let Some(w) = &self.window {
+            w.request_redraw();
+        }
+    }
+}
+
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.core.is_some() {
@@ -84,7 +93,9 @@ impl ApplicationHandler for App {
                 .create_window(
                     WindowAttributes::default()
                         .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("VisiaEngine load-gltf (WASD orbit, Q/E zoom)"),
+                        .with_title(
+                            "VisiaEngine E202 · GeoJSON（左键拖=平移轨道 滚轮=地图缩放 关窗退出）",
+                        ),
                 )
                 .expect("create_window"),
         );
@@ -239,6 +250,34 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => self.handle_key(&event),
+            WindowEvent::MouseInput {
+                button: MouseButton::Left,
+                state,
+                ..
+            } => {
+                self.dragging = matches!(state, ElementState::Pressed).then_some((-1.0, -1.0));
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                if let Some((lx, ly)) = self.dragging {
+                    let (x, y) = (position.x, position.y);
+                    if lx >= 0.0 {
+                        self.rig.orbit_delta((x - lx) * 0.006, (y - ly) * 0.006);
+                        self.request_redraw();
+                    }
+                    self.dragging = Some((x, y));
+                }
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                // GeoJSON 地图语义：滚轮=ortho zoom 联动 dist（与 z/x 键同道）
+                let d = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => -f64::from(y) * 40.0,
+                    MouseScrollDelta::PixelDelta(p) => -p.y,
+                };
+                let f = 1.0 - d * 0.0012;
+                self.rig.zoom = (self.rig.zoom * f).clamp(0.5, 2000.0);
+                self.rig.dist = (self.rig.dist * f).clamp(5.0, 800.0);
+                self.request_redraw();
+            }
             WindowEvent::RedrawRequested => {
                 let (Some(core), Some(surface), Some(config)) =
                     (&mut self.core, &self.surface, &self.config)
@@ -347,6 +386,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         surface: None,
         config: None,
         window: None,
+        dragging: None,
         rig: CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0),
         statics: Vec::new(),
         extras: Vec::new(),

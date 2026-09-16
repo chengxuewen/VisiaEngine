@@ -9,7 +9,7 @@ find_package(SDL3 QUIET CONFIG)
 
 visiaengine_add_example(E701_demo_headless)
 if(SDL3_FOUND)
-  visiaengine_add_example(E801_sdl_window DISPLAY SDL3)
+  visiaengine_add_example(E801_sdl_window DISPLAY SDL3 INTERACTIVE ARGS "--frames;3")  # 双模：无参交互窗（CI 绝不走此形）/--frames headless 快退
 else()
   set_property(GLOBAL APPEND PROPERTY VE_REGISTERED_EXAMPLES E801_sdl_window)
   message(STATUS "examples/c：SDL3 缺位，E801 跳注册（pixi tools 含 sdl3 时点亮）")

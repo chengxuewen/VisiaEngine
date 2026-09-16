@@ -18,3 +18,11 @@ set_tests_properties(example_E703_qt_viewer PROPERTIES
   ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QPA_PLATFORM_PLUGIN_PATH=${Qt6_DIR}/../../../lib/qt6/plugins"
   SKIP_RETURN_CODE 77
   LABELS "example;native;display")
+
+# 交互 run 步骤（cargo-run_*/run_E801 同制：零参=常驻窗 [E703 头注 0=交互]，run-gui 探测 :0 回退）
+add_custom_target(run_E703_qt_viewer
+  COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
+          ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh $<TARGET_FILE:E703_qt_viewer>
+  USES_TERMINAL)
+add_dependencies(run_E703_qt_viewer E703_qt_viewer)
+set_target_properties(run_E703_qt_viewer PROPERTIES FOLDER "examples/qt")
