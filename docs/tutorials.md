@@ -12,7 +12,7 @@
 | E301 | 相机与视图（透视↔正交无级切换） | `examples/rs/E301_switch_camera.rs` | REND-10..17 | `pixi run smoke-switch-camera` |
 | E401 | 交互·拾取高亮（射线→pick→CPU 覆写闭环） | `examples/rs/E401_pick_demo.rs` | REND-21..24 / WGPU-12/13 | `pixi run smoke-pick` |
 | E402 | 交互·hover/多选 UI —— **空号预留** | — | — | — |
-| E501 | 材质与光影（instanced 城 + PCSS 软影） | `examples/rs/E501_shadow_demo.rs` | REND-31 / WGPU-14..20 | `pixi run smoke-shadow-demo` |
+| E501 | 材质与光影（instanced 城 + PCSS 软影；双模式=无参交互窗/`--frames` headless） | `examples/rs/E501_shadow_demo.rs` | REND-31 / WGPU-14..20 | `pixi run smoke-shadow-demo` |
 | E601 | 规模与性能（10 万楼块单 draw 压力例） | `examples/rs/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin`（`pixi run bench` 出制品） |
 | E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗口宿主骨架） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |

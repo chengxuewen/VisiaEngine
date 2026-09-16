@@ -72,6 +72,7 @@ function(visiaengine_setup_bindings)
   set(_args_E202_geo_viewer "resources/data/park.geojson;--frames;3")
   set(_args_E301_switch_camera "resources/data/twoprim.glb;--frames;3")
   set(_args_E401_pick_demo "--frames;2")
+  set(_args_E501_shadow_demo "--frames;1")  # 双模式例：CI 走 headless（默认=交互窗）；注册表只服 ctest
   set(_args_E601_bench_twin "--count;5000;--frames;1")
 
   # 盘⇄表双向对账（examples/rs 面；表=上方 _rs_items）
@@ -100,8 +101,8 @@ function(visiaengine_setup_bindings)
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
     add_custom_target(cargo-run_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-              ${_cenv} ${VISIAENGINE_CARGO} run -p examples --example ${_n} -- ${_args_${_n}}
-      VERBATIM USES_TERMINAL)  # USES_TERMINAL 只挂 run（要见声）；build/ALL 步不挂（Ninja 串行池自伤）
+              ${_cenv} ${VISIAENGINE_CARGO} run -p examples --example ${_n}
+      VERBATIM USES_TERMINAL)  # 步骤零 argv=交互默认（点 Run 看窗口，旧 stub 零参同制）；注册表 argv 专属 ctest。USES_TERMINAL 只挂 run；build/ALL 步不挂（Ninja 串行池自伤）
     foreach(_t cargo-build_${_n} cargo-run_${_n})
       set_target_properties(${_t} PROPERTIES FOLDER "examples/rs")
     endforeach()
