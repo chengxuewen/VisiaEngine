@@ -48,7 +48,7 @@ out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_ART
     || { echo "CMAKE-SMOKE ✗ 逃生舱缺物未硬错（静默消费回潮）"; exit 1; }  # 短语断言：cmake 报文会折行，全句 grep 必漏
 
 # 卫生锁：FOLDER 词汇表=磁盘单源（examples/{rs,c,cpp,qt} | visiaengine）——7x-宿主 漏网案的机器化堵截
-BAD=$(grep -rnE 'FOLDER "examples/' cmake examples bindings 2>/dev/null | grep -vE '"examples/(rs|c|cpp|qt)"' || true)
+BAD=$(grep -rnE 'FOLDER "examples/' cmake examples bindings 2>/dev/null | grep -vE '"examples/(rs|c|cpp|qt)"' | grep -vF '${' || true)  # 模板行（${_lang} 动态推导）放行
 [ -z "$BAD" ] || { echo "CMAKE-SMOKE ✗ FOLDER 词汇越表（带号/方言禁止，见 D14/R9）:"; echo "$BAD"; exit 1; }
 
 # 负路径 3：install 门面必 fail-loud（S-c β；静默 exit-0 说谎回潮=红。短语断言，报文折行教训同款）
