@@ -47,9 +47,13 @@ out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_ART
 [ $? -ne 0 ] && grep -q "无 capi" <<<"$out" \
     || { echo "CMAKE-SMOKE ✗ 逃生舱缺物未硬错（静默消费回潮）"; exit 1; }  # 短语断言：cmake 报文会折行，全句 grep 必漏
 
-# 卫生锁：FOLDER 词汇表=磁盘单源（examples/{rs,c,cpp,qt} | visiaengine）——7x-宿主 漏网案的机器化堵截
-BAD=$(grep -rnE 'FOLDER "' cmake examples bindings 2>/dev/null | grep -vE '"examples/(rs|c|cpp|qt)"' | grep -vE '"visiaengine/(_bridge|_probe)"' | grep -vF '${' || true)  # 全词汇表白名单；模板行动态行放行
-[ -z "$BAD" ] || { echo "CMAKE-SMOKE ✗ FOLDER 词汇越表（例=examples/语言 | visiaengine/_bridge|_probe，见 D14/R9）:"; echo "$BAD"; exit 1; }
+# 卫生锁·FOLDER 位置定则：一切字面值必须是磁盘真实目录（发明词 _rs-steps/7x-宿主/_bridge 在规则层死亡）；${} 模板行放行
+BAD=""
+for v in $(grep -rhoE 'FOLDER "[^"]+"' cmake examples bindings 2>/dev/null | sed 's/^FOLDER "//; s/"$//'); do
+  case "$v" in *'${'*) continue;; esac
+  [ -d "$v" ] || BAD="$BAD $v"
+done
+[ -z "$BAD" ] || { echo "CMAKE-SMOKE ✗ FOLDER 非磁盘目录（位置镜像定则，身份语义归 LABELS，见 D14/R9）:$BAD"; exit 1; }
 
 # 负路径 3：install 门面必 fail-loud（S-c β；静默 exit-0 说谎回潮=红。短语断言，报文折行教训同款）
 "$CM" --install "$B" --prefix "$B-inst" >"$B-inst.out" 2>&1; i_rc=$?

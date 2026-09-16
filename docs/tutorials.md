@@ -31,7 +31,7 @@
   均为 `ctest -R` 转发壳。cargo 环境自足由 cmake-smoke 态④三锚锁死（裸 PATH=
   IDE 直调无需 pixi 激活）；逐例断点调试走 rust-analyzer Run/Debug。
 - **原生 E 系真身（examples/{c,cpp,qt}）**：add_executable 改一编一，
-  ctest 同源条目，FOLDER `examples/<语言>`（=磁盘目录名，自动推导；E 号首位=带）。
+  ctest 同源条目，FOLDER=磁盘目录镜像（examples/<语言> 自动推导；根级步骤顶层裸列），身份语义归 LABELS。
 - **ctest**：headless 族恒真跑；display 族默认 testPreset 已 `-LE display` 全跳，
   真跑经 xvfb 子态（S4 接 cmake-smoke 显示带）。
 

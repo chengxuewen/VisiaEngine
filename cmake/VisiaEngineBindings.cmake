@@ -114,11 +114,9 @@ function(visiaengine_setup_bindings)
   add_custom_target(cargo-build_examples ALL
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} build -p examples --examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
-  set_target_properties(cargo-build_examples PROPERTIES FOLDER "examples/rs")
   add_custom_target(cargo-clean_examples
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} clean -p examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
-  set_target_properties(cargo-clean_examples PROPERTIES FOLDER "examples/rs")
 
   # 中央盘⇄表终账：examples/{c,cpp}/ 全部源文件必须在宏注册名单内（qt 件自注册同款在 examples/qt）
   set(_skip_note "")
