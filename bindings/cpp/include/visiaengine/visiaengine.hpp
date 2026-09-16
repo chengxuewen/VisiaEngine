@@ -45,6 +45,16 @@ public:
     int32_t load_gltf(const char *path) { return visiaengine_load_gltf(h_, path); }
     int32_t load_geojson(const char *path) { return visiaengine_load_geojson(h_, path); }
     int32_t on_input(const Input &in) { return visiaengine_on_input(h_, &in); }
+
+    // ── B1 数据带（CAPI-13..16 薄转发；位形 0 合法=CAPI-01 分工）──
+    int32_t set_visible(std::uint64_t entity, bool visible) {
+        return visiaengine_entity_set_visible(h_, entity, visible ? 1 : 0);
+    }
+    int32_t entity_visible(std::uint64_t entity) { return visiaengine_entity_visible(h_, entity); }
+    int32_t add_mesh(const VeMeshDesc &desc, std::uint64_t *out_entity) {
+        return visiaengine_add_mesh(h_, &desc, out_entity);
+    }
+    int32_t remove_entity(std::uint64_t entity) { return visiaengine_remove_entity(h_, entity); }
     int32_t render() { return visiaengine_render(h_); }
     int32_t readback(std::uint8_t *buf, std::uint64_t len) { return visiaengine_readback(h_, buf, len); }
     int32_t viewport(std::uint32_t w, std::uint32_t h) { return visiaengine_viewport(h_, w, h); }

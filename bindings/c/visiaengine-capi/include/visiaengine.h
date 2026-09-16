@@ -53,6 +53,29 @@ int32_t    visiaengine_attr_f64(uint64_t ve, uint64_t entity, const char *key, d
 int32_t    visiaengine_attr_str(uint64_t ve, uint64_t entity, const char *key, char *buf, uint64_t cap);
 int32_t    visiaengine_attr_bool(uint64_t ve, uint64_t entity, const char *key, int32_t *out);
 
+/* ── B1 数据带（CAPI-13..16，abi minor=2）──
+   显隐：strict visible∈{0,1}；隐藏件 render/pick 不可见但枚举域不变（图层开关谱）。 */
+int32_t visiaengine_entity_set_visible(uint64_t ve, uint64_t entity, int32_t visible);
+int32_t visiaengine_entity_visible(uint64_t ve, uint64_t entity); /* 1/0/-1 */
+
+/* 程序化加网格（CAPI-15）：struct_size 前瞻门；指针仅调用期读取；
+   normals 可 NULL=引擎合成 +Z。返回码制：0=成功写 *out_entity（位形可=0，
+   宿主禁按 0 判有效性——枚举域/pick 出口才是存在性判据，CAPI-01 分工），
+   <0=失败零部分写（attr_str 纪律同谱）。 */
+typedef struct VeMeshDesc {
+    size_t    struct_size;
+    const float    *positions;   /* [x,y,z] × n_positions */
+    const float    *normals;     /* 可 NULL；否则同长度 */
+    const uint32_t *indices;
+    uint64_t  n_positions;
+    uint64_t  n_indices;
+    const float    *base_color;  /* 4 元组 */
+    const double   *origin;      /* 3 元组（D7 远坐标语义） */
+} VeMeshDesc;
+int32_t  visiaengine_add_mesh(uint64_t ve, const VeMeshDesc *desc, uint64_t *out_entity);
+/* 删除（CAPI-16）：items/属性/显隐三面清理，槽位代际 +1；旧句柄再入=-1 双销毁同谱。 */
+int32_t  visiaengine_remove_entity(uint64_t ve, uint64_t entity);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

@@ -85,6 +85,65 @@ impl VisiaEngine {
         0
     }
 
+    // ── B1 数据带镜像（CAPI-13..16 纯编组薄叶 [FFI-R:BS-5]）──
+    #[wasm_bindgen(js_name = setEntityVisible)]
+    pub fn set_entity_visible(&mut self, entity: u64, visible: bool) -> i32 {
+        match self.inner.set_visible(entity, visible) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    #[must_use]
+    #[wasm_bindgen(js_name = entityVisible)]
+    pub fn entity_visible(&self, entity: u64) -> i32 {
+        match self.inner.is_visible(entity) {
+            Some(true) => 1,
+            Some(false) => 0,
+            None => -1,
+        }
+    }
+
+    /// 扁平三元组面（js 数组=调用期拷贝，bindgen 天然）；退化=0 哨兵与 C 面同谱。
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    #[wasm_bindgen(js_name = addMesh)]
+    pub fn add_mesh(
+        &mut self,
+        positions: &[f32],
+        normals: &[f32],
+        indices: &[u32],
+        base_color: &[f32],
+        origin: &[f64],
+    ) -> u64 {
+        if positions.len() % 3 != 0 || base_color.len() != 4 || origin.len() != 3 {
+            return 0;
+        }
+        let pos: Vec<[f32; 3]> = positions.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let nrm: Option<Vec<[f32; 3]>> = if normals.is_empty() {
+            None
+        } else if normals.len() != positions.len() {
+            return 0;
+        } else {
+            Some(normals.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect())
+        };
+        let col = [base_color[0], base_color[1], base_color[2], base_color[3]];
+        let org = [origin[0], origin[1], origin[2]];
+        // js 面哨兵=MISS(MAX)：0 是合法位形不可占用（CAPI-01 分工的 web 投影）
+        match self.inner.add_mesh(&pos, nrm.as_deref(), indices, col, org) {
+            Ok(h) => h,
+            Err(_) => u64::MAX,
+        }
+    }
+
+    #[wasm_bindgen(js_name = removeEntity)]
+    pub fn remove_entity(&mut self, entity: u64) -> i32 {
+        match self.inner.remove_entity(entity) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
     #[wasm_bindgen(js_name = abiVersion)]
     pub fn abi_version() -> u32 {
         visiaengine_abi_version()

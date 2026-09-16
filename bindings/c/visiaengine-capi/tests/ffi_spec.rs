@@ -3,7 +3,7 @@
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VeInput, VeMeshDescC, visiaengine_abi_version, visiaengine_add_mesh, visiaengine_attach,
+    VE_OK, VeInput, VeMeshDesc, visiaengine_abi_version, visiaengine_add_mesh, visiaengine_attach,
     visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless,
     visiaengine_destroy, visiaengine_entity_at, visiaengine_entity_count,
     visiaengine_entity_set_visible, visiaengine_entity_visible, visiaengine_last_error,
@@ -38,9 +38,9 @@ fn stale_doors(ve: u64) {
     assert_eq!(visiaengine_entity_set_visible(ve, 0, 1), VE_ERR_ARG);
     assert_eq!(visiaengine_entity_visible(ve, 0), VE_ERR_ARG);
     assert_eq!(
-        visiaengine_add_mesh(ve, std::ptr::null()),
-        0,
-        "句柄返回族：stale 哨兵统一 0（0=非常成柄）"
+        visiaengine_add_mesh(ve, std::ptr::null(), std::ptr::null_mut()),
+        VE_ERR_ARG,
+        "stale 引擎门先于参数校验（返回码制，out 零写）"
     );
     assert_eq!(visiaengine_remove_entity(ve, 0), VE_ERR_ARG);
 }
@@ -259,9 +259,9 @@ fn symbol_surface_grep_gate() {
 
 // ── B1 数据带四口（RED 先行；门表/abi/计数为联动面）──
 
-fn mesh_desc(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32]) -> VeMeshDescC {
-    VeMeshDescC {
-        struct_size: std::mem::size_of::<VeMeshDescC>(),
+fn mesh_desc(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32]) -> VeMeshDesc {
+    VeMeshDesc {
+        struct_size: std::mem::size_of::<VeMeshDesc>(),
         positions: pos.as_ptr().cast(),
         normals: nrm.as_ptr().cast(),
         indices: idx.as_ptr(),
@@ -289,13 +289,20 @@ fn entity_visibility_ffi_roundtrip() {
     assert_ne!(ve, 0);
     load_twoprim(ve);
     let h0 = visiaengine_entity_at(ve, 0);
-    assert_ne!(h0, 0);
     assert_eq!(visiaengine_entity_visible(ve, h0), 1, "默认可见");
     assert_eq!(visiaengine_entity_set_visible(ve, h0, 0), VE_OK);
     assert_eq!(visiaengine_entity_visible(ve, h0), 0);
-    assert_eq!(visiaengine_entity_set_visible(ve, h0, 2), VE_ERR_ARG, "严格 0/1 入参");
+    assert_eq!(
+        visiaengine_entity_set_visible(ve, h0, 2),
+        VE_ERR_ARG,
+        "严格 0/1 入参"
+    );
     assert_eq!(visiaengine_entity_set_visible(ve, h0, -1), VE_ERR_ARG);
-    assert_eq!(visiaengine_entity_set_visible(ve, 777, 1), VE_ERR_ARG, "未知位形");
+    assert_eq!(
+        visiaengine_entity_set_visible(ve, 777, 1),
+        VE_ERR_ARG,
+        "未知位形"
+    );
     assert_eq!(visiaengine_entity_visible(ve, 777), VE_ERR_ARG);
     assert_eq!(visiaengine_entity_set_visible(ve, h0, 1), VE_OK, "复原可见");
     assert_eq!(visiaengine_entity_count(ve), 2, "显隐不动枚举域");
@@ -307,21 +314,60 @@ fn entity_visibility_ffi_roundtrip() {
 fn add_mesh_ffi_struct_contract() {
     let ve = visiaengine_create_headless(160, 120);
     assert_ne!(ve, 0);
-    let pos = [[0f32, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]];
+    let pos = [
+        [0f32, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ];
     let nrm = [[0f32, 0.0, 1.0]; 4];
     let idx = [0u32, 1, 2, 0, 2, 3];
-    let h = visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx));
-    assert_ne!(h, 0, "成功给位形");
+    let mut out = u64::MAX;
+    assert_eq!(
+        visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx), &mut out),
+        VE_OK
+    );
+    assert_eq!(
+        out,
+        visiaengine_entity_at(ve, 0),
+        "位形=枚举域出口（可=0，禁按 0 判）"
+    );
     assert_eq!(visiaengine_entity_count(ve), 1);
-    assert_eq!(visiaengine_add_mesh(ve, std::ptr::null()), 0, "NULL 结构=0 哨兵");
-    let small = VeMeshDescC {
+    let h_ok = out; // 首成位形另存（下用——out 即将被重置为哨兵戏法）
+    out = u64::MAX; // 重置哨兵（上一成功写位形可=0，正是 CAPI-01 谱）
+    assert_eq!(
+        visiaengine_add_mesh(ve, std::ptr::null(), &mut out),
+        VE_ERR_ARG,
+        "NULL desc=-1 且 out 不动"
+    );
+    assert_eq!(out, u64::MAX, "失败路零部分写");
+    let small = VeMeshDesc {
         struct_size: 4,
         ..mesh_desc(&pos, &nrm, &idx)
     };
-    assert_eq!(visiaengine_add_mesh(ve, &small), 0, "struct_size 门=拒（前瞻纪律）");
+    assert_eq!(
+        visiaengine_add_mesh(ve, &small, &mut out),
+        VE_ERR_ARG,
+        "struct_size 门=拒（前瞻纪律）"
+    );
+    let oob = [0u32, 9, 2];
+    assert_eq!(
+        visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &oob), &mut out),
+        VE_ERR_ARG,
+        "索引越界=退化拒绝"
+    );
+    assert_eq!(
+        visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx), std::ptr::null_mut()),
+        VE_ERR_ARG,
+        "坏 out 自守"
+    );
     assert_eq!(visiaengine_render(ve), VE_OK, "加入件即入帧命令流");
-    assert_eq!(visiaengine_remove_entity(ve, h), VE_OK);
-    assert_eq!(visiaengine_entity_count(ve), 0, "退化/失败路零提交（计数全程可追溯）");
+    assert_eq!(visiaengine_remove_entity(ve, h_ok), VE_OK);
+    assert_eq!(
+        visiaengine_entity_count(ve),
+        0,
+        "退化/失败路零提交（计数全程可追溯）"
+    );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
 
@@ -334,14 +380,31 @@ fn remove_entity_ffi_reentry_aba() {
     let h0 = visiaengine_entity_at(ve, 0);
     assert_eq!(visiaengine_remove_entity(ve, h0), VE_OK);
     assert_eq!(visiaengine_entity_count(ve), 1);
-    assert_eq!(visiaengine_remove_entity(ve, h0), VE_ERR_ARG, "旧句柄再入=双销毁同谱");
+    assert_eq!(
+        visiaengine_remove_entity(ve, h0),
+        VE_ERR_ARG,
+        "旧句柄再入=双销毁同谱"
+    );
     assert_eq!(visiaengine_entity_visible(ve, h0), VE_ERR_ARG);
-    let pos = [[0f32, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]];
+    let pos = [
+        [0f32, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ];
     let nrm = [[0f32, 0.0, 1.0]; 4];
     let idx = [0u32, 1, 2, 0, 2, 3];
-    let h_new = visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx));
+    let mut h_new = 0u64;
+    assert_eq!(
+        visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx), &mut h_new),
+        VE_OK
+    );
     assert_ne!(h_new, h0, "ABA：同槽新代际不撞旧位形");
-    assert_eq!(visiaengine_remove_entity(ve, h0), VE_ERR_ARG, "新实体在场，旧句柄仍死");
+    assert_eq!(
+        visiaengine_remove_entity(ve, h0),
+        VE_ERR_ARG,
+        "新实体在场，旧句柄仍死"
+    );
     assert_eq!(visiaengine_remove_entity(ve, h_new), VE_OK);
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

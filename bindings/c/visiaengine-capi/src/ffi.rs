@@ -156,7 +156,7 @@ macro_rules! capi_guard {
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 1 // major 1 · minor 1（CAPI-10..12 +3 口=MAJOR 内追加，宿主校验面 >>16==1 不变）
+    (1 << 16) | 2 // major 1 · minor 2（CAPI-13..16 四口=MAJOR 内追加；>>16==1 校验面不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -500,7 +500,9 @@ pub extern "C" fn visiaengine_pick(ve: u64, px: f32, py: f32) -> u64 {
     )
 }
 
-/// 实体句柄编码（CAPI-08）：slot+gen 直译，无引擎侧基 1 偏置；miss=UINT64_MAX。
+/// 实体句柄编码（CAPI-08）：slot+gen 直译，无引擎侧基 1 偏置（**slot0gen0=0 合法**，
+/// 与引擎侧 0 哨兵的不对称是 CAPI-01 有意分工；宿主禁按 0 判实体句柄有效性，
+/// 有效性=枚举域/pick 出口谱）；miss=UINT64_MAX。
 pub fn enc_entity(id: visiaengine_core::EntityId) -> u64 {
     enc(id.slot(), id.generation())
 }
@@ -671,4 +673,161 @@ pub mod test_util {
     pub fn guard_panic_probe() -> i32 {
         capi_guard!(panic!("injected for CAPI-02"), VE_ERR_PANIC)
     }
+}
+
+// ── B1 数据带（CAPI-13..16）：显隐/查询/程序化增删；gate/with_engine/capi_guard 单源形 ═─
+
+/// CAPI-15 值结构（struct_size 前瞻门=VeInput 同谱；指针仅调用期读取，返回后宿主即可释放）。
+#[repr(C)]
+pub struct VeMeshDesc {
+    pub struct_size: usize,
+    pub positions: *const f32, // [x,y,z] × n_positions
+    pub normals: *const f32,   // 可 NULL=引擎合成 +Z
+    pub indices: *const u32,
+    pub n_positions: u64,
+    pub n_indices: u64,
+    pub base_color: *const f32, // 4 元组
+    pub origin: *const f64,     // 3 元组
+}
+
+/// CAPI-13：owner 线程；严格 visible∈{0,1}；未知位形/越值=-1（VE_ERR_ARG），幂等重复=0。
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_entity_set_visible(ve: u64, entity: u64, visible: i32) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if !matches!(visible, 0 | 1) {
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| e.set_visible(entity, visible == 1)) {
+                        Ok(()) => 0,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-14：owner 线程（last_error 例外集不在此列——纯读表）；1/0/未知=-1。
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_entity_visible(ve: u64, entity: u64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => match with_engine(i, |e| Ok(e.is_visible(entity))) {
+                    Ok(Some(true)) => 1,
+                    Ok(Some(false)) => 0,
+                    Ok(None) => VE_ERR_ARG,
+                    Err(msg) => {
+                        set_err(msg);
+                        VE_ERR_STATE
+                    }
+                },
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-15：owner 线程；0=成功写 *out_entity（位形可=0，CAPI-01 谱），
+/// 退化/NULL/struct_size 门/坏 out=-1 且 out 零部分写（attr_str 纪律同谱）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_add_mesh(
+    ve: u64,
+    desc: *const VeMeshDesc,
+    out_entity: *mut u64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if desc.is_null() {
+                        set_err("add_mesh: null desc".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    if out_entity.is_null() {
+                        set_err("add_mesh: null out_entity".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    let d = unsafe { &*desc };
+                    if d.struct_size < std::mem::size_of::<VeMeshDesc>() {
+                        set_err(format!(
+                            "add_mesh: struct_size {} < {}",
+                            d.struct_size,
+                            std::mem::size_of::<VeMeshDesc>()
+                        ));
+                        return VE_ERR_ARG;
+                    }
+                    if d.positions.is_null()
+                        || d.indices.is_null()
+                        || d.base_color.is_null()
+                        || d.origin.is_null()
+                    {
+                        set_err("add_mesh: required field pointer null".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    let (np, ni) = (d.n_positions as usize, d.n_indices as usize);
+                    let positions =
+                        unsafe { std::slice::from_raw_parts(d.positions as *const [f32; 3], np) };
+                    let indices = unsafe { std::slice::from_raw_parts(d.indices, ni) };
+                    let normals = if d.normals.is_null() {
+                        None
+                    } else {
+                        Some(unsafe {
+                            std::slice::from_raw_parts(d.normals as *const [f32; 3], np)
+                        })
+                    };
+                    let base_color = unsafe { *(d.base_color as *const [f32; 4]) };
+                    let origin = unsafe { *(d.origin as *const [f64; 3]) };
+                    match with_engine(i, move |e| {
+                        e.add_mesh(positions, normals, indices, base_color, origin)
+                    }) {
+                        Ok(h) => {
+                            unsafe { *out_entity = h };
+                            0
+                        }
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-16：owner 线程；成功=0；未知位形/旧句柄再入=-1（双销毁同谱）。
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_remove_entity(ve: u64, entity: u64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => match with_engine(i, |e| e.remove_entity(entity)) {
+                    Ok(()) => 0,
+                    Err(msg) => {
+                        set_err(msg);
+                        VE_ERR_ARG
+                    }
+                },
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
 }

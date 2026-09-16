@@ -58,6 +58,8 @@ pub struct Engine {
     geo_docs: Vec<visiaengine_geo::GeoDocument>,
     /// CAPI-10: entity（C u64 位形，与 pick 出口同编码；含 gen=ABA 免疫）→ (doc 序号, 行)
     attr_of: std::collections::HashMap<u64, (usize, usize)>,
+    /// CAPI-13: 隐藏实体位形表（render/pick 过滤域；枚举域不变，删除随 CAPI-16 清理）
+    hidden: Vec<u64>,
     frame_cache: Option<Vec<u8>>,
 }
 
@@ -79,24 +81,35 @@ impl Engine {
             extra_cmds: Vec::new(),
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
+            hidden: Vec::new(),
             frame_cache: None,
         })
     }
 
+    #[allow(clippy::too_many_arguments)] // 私有上传汇点（normals 参数化后 +1，拆门面反而碎）
     fn upload(
         &mut self,
         entity: EntityId,
         positions: &[[f32; 3]],
         indices: &[u32],
+        normals: Option<&[[f32; 3]]>,
         mat: &MaterialDesc,
         uv: &[[f32; 2]],
         origin: [f64; 3],
     ) -> Result<(), String> {
+        let flat: Vec<[f32; 3]>;
+        let nrm = match normals {
+            Some(n) => n,
+            None => {
+                flat = vec![[0.0f32, 0.0, 1.0]; positions.len()];
+                &flat[..]
+            }
+        };
         let mesh = self
             .backend
             .create_mesh(&MeshDesc {
                 positions,
-                normals: &vec![[0.0, 0.0, 1.0]; positions.len()],
+                normals: nrm,
                 indices,
                 uv,
             })
@@ -165,6 +178,7 @@ impl Engine {
                 id,
                 &e.mesh.positions,
                 &e.mesh.indices,
+                Some(&e.mesh.normals),
                 &mat,
                 &e.mesh.uv,
                 [0.0; 3],
@@ -225,7 +239,7 @@ impl Engine {
                             repeat: [1.0, 1.0],
                             specular: 0.0,
                         };
-                        self.upload(id, &p.positions, &p.indices, &mat, &[], origin)?;
+                        self.upload(id, &p.positions, &p.indices, None, &mat, &[], origin)?;
                     }
                     visiaengine_geo::GeoPart::Strokes(strips) => {
                         let mut segs = Vec::new();
@@ -339,6 +353,9 @@ impl Engine {
             rgba: [0.05, 0.07, 0.10, 1.0],
         }];
         for it in &self.items {
+            if self.hidden.contains(&enc_entity(it.entity)) {
+                continue; // CAPI-13 过滤域
+            }
             commands.push(DrawCommand::DrawMesh {
                 mesh: it.mesh,
                 material: it.material,
@@ -457,6 +474,7 @@ impl Engine {
         let cands: Vec<MeshCandidate> = self
             .items
             .iter()
+            .filter(|it| !self.hidden.contains(&enc_entity(it.entity))) // CAPI-13 pick 域
             .map(|it| MeshCandidate {
                 entity: it.entity,
                 positions: &it.positions,
@@ -465,6 +483,83 @@ impl Engine {
             })
             .collect();
         pick_meshes(ray, &cands).map(|hit| hit.entity)
+    }
+
+    /// CAPI-13: 显隐切换（严格存在域校验；render/pick 过滤、枚举域不变）。
+    pub fn set_visible(&mut self, entity: u64, visible: bool) -> Result<(), String> {
+        if !self.items.iter().any(|i| enc_entity(i.entity) == entity) {
+            return Err(format!("unknown entity bits {entity:#018x}"));
+        }
+        self.hidden.retain(|h| *h != entity);
+        if !visible {
+            self.hidden.push(entity);
+        }
+        Ok(())
+    }
+
+    /// CAPI-14: 显隐查询（未知位形=None，与 setter 同域）。
+    #[must_use]
+    pub fn is_visible(&self, entity: u64) -> Option<bool> {
+        if !self.items.iter().any(|i| enc_entity(i.entity) == entity) {
+            return None;
+        }
+        Some(!self.hidden.contains(&entity))
+    }
+
+    /// CAPI-15: 程序化加网格（调用期拷贝；退化零提交，spawn 回滚不外泄槽位）。
+    pub fn add_mesh(
+        &mut self,
+        positions: &[[f32; 3]],
+        normals: Option<&[[f32; 3]]>,
+        indices: &[u32],
+        base_color: [f32; 4],
+        origin: [f64; 3],
+    ) -> Result<u64, String> {
+        if positions.is_empty() || indices.is_empty() {
+            return Err("add_mesh: empty geometry".into());
+        }
+        if let Some(n) = normals
+            && n.len() != positions.len()
+        {
+            return Err("add_mesh: normals length mismatch".into());
+        }
+        if let Some(mx) = indices.iter().max()
+            && (*mx as usize) >= positions.len()
+        {
+            return Err("add_mesh: index out of range".into());
+        }
+        let id = self.scene.spawn();
+        let mat = MaterialDesc {
+            base_color,
+            texture: None,
+            repeat: [1.0, 1.0],
+            specular: 0.0, // 存量 Flat 默认（WGPU-14 零回归族）
+        };
+        match self.upload(id, positions, indices, normals, &mat, &[], origin) {
+            Ok(()) => Ok(enc_entity(id)),
+            Err(e) => {
+                let _ = self.scene.despawn(id); // 代际 +1：失败位形永不复用撞出
+                Err(e)
+            }
+        }
+    }
+
+    /// CAPI-16: 删除实体（items/attr_of/hidden 三面清理；旧句柄再入=双销毁同谱）。
+    pub fn remove_entity(&mut self, entity: u64) -> Result<(), String> {
+        let Some(pos) = self
+            .items
+            .iter()
+            .position(|i| enc_entity(i.entity) == entity)
+        else {
+            return Err(format!("unknown entity bits {entity:#018x}"));
+        };
+        let item = self.items.remove(pos);
+        self.scene
+            .despawn(item.entity)
+            .map_err(|e| format!("remove_entity: {e:?}"))?;
+        self.attr_of.remove(&entity);
+        self.hidden.retain(|h| *h != entity);
+        Ok(())
     }
 
     /// CAPI-10: entity 键控三型属性读（位形与 pick 出口同编码）；
@@ -511,6 +606,7 @@ impl Engine {
             extra_cmds: Vec::new(),
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
+            hidden: Vec::new(),
             frame_cache: None,
         })
     }
@@ -668,7 +764,11 @@ mod mut_spec_tests {
         assert_eq!(e.is_visible(h0), Some(true), "默认可见");
         assert_eq!(e.set_visible(h0, false), Ok(()));
         assert_eq!(e.is_visible(h0), Some(false));
-        assert_eq!(e.is_visible(u64::MAX >> 1), None, "未知位形=None（FFI 层投影 -1）");
+        assert_eq!(
+            e.is_visible(u64::MAX >> 1),
+            None,
+            "未知位形=None（FFI 层投影 -1）"
+        );
     }
 
     // spec: CAPI-15
@@ -677,15 +777,27 @@ mod mut_spec_tests {
         let mut e = eng();
         let (pos, nrm, idx) = quad();
         let h = e
-            .add_mesh(&pos, &nrm, &idx, [1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 0.0])
+            .add_mesh(
+                &pos,
+                Some(&nrm),
+                &idx,
+                [1.0, 1.0, 1.0, 1.0],
+                [0.0, 0.0, 0.0],
+            )
             .expect("add ok");
         assert_ne!(h, 0, "0=失败哨兵，成功必给位形");
         assert_eq!(e.entity_count(), 3);
         assert!(e.render().is_ok(), "加入件即入命令流");
         // 退化三路：索引越界 / 空几何 / normals 长度失配——均无部分提交
-        assert!(e.add_mesh(&pos, &nrm, &[0, 9, 2], [1.0; 4], [0.0; 3]).is_err());
-        assert!(e.add_mesh(&[], &[], &[], [1.0; 4], [0.0; 3]).is_err());
-        assert!(e.add_mesh(&pos, &[[0.0, 0.0, 1.0]; 3], &idx, [1.0; 4], [0.0; 3]).is_err());
+        assert!(
+            e.add_mesh(&pos, Some(&nrm), &[0, 9, 2], [1.0; 4], [0.0; 3])
+                .is_err()
+        );
+        assert!(e.add_mesh(&[], None, &[], [1.0; 4], [0.0; 3]).is_err());
+        assert!(
+            e.add_mesh(&pos, Some(&[[0.0, 0.0, 1.0]; 3]), &idx, [1.0; 4], [0.0; 3])
+                .is_err()
+        );
         assert_eq!(e.entity_count(), 3, "退化零提交");
         assert!(e.remove_entity(h).is_ok());
         assert_eq!(e.entity_count(), 2);
@@ -702,7 +814,7 @@ mod mut_spec_tests {
         assert_eq!(e.is_visible(h0), None, "已删位形查询同谱拒绝");
         let (pos, nrm, idx) = quad();
         let h_new = e
-            .add_mesh(&pos, &nrm, &idx, [1.0; 4], [0.0; 3])
+            .add_mesh(&pos, Some(&nrm), &idx, [1.0; 4], [0.0; 3])
             .expect("同槽再_spawn：代际+1 新位形");
         assert_ne!(h_new, h0, "ABA：旧句柄永不撞新代行");
         assert!(e.remove_entity(h0).is_err(), "新实体在场，旧句柄仍死");

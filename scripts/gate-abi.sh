@@ -11,8 +11,8 @@ cargo build -p visiaengine-capi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; 
 SO=target/debug/libvisiaengine.so
 [ -f "$SO" ] || { echo "GATE-ABI ✗ 缺 $SO（[lib] name 检查）"; exit 1; }
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
-echo "ABI-SYMBOLS=$N/17 | SO_SIZE=$(du -h "$SO" | cut -f1)"
-[ "$N" = "17" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
+echo "ABI-SYMBOLS=$N/21 | SO_SIZE=$(du -h "$SO" | cut -f1)"
+[ "$N" = "21" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
 "$CC" -I bindings/c/visiaengine-capi/include examples/c/E701_demo_headless.c \
       -L target/debug -lvisiaengine -o target/demo_headless || { echo "GATE-ABI ✗ demo 编译"; exit 1; }
 LD_LIBRARY_PATH=$PWD/target/debug ./target/demo_headless resources/data/twoprim.glb \
