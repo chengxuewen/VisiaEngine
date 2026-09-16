@@ -19,13 +19,19 @@ visiaengine_setup_cargo()  # cargo-step + 伞 visiaengine::capi + 假 Config 桥
 # enable_testing() 必在全部 add_subdirectory 前（Qt 目录的 add_test 晚调即静默丢——实锤）
 enable_testing()
 
+include(cmake/VisiaEngineBindings.cmake)     # R9/R10：option + 注册宏 + rs 三件套
+if(VISIAENGINE_EXAMPLES)
+  enable_language(C)  # 顶层作用域（function 内不外传=PIT-16 实锤）；C 例真身需 .c 编译
+  add_subdirectory(examples/c)
+  add_subdirectory(examples/cpp)
+endif()
+
 if(NOT VISIAENGINE_QT_SDK STREQUAL "OFF")
-  add_subdirectory(bindings/qt) # Qt 轮 v1.3 落地后自然点亮（本批 bare 预设=OFF）
+  add_subdirectory(examples/qt) # Qt 宿主专带（绑定面 widget.hpp 在 bindings/qt，头-only）
 endif()
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/c/probe/CMakeLists.txt")
   add_subdirectory(bindings/c/probe) # ctest 探针（C2 落地前自动跳过）
 endif()
 
-include(cmake/VisiaEngineExamples.cmake)
-visiaengine_setup_examples()  # E 系例→IDE 可跑 target（VISIAENGINE_EXAMPLES=OFF 退役）
+visiaengine_setup_bindings()  # rs 三件套+全局步+中央 glob⇄表 终账（必须在全部 add_subdirectory 后）

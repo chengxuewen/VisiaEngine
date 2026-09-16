@@ -17,7 +17,7 @@ function(visiaengine_setup_cargo)
       set(_flags "")
     endif()
     set(_dir "${_rust_dir}/${_profile}")
-    # 暴露给 examples 层（VisiaEngineExamples.cmake 复用同一产物目录合同）
+    # 暴露给 examples 域（VisiaEngineBindings.cmake 的 rs 步骤复用同一产物目录合同）
     set(VISIAENGINE_RUST_DIR "${_rust_dir}" PARENT_SCOPE)
     set(VISIAENGINE_RUST_PROFILE "${_profile}" PARENT_SCOPE)
   endif()
@@ -39,14 +39,14 @@ function(visiaengine_setup_cargo)
     # （2026-09-15 实锤：pixi run 包装验证掩盖，用户 IDE /usr/bin/cmake 直调首爆）——
     # 构建命令恒定前缀 cargo 同目录（rustc 兄弟件实测在场），SYSTEM 态无害。
     get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)
-    add_custom_target(visiaengine-cargo-step ALL
+    add_custom_target(cargo-build_capi ALL
       COMMAND ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}"
               ${VISIAENGINE_CARGO} build -p visiaengine-capi ${_flags}
               --target-dir ${_rust_dir}
       BYPRODUCTS ${_dir}/${_shared} ${_dir}/${_static}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       VERBATIM USES_TERMINAL)
-    set(VISIAENGINE_CARGO_STEP "visiaengine-cargo-step" PARENT_SCOPE)
+    set(VISIAENGINE_CARGO_STEP "cargo-build_capi" PARENT_SCOPE)
   endif()
 
   add_library(visiaengine_capi_umbrella INTERFACE)

@@ -11,7 +11,7 @@ if [ ! -x "$CM" ]; then
 fi
 CT="$(dirname "$CM")/ctest"
 B=target/cmake-smoke
-rm -rf "$B" "$B-neg"
+rm -rf "$B" "$B-neg" "$B-negconf"
 
 "$CM" -S . -B "$B" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT_SDK=OFF >/dev/null \
     || { echo "CMAKE-SMOKE ✗ bare configure"; exit 1; }
@@ -20,10 +20,19 @@ rm -rf "$B" "$B-neg"
     || { echo "CMAKE-SMOKE ✗ ctest（探针/headless example 未过）"; exit 1; }
 # ↑ -LE display：探针无标签+headless example 真跑；显示族（弹窗）由 smoke-x11/smoke-qt 专职 xvfb 覆盖
 
-# 第四态：裸 PATH 构建段（IDE 直调形态守卫）——cargo 命令须自带 rustc 兄弟目录 PATH 前缀
+# 第四态：裸 PATH 三锚（IDE 直调形态守卫；B1 裁决：configure 探+双构建锚，Rust 例族域换形后不加回退）
 # （2026-09-15 实锤：pixi run 包装掩盖，用户 IDE /usr/bin/cmake 直调爆「could not execute rustc」）
-env PATH=/usr/bin:/bin "$CM" --build "$B" --target visiaengine-cargo-step >/dev/null 2>&1 \
-    || { echo "CMAKE-SMOKE ✗ 裸 PATH cargo-step（cargo 环境自足性破坏=IDE 必炸）"; exit 1; }  # examples-step 锚随 S1 Rust 例退场（S3 换挂 rs 总步+configure 探）
+SYS_CM=$(command -v /usr/bin/cmake || true); [ -n "$SYS_CM" ] || SYS_CM="$CM"  # 探针=用户 IDE 真形（系统 cmake；无系统 cmake 机退 conda 件）
+# 编译器绝对路径钉死=探针聚焦 cargo 自足面（本机实况：系统无 g++，C++ 全在 conda 侧；IDE 真形另由态①覆盖）
+env PATH=/usr/bin:/bin "$SYS_CM" -S . -B "$B-negconf" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT_SDK=OFF \
+    -DCMAKE_C_COMPILER=/usr/bin/gcc "-DCMAKE_CXX_COMPILER=$(dirname "$CM")/x86_64-conda-linux-gnu-c++" \
+    >/dev/null 2>&1 \
+    || { echo "CMAKE-SMOKE ✗ 裸 PATH configure（SDK/cargo 自足性破坏——.pixi 兜底断）"; exit 1; }
+rm -rf "$B-negconf"
+for _t in cargo-build_capi cargo-build_examples; do
+  env PATH=/usr/bin:/bin "$CM" --build "$B" --target "$_t" >/dev/null 2>&1 \
+      || { echo "CMAKE-SMOKE ✗ 裸 PATH ${_t}（cargo 环境自足性破坏=IDE 必炸）"; exit 1; }
+done
 
 # 负路径 1：SYSTEM 语义（激活壳=拒收污染；真系统 cargo=合法通过；其余=必错且报文含 SYSTEM）
 out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_RUST_SDK=SYSTEM 2>&1)
@@ -38,4 +47,4 @@ out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_ART
 [ $? -ne 0 ] && grep -q "无 capi" <<<"$out" \
     || { echo "CMAKE-SMOKE ✗ 逃生舱缺物未硬错（静默消费回潮）"; exit 1; }  # 短语断言：cmake 报文会折行，全句 grep 必漏
 
-echo "CMAKE-SMOKE ✓（bare 全链 + 双负路径报文 + 裸 PATH 守卫双态）"
+echo "CMAKE-SMOKE ✓（bare 全链 + 双负路径报文 + 裸 PATH 三锚）"

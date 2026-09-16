@@ -8,13 +8,13 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 fail=0
-EXDIRS=(examples/rs examples/c)   # S1: rs 入表，两个已搬空旧目录退场；capi 条 S2 退
+EXDIRS=(examples/rs examples/c examples/cpp examples/qt)   # S1: rs 入表，两个已搬空旧目录退场；capi 条 S2 退
 
 # ① E 三方
 files=$(for d in "${EXDIRS[@]}"; do ls "$d" 2>/dev/null; done | grep -oE '^E[0-9]{3}' | sort -u)
-headers=$(for d in "${EXDIRS[@]}"; do for x in "$d"/*.rs "$d"/*.c; do [ -f "$x" ] && head -1 "$x" | grep -oE '^(/\*+|//+) ?!? ?E[0-9]{3}' | grep -oE 'E[0-9]{3}'; done; done 2>/dev/null | sort -u)
+headers=$(for d in "${EXDIRS[@]}"; do for x in "$d"/*.rs "$d"/*.c "$d"/*.cpp; do [ -f "$x" ] && head -1 "$x" | grep -oE '^(/\*+|//+) ?!? ?E[0-9]{3}' | grep -oE 'E[0-9]{3}'; done; done 2>/dev/null | sort -u)
 real_files=$(for d in "${EXDIRS[@]}"; do ls "$d" 2>/dev/null; done | grep -E '^E[0-9]{3}_' | sort -u)
-idx_files=$(grep -oE 'E[0-9]{3}_[A-Za-z0-9_]+\.(rs|c)' docs/tutorials.md | sort -u)
+idx_files=$(grep -oE 'E[0-9]{3}_[A-Za-z0-9_]+\.(rs|cpp|c)' docs/tutorials.md | sort -u)
 index=$(grep -oE '^\| E[0-9]{3}' docs/tutorials.md | grep -oE 'E[0-9]{3}' | sort -u)
 [ "$files" = "$headers" ] || { echo "GATE-DOCS ✗ ①文件名集≠头注释集:"; diff <(echo "$files") <(echo "$headers"); fail=1; }
 [ "$idx_files" = "$real_files" ] || { echo "GATE-DOCS ✗ ①索引路径集≠磁盘实况:"; diff <(echo "$idx_files") <(echo "$real_files"); fail=1; }

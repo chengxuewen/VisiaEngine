@@ -42,6 +42,11 @@
       "configurePreset": "bare",
       "output": {
         "outputOnFailure": true
+      },
+      "filter": {
+        "exclude": {
+          "label": "display"
+        }
       }
     },
     {
