@@ -180,3 +180,8 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 例子：E810 attr survey（零新口验收例）/ E811 显隐孪生（c/cpp，目标名带语言尾首用）/ E812 程序化增删；ctest 14→18 条（17 编号）
 - 设计反转实录：add_mesh 初版 0=失败哨兵撞 CAPI-01「实体位形 0 合法=有意分工」条款——返回码+out 改谱；测试两处哨兵断言随条款纠偏（幽灵 API 教训的接口设计分册）
 - 基线：**160 passed（+7）· 115↔115 · GATE-ABI 21/21 · GATE-DOCS ✓ 17 件 · CMAKE-SMOKE ✓ · web MIRROR ✓ · ci 十段全绿**
+
+## lesson-review 记录（2026-09-16，结构轮+B1 带会话批量回顾）
+- 新增：PIT-22（验证通道≠用户通道 DISPLAY 族·PIT-18 泛化）、PIT-23（CMake/ctest 恒真/吞噬三形·E801 死挂案）、edit-safety ###19（管道尾吃 rc·带病入库实锤）、testing.md「视觉例双保险」（像素门+三自证+T3 清单+转发壳断言）、conventions C15（哨兵先对条款分工表/参数不侍二主）、C16（决策呈交=人话+示意+目录+逐项）
+- 会话主线：v1.3 结构轮（S0-S5 七笔）+ FOLDER 位置定则 + E201/E301 交互根修 + B1 数据带（RED→GREEN 四口 21 入口 ctest 18 条）；基线 160 passed·115↔115·GATE-ABI 21·ci 十段
+- 下一步队列（不变）：push 候令（领先 7+本笔）→ T3 人验五条（E201/E301/E801/测试面板/RA lens）→ B2 剖面裁切计划轮候令

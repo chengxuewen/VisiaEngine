@@ -228,3 +228,10 @@ grep -c "重复模式" <file>    # 期望 1；>1 = edit 重复插入
 
 **验证**: `bash -n scripts/*.sh`；每条清零 grep 先跑阳性对照一次。
 **阻塞条件**: 批量改写后未跑重复行/残留断言即提交；清零门禁未做阳性自证。
+
+### 19. 门禁命令禁管道尾接（尾程序吃 rc）——带病入库实锤 2026-09-16
+
+**规则**: `cmd | tail -1 && next` 的退出码是 **tail 的**（恒 0）——门禁红被管道吞后照常 commit/链进（本案：cmake-smoke 语法坏在 `| tail -1` 后仍走 `&& git add`，坏脚本入库一笔补账）。纪律：①门禁断言用裸命令（`cmd > log 2>&1; rc=$?`，展示用 `tail log` 另起一句）；②必须成链时 `set -o pipefail` 或 `${PIPESTATUS[0]}`；③`grep -cE '词表'` 判绿前先证词表覆盖该步全部失败形（`Diff in` 缺席 fmt 断言的盲区同款——fmt 失败不打 ✗/error）。
+**先例**: 2026-09-16 B1d 带（fmt 段两文件未 rustfmt，断言词表无 `Diff in` → "FAILED=0" 假绿入库，4dc7f4f 收案）。
+**验证**: `bash -c 'false | tail -1 && echo BAD'` 必打印 BAD=反例在案；门禁调用逐处 `grep -nE '\| *(tail|head).*&&'` 人工过目。
+**阻塞条件**: 新加门禁命令带管道尾且无 pipefail。

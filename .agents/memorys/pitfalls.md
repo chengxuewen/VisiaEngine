@@ -149,3 +149,15 @@
 - **根因**: 插入式改写未声明 end 范围；断言谓词用 BRE 裸 |。
 - **解法**: ①插入式改写必 `pos+end` 吞全旧范围，改毕 `sort|uniq -d` 查重 + 旧名 grep=0；②交替断言一律 `grep -E`/`grep -c` 先证「能命中正例」再断零；③守卫「如果报错再补」句式=条件分支悬念，改「出生预置」消灭分支。
 - **验证**: `bash -n` + 手工同参复跑当带；S3/S4 各撞一次全部当带收（未过夜=合格，教训=模式已在 edit-safety #18 固化）。
+
+## PIT-22: 「验证通道≠用户通道」环境盲区第二见——DISPLAY 族（2026-09-16，用户实锤）
+- **症状**: 全部真窗验证（S0 spike / smoke-qt / cargo-run 抽验）在 agent 工具 shell 里 `export DISPLAY=:0` 跑绿；用户 VS Code（vscode-server 进程树）点 cargo-run_* 即 winit `neither WAYLAND_DISPLAY nor DISPLAY is set` rc=1。
+- **根因**: PIT-18 同族泛化——工具 shell 与用户 IDE shell 是两套环境；手工 export = 给验证通道私加用户没有的补给（PATH 族当时是 conda 激活，本次是显示变量）。窗口类断言的绿只有在**用户环境形**里取得才算数。
+- **解法**: ①环境敏感步骤（GUI/剪贴板/音频/网络代理面）一律走「启动器包装 + 探测回退 + stderr 播报走了哪条路」（run-gui.sh 形）；②交付窗口功能前须在**未加料** shell（`env -u DISPLAY` / `env PATH=/usr/bin:/bin`）复跑一次；③IDE 侧承诺面（测试面板/Run 按钮）属 T3，机器不可达就明说等人验。
+- **验证**: `env -u DISPLAY -u WAYLAND_DISPLAY cmake --build target/cmake-bare --target cargo-run_E501_shadow_demo` 存活至 timeout(124)=回退链生效；裸 cargo run（无包装）必须仍报清晰错=哨兵面未坏。
+
+## PIT-23: CMake/ctest 参数与断言的三副「恒真/吞噬」形（2026-09-16，E801 死挂案）
+- **症状**: ①`cmake_parse_arguments` 单值关键字收 `"--frames;3"` 实收仅 `--frames`（列表在 ${ARGN} 拍扁成双元素，单值口吞首丢余）→ ctest 例子落入交互态，cmake-smoke 死挂 15 分钟；②`ctest -R <不匹配>` = "No tests were found" **exit 0**，转发壳恒绿；③（PIT-21 已录 BRE 裸 `|` 恒假，同族互引）。
+- **根因**: 三形共性=「看起来在传/在断，实际静默丢/恒过」——CMake 列表语义与 ctest 空集哲学都和直觉相反。
+- **解法**: ①列表参数一律 multivalue 口（`cmake_parse_arguments(prefix options oneValue multiValue)` 第四席），生成物以 `CTestTestfile.cmake` 实行为准回看；②ctest 包装器必带「≥1 条被选」断言（`--show-only` 预计数或输出 `out of [1-9]` grep，smoke-rs.sh 先例）+ `--timeout` 永装（挂死=红而非黑洞）；③任何「=0 即绿」的门禁先做一次**能命中正例/能触发负例**的自证。
+- **验证**: `grep -o 'E801_sdl_window" "[^)]*' target/*/examples/c/CTestTestfile.cmake` 见 `"--frames" "3"` 两位齐；注入不存在的 -R 转发一次必红。
