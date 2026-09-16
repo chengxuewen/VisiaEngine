@@ -101,8 +101,9 @@ function(visiaengine_setup_bindings)
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
     add_custom_target(cargo-run_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
+              ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh
               ${_cenv} ${VISIAENGINE_CARGO} run -p examples --example ${_n}
-      VERBATIM USES_TERMINAL)  # 步骤零 argv=交互默认（点 Run 看窗口，旧 stub 零参同制）；注册表 argv 专属 ctest。USES_TERMINAL 只挂 run；build/ALL 步不挂（Ninja 串行池自伤）
+      VERBATIM USES_TERMINAL)  # run-gui 包装=IDE 无 DISPLAY 时探测本机 :0 回退（CI 不经此路）  # 步骤零 argv=交互默认（点 Run 看窗口，旧 stub 零参同制）；注册表 argv 专属 ctest。USES_TERMINAL 只挂 run；build/ALL 步不挂（Ninja 串行池自伤）
     foreach(_t cargo-build_${_n} cargo-run_${_n})
       set_target_properties(${_t} PROPERTIES FOLDER "examples/rs")
     endforeach()
