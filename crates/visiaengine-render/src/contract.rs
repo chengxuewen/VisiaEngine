@@ -90,6 +90,42 @@ impl StrokeSeg {
     }
 }
 
+/// 标签字形 quad（REND-33，S2）：**64B=4×vec4 布局三重锁**（StrokeSeg 同制）。
+/// pos/metrics 均 entity-local；uv 归一于 io-text atlas。色=**线性域 GPU 值**
+/// （sRGB→线性转换住生产者面，CORE-16 咽喉扩展=label 表 [CAPI-22 面]）。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct LabelMark {
+    /// (xyz entity-local 锚点, w=pad)。
+    pub pos: [f32; 4],
+    /// 线性 RGBA。
+    pub color: [f32; 4],
+    /// atlas UV (u0, v0, u1, v1)。
+    pub uv: [f32; 4],
+    /// (w_px, h_px, dx 右正, dy 上正)：字形屏幕贴片相对锚点左上。
+    pub metrics: [f32; 4],
+}
+
+impl LabelMark {
+    /// 组装器（字段分组的显式形；布局锁测试钉偏移）。
+    #[must_use]
+    pub const fn new(pos: [f32; 3], color: [f32; 4], uv: [f32; 4], metrics: [f32; 4]) -> Self {
+        Self {
+            pos: [pos[0], pos[1], pos[2], 0.0],
+            color,
+            uv,
+            metrics,
+        }
+    }
+}
+
+/// 标签表上传描述。
+#[derive(Clone, Copy, Debug)]
+pub struct LabelTableDesc<'a> {
+    /// 字形 quad 序列（layout 产物拼接，多标签=同表续排）。
+    pub data: &'a [LabelMark],
+}
+
 /// 线段表上传描述。
 #[derive(Clone, Copy, Debug)]
 pub struct StrokeTableDesc<'a> {
@@ -256,6 +292,13 @@ pub enum DrawCommand {
         origin: [f64; 3],
         transform: [[f64; 4]; 4],
     },
+    /// 文字标签批量贴片（REND-33，S2）：世界锚定+屏幕恒大小；色/atlas 坐标住表，
+    /// 材质不挂（扩片族裁决 a 同谱）；atlas 纹理由后端单例通道持有（WGPU-24）。
+    DrawLabels {
+        table: TableId,
+        origin: [f64; 3],
+        transform: [[f64; 4]; 4],
+    },
 }
 
 impl DrawCommand {
@@ -267,6 +310,7 @@ impl DrawCommand {
             Self::DrawInstances { .. } => "draw-instances",
             Self::DrawStrokes { .. } => "draw-strokes",
             Self::DrawPoints { .. } => "draw-points",
+            Self::DrawLabels { .. } => "draw-labels",
         }
     }
 }
@@ -333,6 +377,13 @@ pub trait RenderBackend {
     fn create_points(&mut self, _desc: &PointTableDesc<'_>) -> Result<TableId, BackendError> {
         Err(BackendError {
             reason: "points unsupported by this backend".into(),
+        })
+    }
+
+    /// 标签表上传（族协议第 6 员，REND-33）：默认体=显式 Err（静默跳过封堵）。
+    fn create_labels(&mut self, _desc: &LabelTableDesc<'_>) -> Result<TableId, BackendError> {
+        Err(BackendError {
+            reason: "labels unsupported by this backend".into(),
         })
     }
 }

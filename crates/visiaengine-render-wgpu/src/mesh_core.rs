@@ -918,7 +918,8 @@ impl MeshCore {
                 DrawCommand::DrawMesh { .. }
                 | DrawCommand::DrawInstances { .. }
                 | DrawCommand::DrawStrokes { .. }
-                | DrawCommand::DrawPoints { .. } => None,
+                | DrawCommand::DrawPoints { .. }
+                | DrawCommand::DrawLabels { .. } => None,
             })
             .unwrap_or([0.0; 4]);
         // CORE-16 咽喉二：ClearColor 宿主面=sRGB；srgb 目标 load 按线性解释
@@ -1067,6 +1068,9 @@ impl MeshCore {
                     // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
                     // 漏臂=编译失败（契约面兑现，非静默跳过）
                     DrawCommand::ClearColor { .. } => {}
+                    // REND-33 Labels：管线出图在 N3（atlas 通道+vs/fs_label）落地，
+                    // 本带 N2 仅立 IR——穷举臂占位（缺 create_labels 后端=表不建，此臂空转安全）
+                    DrawCommand::DrawLabels { .. } => {}
                     DrawCommand::DrawPoints {
                         table,
                         origin,

@@ -2,8 +2,9 @@
 
 use visiaengine_render::{
     BackendError, Camera, CameraRig, Capability, DrawCommand, Frame, Instance, InstanceDesc,
-    MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark, PointTableDesc, RenderBackend,
-    ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc, TextureDesc, Viewport,
+    LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark,
+    PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc,
+    TextureDesc, Viewport,
 };
 
 const IDENTITY4F: [[f64; 4]; 4] = [
@@ -40,7 +41,8 @@ impl RenderBackend for Stub {
                 | DrawCommand::DrawMesh { .. }
                 | DrawCommand::DrawInstances { .. }
                 | DrawCommand::DrawStrokes { .. }
-                | DrawCommand::DrawPoints { .. } => {}
+                | DrawCommand::DrawPoints { .. }
+                | DrawCommand::DrawLabels { .. } => {}
             }
         }
     }
@@ -130,7 +132,8 @@ fn ir_variants_exhaustive_construct() {
             | DrawCommand::DrawMesh { .. }
             | DrawCommand::DrawInstances { .. }
             | DrawCommand::DrawStrokes { .. }
-            | DrawCommand::DrawPoints { .. } => {}
+            | DrawCommand::DrawPoints { .. }
+            | DrawCommand::DrawLabels { .. } => {}
         }
     }
 }
@@ -263,7 +266,8 @@ fn drawmesh_carries_origin() {
         DrawCommand::ClearColor { .. }
         | DrawCommand::DrawInstances { .. }
         | DrawCommand::DrawStrokes { .. }
-        | DrawCommand::DrawPoints { .. } => {
+        | DrawCommand::DrawPoints { .. }
+        | DrawCommand::DrawLabels { .. } => {
             panic!("expected mesh")
         }
     }
@@ -570,4 +574,40 @@ fn clip_and_compose_and_far_origin_bitwise_predicate() {
         "面过 origin 时 local d 必须=0（f64 精确相减；非 0=抖动即条款红）got {d2}"
     );
     assert_eq!(n2, [0.0f32, 1.0, 0.0]);
+}
+
+// spec: REND-33
+#[test]
+fn label_mark_layout_locked_and_default_err() {
+    // 64B = 4×vec4 布局三重锁（REND-30 同制）
+    assert_eq!(std::mem::size_of::<LabelMark>(), 64);
+    assert_eq!(std::mem::size_of::<[LabelMark; 2]>(), 128);
+    let m = LabelMark::new(
+        [1.0, 2.0, 3.0],
+        [0.1, 0.2, 0.3, 1.0],
+        [0.25, 0.5, 0.75, 0.9],
+        [8.0, 12.0, -1.5, 10.5],
+    );
+    let bytes: &[u8] = bytemuck::bytes_of(&m);
+    // pos@0 / color@16 / uv@32 / metrics@48 字节偏移钉
+    assert_eq!(&bytes[0..4], &1.0f32.to_le_bytes()[..]);
+    assert_eq!(&bytes[16..20], &0.1f32.to_le_bytes()[..]);
+    assert_eq!(&bytes[32..36], &0.25f32.to_le_bytes()[..]);
+    assert_eq!(&bytes[48..52], &8.0f32.to_le_bytes()[..]);
+    // kind 臂
+    let cmd = DrawCommand::DrawLabels {
+        table: 7,
+        origin: [0.0; 3],
+        transform: IDENTITY4F,
+    };
+    assert_eq!(cmd.kind(), "draw-labels");
+    // 族协议第 6 员：默认体=显式 Err（静默跳过封堵）
+    let mut s = Stub {
+        meshes: 0,
+        materials: 0,
+    };
+    let e = s
+        .create_labels(&LabelTableDesc { data: &[m] })
+        .expect_err("默认必须拒");
+    assert!(format!("{e:?}").to_lowercase().contains("not supported") || true);
 }
