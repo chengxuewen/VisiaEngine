@@ -202,3 +202,20 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   + 外角 canary；实测 (35,132,62)→(177,147,51) 黄族翻转锁
 - 登记面：Cargo.toml/契约表/tutorials/pixi 四件 + gate-docs E402 预留豁免收回（真件在位）
 - 基线：**162 passed · 115↔115 · GATE-DOCS E 18 件三方 · ctest 19 条 · ci 十段 ✓ · SMOKE E402 ✓(真窗)**
+
+## 色彩+事件带（2026-09-17，CORE-16/CAPI-17，计划 color-events-band.md K1-K6）
+- CORE-16 sRGB↔线性双口（f64 中间精度，端点逐位）；全链契约=宿主面 sRGB/IR 线性/GPU 两端
+  Srgb 格式硬件编码；咽喉五点（material 块/clear/strokes/points/instances 表）+io-gltf factor
+  反变换归位；GL 降级档=回退线性直通现形
+- 域重钉七处（全部实测先行）：clear [13,18,25] 硬件舍入自标定 canary、shadow 亮暗双峰 95/140、
+  纹理棋盘 b 双峰 135（uv 断链语义保持）、E501 分界 128 dark 阈 4000（实测 19642）、
+  io-gltf 色钉×2、geo 拟合门容差形
+- **挖出并根修**：lavapipe 语义实锤 clear load 值按线性域解释（0.05→63 探针）；渲染测试带
+  域脆性教训（编码抬中间调）
+- CAPI-17 事件口（21→22 入口，abi 0x00010003）：EvtSink cfg 双形（native C 锚 unsafe-Send/
+  wasm Box<dyn FnMut>）、进度单调终态锁/错误同刻/NULL 摘除、三面镜像（头/hpp/wasm+d.ts）
+- 例子 E21 件三方：E704_host_callback.c（事件三态）/E502_color_tuning（**WYSIWYG 四色板逐字节
+  互逆活证**，采样列公式纠一处）/E503_stroke_points（恒宽秀）+ 永装门 golden_zoom_width_invariant
+  （两档 zoom 10px/φ24 跨档锁，列采样=与 zoom 无关相位纪律）
+- 基线：**167 passed · 117↔117 · GATE-ABI 22/22 · GATE-DOCS E 21 件 · ctest 22 条 · ci 十段 ✓ ·
+  WEB MIRROR ✓**；结构事故自纠：E402 带遗留 _disp 四僵尸行清除（edit-safety #18 族再现一例）

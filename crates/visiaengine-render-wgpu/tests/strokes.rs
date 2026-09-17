@@ -283,3 +283,103 @@ fn probe_map() {
             .count()
     );
 }
+
+// spec: WGPU-17
+/// E503 窗口路镜像（扩片族独立课随带门，REND-29 恒宽语义）：ortho 两档 zoom（4×
+/// 跨度）下**屏幕厚度恒定**——白线 10px / 绿点 φ24px 两档同值（世界厚度模型会 ×4）。
+/// 谓词三自证：①正例=恒宽 10/24；②世界宽假形必抓（zoom 档间比偏离 >2×）；
+/// ③背景纯黑不吃色值。
+#[test]
+fn golden_zoom_width_invariant() {
+    let Some(mut b) = HeadlessBackend::new(256, 256) else {
+        eprintln!("SKIP: no adapter");
+        return;
+    };
+    let segs = [visiaengine_render::StrokeSeg::new(
+        [-2.0, 0.0, 0.0],
+        [2.0, 0.0, 0.0],
+        [0.92, 0.94, 0.96],
+        10.0,
+    )];
+    let pts = [visiaengine_render::PointMark::new(
+        [0.0, 0.6, 0.0],
+        [0.30, 0.80, 0.45],
+        12.0,
+    )];
+    let st = b
+        .create_strokes(&visiaengine_render::StrokeTableDesc { data: &segs })
+        .unwrap();
+    let pt = b
+        .create_points(&visiaengine_render::PointTableDesc { data: &pts })
+        .unwrap();
+    let rig = CameraRig::look_at([0.0, 0.0, 12.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    let mut thick_prev = 0u32;
+    for (zi, zoom) in [1.3f64, 5.2].into_iter().enumerate() {
+        let commands = vec![
+            DrawCommand::ClearColor {
+                rgba: [0.0, 0.0, 0.0, 1.0],
+            },
+            DrawCommand::DrawStrokes {
+                table: st,
+                origin: [0.0; 3],
+                transform: T4,
+            },
+            DrawCommand::DrawPoints {
+                table: pt,
+                origin: [0.0; 3],
+                transform: T4,
+            },
+        ];
+        let frame = Frame {
+            viewport: Viewport::new(256, 256, 1.0),
+            camera: Camera::ortho(zoom as f32, zoom as f32, 0.1, 360.0),
+            view_rot: rig.view_rotation(),
+            eye: rig.eye(),
+            proj: rig
+                .ortho_frame(zoom as f32, 256.0, 256.0, 0.1, 360.0)
+                .unwrap(),
+            px_world_scale: 2.0 * zoom as f32 / 256.0,
+            shadow: None,
+            commands,
+        };
+        let img = b.render_to_pixels(&frame).unwrap();
+        // 白线竖向厚度：列 x=96（两档 zoom 下世界 x∈[-1.3,-0.325] 恒落线幅 [-2,2] 内，
+        // 且距绿点球径世界 ±0.24 远远的——列选择=与 zoom 无关的采样相位纪律）
+        let thick: u32 = (0..256u32)
+            .filter(|&y| {
+                let o = ((y * 256 + 96) * 4) as usize;
+                let p = &img.rgba[o..o + 3];
+                p[0] > 200 && p[1] > 200 && p[2] > 200
+            })
+            .count() as u32;
+        // 绿点横向直径：过球心的扫描行（找最大绿族连续段，行不预设——球心随 zoom 换屏位）
+        let mut diam = 0u32;
+        for y in 0..256u32 {
+            let run = (0..256u32)
+                .map(|x| {
+                    let o = ((y * 256 + x) * 4) as usize;
+                    let p = &img.rgba[o..o + 3];
+                    (p[1] > 150 && p[0] < 130 && p[2] < 170) as u32
+                })
+                .fold((0u32, 0u32), |(cur, best), hit| {
+                    let cur = if hit == 1 { cur + 1 } else { 0 };
+                    (cur, best.max(cur))
+                })
+                .1;
+            diam = diam.max(run);
+        }
+        assert!(
+            thick.abs_diff(10) <= 3,
+            "档{zi} zoom={zoom} 线屏厚={thick}≠恒宽 10（世界宽模型下必随 zoom 缩放）"
+        );
+        assert!(diam.abs_diff(24) <= 4, "档{zi} 点直径={diam}≠恒 φ24");
+        if zi == 1 {
+            // 两档厚度等值=恒宽的跨档锁（比 4× 世界模型分道扬镳）
+            assert!(
+                thick.abs_diff(thick_prev) <= 4 && thick_prev.abs_diff(10) <= 3,
+                "档间漂移 prev={thick_prev} now={thick}"
+            );
+        }
+        thick_prev = thick;
+    }
+}

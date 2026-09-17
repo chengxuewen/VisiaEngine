@@ -10,6 +10,7 @@ find_package(SDL3 QUIET CONFIG)
 visiaengine_add_example(E701_demo_headless)
 visiaengine_add_example(E810_attr_survey)   # 数据带：属性遍历 survey（零新口，CAPI-04/10 全景）
 visiaengine_add_example(E811_entity_hide_c)  # 数据带：显隐孪生·C 面（CAPI-13/14）
+visiaengine_add_example(E704_host_callback)  # 事件带：CAPI-17 推送口三态验收（进度/错误/摘除）
 if(SDL3_FOUND)
   visiaengine_add_example(E801_sdl_window DISPLAY SDL3 INTERACTIVE ARGS "--frames;3")  # 双模：无参交互窗（CI 绝不走此形）/--frames headless 快退
 else()

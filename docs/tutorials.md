@@ -13,10 +13,13 @@
 | E401 | 交互·拾取高亮（射线→pick→CPU 覆写闭环） | `examples/rs/E401_pick_demo.rs` | REND-21..24 / WGPU-12/13 | `pixi run smoke-pick` |
 | E402 | 交互·hover/多选窗（悬停=橙预览 点选=黄多选 toggle 拖=轨道 R=清空） | `examples/rs/E402_pick_interactive.rs` | REND-21/23 / WGPU-12 | `pixi run smoke-pick-hover` |
 | E501 | 材质与光影（instanced 城 + PCSS 软影；双模式=无参交互窗/`--frames` headless） | `examples/rs/E501_shadow_demo.rs` | REND-31 / WGPU-14..20 | `pixi run smoke-shadow-demo` |
+| E502 | 材质与光影·色彩标定（sRGB 全链往返「所见即所得」活证；四色板 headless） | `examples/rs/E502_color_tuning.rs` | CORE-16 / WGPU-14 | `pixi run smoke-color-tuning`（例内自断言） |
+| E503 | 材质与光影·扩片族独立课（屏幕恒线宽/真圆点·缩放秀） | `examples/rs/E503_stroke_points.rs` | REND-29/30 / WGPU-17/18 | `ctest -L display`（cmake-smoke xvfb 子态） |
 | E601 | 规模与性能（10 万楼块单 draw 压力例） | `examples/rs/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin`（`pixi run bench` 出制品） |
 | E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗口宿主骨架） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
 | E703 | 绑定镜像·Qt6 真窗（widget 宿主带；texquad+park 双族） | `examples/qt/E703_qt_viewer.cpp` | CAPI-06 | `pixi run smoke-qt` |
+| E704 | 绑定镜像·C 事件回调（CAPI-17 推送口三态：进度单调/错误同刻/NULL 摘除） | `examples/c/E704_host_callback.c` | CAPI-17 | `ctest`（native headless 族） |
 | E801 | SDK 消费·C+SDL3 真窗（双模式=无参交互窗含 resize 联动/`--frames` 快退） | `examples/c/E801_sdl_window.c` | CAPI-06 | `ctest -L display`（cmake-smoke xvfb 子态） |
 | E810 | SDK 消费·C 属性遍历 survey（name/opacity/缺失≠零值现场） | `examples/c/E810_attr_survey.c` | CAPI-04/10/11 | `ctest -R example_E810` |
 | E811 | SDK 消费·显隐孪生（C 面；枚举域不变/查询往返/越值拒） | `examples/c/E811_entity_hide_c.c` | CAPI-13/14 | `ctest -R example_E811_entity_hide_c` |

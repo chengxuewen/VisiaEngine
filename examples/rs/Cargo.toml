@@ -46,6 +46,12 @@ path = "E402_pick_interactive.rs"
 name = "E501_shadow_demo"
 path = "E501_shadow_demo.rs"
 [[example]]
+name = "E502_color_tuning"
+path = "E502_color_tuning.rs"
+[[example]]
+name = "E503_stroke_points"
+path = "E503_stroke_points.rs"
+[[example]]
 name = "E601_bench_twin"
 path = "E601_bench_twin.rs"
 [[example]]

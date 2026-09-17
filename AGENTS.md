@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**批 0-5 已收官（2026-09-14）**：七 crate workspace、**117 条** SDD 契约（spec-trace 双向锁）、ctest 统一例子清单（19 条）+ 四 gate（style/trace/abi/docs）+ cmake-smoke 三态三锚；golden 真机无 SKIP；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
+VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**批 0-5 已收官（2026-09-14）**：七 crate workspace、**117 条** SDD 契约（spec-trace 双向锁）、ctest 统一例子清单（22 条）+ 四 gate（style/trace/abi/docs）+ cmake-smoke 三态三锚；golden 真机无 SKIP；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
 
 ## STRUCTURE
 
@@ -12,7 +12,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 ./
 ├── Cargo.toml/lock   # workspace（members=crates/*+examples/rs+bindings 两 FFI crate，S1/S2 定）；deny.toml licenses/bans
 ├── crates/           # 纯核心 5：core→render（trait+IR/camera/rebase）→render-wgpu（wgpu 后端/管线/offscreen）+ io-gltf + geo（GeoJSON→3857→细分→样式/GPU 扩片输出 GEO-24）
-├── examples/         # 例子按语言：rs=cargo example 教程系×10（[[example]] 注册壳包）；c=C 例（E701/702；S4 起 E8xx+template）；cpp/qt 随 S4 开；跑面单源=ctest/pixi smoke
+├── examples/         # 例子按语言：rs=cargo example 教程系×12（[[example]] 注册壳包）；c=C 例（E701/702；S4 起 E8xx+template）；cpp/qt 随 S4 开；跑面单源=ctest/pixi smoke
 ├── bindings/         # 实现面一窝同栖：c/visiaengine-capi（C ABI 21 入口+手写头+CAPI 条款测试）· c/probe · cpp/include（S4 hpp）· qt/widget.hpp · js/rust/visiaengine-wasm（CAPI-09 镜像）+ js/demo
 ├── docs/sdd/         # 行为契约条款（CORE/REND/WGPU-NN，与测试 // spec: 双向追溯：scripts/spec-trace.sh）
 ├── docs/tutorials.md # E 编号教程索引（文件名=头注=索引三方锁=scripts/gate-docs.sh）
@@ -42,7 +42,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 
 ## CODE MAP
 
-`Scene/EntityId`(core/src/scene.rs：slab+代际+脏标记，100k 实体 ~12ms spike 实测) → `RenderBackend/MeshDesc/CameraRig`(render/src/{contract,camera}.rs：object-safe，深度变体锁 [0,1] 见 PIT-5) → `MeshCore/headless/offscreen`(render-wgpu/src/：真网格管线+立方 golden) + `load_gltf`(io-gltf/src/lib.rs：gltf from_slice+util::Iter，GLB-only)。例子域（v1.3 起）：examples/rs ×10 cargo example（[[example]] 注册壳包，ctest 转发壳跑）+ examples/{c,cpp,qt} 原生真身（E70x/E80x）。依赖单向 core←{render, io-gltf}←render-wgpu(dev 合流)。
+`Scene/EntityId`(core/src/scene.rs：slab+代际+脏标记，100k 实体 ~12ms spike 实测) → `RenderBackend/MeshDesc/CameraRig`(render/src/{contract,camera}.rs：object-safe，深度变体锁 [0,1] 见 PIT-5) → `MeshCore/headless/offscreen`(render-wgpu/src/：真网格管线+立方 golden) + `load_gltf`(io-gltf/src/lib.rs：gltf from_slice+util::Iter，GLB-only)。例子域（v1.3 起）：examples/rs ×12 cargo example（[[example]] 注册壳包，ctest 转发壳跑）+ examples/{c,cpp,qt} 原生真身（E70x/E80x）。依赖单向 core←{render, io-gltf}←render-wgpu(dev 合流)。
 
 ## CONVENTIONS
 

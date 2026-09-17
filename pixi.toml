@@ -92,6 +92,7 @@ smoke-pick-hover = "bash scripts/smoke-rs.sh E402_pick_interactive"   # L2：hov
 smoke-measure = "bash scripts/smoke-rs.sh E203_measure_cli"   # L2：量测 CLI（纯 CPU）
 smoke-bench-twin = "bash scripts/smoke-rs.sh E601_bench_twin"
 smoke-shadow-demo = "bash scripts/smoke-rs.sh E501_shadow_demo"
+smoke-color-tuning = "bash scripts/smoke-rs.sh E502_color_tuning"   # L2：色彩标定往返（headless 自断言）
 qt-demo-build = "cmake --preset qt-pixi && cmake --build --preset qt-pixi"   # Qt 轮消费冒烟（须 -e qt-spike）
 smoke-qt = "bash scripts/smoke-qt.sh"   # 三态：无 env/无 X=SKIP（须 -e qt-spike）
 smoke-twin-city = "bash scripts/smoke-rs.sh E901_twin_city"   # L2：垂直切片 seed（批 4 成果一图流+PNG 人检）
