@@ -96,6 +96,7 @@ function(visiaengine_setup_bindings)
   set(_args_E502_color_tuning "--frames;1")
   set(_args_E503_stroke_points "--frames;3")
   set(_args_E601_bench_twin "--count;5000;--frames;1")
+  set(_args_E901_twin_city "--frames;1")  # 双模例（E501 同制）：CI 走 headless 单帧+PNG 断言；无参=常驻窗
 
   # 盘⇄表双向对账（examples/rs 面；表=上方 _rs_items）
   file(GLOB _rsf "${CMAKE_SOURCE_DIR}/examples/rs/E[0-9][0-9][0-9]_*.rs")

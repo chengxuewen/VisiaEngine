@@ -27,7 +27,7 @@
 | E811 | SDK 消费·显隐孪生（C++ 面；hpp 转发验收） | `examples/cpp/E811_entity_hide_cpp.cpp` | CAPI-13/14 | `ctest -R example_E811_entity_hide_cpp` |
 | E812 | SDK 消费·程序化增删（位形互异/退化零提交/再入拒） | `examples/cpp/E812_mesh_add.cpp` | CAPI-15/16 | `ctest -R example_E812` |
 | E802 | SDK 消费·C++ headless（hpp 门面活体验收；readback→PPM 落盘） | `examples/cpp/E802_offscreen.cpp` | CAPI-04/05 | `ctest -R example_E802` |
-| E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS×PNG） | `examples/rs/E901_twin_city.rs` | 批 4 全成果面 | `pixi run smoke-twin-city`（T2 新增） |
+| E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS；双模=无参常驻窗/`--frames` 离屏 PNG+断言） | `examples/rs/E901_twin_city.rs` | 批 4 全成果面 | `pixi run smoke-twin-city`（T2 新增） |
 
 ## IDE 运行（CMake target 面）
 
@@ -55,8 +55,8 @@ ctest / `--frames N` = 自动化短退形态（argv 单源纪律：注册表参�
 
 | 人验形态 | 例 | 无参启动行为 | 看什么 |
 |---|---|---|---|
-| **窗口常驻** | E101 / E201 / E202 / E301 / E402 / E501 / E502 / E503 / E702 / E801 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
-| **自退自证** | E203 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E901 | 跑完打印 `OK …` 行退出 | 终端输出即验收面（E901 另落 `target/twin_city.png`） |
+| **窗口常驻** | E101 / E201 / E202 / E301 / E402 / E501 / E502 / E503 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
+| **自退自证** | E203 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 | 跑完打印 `OK …` 行退出 | 终端输出即验收面 |
 
 **无头证据例“秒退=设计”**：其产物是终端断言行或 PNG/PPM 落盘，非交互窗；要交互验收走同能力域窗口例
 （拾取→E402、色彩→E502 无参窗、光影→E501 无参窗、恒宽→E503）。native run 步全例覆盖（DISPLAY 族经
