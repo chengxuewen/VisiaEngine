@@ -56,6 +56,10 @@ public:
         return visiaengine_add_mesh(h_, &desc, out_entity);
     }
     int32_t remove_entity(std::uint64_t entity) { return visiaengine_remove_entity(h_, entity); }
+    // CAPI-17 薄转发（回调生命周期由宿主担保：引擎不拥有 cb；三壳语义住头注释）
+    int32_t set_event_callback(VeEventCb cb, void *user) {
+        return visiaengine_set_event_callback(h_, cb, user);
+    }
     int32_t render() { return visiaengine_render(h_); }
     int32_t readback(std::uint8_t *buf, std::uint64_t len) { return visiaengine_readback(h_, buf, len); }
     int32_t viewport(std::uint32_t w, std::uint32_t h) { return visiaengine_viewport(h_, w, h); }

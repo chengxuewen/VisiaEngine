@@ -11,7 +11,7 @@ use visiaengine::{
     visiaengine_remove_entity, visiaengine_render, visiaengine_viewport,
 };
 
-/// 全 17 入口对 stale/foreign 句柄必须 -1（句柄校验先于状态校验；abi/last_error 无 ve 门）
+/// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
 /// （extern "C" fn 不 coerce 安全 fn 指针——显式枚举门表，[rustc ABI 指针类型]）
 fn stale_doors(ve: u64) {
     assert_eq!(visiaengine_destroy(ve), VE_ERR_ARG);
@@ -223,11 +223,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0002,
-        "major 1 · minor 2（显隐/增删四口=MAJOR 内追加；demo assert >>16==1 的源头）"
+        0x0001_0003,
+        "major 1 · minor 3（CAPI-17 事件口=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0002, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0003, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -243,7 +243,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        21,
+        22,
         "extern 入口计数（cfg-gated 行首式）"
     );
     assert_eq!(

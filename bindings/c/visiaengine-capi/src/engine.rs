@@ -61,7 +61,21 @@ pub struct Engine {
     /// CAPI-13: 隐藏实体位形表（render/pick 过滤域；枚举域不变，删除随 CAPI-16 清理）
     hidden: Vec<u64>,
     frame_cache: Option<Vec<u8>>,
+    /// CAPI-17 事件锚（fn/user 裸指针 usize 形；触发域=owner 线程，
+    /// 与 CAPI-03 亲和门同谱，故 Send 包装安全）。
+    evt: Option<EvtSink>,
 }
+
+/// SAFETY: 锚仅在 owner 线程被 gate 后触发（回调线程契约见 CAPI-17 条款体）。
+struct EvtAnchor(usize, usize);
+unsafe impl Send for EvtAnchor {}
+
+/// 事件汇双形：native=C 锚（Mutex 表需 Send）；wasm32=JS 闭包（RefCell 单线程，
+/// js_sys::Function 非 Send 合法）——Engine 的 Send 域随 cfg 保持精确。
+#[cfg(not(target_arch = "wasm32"))]
+type EvtSink = EvtAnchor;
+#[cfg(target_arch = "wasm32")]
+type EvtSink = Box<dyn FnMut(u32, u64, u64)>;
 
 impl Engine {
     #[must_use]
@@ -83,6 +97,7 @@ impl Engine {
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
             frame_cache: None,
+            evt: None,
         })
     }
 
@@ -131,6 +146,39 @@ impl Engine {
 
     // ===== 装载（CAPI-04）=====
 
+    /// CAPI-17：注册锚（cb=0 → 摘除）。
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn set_event_anchor(&mut self, cb: usize, user: usize) {
+        self.evt = if cb == 0 {
+            None
+        } else {
+            Some(EvtAnchor(cb, user))
+        };
+    }
+
+    /// CAPI-17 wasm 形：闭包注册（js_sys::Function 由 wasm 桥包入）。
+    #[cfg(target_arch = "wasm32")]
+    pub fn set_event_fn(&mut self, f: Option<Box<dyn FnMut(u32, u64, u64)>>) {
+        self.evt = f;
+    }
+
+    /// CAPI-17：事件触发点（owner 线程内同步直调；重入=调用方禁区）。
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn emit(&mut self, event: u32, a: u64, b: u64) {
+        if let Some(EvtAnchor(f, u)) = self.evt {
+            let f: unsafe extern "C" fn(*mut std::ffi::c_void, u32, u64, u64) =
+                unsafe { std::mem::transmute(f) };
+            unsafe { f(u as *mut _, event, a, b) };
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn emit(&mut self, event: u32, a: u64, b: u64) {
+        if let Some(f) = self.evt.as_mut() {
+            f(event, a, b);
+        }
+    }
+
     /// glTF path 口（CAPI-04）。
     pub fn load_gltf(&mut self, path: &str) -> Result<usize, String> {
         let doc = visiaengine_io_gltf::load_gltf(path).map_err(|e| format!("{path}: {e}"))?;
@@ -164,7 +212,10 @@ impl Engine {
                     .map_err(|e| format!("upload_texture: {e:?}"))?,
             );
         }
+        let mut done = 0usize;
         for e in doc.entities() {
+            done += 1; // CAPI-17：逐实体进度（终态 done==n，与返回计数同谱）
+            self.emit(crate::ffi::VE_EVT_LOAD_PROGRESS, done as u64, n as u64);
             let id = self.scene.spawn();
             // 局部顶点不变；headless persp 相机 ±10 域，twoprim/hierarchy 同尺度合法
             let mat = MaterialDesc {
@@ -223,6 +274,12 @@ impl Engine {
             let id = self.scene.spawn();
             rows.push((enc_entity(id), (doc_no, row))); // CAPI-10: 键=宿主可见位形；行=GEO-17 展平下标
             n += 1;
+            // CAPI-17：feature 粒度进度（total=features.len，终态与 n 等）
+            self.emit(
+                crate::ffi::VE_EVT_LOAD_PROGRESS,
+                n as u64,
+                doc.features().len() as u64,
+            );
             let parts = visiaengine_geo::tessellate(&f.kind.shifted(neg), &f.style)
                 .map_err(|e| format!("tessellate: {e}"))?;
             // [PIT-8 提取位] LineStrip→StrokeSeg / Marker→PointMark 转换与
@@ -608,6 +665,7 @@ impl Engine {
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
             frame_cache: None,
+            evt: None,
         })
     }
 }

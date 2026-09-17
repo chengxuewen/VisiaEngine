@@ -144,6 +144,23 @@ impl VisiaEngine {
         }
     }
 
+    /// CAPI-17 镜像：JS 回调 `(event, a, b) => void`；null=摘除。u64 计数面在
+    /// progress 域 <2^53（要素数），f64 直传无损——bigint 纪律仅指句柄位形面。
+    #[wasm_bindgen(js_name = setEventCallback)]
+    pub fn set_event_callback(&mut self, cb: Option<js_sys::Function>) {
+        match cb {
+            Some(f) => self.inner.set_event_fn(Some(Box::new(move |ev, a, b| {
+                let _ = f.call3(
+                    &JsValue::NULL,
+                    &JsValue::from(ev),
+                    &JsValue::from_f64(f64::from(u32::try_from(a).unwrap_or(u32::MAX))),
+                    &JsValue::from_f64(f64::from(u32::try_from(b).unwrap_or(u32::MAX))),
+                );
+            }))),
+            None => self.inner.set_event_fn(None),
+        }
+    }
+
     #[wasm_bindgen(js_name = removeEntity)]
     pub fn remove_entity(&mut self, entity: u64) -> i32 {
         match self.inner.remove_entity(entity) {

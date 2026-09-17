@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 2 // major 1 · minor 2（CAPI-13..16 四口=MAJOR 内追加；>>16==1 校验面不变）
+    (1 << 16) | 3 // major 1 · minor 3（CAPI-17 事件口=MAJOR 内追加；>>16==1 校验面不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -324,6 +324,11 @@ fn load_impl(ve: u64, path: *const c_char, label: &str) -> i32 {
                 Ok(_) => VE_OK,
                 Err(msg) => {
                     set_err(format!("{label} '{p}': {msg}"));
+                    // CAPI-17：失败出口事件（a=返回码 signed 形；b=0）
+                    let _ = with_engine(i, |e| {
+                        e.emit(VE_EVT_LOAD_ERROR, VE_ERR_IO as u64, 0);
+                        Ok::<(), String>(())
+                    });
                     VE_ERR_IO
                 }
             }
@@ -837,18 +842,23 @@ pub extern "C" fn visiaengine_remove_entity(ve: u64, entity: u64) -> i32 {
     )
 }
 
-/// CAPI-17：注册/替换/摘除（NULL）事件回调。RED 桩=gate 通过但永不触发。
+/// CAPI-17：注册/替换/摘除（NULL）事件回调。native 独占（wasm32 无 C ABI 面，
+/// JS 闭包走 visiaengine-wasm 桥 set_event_fn；set_event_anchor 亦 native cfg）。
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[cfg(not(target_arch = "wasm32"))]
 pub extern "C" fn visiaengine_set_event_callback(
     ve: u64,
     cb: VeEventCb,
     user: *mut std::ffi::c_void,
 ) -> i32 {
-    let _ = (cb, user);
+    let anchor = cb.map_or(0, |f| f as *const () as usize);
     capi_guard!(
         {
             match gate(ve) {
-                Gate::Live(i) => match with_engine(i, |_| Ok::<(), String>(())) {
+                Gate::Live(i) => match with_engine(i, |e| {
+                    e.set_event_anchor(anchor, user as usize);
+                    Ok::<(), String>(())
+                }) {
                     Ok(()) => 0,
                     Err(msg) => {
                         set_err(msg);

@@ -75,6 +75,13 @@ typedef struct VeMeshDesc {
 int32_t  visiaengine_add_mesh(uint64_t ve, const VeMeshDesc *desc, uint64_t *out_entity);
 /* 删除（CAPI-16）：items/属性/显隐三面清理，槽位代际 +1；旧句柄再入=-1 双销毁同谱。 */
 int32_t  visiaengine_remove_entity(uint64_t ve, uint64_t entity);
+/* 事件推送（CAPI-17）：注册/替换/NULL 摘除；load_* 循环内逐要素**同步**触发
+   PROGRESS(a=done b=total，单调且终态 done==total)；失败出口与返回值同刻触发
+   ERROR(a=返回码 signed 形 b=0)。触发线程=调用线程（异步管线落地后=loader 线程，
+   id/序不变——前向兼容声明）。回调内再入 visiaengine_* = 未定义（禁）。 */
+typedef enum { VE_EVT_LOAD_PROGRESS = 1, VE_EVT_LOAD_ERROR = 2 } VeEvent;
+typedef void (*VeEventCb)(void *user, uint32_t event, uint64_t a, uint64_t b);
+int32_t  visiaengine_set_event_callback(uint64_t ve, VeEventCb cb, void *user);
 
 #ifdef __cplusplus
 }  /* extern "C" */
