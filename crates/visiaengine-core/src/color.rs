@@ -6,13 +6,29 @@
 /// 端点必须逐位精确（golden 锁值面）。
 #[must_use]
 pub fn srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
-    let _ = c;
-    [0.0; 4] // RED 桩：GREEN 实装前必须失败
+    let f = |v: f32| {
+        let d = f64::from(v);
+        let r = if d <= 0.04045 {
+            d / 12.92
+        } else {
+            ((d + 0.055) / 1.055).powf(2.4)
+        };
+        r as f32
+    };
+    [f(c[0]), f(c[1]), f(c[2]), c[3]]
 }
 
 /// 线性光 → sRGB 编码（逐通道，alpha 原样；CORE-16 逆口，供读回/调试与换算自检）。
 #[must_use]
 pub fn linear_to_srgb(c: [f32; 4]) -> [f32; 4] {
-    let _ = c;
-    [0.0; 4] // RED 桩
+    let f = |v: f32| {
+        let d = f64::from(v);
+        let r = if d <= 0.0031308 {
+            d * 12.92
+        } else {
+            1.055 * d.powf(1.0 / 2.4) - 0.055
+        };
+        r as f32
+    };
+    [f(c[0]), f(c[1]), f(c[2]), c[3]]
 }
