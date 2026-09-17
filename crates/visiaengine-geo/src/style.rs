@@ -63,7 +63,8 @@ pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
 /// 标量→色带（GEO-20/D9 边界外的 `visia:` 扩展键，解析期物化——
 /// tess/渲染管线零改动；GIS 属性着色真实形态=per-feature 常量色）。
 /// 任一前置缺失（引用列/区间/端色/hi<=lo）→ 静默禁用，六键结果保持。
-fn apply_scalar_ramp(a: &AttrSet, row: usize, s: &mut crate::StyleRecord) {
+/// 标量→色带执行体（GEO-20）；pub=M0 暴露：点云带 io-points/E204 的复用底座
+pub fn apply_scalar_ramp(a: &AttrSet, row: usize, s: &mut crate::StyleRecord) {
     let (Some(col), Some(lo), Some(hi)) = (
         a.str_value(row, "visia:color-column"),
         a.f64(row, "visia:color-lo"),

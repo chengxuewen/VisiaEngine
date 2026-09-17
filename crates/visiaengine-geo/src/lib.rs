@@ -9,7 +9,7 @@ mod style;
 mod tess;
 
 pub use measure::{planar_distance, ring_area};
-pub use style::parse_color;
+pub use style::{apply_scalar_ramp, parse_color};
 pub use tess::{GeoPart, LineStrip, Marker, PartKind, TessPart, tessellate};
 
 use thiserror::Error;
