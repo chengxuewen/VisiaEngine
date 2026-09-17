@@ -29,6 +29,7 @@ fn frame_with(commands: Vec<DrawCommand>) -> Frame {
         proj,
         px_world_scale: PX_SCALE,
         shadow: None,
+        clip: None,
         commands,
     }
 }
@@ -210,6 +211,7 @@ fn golden_batch_integrity_100k() {
             .unwrap(),
         px_world_scale: 2.0 * 4.5 / S as f32,
         shadow: None,
+        clip: None,
         commands: vec![
             visiaengine_render::DrawCommand::ClearColor {
                 rgba: [0.05, 0.07, 0.10, 1.0],
@@ -282,6 +284,7 @@ fn golden_far_origin_pixels_roundtrip_points() {
                 .unwrap(),
             px_world_scale: 2.0 * 3.0 / S as f32,
             shadow: None,
+            clip: None,
             commands: vec![
                 visiaengine_render::DrawCommand::ClearColor {
                     rgba: [0.05, 0.07, 0.10, 1.0],

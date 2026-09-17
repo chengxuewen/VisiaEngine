@@ -92,6 +92,7 @@ fn prove_headless(frames: u32) {
             .unwrap(),
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands,
     };
     for _ in 0..frames.max(1) {
@@ -267,6 +268,7 @@ impl ApplicationHandler for App {
                     proj,
                     px_world_scale: 1.0,
                     shadow: None,
+                    clip: None,
                     commands: self.commands.clone(),
                 };
                 match surface.get_current_texture() {

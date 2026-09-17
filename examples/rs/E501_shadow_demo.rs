@@ -148,6 +148,7 @@ fn headless_run() {
         proj,
         px_world_scale: 0.12,
         shadow: Some(shadow_setup()),
+        clip: None,
         commands: scene_commands(ground, gmat, boxy, bmat, iid),
     };
     let img = b.render_to_pixels(&frame).expect("render");
@@ -324,6 +325,7 @@ impl ApplicationHandler for App {
                     proj,
                     px_world_scale: 0.12,
                     shadow: Some(shadow_setup()),
+                    clip: None,
                     commands: scene_commands(ground, gmat, boxy, bmat, iid),
                 };
                 match surface.get_current_texture() {

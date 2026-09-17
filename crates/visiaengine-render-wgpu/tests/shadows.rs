@@ -63,6 +63,7 @@ fn scene(with_shadow: Option<ShadowSetup>) -> visiaengine_render_wgpu::Offscreen
         proj,
         px_world_scale: 0.1,
         shadow: with_shadow,
+        clip: None,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.0, 0.0, 0.0, 1.0],

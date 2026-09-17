@@ -126,6 +126,7 @@ fn selected_entity_renders_highlight_overlay() {
         proj,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -193,6 +194,7 @@ fn occlusion_independent_of_draw_order() {
             proj,
             px_world_scale: 1.0,
             shadow: None,
+            clip: None,
             commands,
         };
         let img = backend.render_to_pixels(&frame).expect("render");
@@ -281,6 +283,7 @@ fn golden_pick_window_mirror() {
                 .unwrap(),
             px_world_scale: 1.0,
             shadow: None,
+            clip: None,
             commands,
         };
         be.render_to_pixels(&frame).expect("render")

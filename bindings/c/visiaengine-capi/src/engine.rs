@@ -464,6 +464,7 @@ impl Engine {
                 1.0
             },
             shadow: None,
+            clip: None,
             commands,
         };
         match &mut self.target {

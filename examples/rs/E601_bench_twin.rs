@@ -119,6 +119,7 @@ fn main() {
         proj,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.02, 0.02, 0.03, 1.0],
@@ -198,6 +199,7 @@ fn bench_pcl(b: &mut HeadlessBackend, n: u32, frames: u32) {
             .unwrap(),
         px_world_scale: 2.0 * 6.0 / W as f32,
         shadow: None,
+        clip: None,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.05, 0.07, 0.10, 1.0],

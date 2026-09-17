@@ -98,6 +98,7 @@ fn prove(scene: &Scene, frames: u32) {
             .unwrap(),
         px_world_scale: 2.0 * 6.0 / W as f32,
         shadow: None,
+        clip: None,
         commands,
     };
     for f in 0..frames.max(1) {
@@ -291,6 +292,7 @@ impl ApplicationHandler for App {
                     proj,
                     px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
                     shadow: None,
+                    clip: None,
                     commands,
                 };
                 match surface.get_current_texture() {

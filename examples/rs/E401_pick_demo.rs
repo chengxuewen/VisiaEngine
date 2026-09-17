@@ -153,6 +153,7 @@ fn main() {
         proj,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands,
     };
     for f in 0..frames {

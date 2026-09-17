@@ -287,6 +287,7 @@ fn headless_run() {
         proj,
         px_world_scale: 0.14, // 480px / ~66m 视高 @ 参考深度
         shadow: Some(shadow_setup(origin, W, H)),
+        clip: None,
         commands,
     };
     let img = b.render_to_pixels(&frame).expect("render");
@@ -454,6 +455,7 @@ impl ApplicationHandler for App {
                     proj,
                     px_world_scale: 0.14, // 参考深度不变（E501 同制：窗 resize 不重标线宽）
                     shadow: Some(shadow_setup(self.origin, config.width, config.height)),
+                    clip: None,
                     commands: self.commands.clone(),
                 };
                 match surface.get_current_texture() {

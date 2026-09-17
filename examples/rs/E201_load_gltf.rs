@@ -266,6 +266,7 @@ impl ApplicationHandler for App {
                     proj,
                     px_world_scale: 1.0,
                     shadow: None,
+                    clip: None,
                     commands,
                 };
                 match surface.get_current_texture() {

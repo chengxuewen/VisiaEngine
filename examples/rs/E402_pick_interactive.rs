@@ -335,6 +335,7 @@ impl ApplicationHandler for App {
                     proj,
                     px_world_scale: 1.0, // 三角系不读（REND-29 消费面=扩片族）
                     shadow: None,
+                    clip: None,
                     commands,
                 };
                 match surface.get_current_texture() {

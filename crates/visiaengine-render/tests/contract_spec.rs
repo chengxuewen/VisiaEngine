@@ -76,6 +76,7 @@ fn stub_impl_without_wgpu() {
         proj: IDENTITY4,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands: vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.1, 1.0],
         }],
@@ -211,6 +212,7 @@ fn frame_view_proj_fields_roundtrip() {
         proj: IDENTITY4,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands: vec![],
     };
     assert_eq!(f.view_rot, IDENTITY4);
@@ -229,6 +231,7 @@ fn frame_camera_split_roundtrip() {
         proj: IDENTITY4,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands: vec![],
     };
     assert_eq!(f.eye, [1.5e7, -2.5, 3.25]);
@@ -368,6 +371,7 @@ fn frame_carries_px_world_scale() {
         proj: IDENTITY4,
         px_world_scale: 0.25, // 1px ≙ 0.25 世界单位（宿主给，GPU 乘子）
         shadow: None,
+        clip: None,
         commands: vec![],
     };
     assert_eq!(f.px_world_scale, 0.25);
@@ -453,6 +457,7 @@ fn shadow_setup_is_frame_option_and_none_default_regression_key() {
         proj: IDENTITY4,
         px_world_scale: 1.0,
         shadow: Some(setup),
+        clip: None,
         commands: vec![],
     };
     assert!(f.shadow.is_some());
@@ -460,4 +465,71 @@ fn shadow_setup_is_frame_option_and_none_default_regression_key() {
     assert_eq!(f.shadow, None);
     // 默认 bias 常数在案（调参基线）
     assert_eq!(ShadowSetup::DEFAULT_BIAS.constant, -1.2);
+}
+
+// ── REND-32 剖面裁切 ClipSetup（B2 带 S1·RED）────────────────────────────────
+
+/// 三自证①canary 形：0 面=全保留（不误杀）；构造契约=零法向/非有限拒收。
+#[test]
+// spec: REND-32
+fn clip_setup_none_planes_keeps_everything_and_rejects_degenerate() {
+    let empty = visiaengine_render::ClipSetup::EMPTY;
+    assert_eq!(empty.count, 0);
+    // 世界系任意点（含超大坐标=园区 3857 量级）在 0 面下全保留
+    assert!(empty.keeps([0.0, 0.0, 0.0]));
+    assert!(empty.keeps([1.0e7, -2.0e6, 300.0]));
+    // 零法向 → None（法向必须归一化，退化面不得进管线）
+    assert!(visiaengine_render::ClipSetup::new(&[[0.0, 0.0, 0.0, 1.0]]).is_none());
+    // 非有限 → None
+    assert!(visiaengine_render::ClipSetup::new(&[[f64::NAN, 1.0, 0.0, 0.0]]).is_none());
+    assert!(visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, f64::INFINITY]]).is_none());
+    // >4 面 → None（MAX_PLANES 上限；六面盒=二带挂账）
+    let p = [0.0f64, 1.0, 0.0, 0.0];
+    assert!(visiaengine_render::ClipSetup::new(&[p, p, p, p, p]).is_none());
+    // 恰 4 面 OK
+    assert!(visiaengine_render::ClipSetup::new(&[p, p, p, p]).is_some());
+}
+
+/// 三自证②命中正例：单面 y=0 法向 +y → 上半保留、下半裁除；面上点=保留（≥0 闭区间）。
+#[test]
+// spec: REND-32
+fn clip_single_plane_keeps_positive_side_inclusive() {
+    // 平面 [nx,ny,nz,d] 语义：法向指向保留侧，保留判据 dot(n,P)+d ≥ 0
+    let cs = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0]]).expect("上保留面");
+    assert!(cs.keeps([5.0, 3.0, -2.0]));
+    assert!(!cs.keeps([5.0, -0.001, 0.0]));
+    assert!(cs.keeps([5.0, 0.0, 0.0]), "面上点必须保留（闭区间）");
+    // d 平移：y=2 以下裁除
+    let cs2 = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, -2.0]]).expect("平移面");
+    assert!(cs2.keeps([0.0, 2.0, 0.0]));
+    assert!(!cs2.keeps([0.0, 1.9, 0.0]));
+}
+
+/// 三自证③AND 组合 + 远原点逐位同谓词（§1d 精度纪律=本带核心不变式）。
+#[test]
+// spec: REND-32
+fn clip_and_compose_and_far_origin_bitwise_predicate() {
+    // AND：任一负侧即裁（x>-1 ∧ y>-1 第一象限角保留）
+    let corner = visiaengine_render::ClipSetup::new(&[[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]])
+        .expect("角域两面");
+    assert!(corner.keeps([0.0, 0.0, 0.0]));
+    assert!(!corner.keeps([-2.0, 0.0, 0.0]), "任一负侧=裁");
+    assert!(!corner.keeps([0.0, -2.0, 0.0]));
+    // 远原点纪律：世界 f64 面 + origin f64 锚点 → local f32 系数；
+    // 同几何「原点系 vs 大坐标+origin」换算结果必须逐位一致（否则 shader 面位置抖动）
+    let (n, d) = visiaengine_render::clip_to_local([0.0, 1.0, 0.0, 0.0], [1.0e7, 2.0e6, 0.0]);
+    assert_eq!(n, [0.0f32, 1.0, 0.0]);
+    // 判据点 P_world=origin+local：world dot == local dot（±f32 舍入同一路径）
+    let big = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, -2.0e6]])
+        .expect("大坐标面 y>2e6 保留");
+    assert!(big.keeps([1.0e7, 2.0e6 + 0.5, 0.0]), "锚点上方 0.5m 保留");
+    assert!(!big.keeps([1.0e7, 2.0e6 - 0.5, 0.0]), "锚点下方 0.5m 裁除");
+    // f32 侧同判据：d 存 -2e6 时 f64 相减路径与 f32 直比同结论
+    let (n2, d2) = visiaengine_render::clip_to_local([0.0, 1.0, 0.0, -2.0e6], [1.0e7, 2.0e6, 0.0]);
+    assert_eq!(
+        (d2 * 1e3) as i64,
+        0,
+        "面过 origin 时 local d 必须=0（f64 精确相减；非 0=抖动即条款红）got {d2}"
+    );
+    assert_eq!(n2, [0.0f32, 1.0, 0.0]);
 }

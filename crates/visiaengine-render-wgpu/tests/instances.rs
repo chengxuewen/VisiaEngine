@@ -55,6 +55,7 @@ fn city() -> visiaengine_render_wgpu::OffscreenFrame {
         proj,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.02, 0.02, 0.02, 1.0],
@@ -162,6 +163,7 @@ fn missing_instance_table_skips_not_panics() {
         proj,
         px_world_scale: 1.0,
         shadow: None,
+        clip: None,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.02, 0.02, 0.02, 1.0],

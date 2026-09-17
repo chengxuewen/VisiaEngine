@@ -287,6 +287,8 @@ pub struct Frame {
     pub px_world_scale: f32,
     /// 方向光阴影（REND-31）：None=关闭且**逐位零回归**（后端 dummy 早退位）。
     pub shadow: Option<ShadowSetup>,
+    /// 剖面裁切（REND-32）：None/`EMPTY`=全保留且**逐位零回归**（后端 count=0 恒绑早退）。
+    pub clip: Option<ClipSetup>,
     pub commands: Vec<DrawCommand>,
 }
 
@@ -363,6 +365,72 @@ impl ShadowSetup {
         constant: -1.2,
         slope: -1.5,
     };
+}
+
+/// 剖面裁切配置（REND-32，B2 带）。**语义**：平面系数 `[nx,ny,nz,d]` 世界系 f64，
+/// 法向指向**保留侧**，保留判据 `dot(n,P)+d ≥ 0`（面上=保留，闭区间）；多面 **AND**
+/// （任一负侧即裁）。构造契约：`new` 归一化法向并拒零法向/非有限/>`MAX_PLANES`。
+/// 精度纪律：世界系数持 f64（园区 3857 量级下 1mm 精度需 f64），shader 侧经
+/// [`clip_to_local`] 降 f32（origin f64 相减后才降，同 D7/rebase 路径）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ClipSetup {
+    /// 归一化平面系数 [nx,ny,nz,d]（前 `count` 个有效）。
+    pub planes: [[f64; 4]; Self::MAX_PLANES],
+    /// 生效面数 0..=4。
+    pub count: usize,
+}
+
+impl ClipSetup {
+    /// 面上限（§1b 裁决；六面盒=二带挂账，升 6 仅此一处）。
+    pub const MAX_PLANES: usize = 4;
+    /// 空裁切（全保留）。等价 `Frame.clip=None` 语义位。
+    pub const EMPTY: Self = Self {
+        planes: [[0.0; 4]; Self::MAX_PLANES],
+        count: 0,
+    };
+
+    /// 从世界系数构造：归一化 + 退化拒收（零法向/非有限/超上限 → None）。
+    #[must_use]
+    pub fn new(planes: &[[f64; 4]]) -> Option<Self> {
+        if planes.len() > Self::MAX_PLANES {
+            return None;
+        }
+        let mut out = Self {
+            planes: [[0.0; 4]; Self::MAX_PLANES],
+            count: 0,
+        };
+        for (slot, src) in out.planes.iter_mut().zip(planes) {
+            let [nx, ny, nz, d] = *src;
+            if !(nx.is_finite() && ny.is_finite() && nz.is_finite() && d.is_finite()) {
+                return None;
+            }
+            let len = (nx * nx + ny * ny + nz * nz).sqrt();
+            if len == 0.0 {
+                return None;
+            }
+            *slot = [nx / len, ny / len, nz / len, d / len];
+        }
+        out.count = planes.len();
+        Some(out)
+    }
+
+    /// CPU 谓词（测试/拾取用）：点 P（世界系）是否保留。
+    #[must_use]
+    pub fn keeps(&self, p: [f64; 3]) -> bool {
+        self.planes[..self.count]
+            .iter()
+            .all(|pl| pl[0] * p[0] + pl[1] * p[1] + pl[2] * p[2] + pl[3] >= 0.0)
+    }
+}
+
+/// 世界平面 → entity-local f32 系数（REND-32 精度纪律面）。
+/// `d_local = d + dot(n, origin)`——origin 为实体世界锚（与 Frame.eye D7 同款 f64 相减），
+/// 面恰过 origin 时 local d **精确** =0（f64 域），杜绝远坐标 f32 抖动。
+#[must_use]
+pub fn clip_to_local(plane: [f64; 4], origin: [f64; 3]) -> ([f32; 3], f32) {
+    let [nx, ny, nz, d] = plane;
+    let dl = d + nx * origin[0] + ny * origin[1] + nz * origin[2];
+    ([nx as f32, ny as f32, nz as f32], dl as f32)
 }
 
 /// 材质描述（WGPU-14 管线变体键源；`specular`=mock-up [4ab①]：参与既有 Lambert
