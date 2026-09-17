@@ -8,9 +8,11 @@
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 mod attrs;
+mod color;
 mod picking;
 mod scene;
 
 pub use attrs::AttrSet;
+pub use color::{linear_to_srgb, srgb_to_linear};
 pub use picking::{Ray, ray_aabb, ray_triangle, ray_triangle_double};
 pub use scene::{Component, CoreError, EntityId, Scene, Transform, Vec3};

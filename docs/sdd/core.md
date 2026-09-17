@@ -47,3 +47,6 @@ despawn 腾出的槽位由后续 spawn 复用：`slot` 相同、`generation` 严
 
 ## CORE-15: 射线×AABB 剪除口
 `ray_aabb(Ray, min, max) -> bool`（slab 法）：框内起点=true；平行轴越界=false；全区间背后=false。供实体级即算剪除（bbox 不常存，[E3D:A5] 懒算语义；升级位=BVH，触发=bench 证据，CORE-12 行对齐纪律同源）。
+
+## CORE-16: 色彩空间换算口（sRGB↔线性）
+`srgb_to_linear/linear_to_srgb([f32;4]) -> [f32;4]`（IEC 61966-2-1 分段精确式：阈值 0.04045、线性段 /12.92、幂段 ((c+0.055)/1.055)^2.4；端点 0/1 逐位精确、alpha 恒直通）。契约分工：宿主/CSS 惯例值=sRGB 编码，引擎光照域=线性；本口管标量半边，纹理/帧目标由 Srgb 格式硬件半边（render-wgpu）。往返 ≤2e-7、256 级单调。
