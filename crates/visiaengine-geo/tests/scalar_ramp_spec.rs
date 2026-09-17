@@ -51,3 +51,27 @@ fn fixture_file_end_to_end() {
     assert_eq!(fills[2], [1.0, 0.0, 0.0, 1.0], "h50=纯高色");
     assert_eq!(fills[3], [0.0, 0.45, 1.0, 1.0], "缺列件回默认蓝");
 }
+
+/// M0 暴露锁：ramp 是点云带（io-points 着色/E204）的复用底座——pub 面端点/单调钉。
+// spec: GEO-20
+#[test]
+fn ramp_helper_exposed_for_host_consumers() {
+    let fill_at = |v: f64| -> [f32; 4] {
+        let mut a = visiaengine_core::AttrSet::new();
+        let r = a.add_row();
+        a.set_f64(r, "h", v);
+        a.set_str(r, "visia:color-column", "h");
+        a.set_f64(r, "visia:color-lo", 0.0);
+        a.set_f64(r, "visia:color-hi", 10.0);
+        a.set_str(r, "visia:color-low", "#000000");
+        a.set_str(r, "visia:color-high", "#ffffff");
+        let mut s = visiaengine_geo::StyleRecord::default();
+        visiaengine_geo::apply_scalar_ramp(&a, r, &mut s);
+        s.fill
+    };
+    assert_eq!(fill_at(0.0), [0.0, 0.0, 0.0, 1.0], "下端点逐位");
+    assert_eq!(fill_at(10.0), [1.0, 1.0, 1.0, 1.0], "上端点逐位");
+    assert_eq!(fill_at(5.0), [0.5, 0.5, 0.5, 1.0], "中点 lerp");
+    assert!(fill_at(3.0)[0] < fill_at(7.0)[0], "单调");
+    assert_eq!(fill_at(99.0), [1.0, 1.0, 1.0, 1.0], "越界 clamp 面同锁");
+}
