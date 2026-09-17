@@ -162,8 +162,8 @@ impl MeshCore {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        // View 块 176B（WGPU-19 含 light_view_proj）→ 192 下限
-                        min_binding_size: wgpu::BufferSize::new(192),
+                        // View 块 256B（WGPU-21 含裁切面段；前 176B 位序不变）
+                        min_binding_size: wgpu::BufferSize::new(256),
                     },
                     count: None,
                 },
@@ -281,11 +281,12 @@ impl MeshCore {
         let mk_shadow_entries = |inst: bool| {
             let mut e = vec![wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
+                // WGPU-22：fs_shadow 消费 view.planes（caster 同裁）→ +FRAGMENT 可见
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: wgpu::BufferSize::new(192),
+                    min_binding_size: wgpu::BufferSize::new(256),
                 },
                 count: None,
             }];
@@ -676,7 +677,7 @@ impl MeshCore {
     /// View uniform 块 128B（REND-29 兑现；[f32;32] 与 WGSL struct 同布局）：
     /// mat@0..16 / right@16 / up@20 / px_scale@23 / eye_local@24..27（世界 eye−origin f32）。
     /// right/up=view_rot 行抽取——与 screen_to_ray_* 同一 view_rot 单一事实源。
-    fn view_block(frame: &Frame, origin: &[f64; 3], transform: &[[f64; 4]; 4]) -> [f32; 48] {
+    fn view_block(frame: &Frame, origin: &[f64; 3], transform: &[[f64; 4]; 4]) -> [f32; 64] {
         let mvp = visiaengine_render::rebase::compose_mvp(
             &frame.proj,
             &frame.view_rot,
@@ -684,7 +685,7 @@ impl MeshCore {
             origin,
             transform,
         );
-        let mut block = [0.0f32; 48];
+        let mut block = [0.0f32; 64];
         block[..16].copy_from_slice(bytemuck::cast_slice(&mvp));
         let r = &frame.view_rot;
         // 列主序 m[col][row]：世界 right=行0=(m00,m10,m20)；up=行1
@@ -707,6 +708,19 @@ impl MeshCore {
                 transform,
             );
             block[28..44].copy_from_slice(bytemuck::cast_slice(&lvp));
+        }
+        // WGPU-21：面系数 per-draw 换算（origin+transform 就在本函数签名里——
+        // 无新 binding/绑组构造的设计红利）；None/EMPTY=全零=shader 早退恒通。
+        if let Some(cs) = &frame.clip {
+            for (i, pl) in cs.planes[..cs.count].iter().enumerate() {
+                let (nm, dl) = visiaengine_render::clip_to_local(*pl, *origin, transform);
+                let o = 44 + i * 4;
+                block[o] = nm[0];
+                block[o + 1] = nm[1];
+                block[o + 2] = nm[2];
+                block[o + 3] = dl;
+            }
+            block[60] = cs.count as f32;
         }
         block
     }

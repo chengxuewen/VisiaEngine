@@ -6,6 +6,12 @@ use visiaengine_render::{
     ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc, TextureDesc, Viewport,
 };
 
+const IDENTITY4F: [[f64; 4]; 4] = [
+    [1.0, 0.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0],
+];
 const IDENTITY4: [[f32; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
@@ -505,6 +511,32 @@ fn clip_single_plane_keeps_positive_side_inclusive() {
     assert!(!cs2.keeps([0.0, 1.9, 0.0]));
 }
 
+/// 非均匀缩放 M：n_m=Mᵀn 经列主序推正 + d 恒等式（world=M·q+origin 的判据同解）。
+#[test]
+// spec: REND-32
+fn clip_local_model_space_scaled_identity() {
+    // M=diag(3,3,6)·translate(0,0,3)（列主序：平移在末列）
+    let m: [[f64; 4]; 4] = [
+        [3.0, 0.0, 0.0, 0.0],
+        [0.0, 3.0, 0.0, 0.0],
+        [0.0, 0.0, 6.0, 0.0],
+        [0.0, 0.0, 3.0, 1.0],
+    ];
+    // 世界面 z≤0.5 保留：n=(0,0,-1) d=0.5, origin=0
+    let (nm, dm) = visiaengine_render::clip_to_local([0.0, 0.0, -1.0, 0.5], [0.0; 3], &m);
+    // n_m=-(col2 linear)=（0,0,-6)；d_m=0.5+n·t=0.5-3=-2.5；塔 z_m∈[0,1]→全裁（世界 3..9>0.5）
+    assert_eq!(nm, [0.0f32, 0.0, -6.0]);
+    assert_eq!(dm, -2.5);
+    let test = |q: [f32; 3]| nm[0] * q[0] + nm[1] * q[1] + nm[2] * q[2] + dm >= 0.0;
+    assert!(!test([0.0, 0.0, 0.0]), "世界 z=3>0.5 必裁");
+    assert!(!test([0.0, 0.0, 1.0]), "世界 z=9>0.5 必裁");
+    assert!(test([0.0, 0.0, -1.0]), "世界 z=-3≤0.5 必留（负侧同解对照）");
+    // 同面 identity M：单位块=纯 origin 形（回归 2 参旧语义）
+    let (ni, di) = visiaengine_render::clip_to_local([0.0, 0.0, -1.0, 0.5], [0.0; 3], &IDENTITY4F);
+    assert_eq!(ni, [0.0f32, 0.0, -1.0]);
+    assert_eq!(di, 0.5);
+}
+
 /// 三自证③AND 组合 + 远原点逐位同谓词（§1d 精度纪律=本带核心不变式）。
 #[test]
 // spec: REND-32
@@ -517,7 +549,8 @@ fn clip_and_compose_and_far_origin_bitwise_predicate() {
     assert!(!corner.keeps([0.0, -2.0, 0.0]));
     // 远原点纪律：世界 f64 面 + origin f64 锚点 → local f32 系数；
     // 同几何「原点系 vs 大坐标+origin」换算结果必须逐位一致（否则 shader 面位置抖动）
-    let (n, d) = visiaengine_render::clip_to_local([0.0, 1.0, 0.0, 0.0], [1.0e7, 2.0e6, 0.0]);
+    let (n, d) =
+        visiaengine_render::clip_to_local([0.0, 1.0, 0.0, 0.0], [1.0e7, 2.0e6, 0.0], &IDENTITY4F);
     assert_eq!(n, [0.0f32, 1.0, 0.0]);
     // 判据点 P_world=origin+local：world dot == local dot（±f32 舍入同一路径）
     let big = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, -2.0e6]])
@@ -525,7 +558,11 @@ fn clip_and_compose_and_far_origin_bitwise_predicate() {
     assert!(big.keeps([1.0e7, 2.0e6 + 0.5, 0.0]), "锚点上方 0.5m 保留");
     assert!(!big.keeps([1.0e7, 2.0e6 - 0.5, 0.0]), "锚点下方 0.5m 裁除");
     // f32 侧同判据：d 存 -2e6 时 f64 相减路径与 f32 直比同结论
-    let (n2, d2) = visiaengine_render::clip_to_local([0.0, 1.0, 0.0, -2.0e6], [1.0e7, 2.0e6, 0.0]);
+    let (n2, d2) = visiaengine_render::clip_to_local(
+        [0.0, 1.0, 0.0, -2.0e6],
+        [1.0e7, 2.0e6, 0.0],
+        &IDENTITY4F,
+    );
     assert_eq!(
         (d2 * 1e3) as i64,
         0,

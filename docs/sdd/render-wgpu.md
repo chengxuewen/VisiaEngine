@@ -67,3 +67,12 @@ caster pass：无色彩目标 RenderPass（Depth32Float 1024² 懒建常驻，st
 
 ## WGPU-20: PCSS 三阶段（4f）
 接收端 `shadow_vis` [E3D:B3 移植，单 pass]：① blocker 搜索 8 环（半径 `max(1.5, light_size·220·(1−z))` texel，`textureLoad` 直读深度——非比较路）；② 半影估计 `pen = size·(z−blocker̄)/blocker̄·2.5` clamp `[texel, 0.06]`（爆炸护栏）；③ 16-tap 泊松 `textureSampleCompareLevel` 均值。返回可见度 ∈[0,1]，fs 乘链 `×mix(0.25,1.0,vis)`（vis=1 逐位恒等=None 零回归路不变）。无遮挡者=判亮（早退③）；光锥外=判亮（无级联 [不装④]）。**单调性契约**：光源角尺寸 size↑ → 地面半影中间灰严格 >2×（近硬影 <400px 与有界 <6000px 双边锁）。
+
+## WGPU-21: 裁切管线·mesh 族（B2）
+View 块尾缀 80B 段（float 44..64：`planes: array<vec4,4>` + `clip_count` + 3 pad，总 256B）——**无新 binding/绑组/缓冲构造**（view_block per-draw 已握 origin+transform，设计红利）；前 176B 位序不变=存量构造保证续存（WGPU-19 同构）。`clipped(p)` 判据 `dot(n,q)+w<0` 任一负侧=discard（AND；零平面 dot=0 恒不触发=padding 天然无害）；`clip_count<0.5` 早退=None/EMPTY **逐位零回归** [R4 恒绑护栏形，golden 全套零重录自证]。fs/fs_textured 头部弃片；varying `@location(3) wpos` 载原始 model-local 顶点（与 REND-32 `clip_to_local` 恒等式同解：world=M·q+o ⇔ dot(Mᵀn,q)+d_m）。远相机/园区坐标零 f32 抖动（far_origin 逐位等锁在 tests/clip.rs）。
+
+## WGPU-22: caster 同裁（B2）
+`fs_shadow` 补 FsIn 入参与同 discard、`vs_shadow/vs_shadow_inst` 写 wpos；caster bgl binding0 可见性 +FRAGMENT（读 view.planes），尺寸 192→256。语义=**剖掉的投影物不得留影**（接收端被裁区清深度=判亮，方向正确）；与 E501/批 4f 影斑谓词族同制（探针实测定阈 [PIT-8]：城影基线/崩塌比 3:1/地面中性族存活对照三断言）。
+
+## WGPU-23: 扩片族同裁（B2）
+`fs_stroke`/`fs_point` 头部同判据（wpos=扩片插值 model 位=**逐像素**粒度，「裁世界不裁类型」的族一致性）。点盘跨面=半盘（几何正解非缺陷）；侧内盘逐位不动（tests 分色族断言：黄线半裁/绿盘不动/蓝盘清零）。线表/点表坐标=entity-local（REND-20 同款），换算共用 view_block 一条路。

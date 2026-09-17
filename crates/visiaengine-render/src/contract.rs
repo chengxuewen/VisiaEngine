@@ -423,14 +423,29 @@ impl ClipSetup {
     }
 }
 
-/// 世界平面 → entity-local f32 系数（REND-32 精度纪律面）。
-/// `d_local = d + dot(n, origin)`——origin 为实体世界锚（与 Frame.eye D7 同款 f64 相减），
-/// 面恰过 origin 时 local d **精确** =0（f64 域），杜绝远坐标 f32 抖动。
+/// 世界平面 → **model-space** f32 系数（REND-32 精度纪律面）。shader 判定点=原始顶点 q
+/// （compose_mvp 列主序列向量约定下 world = M·q + origin），保留条件恒等变形：
+/// `dot(n, Mq+o)+d = dot(Mᵀn, q) + (dot(n, o+t_M)+d)`——法向经线性部 Mᵀ 推正、
+/// d 并入 origin+M 平移列（t_world=origin+t_M）。
+/// `d_local = dot(n,origin)+d` 与 `n_m` 全程 f64 相乘后才降 f32（D7/rebase 同款），
+/// 面恰过 origin 时 local d **精确** =0（远坐标 f32 抖动条款级杜绝）。
+/// 非均匀缩放下 n_m 未归一：不等式两侧同乘正标量语义不变，**无除法故无翻转风险**（det<0 翻转=拒，宿主勿负缩）。
 #[must_use]
-pub fn clip_to_local(plane: [f64; 4], origin: [f64; 3]) -> ([f32; 3], f32) {
+pub fn clip_to_local(plane: [f64; 4], origin: [f64; 3], model: &[[f64; 4]; 4]) -> ([f32; 3], f32) {
     let [nx, ny, nz, d] = plane;
-    let dl = d + nx * origin[0] + ny * origin[1] + nz * origin[2];
-    ([nx as f32, ny as f32, nz as f32], dl as f32)
+    // n_m_i = Σ_j n_j · m[j][i]（列主序 [col][row] 下即 Mᵀn）
+    let mut n_m = [0.0f64; 3];
+    for (j, nj) in [nx, ny, nz].iter().enumerate() {
+        for i in 0..3 {
+            n_m[i] += nj * model[j][i];
+        }
+    }
+    // 平移并入：t_world = origin + M 第四列（齐次平移分量）
+    let dl = d
+        + nx * (origin[0] + model[3][0])
+        + ny * (origin[1] + model[3][1])
+        + nz * (origin[2] + model[3][2]);
+    ([n_m[0] as f32, n_m[1] as f32, n_m[2] as f32], dl as f32)
 }
 
 /// 材质描述（WGPU-14 管线变体键源；`specular`=mock-up [4ab①]：参与既有 Lambert

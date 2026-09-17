@@ -17,6 +17,14 @@ struct View {
     // WGPU-19：光源合成阵（compose_mvp 同机件，D7 全链）；shadow=None 时零填+
     // enabled 关闭+消费点早退——前 128B 位序不变=三角系零回归构造保证续存
     light_view_proj: mat4x4<f32>,
+    // WGPU-21 剖面裁切（REND-32 换算的 model-space 面系数）：dot(n,q)+w ≥ 0 保留；
+    // clip_count=0（None/EMPTY 全零恒绑）=全保留早退=逐位零回归 [R4 护栏形]。
+    // 尾缀 80B 段（float 44..64）：前 176B 位序不变=存量构造保证续存。
+    planes: array<vec4<f32>, 4>,
+    clip_count: f32,
+    _cpad0: f32,
+    _cpad1: f32,
+    _cpad2: f32,
 };
 @group(0) @binding(0) var<uniform> view: View;
 
@@ -72,6 +80,7 @@ struct FsIn {
     @location(0) color: vec3<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) light_clip: vec4<f32>,
+    @location(3) wpos: vec3<f32>,
 };
 
 @vertex
@@ -79,6 +88,7 @@ fn vs(in: VsIn) -> FsIn {
     var out: FsIn;
     out.pos = view.view_proj * vec4<f32>(in.pos, 1.0);
     out.light_clip = view.light_view_proj * vec4<f32>(in.pos, 1.0);
+    out.wpos = in.pos;
     let n = normalize(in.normal);
     // LIGHT 常数退役入 UBO [R4]：dummy params 载默认位型 (0.5,0.7,0.4) → 存量逐位不变
     let l = normalize(sp.a.rgb);
@@ -151,6 +161,21 @@ fn shadow_vis(lc: vec4<f32>) -> f32 {
     return acc / 16.0;
 }
 
+/// 剖面判据 [WGPU-21..23]：任一负侧=裁（AND 组合）；count=0 早退=零成本恒通。
+/// 零平面（padding 位）dot=0 → `<0.0` 恒假天然无害。
+fn clipped(p: vec3<f32>) -> bool {
+    if (view.clip_count < 0.5) {
+        return false;
+    }
+    for (var i = 0; i < 4; i = i + 1) {
+        let pl = view.planes[u32(i)];
+        if (dot(pl.xyz, p) + pl.w < 0.0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 /// Instanced 变体 vs（WGPU-16）：底对齐 z 挤出 + 实例色乘法链。
 /// 轴对齐盒法向在 z 缩放下不变向（侧面无 z 分量、顶面恒 +z）——法线直传零误差 [4c 裁决④]。
@@ -162,6 +187,7 @@ fn vs_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
     let p = vec3<f32>(in.pos.x, in.pos.y, in.pos.z * inst.height) + inst.offset;
     out.pos = view.view_proj * vec4<f32>(p, 1.0);
     out.light_clip = view.light_view_proj * vec4<f32>(p, 1.0);
+    out.wpos = p;
     let n = normalize(in.normal);
     let l = normalize(sp.a.rgb);
     let ndl = max(dot(n, l), 0.0);
@@ -195,6 +221,7 @@ fn vs_stroke(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     let p = along + perp * (in.side.y * halfw);
     out.pos = view.view_proj * vec4<f32>(p, 1.0);
     out.light_clip = vec4<f32>(0.0);
+    out.wpos = p;
     out.color = s.color;
     out.uv = in.side;
     return out;
@@ -203,6 +230,9 @@ fn vs_stroke(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
 /// 色直出（光照链不参与 [4de 裁决点 a]——线色=所见（GIS 约定））。
 @fragment
 fn fs_stroke(in: FsIn) -> @location(0) vec4<f32> {
+    if (clipped(in.wpos)) {
+        discard;
+    }
     return vec4<f32>(in.color, 1.0);
 }
 
@@ -215,6 +245,7 @@ fn vs_point(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     let p = m.pos + view.right * (in.side.x * r) + view.up * (in.side.y * r);
     out.pos = view.view_proj * vec4<f32>(p, 1.0);
     out.light_clip = vec4<f32>(0.0);
+    out.wpos = p;
     out.color = m.color;
     out.uv = in.side;
     return out;
@@ -223,6 +254,9 @@ fn vs_point(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
 /// 圆 mask：local 单位盘外弃片（方块纠案）；alpha=1 色直出。
 @fragment
 fn fs_point(in: FsIn) -> @location(0) vec4<f32> {
+    if (clipped(in.wpos)) {
+        discard;
+    }
     if (length(in.uv) > 1.0) {
         discard;
     }
@@ -232,6 +266,9 @@ fn fs_point(in: FsIn) -> @location(0) vec4<f32> {
 /// Flat 变体（shadow 关闭=`× mix(0.25,1,1.0)=×1.0` 逐位恒等=零回归续存）。
 @fragment
 fn fs(in: FsIn) -> @location(0) vec4<f32> {
+    if (clipped(in.wpos)) {
+        discard;
+    }
     let vis = shadow_vis(in.light_clip);
     return vec4<f32>(in.color * mix(0.25, 1.0, vis), mat.base_color.a);
 }
@@ -239,6 +276,9 @@ fn fs(in: FsIn) -> @location(0) vec4<f32> {
 /// Textured 变体：采样×base×shade（WGPU-14 亮度链）。
 @fragment
 fn fs_textured(in: FsIn) -> @location(0) vec4<f32> {
+    if (clipped(in.wpos)) {
+        discard;
+    }
     let t = textureSample(diffuse, samp, in.uv);
     let vis = shadow_vis(in.light_clip);
     return vec4<f32>(in.color * t.rgb * mix(0.25, 1.0, vis), mat.base_color.a * t.a);
@@ -249,6 +289,7 @@ fn fs_textured(in: FsIn) -> @location(0) vec4<f32> {
 fn vs_shadow(in: VsIn) -> FsIn {
     var out: FsIn;
     out.pos = view.light_view_proj * vec4<f32>(in.pos, 1.0);
+    out.wpos = in.pos;
     out.color = vec3<f32>(0.0);
     out.uv = vec2<f32>(0.0);
     out.light_clip = vec4<f32>(0.0);
@@ -261,6 +302,7 @@ fn vs_shadow_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
     let inst = insts[ii];
     let p = vec3<f32>(in.pos.x, in.pos.y, in.pos.z * inst.height) + inst.offset;
     out.pos = view.light_view_proj * vec4<f32>(p, 1.0);
+    out.wpos = p;
     out.color = vec3<f32>(0.0);
     out.uv = vec2<f32>(0.0);
     out.light_clip = vec4<f32>(0.0);
@@ -268,4 +310,9 @@ fn vs_shadow_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
 }
 
 @fragment
-fn fs_shadow() {}
+fn fs_shadow(in: FsIn) {
+    // WGPU-22 caster 同裁：剖掉的投影物不得留影（接收端清深度=该区判亮，行为正确）
+    if (clipped(in.wpos)) {
+        discard;
+    }
+}
