@@ -18,7 +18,7 @@
 | E503 | 材质与光影·扩片族独立课（屏幕恒线宽/真圆点·缩放秀） | `examples/rs/E503_stroke_points.rs` | REND-29/30 / WGPU-17/18 | `ctest -L display`（cmake-smoke xvfb 子态） |
 | E601 | 规模与性能（10 万楼块单 draw 压力例） | `examples/rs/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin`（`pixi run bench` 出制品） |
 | E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
-| E702 | 绑定镜像·C X11（attach 真窗口宿主骨架） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
+| E702 | 绑定镜像·C X11（attach 真窗双模=无参常驻/`--frames` 快退） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
 | E703 | 绑定镜像·Qt6 真窗（widget 宿主带；texquad+park 双族） | `examples/qt/E703_qt_viewer.cpp` | CAPI-06 | `pixi run smoke-qt` |
 | E704 | 绑定镜像·C 事件回调（CAPI-17 推送口三态：进度单调/错误同刻/NULL 摘除） | `examples/c/E704_host_callback.c` | CAPI-17 | `ctest`（native headless 族） |
 | E801 | SDK 消费·C+SDL3 真窗（双模式=无参交互窗含 resize 联动/`--frames` 快退） | `examples/c/E801_sdl_window.c` | CAPI-06 | `ctest -L display`（cmake-smoke xvfb 子态） |
@@ -61,3 +61,7 @@ ctest / `--frames N` = 自动化短退形态（argv 单源纪律：注册表参�
 **无头证据例“秒退=设计”**：其产物是终端断言行或 PNG/PPM 落盘，非交互窗；要交互验收走同能力域窗口例
 （拾取→E402、色彩→E502 无参窗、光影→E501 无参窗、恒宽→E503）。native run 步全例覆盖（DISPLAY 族经
 run-gui 探测 `:0` 回退；headless 族直跑，IDE 无 DISPLAY 亦可）。
+
+native 例窗况定性（2026-09-17 E702 修案同轮盘点）：真窗口例=E702/E801/E703 三枚（无参全常驻）；
+其余 C/C++ 例（E701/E704/E802/E810/E811×2/E812）=无头证据例，终端 `OK …` 行/PPM 落盘
+即其人验面，秒退=设计身份。

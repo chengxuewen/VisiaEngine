@@ -18,7 +18,7 @@ else()
   message(STATUS "examples/c：SDL3 缺位，E801 跳注册（pixi tools 含 sdl3 时点亮）")
 endif()
 if(X11_FOUND)
-  visiaengine_add_example(E702_demo_x11 DISPLAY X11)
+  visiaengine_add_example(E702_demo_x11 DISPLAY X11 ARGS "--frames;3")  # 双模（E702 修案：原固定 3 帧=约定漏网）
 else()
   # 缺件优雅降级（双层门控旧形）：中央账免死——登记名字但不建目标
   set_property(GLOBAL APPEND PROPERTY VE_REGISTERED_EXAMPLES E702_demo_x11)

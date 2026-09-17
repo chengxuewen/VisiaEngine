@@ -20,7 +20,7 @@ else
   sleep 1.5
   if ! kill -0 $XPID 2>/dev/null; then echo "SMOKE-X11 SKIP (Xvfb 起不来)"; cat /tmp/xvfb-x11.log; exit 0; fi
 fi
-DISPLAY=$DISP LD_LIBRARY_PATH=$PWD/target/debug timeout -k 5 60 ./target/demo_x11 resources/data/twoprim.glb
+DISPLAY=$DISP LD_LIBRARY_PATH=$PWD/target/debug timeout -k 5 60 ./target/demo_x11 resources/data/twoprim.glb --frames 3
 RC=$?
 [ -n "$XPID" ] && { kill $XPID 2>/dev/null; wait $XPID 2>/dev/null; true; }
 [ $RC -eq 0 ] && echo "SMOKE-X11 ✓" || echo "SMOKE-X11 ✗ rc=$RC"
