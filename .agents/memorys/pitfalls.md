@@ -161,3 +161,16 @@
 - **根因**: 三形共性=「看起来在传/在断，实际静默丢/恒过」——CMake 列表语义与 ctest 空集哲学都和直觉相反。
 - **解法**: ①列表参数一律 multivalue 口（`cmake_parse_arguments(prefix options oneValue multiValue)` 第四席），生成物以 `CTestTestfile.cmake` 实行为准回看；②ctest 包装器必带「≥1 条被选」断言（`--show-only` 预计数或输出 `out of [1-9]` grep，smoke-rs.sh 先例）+ `--timeout` 永装（挂死=红而非黑洞）；③任何「=0 即绿」的门禁先做一次**能命中正例/能触发负例**的自证。
 - **验证**: `grep -o 'E801_sdl_window" "[^)]*' target/*/examples/c/CTestTestfile.cmake` 见 `"--frames" "3"` 两位齐；注入不存在的 -R 转发一次必红。
+
+## PIT-24: 共享几何件的绕序哑雷——cull 关使 winding 成为只被拾取读的暗观测（2026-09-17，E402 带）
+- **症状**: `unit_box_mesh` 三消费者（instances/bench/twin_city）渲染全正常、golden 全绿；
+  E402 拾取链第一次消费即中心射线必 miss——竖直向下射线打盒顶不中、自下向上反中。
+- **根因**: 出生绕序与声明法向**全局相反**（几何 cross=−nrm）。GPU 路 PrimitiveState 未设
+  cull（wgpu 默认 None）→ 双面都画 → 渲染零症状；`pick_meshes` 正面规则（REND-23）读的
+  恰是 winding——同一份几何在两条消费路上语义相反。凡"渲染件复用进拾取/gpu-skinning/
+  装 cull 后的管线"都是此雷的引信。
+- **解法**: 索引镜像翻正 `[b,b+1,b+2][b,b+2,b+3]`→`[b,b+2,b+1][b,b+3,b+2]`（一次改，
+  全消费者受益；cull 关下像素逐位不变=构造证明，162 passed 零回归实锤）。公共几何件定义
+  处必须写明 **绕序=外法向 CCW** 契约（已入金训注）。
+- **验证**: 新共享几何出生即跑一条「正面射线必中/背面射线必不中」双向断言（E402 门的
+  corner-canary 形）；`grep -n 'CCW' crates/visiaengine-render-wgpu/src/offscreen.rs` 契约行在位。
