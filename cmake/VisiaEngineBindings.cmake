@@ -76,7 +76,7 @@ function(visiaengine_setup_bindings)
   endif()
 
   # ── Rust 族：argv 唯一户口（pixi smoke 只做 `ctest -R` 转发壳，抄写面归零）──
-  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli
+  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer
                 E301_switch_camera E401_pick_demo E402_pick_interactive E501_shadow_demo
                 E502_color_tuning E503_stroke_points E601_bench_twin E901_twin_city)
   set(_disp_E101_clear ON)
@@ -89,6 +89,7 @@ function(visiaengine_setup_bindings)
   set(_args_E201_load_gltf "resources/data/twoprim.glb;--frames;3")
   set(_args_E202_geo_viewer "resources/data/park.geojson;--frames;3")
   set(_args_E301_switch_camera "resources/data/twoprim.glb;--frames;3")
+  set(_args_E204_pcl_viewer "--frames;3")  # 自断言双半区覆盖（E 片）
   set(_args_E401_pick_demo "--frames;2")
   set(_args_E402_pick_interactive "--frames;3")
   set(_args_E501_shadow_demo "--frames;1")  # 双模式例：CI 走 headless（默认=交互窗）；注册表只服 ctest

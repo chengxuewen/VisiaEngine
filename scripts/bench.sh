@@ -10,14 +10,16 @@ MACHINE=$(uname -n)
 DATE=$(date +%F)
 
 # 逐例执行 → 抓 RESULT 行 → 合并写 JSON（保留旧值做对比）
-for spec in "bench_twin:cargo run --release -p visiaengine-render-wgpu --example E601_bench_twin -- --frames 3" \
-            "bench_pick:cargo run --release -p visiaengine-render-wgpu --example E401_pick_demo -- --bench"; do
+MISSING=0
+for spec in "bench_twin:cargo run --release -p examples --example E601_bench_twin -- --frames 3" \
+            "bench_pick:cargo run --release -p examples --example E401_pick_demo -- --bench" \
+            "bench_pcl:cargo run --release -p examples --example E601_bench_twin -- --points 1000000 --frames 1"; do
     name="${spec%%:*}"
     cmd="${spec#*:}"
     old_json="resources/bench/${name}.json"
     # shellcheck disable=SC2086
     out=$($cmd 2>/dev/null | grep '^RESULT ' || true)
-    [ -z "$out" ] && { echo "BENCH ✗ ${name} 无 RESULT 行" >&2; continue; }
+    [ -z "$out" ] && { echo "BENCH ✗ ${name} 无 RESULT 行" >&2; MISSING=$((MISSING+1)); continue; }
     # 写新 JSON
     {
         printf '{\n  "date": "%s",\n  "machine": "%s",\n  "gpu": "%s",\n  "values": {\n' \
@@ -51,3 +53,6 @@ for k, (nv, _u) in new.get("values", {}).items():
 PYEOF
 done
 echo "BENCH done（观测档，非门禁；真阈值=用户裁）"
+
+# 缺席=工具链断言（包名漂移/例失踪——PIT-23 恒真族教训：曾静默 continue 两轮制品不写）
+if [ "$MISSING" -gt 0 ]; then echo "BENCH ✗ ${MISSING} 例无产出（非性能劣化，系工具链故障）" >&2; exit 1; fi

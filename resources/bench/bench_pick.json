@@ -1,8 +1,8 @@
 {
-  "date": "2026-09-14",
+  "date": "2026-09-17",
   "machine": "visiaengine-ubuntu20",
   "gpu": "lavapipe (Mesa software Vulkan; 本机独有，非 CI)",
   "values": {
-    "bench_pick_10k": [1.214, "ms"]
+    "bench_pick_10k": [0.955, "ms"]
   }
 }

@@ -5,8 +5,8 @@
 use std::time::Instant;
 
 use visiaengine_render::{
-    Camera, CameraRig, DrawCommand, Frame, Instance, InstanceDesc, MeshDesc, RenderBackend,
-    Viewport,
+    Camera, CameraRig, DrawCommand, Frame, Instance, InstanceDesc, MeshDesc, PointMark,
+    PointTableDesc, RenderBackend, Viewport,
 };
 use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
 
@@ -36,6 +36,7 @@ const IDENTITY: [[f64; 4]; 4] = [
 
 fn main() {
     let (mut count, mut frames) = (100_000u32, 3u32);
+    let mut pcl: Option<u32> = None;
     let mut args = std::env::args();
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -53,6 +54,12 @@ fn main() {
                     .filter(|n: &u32| *n > 0)
                     .unwrap_or(frames);
             }
+            "--points" => {
+                pcl = args
+                    .next()
+                    .and_then(|v| v.parse().ok())
+                    .filter(|n: &u32| *n > 0);
+            }
             _ => {}
         }
     }
@@ -60,6 +67,11 @@ fn main() {
         eprintln!("ERROR: no adapter");
         std::process::exit(2);
     };
+
+    if let Some(n) = pcl {
+        bench_pcl(&mut b, n, frames);
+        return;
+    }
 
     // ===== 上传段计时（CPU 生成 + 表上传，REND-27/WGPU-16 面）=====
     let t0 = Instant::now();
@@ -150,4 +162,64 @@ fn main() {
         total,
         lit as f64 * 100.0 / total as f64
     );
+}
+
+/// 点云帧成本档（G3 片，release-only 观测非门禁——裁决 D 输入；禁外推，实测说话）。
+fn bench_pcl(b: &mut HeadlessBackend, n: u32, frames: u32) {
+    let t0 = Instant::now();
+    let side = (f64::from(n).sqrt().ceil()) as u32;
+    let marks: Vec<PointMark> = (0..n)
+        .map(|i| {
+            let gx = i % side;
+            let gy = i / side;
+            PointMark::new(
+                [
+                    f32::from(gx as i16) * 0.03 - 4.0,
+                    f32::from(gy as i16) * 0.03 - 4.0,
+                    0.0,
+                ],
+                [0.9, 0.9, 0.9],
+                3.0,
+            )
+        })
+        .collect();
+    let table = b
+        .create_points(&PointTableDesc { data: &marks })
+        .expect("pcl table");
+    let upload_ms = t0.elapsed().as_secs_f64() * 1e3;
+    let rig = CameraRig::look_at([0.0, 0.0, 12.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    let frame = Frame {
+        viewport: Viewport::new(W, H, 1.0),
+        camera: Camera::ortho(6.0, 6.0, 0.1, 100.0),
+        view_rot: rig.view_rotation(),
+        eye: [0.0, 0.0, 12.0],
+        proj: rig
+            .ortho_frame(6.0, W as f32, H as f32, 0.1, 100.0)
+            .unwrap(),
+        px_world_scale: 2.0 * 6.0 / W as f32,
+        shadow: None,
+        commands: vec![
+            DrawCommand::ClearColor {
+                rgba: [0.05, 0.07, 0.10, 1.0],
+            },
+            DrawCommand::DrawPoints {
+                table,
+                origin: [0.0; 3],
+                transform: [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+            },
+        ],
+    };
+    let t1 = Instant::now();
+    for _ in 0..frames {
+        b.render_to_pixels(&frame).expect("pcl render");
+    }
+    let frame_ms = t1.elapsed().as_secs_f64() * 1e3 / f64::from(frames.max(1));
+    println!("RESULT bench_pcl_upload {upload_ms:.3} ms");
+    println!("RESULT bench_pcl_frame {frame_ms:.3} ms");
+    println!("RESULT bench_pcl_points {n} count");
 }

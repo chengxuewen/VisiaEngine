@@ -169,3 +169,133 @@ fn empty_and_missing_tables_semantics() {
     let img = b.render_to_pixels(&f).expect("缺表不得 panic");
     assert!(px(&img, 32, 32)[0] < 10, "缺表画出了东西");
 }
+
+/// G1 大批量完整性门（点云带 E/G 片，WGPU-18 多例同条款）：100k 点表 →
+/// splat 覆盖下界 + 四边缘带各有像素（封批量截断/stride 错——WGPU-16 静默 skip 同族）。
+// spec: WGPU-18
+#[test]
+fn golden_batch_integrity_100k() {
+    const S: u32 = 512;
+    let Some(mut b) = HeadlessBackend::new(S, S) else {
+        eprintln!("SKIP: no adapter");
+        return;
+    };
+    let side = 317u32; // 317² ≈ 100489 ≥ 100k 表量级
+    let marks: Vec<visiaengine_render::PointMark> = (0..side)
+        .flat_map(|gy| (0..side).map(move |gx| (gx, gy)))
+        .map(|(gx, gy)| {
+            visiaengine_render::PointMark::new(
+                [
+                    gx as f32 / side as f32 * 8.84 - 4.42,
+                    gy as f32 / side as f32 * 8.84 - 4.42,
+                    0.0,
+                ],
+                [0.95, 0.95, 0.95],
+                4.0,
+            )
+        })
+        .collect();
+    assert!(marks.len() >= 100_000, "表量级门槛 {}", marks.len());
+    let table = b
+        .create_points(&visiaengine_render::PointTableDesc { data: &marks })
+        .unwrap();
+    let rig = visiaengine_render::CameraRig::look_at([0., 0., 12.], [0., 0., 0.], [0., 1., 0.]);
+    let frame = visiaengine_render::Frame {
+        viewport: visiaengine_render::Viewport::new(S, S, 1.0),
+        camera: visiaengine_render::Camera::ortho(4.5, 4.5, 0.1, 100.0),
+        view_rot: rig.view_rotation(),
+        eye: [0., 0., 12.],
+        proj: rig
+            .ortho_frame(4.5, S as f32, S as f32, 0.1, 100.0)
+            .unwrap(),
+        px_world_scale: 2.0 * 4.5 / S as f32,
+        shadow: None,
+        commands: vec![
+            visiaengine_render::DrawCommand::ClearColor {
+                rgba: [0.05, 0.07, 0.10, 1.0],
+            },
+            visiaengine_render::DrawCommand::DrawPoints {
+                table,
+                origin: [0.; 3],
+                transform: T4,
+            },
+        ],
+    };
+    let img = b.render_to_pixels(&frame).unwrap();
+    let nb = |x0: u32, x1: u32, y0: u32, y1: u32| -> u32 {
+        (y0..y1)
+            .flat_map(|y| (x0..x1).map(move |x| (y, x)))
+            .filter(|&(y, x)| {
+                let o = ((y * S + x) * 4) as usize;
+                let p = &img.rgba[o..o + 3];
+                p[0] > 90 || p[1] > 90 || p[2] > 90
+            })
+            .count() as u32
+    };
+    let total = nb(0, S, 0, S);
+    // 域值=实测 −40% 纪律（PIT-8 先跑后钉）：四带各 >500 且总覆盖 >60_000
+    let bands = [
+        nb(0, S, 0, 16),
+        nb(0, S, S - 16, S),
+        nb(0, 16, 0, S),
+        nb(S - 16, S, 0, S),
+    ];
+    assert!(total > 60_000, "100k 批量总覆盖塌陷: {total}");
+    assert!(
+        bands.iter().all(|x| *x > 500),
+        "边缘带缺失（批量截断形）: {bands:?}"
+    );
+}
+
+/// G2 远原点像素互逆·点版（WGPU-10 形多例同条款）：同 local 表 origin=(1e7,0,0)
+/// ↔ origin=0 逐字节一致——E202 灰屏案的点版复发温床专捕。
+// spec: WGPU-10
+#[test]
+fn golden_far_origin_pixels_roundtrip_points() {
+    const S: u32 = 128;
+    let Some(mut b) = HeadlessBackend::new(S, S) else {
+        eprintln!("SKIP: no adapter");
+        return;
+    };
+    let marks: Vec<visiaengine_render::PointMark> = (0..40u32)
+        .map(|i| {
+            visiaengine_render::PointMark::new(
+                [i as f32 * 0.08 - 1.5, ((i % 7) as f32) * 0.3 - 1.0, 0.0],
+                [1.0, 0.4, 0.2],
+                6.0,
+            )
+        })
+        .collect();
+    let table = b
+        .create_points(&visiaengine_render::PointTableDesc { data: &marks })
+        .unwrap();
+    let shoot = |origin: [f64; 3], b: &mut HeadlessBackend| -> Vec<u8> {
+        let eye = [origin[0], origin[1], origin[2] + 12.0];
+        let rig = visiaengine_render::CameraRig::look_at(eye, origin, [0., 1., 0.]);
+        let frame = visiaengine_render::Frame {
+            viewport: visiaengine_render::Viewport::new(S, S, 1.0),
+            camera: visiaengine_render::Camera::ortho(3.0, 3.0, 0.1, 100.0),
+            view_rot: rig.view_rotation(),
+            eye,
+            proj: rig
+                .ortho_frame(3.0, S as f32, S as f32, 0.1, 100.0)
+                .unwrap(),
+            px_world_scale: 2.0 * 3.0 / S as f32,
+            shadow: None,
+            commands: vec![
+                visiaengine_render::DrawCommand::ClearColor {
+                    rgba: [0.05, 0.07, 0.10, 1.0],
+                },
+                visiaengine_render::DrawCommand::DrawPoints {
+                    table,
+                    origin,
+                    transform: T4,
+                },
+            ],
+        };
+        b.render_to_pixels(&frame).unwrap().rgba
+    };
+    let a = shoot([0.0; 3], &mut b);
+    let f = shoot([1e7, 0.0, 0.0], &mut b);
+    assert_eq!(a, f, "远原点互逆像素分叉（D7 点版面回归雷）");
+}
