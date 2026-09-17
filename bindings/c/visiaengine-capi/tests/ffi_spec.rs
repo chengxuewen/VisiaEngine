@@ -225,11 +225,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0005,
-        "major 1 · minor 5（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
+        0x0001_0006,
+        "major 1 · minor 6（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0005, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0006, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -569,4 +569,40 @@ fn load_pcl_mount_meta_and_gates() {
         VE_ERR_ARG
     );
     assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+// spec: CAPI-20
+#[test]
+fn set_get_clips_full_domain_roundtrip_truncation() {
+    let ve = visiaengine_create_headless(160, 120);
+    // 初始空；NULL+0=清空合法（唯一清除形）
+    assert_eq!(visiaengine_get_clips(ve, std::ptr::null_mut(), 0), 0);
+    assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 0), VE_OK);
+    // 值域拒：NULL∧n>0 / n>4 / 退化（零法向/非有限）
+    assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 1), VE_ERR_ARG);
+    let p = VeClipPlane { nx: 0.0, ny: 1.0, nz: 0.0, d: 0.0 };
+    assert_eq!(visiaengine_set_clips(ve, &p, 5), VE_ERR_ARG, "n>MAX 拒（读界先于解引用）");
+    let bad = VeClipPlane { nx: f64::NAN, ny: 0.0, nz: 0.0, d: 0.0 };
+    assert_eq!(visiaengine_set_clips(ve, &bad, 1), VE_ERR_ARG);
+    assert_eq!(visiaengine_last_error(ve).is_null(), false, "拒收路错误串在位");
+    // 往返逐位（单位入参）+ 归一化形（(0,2,0,d=2)→(0,1,0,d=1)）
+    let planes = [
+        VeClipPlane { nx: 0.0, ny: 1.0, nz: 0.0, d: 0.0 },
+        VeClipPlane { nx: 0.0, ny: 2.0, nz: 0.0, d: 2.0 },
+        VeClipPlane { nx: 0.0, ny: 0.0, nz: -1.0, d: 1.0 },
+    ];
+    assert_eq!(visiaengine_set_clips(ve, planes.as_ptr(), 3), VE_OK);
+    assert_eq!(visiaengine_get_clips(ve, std::ptr::null_mut(), 9), 3, "NULL buf=仅计数");
+    // 截断自证 [Momus-A2]：n=3, cap=2 → 返回 3 写 2，第 3 槽哨兵不动
+    let mut buf = [VeClipPlane { nx: -9.0, ny: -9.0, nz: -9.0, d: -9.0 }; 3];
+    assert_eq!(visiaengine_get_clips(ve, buf.as_mut_ptr(), 2), 3);
+    assert_eq!((buf[0].nx, buf[0].ny, buf[0].nz, buf[0].d), (0.0, 1.0, 0.0, 0.0));
+    assert_eq!((buf[1].nx, buf[1].ny, buf[1].nz, buf[1].d), (0.0, 1.0, 0.0, 1.0), "归一化同步 w");
+    assert_eq!(buf[2].nx, -9.0, "cap 外零写");
+    // cap=0 ∧ buf≠NULL=纯计数路不报错（参数不侍二主）
+    assert_eq!(visiaengine_get_clips(ve, buf.as_mut_ptr(), 0), 3);
+    // 清空复原
+    assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 0), VE_OK);
+    assert_eq!(visiaengine_get_clips(ve, std::ptr::null_mut(), 0), 0);
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

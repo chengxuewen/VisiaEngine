@@ -879,6 +879,41 @@ mod mut_spec_tests {
         )
     }
 
+    // spec: CAPI-20
+    #[test]
+    fn clip_filters_pick_retry_and_set_domain() {
+        let mut e = Engine::new_headless(160, 120).expect("adapter");
+        let (pos, nrm, idx) = quad();
+        // 注：capi pick 域=positions×IDENTITY（origin 住 render 路=既有事实）——
+        // 测试把 z 烘进 positions 令两帧合一，回避该缺口不带病断言
+        let flat: Vec<[f32; 3]> = pos.iter().map(|p| [p[0] * 8.0 - 4.0, p[1] * 8.0 - 4.0, 0.0]).collect();
+        let mut frontz = flat.clone();
+        for q in &mut frontz {
+            q[2] = 2.0;
+        }
+        let front = e
+            .add_mesh(&frontz, Some(&nrm), &idx, [1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0])
+            .expect("front");
+        let back = e
+            .add_mesh(&flat, Some(&nrm), &idx, [0.0, 1.0, 0.0, 1.0], [0.0, 0.0, 0.0])
+            .expect("back");
+        let hitk = |e: &Engine| e.pick(80.0, 60.0).map(enc_entity);
+        assert_eq!(hitk(&e), Some(front), "默认命中前墙");
+        // 世界面 z≤1 保留：前墙(z=2)命中点被裁 → 重试环命中后墙
+        assert_eq!(e.set_clips(&[[0.0, 0.0, -1.0, 1.0]]), Ok(()));
+        assert_eq!(hitk(&e), Some(back), "剖掉前墙必须重试命中后墙（非 miss）");
+        assert_eq!(e.render(), Ok(()), "clip 入帧渲染路通");
+        assert_eq!(e.clips(), vec![[0.0, 0.0, -1.0, 1.0]]);
+        // n=0 清空=唯一清除形 → 前墙复中
+        assert_eq!(e.set_clips(&[]), Ok(()));
+        assert_eq!(hitk(&e), Some(front), "清空复原");
+        assert!(e.clips().is_empty());
+        // 退化拒（与 FFI 同源）：零法向/非有限/>4
+        assert!(e.set_clips(&[[0.0, 0.0, 0.0, 1.0]]).is_err());
+        assert!(e.set_clips(&[[f64::NAN, 0.0, 0.0, 0.0]]).is_err());
+        assert!(e.set_clips(&[[0.0, 1.0, 0.0, 0.0]; 5]).is_err());
+    }
+
     // spec: CAPI-13
     #[test]
     fn hide_filters_pick_keeps_enumeration() {
