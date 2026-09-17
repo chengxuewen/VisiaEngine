@@ -103,7 +103,9 @@ fn double_positions_and_big_endian_reject() {
         body.extend_from_slice(&p.iter().flat_map(|c| c.to_le_bytes()).collect::<Vec<_>>());
     }
     let cloud = parse_pcl(&bin_le(2, props, &body), false).expect("double 承载面");
-    assert!((cloud.positions[1][0] - 2.0).abs() < 1e-6);
+    // D7：origin=bbox 中心 (1,0,0) → local ±1.0（非原值域 0/2——IO-06 义务）
+    assert!((cloud.origin[0] - 1.0).abs() < 1e-12);
+    assert!((cloud.positions[1][0] - 1.0).abs() < 1e-6);
     let be = b"ply\nformat binary_big_endian 1.0\nelement vertex 1\nproperty float x\nend_header\n\x00\x00\x00\x00";
     assert!(
         matches!(parse_pcl(be, true), Err(PclError::UnsupportedFormat(_))),
@@ -115,7 +117,8 @@ fn double_positions_and_big_endian_reject() {
 #[test]
 fn four_domains_classify_lenient_and_fastfail() {
     // NaN/inf 点 + 溢出点 + face 元素 + 正常点混排
-    let s = "ply\nformat ascii 1.0\nelement vertex 4\nproperty float x\nproperty float y\nproperty float z\nend_header\nelement face 1\nproperty list int32 int vertex_indices\n0 0 0\n1 0 0\nnan 1 0\n1e39 0 0\n3 0 1 2\n";
+    let s = "ply\nformat ascii 1.0\nelement vertex 4\nproperty float x\nproperty float y\nproperty float z\n\
+     element face 1\nproperty list int32 int vertex_indices\nend_header\n0 0 0\n1 0 0\nnan 1 0\n1e39 0 0\n3 0 1 2\n";
     let fast = parse_pcl(s.as_bytes(), false);
     assert!(
         matches!(
@@ -189,11 +192,11 @@ fn capacity_gate_on_declared_before_alloc() {
 #[test]
 fn far_origin_shift_is_f64_first_then_f32() {
     // 全点 +1e6：origin 吸收大数、local 域小值、序保持（D7 装载层义务）
-    let s = ASCII
-        .replace("0 0 0 ", "1000000 1000000 0 ")
-        .replace("1 0 0 ", "1000001 1000000 0 ")
-        .replace("0 1 0 ", "1000000 1000001 0 ")
-        .replace("1 1 0 ", "1000001 1000001 0 ");
+    let s = "ply\nformat ascii 1.0\nelement vertex 4\n\
+property float x\nproperty float y\nproperty float z\n\
+property uchar red\nproperty uchar green\nproperty uchar blue\n\
+end_header\n1000000 1000000 0 255 0 0\n1000001 1000000 0 0 255 0\n\
+1000000 1000001 0 0 0 255\n1000001 1000001 0 255 255 255\n";
     let c = parse_pcl(s.as_bytes(), false).unwrap();
     assert!((c.origin[0] - 1_000_000.5).abs() < 1e-6);
     assert!(

@@ -184,6 +184,18 @@ impl VisiaEngine {
         }
     }
 
+    /// CAPI-19 镜像：bytes 形（path 穿不过 wasm——load_geojson_bytes 同款宿主侧读）。
+    /// report 暂不过界（v0 宿主以 kept==0 哨兵 MISS 判败因；d.ts 注记随镜像测）。
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    #[wasm_bindgen(js_name = loadPclBytes)]
+    pub fn load_pcl_bytes(&mut self, bytes: &[u8], lenient: bool) -> u64 {
+        match self.inner.load_pcl_bytes(bytes, lenient) {
+            Ok((h, _)) => h,
+            Err(_) => u64::MAX,
+        }
+    }
+
     #[wasm_bindgen(js_name = removeEntity)]
     pub fn remove_entity(&mut self, entity: u64) -> i32 {
         match self.inner.remove_entity(entity) {

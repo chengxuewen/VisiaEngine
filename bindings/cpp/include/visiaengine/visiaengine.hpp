@@ -61,6 +61,11 @@ public:
         const VePointsDesc d{sizeof(VePointsDesc), marks, count};
         return visiaengine_add_points(h_, &d, out_entity);
     }
+    // CAPI-19 薄转发（report 出参引用；struct_size 由壳代填）
+    int32_t load_pcl(const char *path, VePclPolicy policy, std::uint64_t *out_entity, VePclReport *report) {
+        report->struct_size = sizeof(VePclReport);
+        return visiaengine_load_pcl(h_, path, policy, out_entity, report);
+    }
     // CAPI-17 薄转发（回调生命周期由宿主担保：引擎不拥有 cb；三壳语义住头注释）
     int32_t set_event_callback(VeEventCb cb, void *user) {
         return visiaengine_set_event_callback(h_, cb, user);

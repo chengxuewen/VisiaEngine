@@ -61,6 +61,9 @@ pub struct Engine {
     /// CAPI-13: 隐藏实体位形表（render/pick 过滤域；枚举域不变，删除随 CAPI-16 清理）
     hidden: Vec<u64>,
     frame_cache: Option<Vec<u8>>,
+    /// CAPI-19：点云云级 meta（位形→单行 AttrSet；attr_* 缀查域，geo 图先查）。
+    pcl_meta: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
+
     /// CAPI-17 事件锚（fn/user 裸指针 usize 形；触发域=owner 线程，
     /// 与 CAPI-03 亲和门同谱，故 Send 包装安全）。
     evt: Option<EvtSink>,
@@ -98,6 +101,7 @@ impl Engine {
             hidden: Vec::new(),
             frame_cache: None,
             evt: None,
+            pcl_meta: std::collections::HashMap::new(),
         })
     }
 
@@ -601,14 +605,54 @@ impl Engine {
         }
     }
 
-    /// CAPI-19: 点云文件装载。RED 桩=恒 Err（成功路测试必红）。
+    /// CAPI-19: 点云文件装载（path 便捷口=bytes 形之文件皮；wasm 走 bytes 直入）。
     pub fn load_pcl(
         &mut self,
         path: &str,
         lenient: bool,
     ) -> Result<(u64, visiaengine_io_points::PclReport), String> {
-        let _ = (path, lenient);
-        Err("RED 桩：load_pcl 未实装".to_string())
+        let bytes = std::fs::read(path).map_err(|e| format!("read {path}: {e}"))?;
+        self.load_pcl_bytes(&bytes, lenient)
+    }
+
+    /// mount_pcl：单实体单 DrawPoints（origin=f64 bbox 中心，D7 零新数学）；
+    /// 云级 meta 注册 pcl_meta（attr 缀查域）；失败 spawn 回滚同 add_mesh 谱。
+    pub fn load_pcl_bytes(
+        &mut self,
+        bytes: &[u8],
+        lenient: bool,
+    ) -> Result<(u64, visiaengine_io_points::PclReport), String> {
+        let cloud = visiaengine_io_points::parse_pcl(bytes, lenient).map_err(|e| e.to_string())?;
+        let id = self.scene.spawn();
+        let marks: Vec<PointMark> = cloud
+            .positions
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let c = cloud.colors.get(i).copied().unwrap_or([0.7, 0.75, 0.8]);
+                PointMark::new(*p, c, cloud.radius_px)
+            })
+            .collect();
+        let table = match self.backend.create_points(&PointTableDesc { data: &marks }) {
+            Ok(t) => t,
+            Err(e) => {
+                let _ = self.scene.despawn(id);
+                return Err(format!("create_points: {e:?}"));
+            }
+        };
+        self.extra_cmds.push(DrawCommand::DrawPoints {
+            table,
+            origin: cloud.origin,
+            transform: IDENTITY,
+        });
+        let bits = enc_entity(id);
+        self.pcl_meta.insert(bits, cloud.meta);
+        self.emit(
+            crate::ffi::VE_EVT_LOAD_PROGRESS,
+            cloud.report.kept,
+            cloud.report.kept,
+        );
+        Ok((bits, cloud.report))
     }
 
     /// CAPI-18: 点云直通（单实体单 DrawPoints；origin=[0,0,0] 宿主系局部——
@@ -656,20 +700,28 @@ impl Engine {
     /// 缺失四径（无行/无列/异型/空格）一律 None 非零值。
     #[must_use]
     pub fn attr_f64(&self, entity: u64, name: &str) -> Option<f64> {
-        let (d, r) = *self.attr_of.get(&entity)?;
-        self.geo_docs.get(d)?.attr_f64(r, name)
+        if let Some(&(d, r)) = self.attr_of.get(&entity) {
+            return self.geo_docs.get(d)?.attr_f64(r, name);
+        }
+        self.pcl_meta.get(&entity).and_then(|m| m.f64(0, name))
     }
 
     #[must_use]
     pub fn attr_str(&self, entity: u64, name: &str) -> Option<&str> {
-        let (d, r) = *self.attr_of.get(&entity)?;
-        self.geo_docs.get(d)?.attr_str(r, name)
+        if let Some(&(d, r)) = self.attr_of.get(&entity) {
+            return self.geo_docs.get(d)?.attr_str(r, name);
+        }
+        self.pcl_meta
+            .get(&entity)
+            .and_then(|m| m.str_value(0, name))
     }
 
     #[must_use]
     pub fn attr_bool(&self, entity: u64, name: &str) -> Option<bool> {
-        let (d, r) = *self.attr_of.get(&entity)?;
-        self.geo_docs.get(d)?.attr_bool(r, name)
+        if let Some(&(d, r)) = self.attr_of.get(&entity) {
+            return self.geo_docs.get(d)?.attr_bool(r, name);
+        }
+        self.pcl_meta.get(&entity).and_then(|m| m.bool(0, name))
     }
 }
 
@@ -699,6 +751,7 @@ impl Engine {
             hidden: Vec::new(),
             frame_cache: None,
             evt: None,
+            pcl_meta: std::collections::HashMap::new(),
         })
     }
 }

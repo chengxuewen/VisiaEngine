@@ -225,11 +225,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0004,
-        "major 1 · minor 4（CAPI-18 点云直通=MAJOR 内追加；demo assert >>16==1 的源头）"
+        0x0001_0005,
+        "major 1 · minor 5（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0004, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0005, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -528,8 +528,8 @@ fn load_pcl_mount_meta_and_gates() {
     let mut pc = 0f64;
     assert_eq!(
         visiaengine_attr_f64(ve, ent, c"point_count".as_ptr(), &mut pc),
-        0,
-        "point_count 可查"
+        1,
+        "point_count 可查（CAPI-10 值域：1=found 0=none——attr 面非 0=OK 谱）"
     );
     assert_eq!(pc, 4.0);
     let mut buf = [0i8; 32];
@@ -541,8 +541,8 @@ fn load_pcl_mount_meta_and_gates() {
             buf.as_mut_ptr(),
             buf.len() as u64
         ),
-        0,
-        "format 可查"
+        1,
+        "format 可查（found=1 同谱）"
     );
     assert_eq!(visiaengine_render(ve), VE_OK, "点云重放路真");
     // 参数域三连

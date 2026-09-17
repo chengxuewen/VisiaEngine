@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 4 // major 1 · minor 4（CAPI-18 点云直通=MAJOR 内追加；>>16==1 校验面不变）
+    (1 << 16) | 5 // major 1 · minor 5（CAPI-19 文件装载=MAJOR 内追加；>>16==1 校验面不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -915,11 +915,54 @@ pub extern "C" fn visiaengine_load_pcl(
     out_entity: *mut u64,
     out_report: *mut VePclReport,
 ) -> i32 {
-    let _ = (path, policy, out_entity, out_report);
     capi_guard!(
         {
             match gate(ve) {
-                Gate::Live(_) => VE_ERR_IO,
+                Gate::Live(i) => {
+                    if path.is_null()
+                        || out_entity.is_null()
+                        || out_report.is_null()
+                        || !matches!(policy, VE_PCL_FASTFAIL | VE_PCL_LENIENT)
+                    {
+                        set_err("load_pcl: null out/policy 越界（零部分写）".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: FFI 边界——struct_size 前瞻门先行（旧宿主新引擎形不变）
+                    let want = unsafe { &*out_report };
+                    if want.struct_size < std::mem::size_of::<VePclReport>() {
+                        set_err("load_pcl: report struct_size 过旧".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    let cstr = unsafe { std::ffi::CStr::from_ptr(path) };
+                    let p = cstr.to_string_lossy().into_owned();
+                    let r = with_engine(i, |e| e.load_pcl(&p, policy == VE_PCL_LENIENT));
+                    match r {
+                        Ok((bits, rep)) => {
+                            // SAFETY: 非空已验；成功唯一写点（失败路径上面零触碰）
+                            unsafe {
+                                *out_entity = bits;
+                                *out_report = VePclReport {
+                                    struct_size: std::mem::size_of::<VePclReport>(),
+                                    dropped_non_finite: rep.dropped_non_finite,
+                                    dropped_out_of_domain: rep.dropped_out_of_domain,
+                                    dropped_unsupported: rep.dropped_unsupported,
+                                    truncated_points: rep.truncated_points,
+                                    kept: rep.kept,
+                                };
+                            }
+                            0
+                        }
+                        Err(msg) => {
+                            set_err(format!("load_pcl '{p}': {msg}"));
+                            // CAPI-17：装载失败出口事件（进度面在 mount 尾部 terminal 发）
+                            let _ = with_engine(i, |e| {
+                                e.emit(VE_EVT_LOAD_ERROR, VE_ERR_IO as i64 as u64, 0);
+                                Ok::<(), String>(())
+                            });
+                            VE_ERR_IO
+                        }
+                    }
+                }
                 Gate::Arg => VE_ERR_ARG,
                 Gate::State => VE_ERR_STATE,
             }

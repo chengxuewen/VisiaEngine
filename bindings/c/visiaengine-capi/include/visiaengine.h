@@ -95,6 +95,20 @@ typedef struct {
     uint64_t           count;
 } VePointsDesc;
 int32_t  visiaengine_add_points(uint64_t ve, const VePointsDesc *desc, uint64_t *out_entity);
+/* 点云文件装载（CAPI-19）：v0=PLY(ascii/binary_le)；四类脏数据分型见 IO-03（列/元素级
+   unsupported 不触发 FastFail——点级丢弃/截断才整拒）；云=单实体，meta（point_count/
+   format/bbox 8 列）走 attr_* 缀查；容量门 4M 声明先拒（IO-05）。 */
+typedef enum { VE_PCL_FASTFAIL = 0, VE_PCL_LENIENT = 1 } VePclPolicy;
+typedef struct {
+    size_t   struct_size;
+    uint32_t dropped_non_finite;
+    uint32_t dropped_out_of_domain;
+    uint32_t dropped_unsupported; /* 列/元素级计数，不触发 FastFail（IO-03 落点澄清） */
+    uint32_t truncated_points;
+    uint64_t kept;
+} VePclReport;
+int32_t  visiaengine_load_pcl(uint64_t ve, const char *path, VePclPolicy policy,
+                              uint64_t *out_entity, VePclReport *out_report);
 
 #ifdef __cplusplus
 }  /* extern "C" */
