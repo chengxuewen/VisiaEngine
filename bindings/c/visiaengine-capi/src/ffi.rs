@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 3 // major 1 · minor 3（CAPI-17 事件口=MAJOR 内追加；>>16==1 校验面不变）
+    (1 << 16) | 4 // major 1 · minor 4（CAPI-18 点云直通=MAJOR 内追加；>>16==1 校验面不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -890,18 +890,45 @@ pub struct VePointsDesc {
     pub count: u64,
 }
 
-/// CAPI-18：点云直通装载。RED 桩=句柄门真、行为恒 -5（零提交形——成功路测试必红）。
+/// CAPI-18：点云直通装载（raw 解引用在栅栏内=FFI 边界既定例外，allow 系记录裁决）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_add_points(
     ve: u64,
     desc: *const VePointsDesc,
     out_entity: *mut u64,
 ) -> i32 {
-    let _ = (desc, out_entity);
     capi_guard!(
         {
             match gate(ve) {
-                Gate::Live(_) => VE_ERR_STATE,
+                Gate::Live(i) => {
+                    if desc.is_null() || out_entity.is_null() {
+                        set_err("add_points: null desc/out".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: FFI 边界——非空已验，结构体按值读（返回后宿主即可释放）
+                    let d = unsafe { &*desc };
+                    if d.struct_size < std::mem::size_of::<VePointsDesc>()
+                        || d.count == 0
+                        || d.marks.is_null()
+                    {
+                        set_err("add_points: degenerate desc (零提交)".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: marks[0..count] 由宿主保证有效（同 VeMeshDesc 契约）
+                    let raw = unsafe { std::slice::from_raw_parts(d.marks, d.count as usize) };
+                    match with_engine(i, |e| e.add_points(raw)) {
+                        Ok(bits) => {
+                            // SAFETY: out_entity 非空已验；成功唯一写点
+                            unsafe { *out_entity = bits };
+                            0
+                        }
+                        Err(msg) => {
+                            set_err(format!("add_points: {msg}"));
+                            VE_ERR_IO
+                        }
+                    }
+                }
                 Gate::Arg => VE_ERR_ARG,
                 Gate::State => VE_ERR_STATE,
             }

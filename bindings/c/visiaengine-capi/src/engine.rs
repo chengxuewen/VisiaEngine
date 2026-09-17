@@ -601,6 +601,29 @@ impl Engine {
         }
     }
 
+    /// CAPI-18: 点云直通（单实体单 DrawPoints；origin=[0,0,0] 宿主系局部——
+    /// 非有限照收=宿主责任域，load 侧才挂 RepairPolicy；失败 despawn 回滚同 CAPI-15）。
+    pub fn add_points(&mut self, raw: &[crate::ffi::VePointMark]) -> Result<u64, String> {
+        let marks: Vec<PointMark> = raw
+            .iter()
+            .map(|m| PointMark::new(m.pos, m.color, m.radius_px))
+            .collect();
+        let id = self.scene.spawn();
+        let table = match self.backend.create_points(&PointTableDesc { data: &marks }) {
+            Ok(t) => t,
+            Err(e) => {
+                let _ = self.scene.despawn(id); // 代际 +1：失败位形不复用（add_mesh 同谱）
+                return Err(format!("create_points: {e:?}"));
+            }
+        };
+        self.extra_cmds.push(DrawCommand::DrawPoints {
+            table,
+            origin: [0.0; 3],
+            transform: IDENTITY,
+        });
+        Ok(enc_entity(id))
+    }
+
     /// CAPI-16: 删除实体（items/attr_of/hidden 三面清理；旧句柄再入=双销毁同谱）。
     pub fn remove_entity(&mut self, entity: u64) -> Result<(), String> {
         let Some(pos) = self

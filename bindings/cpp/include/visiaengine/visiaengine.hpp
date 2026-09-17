@@ -56,6 +56,11 @@ public:
         return visiaengine_add_mesh(h_, &desc, out_entity);
     }
     int32_t remove_entity(std::uint64_t entity) { return visiaengine_remove_entity(h_, entity); }
+    // CAPI-18 薄转发（out 位形合法可 0 禁当哨兵——CAPI-01；退化 desc 在 C 门已拒）
+    int32_t add_points(const VePointMark *marks, std::uint64_t count, std::uint64_t *out_entity) {
+        const VePointsDesc d{sizeof(VePointsDesc), marks, count};
+        return visiaengine_add_points(h_, &d, out_entity);
+    }
     // CAPI-17 薄转发（回调生命周期由宿主担保：引擎不拥有 cb；三壳语义住头注释）
     int32_t set_event_callback(VeEventCb cb, void *user) {
         return visiaengine_set_event_callback(h_, cb, user);

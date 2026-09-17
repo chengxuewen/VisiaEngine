@@ -17,7 +17,7 @@ const { VisiaEngine } = mod;
 const m = { ...mod, abiVersion: () => VisiaEngine.abiVersion() }; // static 挂类 [bindgen CJS 形状]
 
 // 2) 值对表（12 项，C 侧镜像 ffi_spec 常量断言同谱）
-assert.strictEqual(m.abiVersion(), 0x00010003);
+assert.strictEqual(m.abiVersion(), 0x00010004);
 assert.strictEqual(m.kind_ptr_move(), 1);
 assert.strictEqual(m.kind_ptr_down(), 2);
 assert.strictEqual(m.kind_ptr_up(), 3);
@@ -34,9 +34,10 @@ assert.strictEqual(m.ve_err_size(), -5);
 const dts = readFileSync(pkg + 'visiaengine_wasm.d.ts', 'utf8');
 assert.match(dts, /pick\([^)]*\):\s*bigint/, 'pick 返回须 bigint');
 assert.match(dts, /entityAt\([^)]*\):\s*bigint/, 'entity_at 返回须 bigint');
+assert.match(dts, /addPoints\([^)]*\):\s*bigint/, 'addPoints 位形返回须 bigint');
 assert.match(dts, /static\s+fromCanvas[^;]*Promise/, 'fromCanvas 必须 async 工厂(Promise) [FFI-R:v13-FEAS-2]');
 // B1 数据带镜像方法在场（CAPI-13..16 双面单源）
-for (const fn of ['setEntityVisible', 'entityVisible', 'addMesh', 'removeEntity', 'setEventCallback']) {
+for (const fn of ['setEntityVisible', 'entityVisible', 'addMesh', 'removeEntity', 'setEventCallback', 'addPoints']) {
   assert.match(dts, new RegExp(`\\b${fn}\\(`), `d.ts 缺 B1 镜像方法 ${fn}`);
 }
 

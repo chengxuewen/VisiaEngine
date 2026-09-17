@@ -82,6 +82,19 @@ int32_t  visiaengine_remove_entity(uint64_t ve, uint64_t entity);
 typedef enum { VE_EVT_LOAD_PROGRESS = 1, VE_EVT_LOAD_ERROR = 2 } VeEvent;
 typedef void (*VeEventCb)(void *user, uint32_t event, uint64_t a, uint64_t b);
 int32_t  visiaengine_set_event_callback(uint64_t ve, VeEventCb cb, void *user);
+/* 点云直通（CAPI-18）：单实体单 DrawPoints；非有限照收=宿主责任（load 侧才四分类
+   丢弃）；管理域=items 外（geo 纯 marker 同谱 v0 明账）。色=sRGB 宿主面（CORE-16）。 */
+typedef struct {
+    float pos[3];      /* 宿主系局部坐标（origin=0） */
+    float radius_px;   /* 屏幕像素（REND-30 语义） */
+    float color[3];    /* sRGB/CSS 惯例 */
+} VePointMark;
+typedef struct {
+    size_t             struct_size; /* 前瞻门=sizeof(VePointsDesc) */
+    const VePointMark *marks;
+    uint64_t           count;
+} VePointsDesc;
+int32_t  visiaengine_add_points(uint64_t ve, const VePointsDesc *desc, uint64_t *out_entity);
 
 #ifdef __cplusplus
 }  /* extern "C" */

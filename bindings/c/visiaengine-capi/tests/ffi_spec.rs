@@ -224,11 +224,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0003,
-        "major 1 · minor 3（CAPI-17 事件口=MAJOR 内追加；demo assert >>16==1 的源头）"
+        0x0001_0004,
+        "major 1 · minor 4（CAPI-18 点云直通=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0003, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0004, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -244,7 +244,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        22,
+        23,
         "extern 入口计数（cfg-gated 行首式）"
     );
     assert_eq!(
@@ -445,7 +445,10 @@ fn add_points_domain_table() {
         "桩恒-5=RED 靶"
     );
     assert_ne!(out, u64::MAX, "成功必写 out");
-    assert_eq!(visiaengine_entity_count(ve), 1);
+    // 渲染路真（extra_cmds 重放含点云）；位形不入 items 枚举域（v0 明账，geo marker 同谱）
+    assert_eq!(visiaengine_render(ve), VE_OK);
+    assert_eq!(visiaengine_entity_count(ve), 0);
+    let out1 = out;
     // ② 退化零提交：count=0 / NULL marks → VE_ERR_ARG 且 out 不碰（哨兵复位戏法）
     let zero = VePointsDesc {
         struct_size: std::mem::size_of::<VePointsDesc>(),
@@ -486,7 +489,8 @@ fn add_points_domain_table() {
         VE_OK,
         "非有限照收（load 侧才分类型丢弃）"
     );
-    assert_eq!(visiaengine_entity_count(ve), 2);
+    assert_ne!(out, out1, "二云位形互异");
+    assert_eq!(visiaengine_render(ve), VE_OK, "双云重放");
     // ⑤ 句柄门同谱
     assert_eq!(visiaengine_add_points(0, &desc, &mut out), VE_ERR_ARG);
     assert_eq!(visiaengine_destroy(ve), 0);

@@ -144,6 +144,29 @@ impl VisiaEngine {
         }
     }
 
+    /// CAPI-18 镜像：扁平点云阵（8 float/点=pos×3+radius_px+color×3，sRGB 宿主面）；
+    /// 退化/失败=MISS(MAX) 同 addMesh 谱（位形 0 合法禁占用——CAPI-01 web 投影）。
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    #[wasm_bindgen(js_name = addPoints)]
+    pub fn add_points(&mut self, marks: &[f32]) -> u64 {
+        if marks.len() % 8 != 0 || marks.is_empty() {
+            return u64::MAX;
+        }
+        let raw: Vec<visiaengine::VePointMark> = marks
+            .chunks_exact(8)
+            .map(|m| visiaengine::VePointMark {
+                pos: [m[0], m[1], m[2]],
+                radius_px: m[3],
+                color: [m[4], m[5], m[6]],
+            })
+            .collect();
+        match self.inner.add_points(&raw) {
+            Ok(h) => h,
+            Err(_) => u64::MAX,
+        }
+    }
+
     /// CAPI-17 镜像：JS 回调 `(event, a, b) => void`；null=摘除。u64 计数面在
     /// progress 域 <2^53（要素数），f64 直传无损——bigint 纪律仅指句柄位形面。
     #[wasm_bindgen(js_name = setEventCallback)]
