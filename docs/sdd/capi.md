@@ -43,3 +43,6 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-16: 实体删除（代际再入，双销毁同谱）
 `remove_entity(ve, entity_bits) -> int32`：成功=0——items 摘除、属性反标表清理、显隐表清理、core `despawn` 槽位代际 +1；未知位形/旧句柄再入=VE_ERR_ARG。ABA 免疫显式化：删除→再增加同槽→**旧句柄仍死**（新实体新位形不撞）。`entity_at` 下标域压缩重排：删除后宿主必须重枚举（本条显式警示，索引不承诺稳定仅对显隐承诺，CAPI-13 分野）。
+
+## CAPI-17: 事件推送口（set_event_callback）
+`visiaengine_set_event_callback(ve, cb, user)`：cb=`void(*)(void* user, uint32_t event, uint64_t a, uint64_t b)`；cb=NULL 摘除（重复注册=替换不叠加）。事件域：`VE_EVT_LOAD_PROGRESS=1`（load_gltf/load_geojson 循环体内逐要素触发，a=done b=total，单调且终态 done==total==实体数）；`VE_EVT_LOAD_ERROR=2`（装载失败出口与返回值同刻触发，a=错误码 b=0）。触发线程=调用线程（同步语义）；异步资源管线落地后触发线程改 loader 线程、事件 id/序不变（前向兼容声明）。回调内再入 visiaengine_* = 未定义行为（禁）；panic/句柄门同 CAPI-03 族。

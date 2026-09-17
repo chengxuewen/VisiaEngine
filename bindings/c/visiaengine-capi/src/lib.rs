@@ -19,7 +19,8 @@ pub use ffi::{
     visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
     visiaengine_entity_visible, visiaengine_last_error, visiaengine_load_geojson,
     visiaengine_load_gltf, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
-    visiaengine_remove_entity, visiaengine_render, visiaengine_viewport,
+    visiaengine_remove_entity, visiaengine_render, visiaengine_set_event_callback,
+    visiaengine_viewport, VE_EVT_LOAD_ERROR, VE_EVT_LOAD_PROGRESS, VeEventCb,
 };
 
 #[doc(hidden)]

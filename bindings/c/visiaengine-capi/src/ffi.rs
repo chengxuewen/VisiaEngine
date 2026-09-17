@@ -152,7 +152,12 @@ macro_rules! capi_guard {
     }};
 }
 
-// ===== 17 入口 =====
+/// CAPI-17：事件推送口类型与 id 域（条款体=docs/sdd/capi.md CAPI-17）。
+pub type VeEventCb = Option<unsafe extern "C" fn(*mut std::ffi::c_void, u32, u64, u64)>;
+pub const VE_EVT_LOAD_PROGRESS: u32 = 1;
+pub const VE_EVT_LOAD_ERROR: u32 = 2;
+
+// ===== C ABI 入口面 =====
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
@@ -826,6 +831,32 @@ pub extern "C" fn visiaengine_remove_entity(ve: u64, entity: u64) -> i32 {
                 },
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-17：注册/替换/摘除（NULL）事件回调。RED 桩=gate 通过但永不触发。
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_set_event_callback(
+    ve: u64,
+    cb: VeEventCb,
+    user: *mut std::ffi::c_void,
+) -> i32 {
+    let _ = (cb, user);
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => match with_engine(i, |_| Ok::<(), String>(())) {
+                    Ok(()) => 0,
+                    Err(msg) => {
+                        set_err(msg);
+                        VE_ERR_STATE
+                    }
+                },
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
             }
         },
         VE_ERR_PANIC
