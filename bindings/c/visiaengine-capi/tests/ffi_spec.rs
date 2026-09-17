@@ -608,11 +608,7 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
         d: 0.0,
     };
     assert_eq!(visiaengine_set_clips(ve, &bad, 1), VE_ERR_ARG);
-    assert_eq!(
-        visiaengine_last_error(ve).is_null(),
-        false,
-        "拒收路错误串在位"
-    );
+    assert!(!visiaengine_last_error(ve).is_null(), "拒收路错误串在位");
     // 往返逐位（单位入参）+ 归一化形（(0,2,0,d=2)→(0,1,0,d=1)）
     let planes = [
         VeClipPlane {

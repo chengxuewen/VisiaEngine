@@ -17,7 +17,7 @@ const { VisiaEngine } = mod;
 const m = { ...mod, abiVersion: () => VisiaEngine.abiVersion() }; // static 挂类 [bindgen CJS 形状]
 
 // 2) 值对表（12 项，C 侧镜像 ffi_spec 常量断言同谱）
-assert.strictEqual(m.abiVersion(), 0x00010005);
+assert.strictEqual(m.abiVersion(), 0x00010006);
 assert.strictEqual(m.kind_ptr_move(), 1);
 assert.strictEqual(m.kind_ptr_down(), 2);
 assert.strictEqual(m.kind_ptr_up(), 3);

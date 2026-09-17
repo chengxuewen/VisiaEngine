@@ -180,3 +180,10 @@
 - **根因**: 双重静默——①spec 里 `-p visiaengine-render-wgpu --example E601…` 在例子迁 `examples/rs`（包名 examples）后 cargo 直接报错；②脚本对"无 RESULT 行"只 `continue` 不置错，管道+`|| true` 吞 rc（edit-safety #19 同族）→ 死链被恒真绿掩盖。
 - **解法**: 包名改 `-p examples`；缺席计数 `MISSING>0 → exit 1`（工具链故障与性能劣化分离：后者红字 exit 0 维持观测档）；新例 bench_pcl 挂同链。
 - **验证**: `bash scripts/bench.sh` 三 json 时间戳当日 + 故意 `sed` 错包名一次必 exit 1（正/负例自证，PIT-21 纪律）。
+
+## PIT-26: from_raw_parts(_mut)(NULL, 0) 即 UB——debug 前判实锤 (2026-09-17)
+- **症状**: capi get_clips 的 `buf=NULL` 纯计数路在 debug 测试中 panic「unsafe precondition(s) violated: slice::from_raw_parts_mut requires … non-null」（release 静默）。
+- **根因**: Rust 新版 core 对 from_raw_parts 加了 debug 前判（null/对齐/isize::MAX）；`m=0` 也算构造空切片的非法指针来源。既有 add_points/add_mesh 未踩中是因为 NULL 检查在构造切片**之前**就早退了。
+- **解法**: 构造前 `if m > 0 {}` 守卫（NULL∧任意长、任意∧0 长全躲开）；或先 is_null 早退再构造。
+- **验证**: ffi_spec `set_get_clips_full_domain_roundtrip_truncation` 的 NULL-buf 段 + `cargo test -p visiaengine-capi`（debug 档即炸回归）。
+- **禁止**: 任何 FFI 口对可能为 NULL 的 buf 无条件 from_raw_parts（哪怕长度为 0）。

@@ -552,6 +552,7 @@ fn clip_and_compose_and_far_origin_bitwise_predicate() {
     let (n, d) =
         visiaengine_render::clip_to_local([0.0, 1.0, 0.0, 0.0], [1.0e7, 2.0e6, 0.0], &IDENTITY4F);
     assert_eq!(n, [0.0f32, 1.0, 0.0]);
+    assert_eq!(d, 2.0e6, "local d=面过锚点的 y 偏移（n·(o+t) 恒等式）");
     // 判据点 P_world=origin+local：world dot == local dot（±f32 舍入同一路径）
     let big = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, -2.0e6]])
         .expect("大坐标面 y>2e6 保留");

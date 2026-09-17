@@ -245,3 +245,26 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 基线：**181 passed · spec-trace 125↔125 · GATE-ABI 24/24 · GATE-DOCS E 22 件三方 ·
   ctest 23 条 · CMAKE-SMOKE ✓ · WEB ✓ · audit try1 ✓（PIT-7 第 7 见）· 8 crate**
 - 余账：LAS 二带（判据=客户演示单）· 拾取族触发制 · cap 改数窗一次 · push 候令
+
+## B2 剖面裁切带基线（2026-09-17，计划 capi-cross-section-band v1.1·Momus OKAY 0B/2A 修入）
+- 口面：CAPI-20 set_clips/get_clips（26 入口 minor=6；n=0 唯一清空/界检先于解引用/
+  归一化引擎侧读回单位形/cap 截断返真数 [Momus-A2 用例入 RED 谱]）；三面镜像全带
+  （头 32B Pod 系数形/hpp 两薄转发/wasm setClips·getClips+d.ts+mirror abi 钉 6）
+- 管线：View 块尾缀扩段 192→256B（**零新 binding/绑组/缓冲**=origin+transform 已在
+  view_block 签名的设计红利）；clipped() fs discard 全五管线+caster 同裁（fs_shadow
+  空函数补体，bgl binding0 +FRAGMENT）；扩片族逐像素=「裁世界不裁类型」；None/EMPTY
+  全零恒绑早退=R4 护栏形，golden 全套零重录
+- IR：REND-32 世界 f64 系数+ClipSetup::new 退化拒；clip_to_local **model-space 恒等式**
+  （n_m=Mᵀn/d_m=d+n·(o+t_M)，列主序 Mᵀ 与 M 平移列两处自查根修如实记）
+- 拾取：engine 重试环（命中 keeps 负侧=排除续找，剖开可见者必可拾）；capi pick 域
+  =positions×IDENTITY 既有事实以「两帧合一」注记入例体与测试
+- 例/门：E813 无头三段活体（基线红 10816/半刀红灭绿存+重试环/角域三面 1764∈[800,4000]
+  ——二面形 g2=0 探针战果=前墙同屏遮蔽，PIT-8 三见）；tests/clip.rs 五门（canary 逐
+  字节/None≡EMPTY/半切对半/全切清零/角域¼+far_origin 1e7 逐位等+线点分色族+caster 6.5×）
+- 新坑：PIT-26（from_raw_parts NULL+0 即 UB，debug 前判实锤——NULL 计数路必 m>0 守卫）；
+  PIT-7 第 8 见（audit TLS 抖一次重试绿）
+- 基线：**191 passed · spec-trace 130↔130 · GATE-ABI 26/26 · GATE-DOCS ✓ E 23 件三方
+  · ctest 24 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 + web_capi_pair_mirror ✓ · ci 十段 ✓ ·
+  8 crate 不变**
+- 非目标挂账：盖帽 stencil（BIM 内腔演示单）· 六面盒 · OR/union · 硬件 CLIP_DISTANCES
+  双路（wgpu30 存在但 DX12 未在列）· 交互剖切滑杆（E901 挂键候需）· LAS（票据制候令）
