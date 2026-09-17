@@ -46,3 +46,6 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-17: 事件推送口（set_event_callback）
 `visiaengine_set_event_callback(ve, cb, user)`：cb=`void(*)(void* user, uint32_t event, uint64_t a, uint64_t b)`；cb=NULL 摘除（重复注册=替换不叠加）。事件域：`VE_EVT_LOAD_PROGRESS=1`（load_gltf/load_geojson 循环体内逐要素触发，a=done b=total，单调且终态 done==total==实体数）；`VE_EVT_LOAD_ERROR=2`（装载失败出口与返回值同刻触发，a=错误码 b=0）。触发线程=调用线程（同步语义）；异步资源管线落地后触发线程改 loader 线程、事件 id/序不变（前向兼容声明）。回调内再入 visiaengine_* = 未定义行为（禁）；panic/句柄门同 CAPI-03 族。
+
+## CAPI-18: 点云直通装载（add_points）
+`visiaengine_add_points(ve, const VePointsDesc*, uint64_t* out_entity) -> int32`：raw 数组直通（复用引擎内部 create_points→DrawPoints 路，渲染 IR 零改动）。值域分工表（C15，对 CAPI-01/15 既有行零撞位）：返回码 0=成功唯一形、非 0=既有 VE_ERR_* 谱；out_entity **仅成功时有效**、实体位形 0 合法禁当失败哨兵（CAPI-01 分工）；struct_size 前瞻门照 CAPI-15（小于所需=拒）；count=0/NULL marks/退化=**零提交**+VE_ERR_ARG（CAPI-15 同谱）。域语义：VePointMark{pos f32×3(宿主系局部坐标，origin=[0,0,0])，radius_px 屏幕像素(REND-30)，color sRGB×3(CORE-16 宿主面)}；**非有限坐标照收**——本口=宿主责任，脏数据四分类在 load 侧（IO-*，明写分工）；点数本口不设帽（唯一点数守卫在装载侧）。云=单实体单 DrawPoints（共识 5）；拾取域不含本口产物（CAPI-04 mesh-only 既成口径，本条不改写）。

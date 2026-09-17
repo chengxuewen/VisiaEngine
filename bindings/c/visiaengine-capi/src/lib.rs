@@ -14,14 +14,18 @@ pub use ffi::enc_entity;
 pub use ffi::{
     KIND_KEY, KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, KIND_PTR_UP, KIND_WHEEL, MISS,
     VE_ERR_ARG, VE_ERR_IO, VE_ERR_PANIC, VE_ERR_SIZE, VE_ERR_STATE, VE_EVT_LOAD_ERROR,
-    VE_EVT_LOAD_PROGRESS, VE_OK, VeEventCb, VeInput, VeMeshDesc, visiaengine_abi_version,
-    visiaengine_add_mesh, visiaengine_attach, visiaengine_attr_bool, visiaengine_attr_f64,
-    visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
-    visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
-    visiaengine_last_error, visiaengine_load_geojson, visiaengine_load_gltf, visiaengine_on_input,
-    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
-    visiaengine_viewport,
+    VE_EVT_LOAD_PROGRESS, VE_OK, VeEventCb, VeInput, VeMeshDesc, VePointMark, VePointsDesc,
+    visiaengine_abi_version, visiaengine_add_mesh, visiaengine_attach, visiaengine_attr_bool,
+    visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy,
+    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
+    visiaengine_entity_visible, visiaengine_last_error, visiaengine_load_geojson,
+    visiaengine_load_gltf, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
+    visiaengine_remove_entity, visiaengine_render, visiaengine_viewport,
 };
+
+/// CAPI-18 native 独占（点云直通；wasm 桥走 bytes/扁平形于 MIR 片）。
+#[cfg(not(target_arch = "wasm32"))]
+pub use ffi::visiaengine_add_points;
 
 /// CAPI-17 native 独占（wasm32 无 C ABI 事件面——JS 闭包走 visiaengine-wasm 桥）。
 #[cfg(not(target_arch = "wasm32"))]

@@ -3,12 +3,13 @@
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VE_OK, VeInput, VeMeshDesc, visiaengine_abi_version, visiaengine_add_mesh, visiaengine_attach,
-    visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless,
-    visiaengine_destroy, visiaengine_entity_at, visiaengine_entity_count,
-    visiaengine_entity_set_visible, visiaengine_entity_visible, visiaengine_last_error,
-    visiaengine_load_gltf, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
-    visiaengine_remove_entity, visiaengine_render, visiaengine_viewport,
+    VE_OK, VeInput, VeMeshDesc, VePointMark, VePointsDesc, visiaengine_abi_version,
+    visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach, visiaengine_attr_bool,
+    visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy,
+    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
+    visiaengine_entity_visible, visiaengine_last_error, visiaengine_load_gltf,
+    visiaengine_on_input, visiaengine_pick, visiaengine_readback, visiaengine_remove_entity,
+    visiaengine_render, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -407,4 +408,86 @@ fn remove_entity_ffi_reentry_aba() {
     );
     assert_eq!(visiaengine_remove_entity(ve, h_new), VE_OK);
     assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+/// CAPI-18 直通装载：值域表四锁（退化零提交/成功+out 可查/struct_size 门/非有限照收=宿主责任分工）。
+// spec: CAPI-18
+#[test]
+fn add_points_domain_table() {
+    let ve = visiaengine_create_headless(160, 120);
+    let marks = [
+        VePointMark {
+            pos: [-1.0, 0.0, 0.0],
+            radius_px: 4.0,
+            color: [1.0, 0.0, 0.0],
+        },
+        VePointMark {
+            pos: [0.0, 0.0, 0.0],
+            radius_px: 6.0,
+            color: [0.0, 1.0, 0.0],
+        },
+        VePointMark {
+            pos: [1.0, 0.0, 0.0],
+            radius_px: 8.0,
+            color: [0.0, 0.0, 1.0],
+        },
+    ];
+    let mut out: u64 = u64::MAX;
+    let desc = VePointsDesc {
+        struct_size: std::mem::size_of::<VePointsDesc>(),
+        marks: marks.as_ptr(),
+        count: 3,
+    };
+    // ① 成功路：返回 0、out=位形可查（entity_count +1）
+    assert_eq!(
+        visiaengine_add_points(ve, &desc, &mut out),
+        VE_OK,
+        "桩恒-5=RED 靶"
+    );
+    assert_ne!(out, u64::MAX, "成功必写 out");
+    assert_eq!(visiaengine_entity_count(ve), 1);
+    // ② 退化零提交：count=0 / NULL marks → VE_ERR_ARG 且 out 不碰（哨兵复位戏法）
+    let zero = VePointsDesc {
+        struct_size: std::mem::size_of::<VePointsDesc>(),
+        marks: marks.as_ptr(),
+        count: 0,
+    };
+    out = u64::MAX;
+    assert_eq!(visiaengine_add_points(ve, &zero, &mut out), VE_ERR_ARG);
+    assert_eq!(out, u64::MAX, "失败禁部分写");
+    assert_eq!(
+        visiaengine_add_points(ve, std::ptr::null(), &mut out),
+        VE_ERR_ARG
+    );
+    assert_eq!(
+        visiaengine_add_points(ve, std::ptr::null(), std::ptr::null_mut()),
+        VE_ERR_ARG
+    );
+    // ③ struct_size 前瞻门（照 CAPI-15：小于所需=拒）
+    let small = VePointsDesc {
+        struct_size: 4,
+        marks: marks.as_ptr(),
+        count: 3,
+    };
+    assert_eq!(visiaengine_add_points(ve, &small, &mut out), VE_ERR_ARG);
+    // ④ 非有限照收=本口宿主责任（与 load 侧四分类明写分工）；位形 0 合法禁当哨兵（CAPI-01）
+    let nan = [VePointMark {
+        pos: [f32::NAN, 0.0, 0.0],
+        radius_px: 4.0,
+        color: [1.0, 1.0, 1.0],
+    }];
+    let dnan = VePointsDesc {
+        struct_size: std::mem::size_of::<VePointsDesc>(),
+        marks: nan.as_ptr(),
+        count: 1,
+    };
+    assert_eq!(
+        visiaengine_add_points(ve, &dnan, &mut out),
+        VE_OK,
+        "非有限照收（load 侧才分类型丢弃）"
+    );
+    assert_eq!(visiaengine_entity_count(ve), 2);
+    // ⑤ 句柄门同谱
+    assert_eq!(visiaengine_add_points(0, &desc, &mut out), VE_ERR_ARG);
+    assert_eq!(visiaengine_destroy(ve), 0);
 }

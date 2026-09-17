@@ -872,3 +872,40 @@ pub extern "C" fn visiaengine_set_event_callback(
         VE_ERR_PANIC
     )
 }
+
+/// CAPI-18 点元（PointMark 32B Pod 的 C 镜像；引擎侧逐元 new() 构造，无 bytemuck 转译面）。
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VePointMark {
+    pub pos: [f32; 3],
+    pub radius_px: f32,
+    pub color: [f32; 3],
+}
+
+/// CAPI-18 值结构（struct_size 前瞻门照 VeMeshDesc 同谱）。
+#[repr(C)]
+pub struct VePointsDesc {
+    pub struct_size: usize,
+    pub marks: *const VePointMark,
+    pub count: u64,
+}
+
+/// CAPI-18：点云直通装载。RED 桩=句柄门真、行为恒 -5（零提交形——成功路测试必红）。
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_add_points(
+    ve: u64,
+    desc: *const VePointsDesc,
+    out_entity: *mut u64,
+) -> i32 {
+    let _ = (desc, out_entity);
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(_) => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
