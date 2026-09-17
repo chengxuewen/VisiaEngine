@@ -109,6 +109,13 @@ typedef struct {
 } VePclReport;
 int32_t  visiaengine_load_pcl(uint64_t ve, const char *path, VePclPolicy policy,
                               uint64_t *out_entity, VePclReport *out_report);
+/* 剖面裁切（CAPI-20）：世界系数面 [n,d]（法向指保留侧，dot(n,P)+d≥0 保留，面上=
+   保留；多面 AND）。归一化引擎侧做（读回恒单位形）；n=0=唯一清空形；n>4 先拒后读。
+   render 管线 fs discard（含 shadow caster 同裁）+ pick 命中点重试过滤同帧一致。 */
+typedef struct { double nx, ny, nz, d; } VeClipPlane;
+int32_t  visiaengine_set_clips(uint64_t ve, const VeClipPlane *planes, size_t n);
+/* 读回：返回≥0=当前面数（错误=负码专属）；buf NULL=仅计数；cap 截断=写 min 而返回真数。 */
+int32_t  visiaengine_get_clips(uint64_t ve, VeClipPlane *buf, size_t cap);
 
 #ifdef __cplusplus
 }  /* extern "C" */

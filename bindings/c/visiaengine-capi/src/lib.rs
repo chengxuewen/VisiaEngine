@@ -32,6 +32,7 @@ pub use ffi::{
 /// CAPI-17 native 独占（wasm32 无 C ABI 事件面——JS 闭包走 visiaengine-wasm 桥）。
 #[cfg(not(target_arch = "wasm32"))]
 pub use ffi::visiaengine_set_event_callback;
+pub use ffi::{VeClipPlane, visiaengine_get_clips, visiaengine_set_clips}; // CAPI-20
 
 #[doc(hidden)]
 pub mod test_util {

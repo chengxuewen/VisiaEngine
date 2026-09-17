@@ -37,7 +37,7 @@ assert.match(dts, /entityAt\([^)]*\):\s*bigint/, 'entity_at 返回须 bigint');
 assert.match(dts, /addPoints\([^)]*\):\s*bigint/, 'addPoints 位形返回须 bigint');
 assert.match(dts, /static\s+fromCanvas[^;]*Promise/, 'fromCanvas 必须 async 工厂(Promise) [FFI-R:v13-FEAS-2]');
 // B1 数据带镜像方法在场（CAPI-13..16 双面单源）
-for (const fn of ['setEntityVisible', 'entityVisible', 'addMesh', 'removeEntity', 'setEventCallback', 'addPoints', 'loadPclBytes']) {
+for (const fn of ['setEntityVisible', 'entityVisible', 'addMesh', 'removeEntity', 'setEventCallback', 'addPoints', 'loadPclBytes', 'setClips', 'getClips']) {
   assert.match(dts, new RegExp(`\\b${fn}\\(`), `d.ts 缺 B1 镜像方法 ${fn}`);
 }
 

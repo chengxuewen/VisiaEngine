@@ -52,3 +52,6 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-19: 点云文件装载（load_pcl）
 `visiaengine_load_pcl(ve, path, policy, uint64_t* out_entity, VePclReport* out_report) -> int32`：policy=VE_PCL_FASTFAIL(0)/VE_PCL_LENIENT(1)，越值=VE_ERR_ARG；out 双非空必需（NULL=ARG，成功唯一写点、失败零部分写——attr_str 纪律同谱）。成功=0 且 云=单实体（IO-06）；report 逐类导出（struct_size 前瞻门）。云级 meta（point_count/format/bbox 8 列）注册进属性域：**pcl 位形 attr_f64/str 可查**（geo attr_of 之后缀查，键不撞——位形编码全局唯一）。非有限/溢出列的丢弃语义归 io-points 四类（本口零翻译）；管理域（枚举/显隐/删除）=items 外与 CAPI-18 同谱。容量门在 IO-05（Err→VE_ERR_IO+错误串，超帽非半收）。path 不存在/解析失败=VE_ERR_IO；句柄门 CAPI-03 既成。
+
+## CAPI-20: 剖面裁切双口（B2）
+`visiaengine_set_clips(ve, const VeClipPlane *planes, size_t n)` / `visiaengine_get_clips(ve, VeClipPlane *buf, size_t cap)`。`VeClipPlane{nx,ny,nz,d}`=世界系数 32B Pod（法向指**保留侧**，判据 `dot(n,P)+d ≥ 0`，面上=保留）。**值域表 [C15]**：`n∈[0,4]`（MAX 与 REND-32 同源），**n=0=唯一清空形**（planes NULL+0 合法）；`NULL∧n>0`→-1；`n>4`→-1（**界检先于解引用**，越界零读）；零法向/非有限→-1+错误串（ClipSetup::new 同源门，不截断不吞）。归一化引擎侧做：读回恒单位形（(0,2,0,2)→(0,1,0,1)，w 同步除）。get **返回≥0=当前面数**（<0 专属错误谱，返回值不兼二主）；buf NULL=仅计数；`cap<面数` 截断写=写 min 返真数（n=3,cap=2→返 3 写 2）。owner 线程门=显隐口同谱；例外集不入。行为面：render 管线 fs discard（REND-32 换算律；WGPU-21/22/23 含 caster/扩片族同裁）+ **pick 命中点 keeps 谓词负侧→排除重试环**（剖开可见者必可拾；与 hidden 过滤正交叠加）。wasm 镜像=setClips(扁平 4n)/getClips→Float64 面；abi minor=6。

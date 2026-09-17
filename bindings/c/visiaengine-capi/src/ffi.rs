@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 5 // major 1 · minor 5（CAPI-19 文件装载=MAJOR 内追加；>>16==1 校验面不变）
+    (1 << 16) | 6 // major 1 · minor 6（CAPI-20 剖面裁切=MAJOR 内追加；>>16==1 校验面不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1012,6 +1012,106 @@ pub extern "C" fn visiaengine_add_points(
                 }
                 Gate::Arg => VE_ERR_ARG,
                 Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+// ── B2 剖面带（CAPI-20）：世界裁切面 set/get；gate/with_engine/capi_guard 单源形 ──
+
+/// CAPI-20 值结构（32B Pod，系数形 [n, d]；d=−⟨n,锚点⟩，归一化在引擎侧）。
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VeClipPlane {
+    pub nx: f64,
+    pub ny: f64,
+    pub nz: f64,
+    pub d: f64,
+}
+
+/// CAPI-20：设置裁切面（owner 线程同显隐口）。n∈[0,4]，**n=0=唯一清空形**；
+/// n>4 先拒后读（界检在解引用前）；NULL∧n>0/退化（零法向/非有限）=-1+错误串。
+/// 语义=法向指保留侧，`dot(n,P)+d ≥ 0` 保留（面上=保留）；多面 AND。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_set_clips(ve: u64, planes: *const VeClipPlane, n: usize) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if n > 4 {
+                        set_err("set_clips: n>MAX(4)".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    if n == 0 {
+                        return match with_engine(i, |e| e.set_clips(&[])) {
+                            Ok(()) => VE_OK,
+                            Err(msg) => {
+                                set_err(msg);
+                                VE_ERR_ARG
+                            }
+                        };
+                    }
+                    if planes.is_null() {
+                        set_err("set_clips: null planes with n>0".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: planes[0..n] 由宿主保证有效（同 VeMeshDesc 契约）；n≤4 界上已闸
+                    let raw = unsafe { std::slice::from_raw_parts(planes, n) };
+                    let arr: Vec<[f64; 4]> = raw.iter().map(|p| [p.nx, p.ny, p.nz, p.d]).collect();
+                    match with_engine(i, |e| e.set_clips(&arr)) {
+                        Ok(()) => VE_OK,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-20：读回。**返回≥0=当前面数**（错误专属负码，返回值不兼二主）；
+/// buf NULL=仅计数；cap 截断=写 min(cap,count) 而返回真数（n=3,cap=2→返 3 写 2）；
+/// cap=0∧buf≠NULL=合法纯计数路。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_get_clips(ve: u64, buf: *mut VeClipPlane, cap: usize) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => match with_engine(i, |e| Ok(e.clips())) {
+                    Ok(cs) => {
+                        let m = if buf.is_null() { 0 } else { cap.min(cs.len()) };
+                        if m > 0 {
+                            // SAFETY: buf[0..m] 由宿主保证有效（m≤cap≤已验数组；
+                            // m=0 不构造切片——NULL+0 亦踩 from_raw_parts UB 前判 [debug 实锤]）
+                            unsafe {
+                                let dst = std::slice::from_raw_parts_mut(buf, m);
+                                for (slot, pl) in dst.iter_mut().zip(&cs) {
+                                    *slot = VeClipPlane {
+                                        nx: pl[0],
+                                        ny: pl[1],
+                                        nz: pl[2],
+                                        d: pl[3],
+                                    };
+                                }
+                            }
+                        }
+                        cs.len() as i32
+                    }
+                    Err(msg) => {
+                        set_err(msg);
+                        VE_ERR_STATE
+                    }
+                },
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
             }
         },
         VE_ERR_PANIC

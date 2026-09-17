@@ -60,6 +60,9 @@ pub struct Engine {
     attr_of: std::collections::HashMap<u64, (usize, usize)>,
     /// CAPI-13: 隐藏实体位形表（render/pick 过滤域；枚举域不变，删除随 CAPI-16 清理）
     hidden: Vec<u64>,
+    /// CAPI-20: 剖面裁切世界面（None/空=全保留；render 逐帧入 Frame.clip，
+    /// pick 命中点 keeps 谓词负侧=排除重试 [WGPU-21 管线面同一世界帧]）
+    clip: Option<visiaengine_render::ClipSetup>,
     frame_cache: Option<Vec<u8>>,
     /// CAPI-19：点云云级 meta（位形→单行 AttrSet；attr_* 缀查域，geo 图先查）。
     pcl_meta: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
@@ -99,6 +102,7 @@ impl Engine {
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
+            clip: None,
             frame_cache: None,
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
@@ -464,7 +468,7 @@ impl Engine {
                 1.0
             },
             shadow: None,
-            clip: None,
+            clip: self.clip,
             commands,
         };
         match &mut self.target {
@@ -533,21 +537,62 @@ impl Engine {
             Proj::Persp => screen_to_ray_persp(&self.rig, px, py, self.w as f32, self.h as f32)?,
             Proj::Ortho => screen_to_ray_ortho(&self.rig, px, py, self.w as f32, self.h as f32)?,
         };
-        let cands: Vec<MeshCandidate> = self
-            .items
-            .iter()
-            .filter(|it| !self.hidden.contains(&enc_entity(it.entity))) // CAPI-13 pick 域
-            .map(|it| MeshCandidate {
-                entity: it.entity,
-                positions: &it.positions,
-                indices: &it.indices,
-                world: &IDENTITY,
-            })
-            .collect();
-        pick_meshes(ray, &cands).map(|hit| hit.entity)
+        // CAPI-20 重试环：命中点被裁=该件排除，继续向后找（剖开可见者必可拾）。
+        // 最坏收敛=候选数轮（每轮至少排除一件），命中图深度量级，ponytail 可接受。
+        let mut skip: Vec<EntityId> = Vec::new();
+        loop {
+            let cands: Vec<MeshCandidate> = self
+                .items
+                .iter()
+                .filter(|it| {
+                    !self.hidden.contains(&enc_entity(it.entity)) // CAPI-13 pick 域
+                        && !skip.contains(&it.entity)
+                })
+                .map(|it| MeshCandidate {
+                    entity: it.entity,
+                    positions: &it.positions,
+                    indices: &it.indices,
+                    world: &IDENTITY,
+                })
+                .collect();
+            let hit = pick_meshes(ray, &cands)?;
+            if let Some(c) = &self.clip {
+                let p = hit.point;
+                if !c.keeps([f64::from(p.x), f64::from(p.y), f64::from(p.z)]) {
+                    skip.push(hit.entity);
+                    continue;
+                }
+            }
+            return Some(hit.entity);
+        }
     }
 
     /// CAPI-13: 显隐切换（严格存在域校验；render/pick 过滤、枚举域不变）。
+    /// CAPI-20：世界面系数组 [nx,ny,nz,d]（法向指保留侧，`dot(n,P)+d≥0` 保留，
+    /// AND 组合）。n=0=唯一清空形；退化/非有限/超 4 拒（ClipSetup::new 同源门）。
+    pub fn set_clips(&mut self, planes: &[[f64; 4]]) -> Result<(), String> {
+        if planes.len() > visiaengine_render::ClipSetup::MAX_PLANES {
+            return Err("set_clips: n>MAX(4)".into());
+        }
+        if planes.is_empty() {
+            self.clip = None;
+            return Ok(());
+        }
+        self.clip = Some(
+            visiaengine_render::ClipSetup::new(planes)
+                .ok_or("set_clips: degenerate plane (zero normal / non-finite)")?,
+        );
+        Ok(())
+    }
+
+    /// CAPI-20 读回（归一化后系数；截断/计数语义住 FFI 面）。
+    #[must_use]
+    pub fn clips(&self) -> Vec<[f64; 4]> {
+        self.clip
+            .map(|c| c.planes[..c.count].to_vec())
+            .unwrap_or_default()
+    }
+
     pub fn set_visible(&mut self, entity: u64, visible: bool) -> Result<(), String> {
         if !self.items.iter().any(|i| enc_entity(i.entity) == entity) {
             return Err(format!("unknown entity bits {entity:#018x}"));
@@ -750,6 +795,7 @@ impl Engine {
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
+            clip: None,
             frame_cache: None,
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
@@ -886,16 +932,31 @@ mod mut_spec_tests {
         let (pos, nrm, idx) = quad();
         // 注：capi pick 域=positions×IDENTITY（origin 住 render 路=既有事实）——
         // 测试把 z 烘进 positions 令两帧合一，回避该缺口不带病断言
-        let flat: Vec<[f32; 3]> = pos.iter().map(|p| [p[0] * 8.0 - 4.0, p[1] * 8.0 - 4.0, 0.0]).collect();
+        let flat: Vec<[f32; 3]> = pos
+            .iter()
+            .map(|p| [p[0] * 8.0 - 4.0, p[1] * 8.0 - 4.0, 0.0])
+            .collect();
         let mut frontz = flat.clone();
         for q in &mut frontz {
             q[2] = 2.0;
         }
         let front = e
-            .add_mesh(&frontz, Some(&nrm), &idx, [1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0])
+            .add_mesh(
+                &frontz,
+                Some(&nrm),
+                &idx,
+                [1.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0],
+            )
             .expect("front");
         let back = e
-            .add_mesh(&flat, Some(&nrm), &idx, [0.0, 1.0, 0.0, 1.0], [0.0, 0.0, 0.0])
+            .add_mesh(
+                &flat,
+                Some(&nrm),
+                &idx,
+                [0.0, 1.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0],
+            )
             .expect("back");
         let hitk = |e: &Engine| e.pick(80.0, 60.0).map(enc_entity);
         assert_eq!(hitk(&e), Some(front), "默认命中前墙");

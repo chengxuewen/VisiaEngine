@@ -104,6 +104,30 @@ impl VisiaEngine {
         }
     }
 
+    // ── B2 剖面带镜像（CAPI-20 纯编组薄叶 [FFI-R:BS-5]）──
+    /// 扁平 4n f64 系数面（[]=唯一清空形）；界/角不对齐/退化=-1=C 面同谱。
+    #[wasm_bindgen(js_name = setClips)]
+    pub fn set_clips(&mut self, planes: &[f64]) -> i32 {
+        if planes.len() % 4 != 0 {
+            return -1;
+        }
+        let arr: Vec<[f64; 4]> = planes
+            .chunks_exact(4)
+            .map(|c| [c[0], c[1], c[2], c[3]])
+            .collect();
+        match self.inner.set_clips(&arr) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// 读回扁平 4n（归一化后单位形=C 面同谱）。
+    #[must_use]
+    #[wasm_bindgen(js_name = getClips)]
+    pub fn get_clips(&self) -> Vec<f64> {
+        self.inner.clips().into_iter().flatten().collect()
+    }
+
     /// 扁平三元组面（js 数组=调用期拷贝，bindgen 天然）；退化=0 哨兵与 C 面同谱。
     #[must_use]
     #[allow(clippy::needless_pass_by_value)]

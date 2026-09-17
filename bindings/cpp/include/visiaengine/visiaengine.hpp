@@ -52,6 +52,14 @@ public:
         return visiaengine_entity_set_visible(h_, entity, visible ? 1 : 0);
     }
     int32_t entity_visible(std::uint64_t entity) { return visiaengine_entity_visible(h_, entity); }
+    // CAPI-20 剖面裁切（B9 薄转发不开 SDD 账；VeClipPlane=头 POD 直用）
+    int32_t set_clips(const VeClipPlane *planes, std::size_t n) {
+        return visiaengine_set_clips(h_, planes, n);
+    }
+    int32_t get_clips(VeClipPlane *buf, std::size_t cap) const {
+        return visiaengine_get_clips(h_, buf, cap);
+    }
+
     int32_t add_mesh(const MeshDesc &desc, std::uint64_t *out_entity) {
         return visiaengine_add_mesh(h_, &desc, out_entity);
     }

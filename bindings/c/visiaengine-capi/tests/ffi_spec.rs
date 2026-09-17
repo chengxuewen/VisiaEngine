@@ -3,14 +3,14 @@
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeInput, VeMeshDesc, VePclReport, VePointMark,
-    VePointsDesc, visiaengine_abi_version, visiaengine_add_mesh, visiaengine_add_points,
-    visiaengine_attach, visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str,
-    visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
+    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeClipPlane, VeInput, VeMeshDesc, VePclReport,
+    VePointMark, VePointsDesc, visiaengine_abi_version, visiaengine_add_mesh,
+    visiaengine_add_points, visiaengine_attach, visiaengine_attr_bool, visiaengine_attr_f64,
+    visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
     visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
-    visiaengine_last_error, visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_on_input,
-    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
-    visiaengine_viewport,
+    visiaengine_get_clips, visiaengine_last_error, visiaengine_load_gltf, visiaengine_load_pcl,
+    visiaengine_on_input, visiaengine_pick, visiaengine_readback, visiaengine_remove_entity,
+    visiaengine_render, visiaengine_set_clips, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -36,6 +36,16 @@ fn stale_doors(ve: u64) {
     assert_eq!(
         visiaengine_attr_bool(ve, 0, std::ptr::null(), std::ptr::null_mut()),
         VE_ERR_ARG
+    );
+    assert_eq!(
+        visiaengine_set_clips(ve, std::ptr::null(), 0),
+        VE_ERR_ARG,
+        "CAPI-20 新口入 stale 谱"
+    );
+    assert_eq!(
+        visiaengine_get_clips(ve, std::ptr::null_mut(), 0),
+        VE_ERR_ARG,
+        "CAPI-20 读口同谱"
     );
     assert_eq!(visiaengine_entity_set_visible(ve, 0, 1), VE_ERR_ARG);
     assert_eq!(visiaengine_entity_visible(ve, 0), VE_ERR_ARG);
@@ -245,8 +255,8 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        24,
-        "extern 入口计数（cfg-gated 行首式）"
+        26,
+        "extern 入口计数（cfg-gated 行首式；24→26=CAPI-20 剖面双口）"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),
@@ -580,24 +590,73 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
     assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 0), VE_OK);
     // 值域拒：NULL∧n>0 / n>4 / 退化（零法向/非有限）
     assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 1), VE_ERR_ARG);
-    let p = VeClipPlane { nx: 0.0, ny: 1.0, nz: 0.0, d: 0.0 };
-    assert_eq!(visiaengine_set_clips(ve, &p, 5), VE_ERR_ARG, "n>MAX 拒（读界先于解引用）");
-    let bad = VeClipPlane { nx: f64::NAN, ny: 0.0, nz: 0.0, d: 0.0 };
+    let p = VeClipPlane {
+        nx: 0.0,
+        ny: 1.0,
+        nz: 0.0,
+        d: 0.0,
+    };
+    assert_eq!(
+        visiaengine_set_clips(ve, &p, 5),
+        VE_ERR_ARG,
+        "n>MAX 拒（读界先于解引用）"
+    );
+    let bad = VeClipPlane {
+        nx: f64::NAN,
+        ny: 0.0,
+        nz: 0.0,
+        d: 0.0,
+    };
     assert_eq!(visiaengine_set_clips(ve, &bad, 1), VE_ERR_ARG);
-    assert_eq!(visiaengine_last_error(ve).is_null(), false, "拒收路错误串在位");
+    assert_eq!(
+        visiaengine_last_error(ve).is_null(),
+        false,
+        "拒收路错误串在位"
+    );
     // 往返逐位（单位入参）+ 归一化形（(0,2,0,d=2)→(0,1,0,d=1)）
     let planes = [
-        VeClipPlane { nx: 0.0, ny: 1.0, nz: 0.0, d: 0.0 },
-        VeClipPlane { nx: 0.0, ny: 2.0, nz: 0.0, d: 2.0 },
-        VeClipPlane { nx: 0.0, ny: 0.0, nz: -1.0, d: 1.0 },
+        VeClipPlane {
+            nx: 0.0,
+            ny: 1.0,
+            nz: 0.0,
+            d: 0.0,
+        },
+        VeClipPlane {
+            nx: 0.0,
+            ny: 2.0,
+            nz: 0.0,
+            d: 2.0,
+        },
+        VeClipPlane {
+            nx: 0.0,
+            ny: 0.0,
+            nz: -1.0,
+            d: 1.0,
+        },
     ];
     assert_eq!(visiaengine_set_clips(ve, planes.as_ptr(), 3), VE_OK);
-    assert_eq!(visiaengine_get_clips(ve, std::ptr::null_mut(), 9), 3, "NULL buf=仅计数");
+    assert_eq!(
+        visiaengine_get_clips(ve, std::ptr::null_mut(), 9),
+        3,
+        "NULL buf=仅计数"
+    );
     // 截断自证 [Momus-A2]：n=3, cap=2 → 返回 3 写 2，第 3 槽哨兵不动
-    let mut buf = [VeClipPlane { nx: -9.0, ny: -9.0, nz: -9.0, d: -9.0 }; 3];
+    let mut buf = [VeClipPlane {
+        nx: -9.0,
+        ny: -9.0,
+        nz: -9.0,
+        d: -9.0,
+    }; 3];
     assert_eq!(visiaengine_get_clips(ve, buf.as_mut_ptr(), 2), 3);
-    assert_eq!((buf[0].nx, buf[0].ny, buf[0].nz, buf[0].d), (0.0, 1.0, 0.0, 0.0));
-    assert_eq!((buf[1].nx, buf[1].ny, buf[1].nz, buf[1].d), (0.0, 1.0, 0.0, 1.0), "归一化同步 w");
+    assert_eq!(
+        (buf[0].nx, buf[0].ny, buf[0].nz, buf[0].d),
+        (0.0, 1.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        (buf[1].nx, buf[1].ny, buf[1].nz, buf[1].d),
+        (0.0, 1.0, 0.0, 1.0),
+        "归一化同步 w"
+    );
     assert_eq!(buf[2].nx, -9.0, "cap 外零写");
     // cap=0 ∧ buf≠NULL=纯计数路不报错（参数不侍二主）
     assert_eq!(visiaengine_get_clips(ve, buf.as_mut_ptr(), 0), 3);
