@@ -266,8 +266,11 @@ pub fn cube_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
 }
 
 /// 单位盒：xy∈[-0.5,0.5]、**z∈[0,1] 底对齐**（WGPU-16 挤出语义的几何前提），
-/// 5 面 24 顶点/30 索引（底面省略——顶视/斜视永远不可见，白模压力例体积减半）。
+/// 4 面 16 顶点/24 索引（底面省略——顶视/斜视永远不可见，白模压力例体积减半）。
 /// tests/instances.rs 与 examples/bench_twin.rs 双消费（DRY，[E3D:A5] 教学件同区）。
+/// 绕序=外法向 CCW（2026-09-17 E402 带挖出的存量雷：出生即反绕——GPU 路 cull
+/// 默认关而不可见，pick 正面规则 REND-23 一消费 winding 即 down 射线全 miss。
+/// 本行语义=拾取/未来装 cull 的唯一正确形，勿回退）。
 #[must_use]
 pub fn unit_box_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let faces: [([f32; 3], [[f32; 3]; 4]); 4] = [
@@ -317,7 +320,7 @@ pub fn unit_box_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
             pos.push(v);
             nrm.push(n);
         }
-        idx.extend_from_slice(&[b, b + 1, b + 2, b, b + 2, b + 3]);
+        idx.extend_from_slice(&[b, b + 2, b + 1, b, b + 3, b + 2]);
     }
     (pos, nrm, idx)
 }

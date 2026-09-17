@@ -40,6 +40,9 @@ path = "E301_switch_camera.rs"
 name = "E401_pick_demo"
 path = "E401_pick_demo.rs"
 [[example]]
+name = "E402_pick_interactive"
+path = "E402_pick_interactive.rs"
+[[example]]
 name = "E501_shadow_demo"
 path = "E501_shadow_demo.rs"
 [[example]]

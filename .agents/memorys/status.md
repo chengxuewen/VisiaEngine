@@ -191,3 +191,14 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 永装门：geo_pipeline::golden_geo_window_fit（spec WGPU-11 多例同条款，spec-trace 115↔115 不动）——谓词三自证齐：canary 案发机位恒 0 px、修复路 23222px 实测阈 12000（−48% 保守位）
 - 同族清屏：E901/E401/E201/E301 机位逐例核对无撞（E201/301 数据住局部系 origin=0 自洽）；PIT-22/双保险纪律第二次抓真案（灰屏家族三见：E201/E301/E202）
 - 基线：161 passed · 十段全绿 · ctest 18 条不回退
+
+## E402 交互拾取窗带（2026-09-17，空号转正 + unit_box 绕序存量雷根修）
+- E402_pick_interactive：hover 橙预览/左键点选黄 toggle 多选/拖轨道/滚轮远近/R 清空/Esc 退；
+  placed() 位形单源（pick world=render transform 同一份矩阵=E401 双份烘移 64px 教训构造性根除）
+- **存量雷**：unit_box_mesh 出生反绕（几何法向=-声明法向）——GPU cull 默认关三消费者全渲染零
+  可见，pick 正面规则（REND-23）一消费即全 miss；根修=索引镜像翻正 + 金训注记，162 passed
+  构造证明无像素回归（cull 关下绕序不观测量）
+- 门：golden_pick_window_mirror（spec WGPU-12 多例同条款）512×320 窗形镜像 + 中心命中链复用
+  + 外角 canary；实测 (35,132,62)→(177,147,51) 黄族翻转锁
+- 登记面：Cargo.toml/契约表/tutorials/pixi 四件 + gate-docs E402 预留豁免收回（真件在位）
+- 基线：**162 passed · 115↔115 · GATE-DOCS E 18 件三方 · ctest 19 条 · ci 十段 ✓ · SMOKE E402 ✓(真窗)**

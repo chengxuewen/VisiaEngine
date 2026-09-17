@@ -206,3 +206,146 @@ fn occlusion_independent_of_draw_order() {
         );
     }
 }
+
+// spec: WGPU-12
+/// E402 窗口路镜像像素门（2026-09-17 hover/多选窗随带；testing.md 视觉例双保险第 1 条）。
+/// rig/placement/调色逐字镜像 examples/rs/E402_pick_interactive.rs——窗口与门共用数学。
+/// 谓词三自证：①未选中心=基色族；②选中中心=高亮黄族（WGPU-12 域）；③角部射线必不命中
+/// （canary——射线/位形解错时"全命中"或"全不命中"的巧合绿被此断钉死）。
+#[test]
+fn golden_pick_window_mirror() {
+    const PW: u32 = 512; // 16:10 窗口形镜像（E402 960×600 同比例；512=行对齐倍数）
+    const PH: u32 = 320;
+    let mut scene = Scene::new();
+    let ents: Vec<_> = (0..3).map(|_| scene.spawn()).collect();
+    let (pos, nrm, idx) = visiaengine_render_wgpu::unit_box_mesh();
+    let placed = |x: f64, y: f64, z: f64, s: f64| {
+        [
+            [s, 0.0, 0.0, 0.0],
+            [0.0, s, 0.0, 0.0],
+            [0.0, 0.0, s, 0.0],
+            [x, y, z, 1.0],
+        ]
+    };
+    let worlds = [
+        placed(-3.2, 0.0, 1.1, 2.2),
+        placed(0.0, 0.6, 1.9, 2.2),
+        placed(3.2, -0.4, 1.4, 2.2),
+    ];
+    let palette = [
+        [0.90f32, 0.25, 0.25, 1.0],
+        [0.20, 0.75, 0.35, 1.0],
+        [0.20, 0.45, 0.90, 1.0],
+    ];
+    let yellow = [1.0f32, 0.83, 0.29, 1.0];
+    // E402 main() 机位逐字（dist=11，fov_y=1.0rad）
+    let rig = CameraRig::orbit([0.0, 0.0, 1.5], 0.35, 0.95, 11.0, 1.0, 1.0, 0.1, 100.0);
+    let Some(mut backend) = HeadlessBackend::new(PW, PH) else {
+        eprintln!("SKIP: no adapter");
+        return;
+    };
+    let mut mats = Vec::new();
+    for c in palette.iter().chain(std::iter::once(&yellow)) {
+        mats.push(backend.create_material(*c).unwrap());
+    }
+    let mesh = backend
+        .create_mesh(&MeshDesc {
+            positions: &pos,
+            normals: &nrm,
+            indices: &idx,
+            uv: &[],
+        })
+        .unwrap();
+    let render = |be: &mut HeadlessBackend, sel: Option<usize>| {
+        let mut commands = vec![DrawCommand::ClearColor {
+            rgba: [0.05, 0.07, 0.10, 1.0],
+        }];
+        for i in 0..3 {
+            let material = if sel == Some(i) { mats[3] } else { mats[i] };
+            commands.push(DrawCommand::DrawMesh {
+                mesh,
+                material,
+                origin: [0.0, 0.0, 0.0],
+                transform: worlds[i],
+            });
+        }
+        let near = (rig.dist * 0.01) as f32;
+        let far = (rig.dist * 30.0) as f32;
+        let frame = Frame {
+            viewport: Viewport::new(PW, PH, 1.0),
+            camera: Camera::perspective(rig.fov_y as f32, PW as f32 / PH as f32, near, far),
+            view_rot: rig.view_rotation(),
+            eye: rig.eye(),
+            proj: rig
+                .perspective(rig.fov_y as f32, PW as f32 / PH as f32, near, far)
+                .unwrap(),
+            px_world_scale: 1.0,
+            shadow: None,
+            commands,
+        };
+        be.render_to_pixels(&frame).expect("render")
+    };
+    let center = |img: &visiaengine_render_wgpu::OffscreenFrame| {
+        let i = ((PH / 2 * PW + PW / 2) as usize) * 4;
+        [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]]
+    };
+
+    // ① 中心射线命中的盒子（E402 点选同款链）
+    let ray = visiaengine_render::screen_to_ray_persp(
+        &rig,
+        PW as f32 / 2.0,
+        PH as f32 / 2.0,
+        PW as f32,
+        PH as f32,
+    )
+    .expect("center ray");
+    let cands: Vec<_> = ents
+        .iter()
+        .zip(&worlds)
+        .map(|(e, w)| visiaengine_render::MeshCandidate {
+            entity: *e,
+            positions: &pos,
+            indices: &idx,
+            world: w,
+        })
+        .collect();
+    let hit = visiaengine_render::pick_meshes(ray, &cands).expect("中心应命中一盒");
+    let hit_i = ents.iter().position(|e| *e == hit.entity).unwrap();
+    println!("PROBE center hits box #{hit_i}");
+
+    // ② 未选态中心 = 该盒基色族（绿族 g 占优 for #1，红族 r 占优 for #0/#2 侧箱）
+    let img0 = render(&mut backend, None);
+    let [r0, g0, b0] = center(&img0);
+    println!("PROBE unselected center=({r0},{g0},{b0})");
+    let base = palette[hit_i];
+    let dom = if base[0] > base[1] && base[0] > base[2] {
+        0
+    } else if base[1] > base[2] {
+        1
+    } else {
+        2
+    };
+    let ch = [r0, g0, b0];
+    assert!(
+        ch[dom] > 60 && ch[dom] > ch[(dom + 1) % 3] && ch[dom] > ch[(dom + 2) % 3],
+        "未选中心应为盒 #{hit_i} 基色族，得 ({r0},{g0},{b0})"
+    );
+
+    // ③ 选中态中心 = 高亮黄族（谓词承 WGPU-12 实证域）
+    let img1 = render(&mut backend, Some(hit_i));
+    let [r1, g1, b1] = center(&img1);
+    println!("PROBE selected center=({r1},{g1},{b1})");
+    assert!(
+        r1 > 120 && g1 > 90 && b1 < 90 && r1 - b1 > 60,
+        "选中中心应为高亮黄族，得 ({r1},{g1},{b1})"
+    );
+
+    // ④ canary：右上外角射线必不命中（钉死"巧合命中一切"）
+    let ray_corner =
+        visiaengine_render::screen_to_ray_persp(&rig, PW as f32 - 2.0, 2.0, PW as f32, PH as f32)
+            .expect("corner ray");
+    assert!(
+        visiaengine_render::pick_meshes(ray_corner, &cands).is_none(),
+        "外角射线意外命中——射线域失控"
+    );
+}

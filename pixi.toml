@@ -88,6 +88,7 @@ smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2：glTF 装配
 smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2：GeoJSON 链路（H4）
 smoke-switch-camera = "bash scripts/smoke-rs.sh E301_switch_camera"   # L2：2D↔3D 切换（G4）
 smoke-pick = "bash scripts/smoke-rs.sh E401_pick_demo"   # L2：拾取→高亮链（headless 免 xvfb）
+smoke-pick-hover = "bash scripts/smoke-rs.sh E402_pick_interactive"   # L2：hover/多选窗（display，CI 走 xvfb）
 smoke-measure = "bash scripts/smoke-rs.sh E203_measure_cli"   # L2：量测 CLI（纯 CPU）
 smoke-bench-twin = "bash scripts/smoke-rs.sh E601_bench_twin"
 smoke-shadow-demo = "bash scripts/smoke-rs.sh E501_shadow_demo"

@@ -19,8 +19,8 @@ index=$(grep -oE '^\| E[0-9]{3}' docs/tutorials.md | grep -oE 'E[0-9]{3}' | sort
 [ "$files" = "$headers" ] || { echo "GATE-DOCS ✗ ①文件名集≠头注释集:"; diff <(echo "$files") <(echo "$headers"); fail=1; }
 [ "$idx_files" = "$real_files" ] || { echo "GATE-DOCS ✗ ①索引路径集≠磁盘实况:"; diff <(echo "$idx_files") <(echo "$real_files"); fail=1; }
 for e in $index; do
-    grep -q "^${e}" <<< "$files" || [ "$e" = "E402" ] \
-        || { echo "GATE-DOCS ✗ ①索引 $e 无磁盘件且非预留空号"; fail=1; }
+    grep -q "^${e}" <<< "$files" \
+        || { echo "GATE-DOCS ✗ ①索引 $e 无磁盘件"; fail=1; }
 done
 
 # ② README 条款数
