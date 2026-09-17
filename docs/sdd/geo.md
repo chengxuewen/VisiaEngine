@@ -38,7 +38,7 @@ lat=89.0 → GeoError::InvalidCoord（|φ|>85.0511° 3857 发散域）。
 (0,0)-(10,0) 线、显式 stroke_width_m=2（默认 3 不断言具体值）→ 输出 y 跨度 2±0.1、x 跨度 10±0.1（butt 端）。
 
 ## GEO-12: simplestyle_six_keys_parsed
-六键：fill / fill-opacity / stroke / stroke-width / marker-color / marker-radius；色支持 #rrggbb 与 rgb(r,g,b)。park 断言：A fill=[1,0,0,1] α=0.8、road stroke=#808080、lamp marker=#228B22。
+六键：fill / fill-opacity / stroke / stroke-width / marker-color / marker-radius；色支持 #rrggbb 与 rgb(r,g,b)（解析产物=**sRGB 域原值**，线性化住在后端上传咽喉 [CORE-16]——geo 域零换算）。park 断言：A fill=[1,0,0,1] α=0.8、road stroke=#808080、lamp marker=#228B22。
 
 ## GEO-13: missing_props_default_style
 无/未知键（如 "color"）→ 默认样式（fill 蓝 [0,0.45,1,1]，stroke 白），不报错。

@@ -203,16 +203,19 @@ fn draw_flat_mat(specular: f32) -> visiaengine_render_wgpu::OffscreenFrame {
 #[test]
 fn textured_pipeline_samples_checker_x_base_x_shade() {
     let img = draw([1., 1.]);
-    // 中心区扫描（避开四边形边缘）：棋盘双极性各自成片，亮度带 140..200
-    // 验证 shade(≈0.62)×base(1.0)×texel(255) 乘法链（=160±40，拒绝未乘 shade 的 255）
+    // 中心区扫描（避开四边形边缘）：棋盘双极性各自成片，亮度带 170..230
+    // 验证 shade(≈0.62)×base(1.0)×texel(Srgb 解码 1.0) 乘法链
+    // CORE-16 域：encode(0.62)=207（拒绝未乘 shade 的 255——230 上界保 25 距）
     let (mut reds, mut greens) = (0u32, 0u32);
     for y in 20..44 {
         for x in 20..44 {
             let p = px(&img, x, y);
-            assert!(p[0] < 200 && p[1] < 200, "shade 未乘链出 255 {p:?}");
-            if p[0] > 130 && p[1] < 70 {
+            assert!(p[0] < 230 && p[1] < 230, "shade 未乘链出 255 {p:?}");
+            // 色相带谓词（CORE-16 域：线性混色后编码抬中间调，绝对阈脆）：
+            // 主导通道强 + 通道差大 = 棋盘极性；混合带（r≈g）自然出局
+            if p[0] > 150 && p[0] > p[1] + 50 {
                 reds += 1;
-            } else if p[1] > 130 && p[0] < 70 {
+            } else if p[1] > 150 && p[1] > p[0] + 50 {
                 greens += 1;
             }
         }
@@ -221,6 +224,7 @@ fn textured_pipeline_samples_checker_x_base_x_shade() {
         reds >= 15 && greens >= 15,
         "棋盘双极性缺失 red={reds} green={greens}"
     );
+    // (阈 15=实测半区保守位；色相带谓词见上)
 }
 
 // spec: WGPU-15

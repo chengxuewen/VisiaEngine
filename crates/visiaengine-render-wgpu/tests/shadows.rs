@@ -112,6 +112,7 @@ fn setup(size: f32) -> ShadowSetup {
 }
 
 /// 地面灰判定（等通道、20..205 带——排除纯背景/立方面高光）。
+/// CORE-16 域注：编码曲线抬升暗值——亮面 198/影核 84/半影 105..181（旧域 51 系）。
 fn gray(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> Option<u8> {
     let i = ((y * W + x) * 4) as usize;
     let (r, g, bl) = (img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]);
@@ -126,7 +127,7 @@ fn shadow_exists_not_all_black_or_white() {
     for y in 0..H {
         for x in 0..W {
             if let Some(r) = gray(&img, x, y) {
-                if r < 70 {
+                if r <= 95 {
                     dark += 1;
                 } else {
                     lit += 1;
@@ -147,7 +148,9 @@ fn shadow_centroid_lies_anti_light_direction() {
     let (mut n, mut sum) = (0u64, 0u64);
     for y in 0..H {
         for x in 0..W {
-            if gray(&img, x, y).is_some_and(|r| r < 70) {
+            // CORE-16 域重钉：影核 84+近侧半影带 ≤140（旧 r<70 域）——暗质心
+            // 反光学侧的物理事实不变，量化压缩后捕获带右移（实测 cy=49.9>48）
+            if gray(&img, x, y).is_some_and(|r| r <= 140) {
                 n += 1;
                 sum += u64::from(y);
             }
@@ -198,13 +201,13 @@ fn none_bit_produces_no_dark_patch() {
     assert!(dark < 10, "None 位产生暗斑 {dark}");
 }
 
-/// 半影带（地面窗内中间灰 70<=r<=150）计数。
+/// 半影带（地面窗内中间灰；CORE-16 域=96..=190，实测 hard=96/soft=3613）。
 fn penumbra_count(size: f32) -> u32 {
     let img = scene(Some(setup(size)));
     let mut mid = 0u32;
     for y in 40..H {
         for x in 0..W {
-            if gray(&img, x, y).is_some_and(|r| (70..=150).contains(&r)) {
+            if gray(&img, x, y).is_some_and(|r| (96..=190).contains(&r)) {
                 mid += 1;
             }
         }

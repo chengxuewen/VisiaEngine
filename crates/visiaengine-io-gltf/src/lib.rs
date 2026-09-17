@@ -5,6 +5,7 @@
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 use thiserror::Error;
+use visiaengine_core::linear_to_srgb;
 
 #[derive(Error, Debug)]
 pub enum IoError {
@@ -205,7 +206,7 @@ fn read_mesh<'a>(
         positions,
         normals,
         indices,
-        base_color: pbr.base_color_factor(),
+        base_color: linear_to_srgb(pbr.base_color_factor()), // glTF factor=线性(规范)；IR 面=sRGB 约定，反变换一次归位
         uv,
         texture,
         metallic_factor: pbr.metallic_factor(),

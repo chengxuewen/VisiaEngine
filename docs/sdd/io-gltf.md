@@ -15,7 +15,7 @@ hierarchy.glb 双节点（root translate(1,2,3) × leaf translate(10,0,0)）→ 
 twoprim.glb 的 prim1（无 NORMAL 属性）→ normals.len()==positions.len() 且全零（着色端兜底信号，非缺字段）。
 
 ## GLTF-04: base_color_from_material
-baseColorFactor 原样透传（tri-blue=[0.1,0.2,0.9,1]）；twoprim 两实体分别 [1,0,0,1]/[0,1,0,1]。
+baseColorFactor（glTF 规范=线性）经 `linear_to_srgb` 归位 IR 面（CORE-16 宿主面=sRGB 约定，后端上传咽喉转回线性，往返 ≤2e-7 无损于 8bit 量化）：tri-blue=[0.1,0.2,0.9]→sRGB [0.3492,0.4845,0.9547]；twoprim 两实体纯原色端点 [1,0,0,1]/[0,1,0,1] 逐位不变。
 
 ## GLTF-05: multi_primitive_counts_consistent
 twoprim.glb → 2 实体（prim 拆分独立），positions/indices 计数与 fixture 构造逐项等（3/6 与 3/6）。

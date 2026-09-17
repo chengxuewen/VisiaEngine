@@ -47,13 +47,13 @@ mesh 管线挂 Depth32Float 面（pipeline `Less`+write on；pass 每帧 Clear(1
 拾取链闭环可渲染：屏幕射线（REND-21/22）→ `pick_meshes`（REND-23/24）→ 选中实体 material 以高亮纯色重建（**CPU 侧覆写，[E3D:A5] by-name 的渲染侧最小子集**）→ 中心像素=高亮色族断言（双箱堆叠场景，pick_highlight.rs）。选择态本体=宿主/example 层 `Option<EntityId>` 数据（引擎零新增状态）。
 
 ## WGPU-14: Textured 管线采样链
-材质绑定 32B 块 `[base_color, repeat, specular, pad]`（binding2 与 Flat 同布局同尺寸——Flat 侧 shader 忽略后部字段=逐像素零回归的构造保证 [Momus-B1]）。textured 变体（独立 bgl/pipeline，mega-bool 分支否决 [E3D:B2]）：fragment `out = base·shade ⊗ texel.rgb`，`a = base.a·texel.a`；uv 顶点属性 @location(2)（缺失=零填充，全采 texel(0,0)）。`upload_texture`：RGBA8，行距补零至 256B（write_texture 约束），零尺寸/数据短=w·h·4 → Err；材质引用未知纹理 id → Err（不静默降 Flat）。specular mock-up [4ab①]：参与既有 Lambert 亮度系数（非 GGX 项——真 PBR=独立轮，诚实注记）；io 层因子零换算，`(1-metallic)*roughness` 反向映射住在消费者侧（capi/example）。
+材质绑定 32B 块 `[base_color, repeat, specular, pad]`（**值域契约 CORE-16**：base_color 宿主面=sRGB/CSS 惯例，后端写 uniform 前转线性——光照全链线性域，srgb 目标 store 硬件编码回人眼域）（binding2 与 Flat 同布局同尺寸——Flat 侧 shader 忽略后部字段=逐像素零回归的构造保证 [Momus-B1]）。textured 变体（独立 bgl/pipeline，mega-bool 分支否决 [E3D:B2]）：fragment `out = base·shade ⊗ texel.rgb`，`a = base.a·texel.a`；uv 顶点属性 @location(2)（缺失=零填充，全采 texel(0,0)）。`upload_texture`：RGBA8（**字节=sRGB 编码**，Rgba8UnormSrgb 格式=采样硬件解码 [CORE-16]），行距补零至 256B（write_texture 约束），零尺寸/数据短=w·h·4 → Err；材质引用未知纹理 id → Err（不静默降 Flat）。specular mock-up [4ab①]：参与既有 Lambert 亮度系数（非 GGX 项——真 PBR=独立轮，诚实注记）；io 层因子零换算，`(1-metallic)*roughness` 反向映射住在消费者侧（capi/example）。
 
 ## WGPU-15: repeat=采样相位倍率
 顶点 `out.uv = uv·mat.repeat`，sampler 全局单例 REPEAT/Linear：repeat=k → 视口内采样频率 ×k。机器 oracle：水平渐变纹理（R=4i）单行回绕断崖数 repeat=1 为 0、repeat=2 恰 1（棋盘奇偶对照在线性滤波下不成立——弃）。
 
 ## WGPU-16: Instanced 管线（4c）
-`create_instances`：32B/条 storage 表（`STORAGE|COPY_DST`，REND-27 Pod 同形）；**空表建期即拒**；id 与 mesh/material 同计数域。`Variant::Instanced` 独立 bgl/pipeline（binding 0/2/**5 storage**，vs_inst 入口，组合 Textured 不装——材质 texture 位忽略）：`p=(x, y, z·height)+offset` 底对齐挤出、法向直传零误差（轴对齐盒 z 缩放不变向）、链 `out = base·inst.color·shade`、alpha=材质。消费面 match 三分支显式处理 DrawInstances（let-else 静默跳过=已封堵）；缺表=skip（mesh 缺失同纪律）。像素证据：三实例三色族 + 列高单调（挤出语义）+ 空表/缺表两语义锁。
+`create_instances`：32B/条 storage 表（`STORAGE|COPY_DST`，REND-27 Pod 同形）；**空表建期即拒**；id 与 mesh/material 同计数域。`Variant::Instanced` 独立 bgl/pipeline（binding 0/2/**5 storage**，vs_inst 入口，组合 Textured 不装——材质 texture 位忽略）：`p=(x, y, z·height)+offset` 底对齐挤出、法向直传零误差（轴对齐盒 z 缩放不变向）、链 `out = base·inst.color·shade`（inst.color 上传期线性化副本入表 [CORE-16 咽喉五]）、alpha=材质。消费面 match 三分支显式处理 DrawInstances（let-else 静默跳过=已封堵）；缺表=skip（mesh 缺失同纪律）。像素证据：三实例三色族 + 列高单调（挤出语义）+ 空表/缺表两语义锁。
 
 ## WGPU-17: Strokes 扩片管线（4de）
 线段表 48B/条（`StrokeSeg` Pod，REND-30）入 binding5 storage；共享单位四边形（side∈±1，2 三角）常设顶点源 [E3D:B4 GS→VS 移植]。VS：`perp = normalize(cross(视向, 轴))`（视向=eye_local−mid，**eye_local 与 right/up/px_scale 同住 View 块 @binding0 128B——REND-29 兑现，三角系入口只读前 64B=零回归构造保证**）；退化 `|dot|>0.999 → perp=right`（NaN 不得污染同批 [R2 实义：视向平行段投影=点属几何事实，测面锁"整批存活"）；`halfw = width_px·px_scale·0.5`。FS 色直出（光照链不参与）。polygon-offset `bias{constant:-1, slope:-1}` 伴生件 [E3D:B7③]——盖同深度 fill 不 z-fight。缺表=skip；空表建期拒。像素证据四锁：族位（right/up 基符号）、宽度阶梯、offset 盖面、退化污染控制组。

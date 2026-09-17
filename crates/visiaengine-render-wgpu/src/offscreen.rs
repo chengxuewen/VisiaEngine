@@ -10,9 +10,11 @@ pub struct OffscreenFrame {
 }
 
 const CLEAR: wgpu::Color = wgpu::Color {
-    r: 0.05,
-    g: 0.07,
-    b: 0.10,
+    // CORE-16：srgb 目标 load=线性域——此为 CSS(0.05,0.07,0.10) 的 srgb_to_linear
+    // 字面量钉（const 无法调用换算口；改值须同步过 CORE-16 双口）。
+    r: 0.003872,
+    g: 0.007894,
+    b: 0.012201,
     a: 1.0,
 };
 
@@ -92,7 +94,7 @@ pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
             entry_point: Some("fs"),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::Rgba8Unorm,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
@@ -111,7 +113,7 @@ pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     });

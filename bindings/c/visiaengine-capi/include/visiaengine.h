@@ -69,7 +69,7 @@ typedef struct VeMeshDesc {
     const uint32_t *indices;
     uint64_t  n_positions;
     uint64_t  n_indices;
-    const float    *base_color;  /* 4 元组 */
+    const float    *base_color;  /* 4 元组，sRGB/CSS 惯例值（后端咽喉转线性，CORE-16） */
     const double   *origin;      /* 3 元组（D7 远坐标语义） */
 } VeMeshDesc;
 int32_t  visiaengine_add_mesh(uint64_t ve, const VeMeshDesc *desc, uint64_t *out_entity);

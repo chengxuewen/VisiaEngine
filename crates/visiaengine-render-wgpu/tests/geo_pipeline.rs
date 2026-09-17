@@ -287,21 +287,22 @@ fn golden_geo_window_fit() {
         };
         be.render_to_pixels(&frame).expect("render")
     };
-    let nonclear = |img: &visiaengine_render_wgpu::OffscreenFrame| -> u32 {
+    // canary：案发机位（E202 出生形，target=[0,0,0] 对世界 3857 系数据）必须全空帧。
+    // 参考底=空帧左上角像素（自标定：CORE-16 后 clear 字节受硬件舍入 ±1，钉死字面值脆）。
+    let rig_broken = CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0);
+    let empty = render(&mut backend, &rig_broken);
+    let bg = [empty.rgba[0], empty.rgba[1], empty.rgba[2]];
+    let off_bg = |img: &visiaengine_render_wgpu::OffscreenFrame| -> u32 {
         img.rgba
             .as_chunks::<4>()
             .0
             .iter()
-            .filter(|p| [p[0], p[1], p[2]] != [13, 18, 26])
+            .filter(|p| {
+                p[0].abs_diff(bg[0]) > 2 || p[1].abs_diff(bg[1]) > 2 || p[2].abs_diff(bg[2]) > 2
+            })
             .count() as u32
     };
-    // canary：案发机位（E202 出生形，target=[0,0,0] 对世界 3857 系数据）必须全空帧
-    let rig_broken = CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0);
-    assert_eq!(
-        nonclear(&render(&mut backend, &rig_broken)),
-        0,
-        "案发机位意外出图——谓词没锁住灰屏案"
-    );
+    assert_eq!(off_bg(&empty), 0, "案发机位意外出图——谓词没锁住灰屏案");
     // 修复机位：E202 resumed() 装载期拟合式逐字镜像
     let mut rig = rig_broken;
     let (hx, hy) = ((x1 - x0) / 2.0, (y1 - y0) / 2.0);
@@ -311,6 +312,6 @@ fn golden_geo_window_fit() {
     rig.dist = (hx / (tan_h * load_aspect)).max(hy / tan_h) * 1.3;
     rig.zoom = rig.dist * tan_h * load_aspect;
     let img = render(&mut backend, &rig);
-    let nc = nonclear(&img);
+    let nc = off_bg(&img);
     assert!(nc > 12_000, "窗口拟合路 park 覆盖不足: {nc} px");
 }

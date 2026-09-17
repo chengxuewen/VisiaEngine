@@ -46,7 +46,14 @@ fn missing_normals_default_or_generated() {
 #[test]
 fn base_color_from_material() {
     let doc = load_gltf(fixture(TRI)).unwrap();
-    assert_eq!(doc.entities()[0].mesh.base_color, [0.1, 0.2, 0.9, 1.0]);
+    // IR 面=sRGB 约定（CORE-16）：规范线性 factor 经 linear_to_srgb 归位一次，
+    // 后端上传咽喉再转回线性——往返 ≤2e-7（8bit 量化下无损）
+    let bc = doc.entities()[0].mesh.base_color;
+    let want = [0.3491902f32, 0.4845292, 0.9546872, 1.0];
+    assert!(
+        bc.iter().zip(want).all(|(a, b)| (a - b).abs() < 1e-4),
+        "base_color 应=linear_to_srgb(0.1,0.2,0.9)，得 {bc:?}"
+    );
     let two = load_gltf(fixture(TWO)).unwrap();
     assert_eq!(two.entities()[0].mesh.base_color, [1.0, 0.0, 0.0, 1.0]);
     assert_eq!(two.entities()[1].mesh.base_color, [0.0, 1.0, 0.0, 1.0]);

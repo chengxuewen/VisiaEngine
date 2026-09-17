@@ -77,7 +77,7 @@ impl HeadlessBackend {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb, // CORE-16 输出端：线性写出，store 硬件编码
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         });
@@ -172,11 +172,13 @@ impl RenderBackend for HeadlessBackend {
     }
 
     fn render(&mut self, frame: &Frame) {
-        self.core.render_view(
+        // 目标格式必须与 make_target 的 Srgb 形一致（管线/pass 兼容性锁）
+        self.core.render_view_format(
             frame,
             &self.target_view,
             self.viewport.width(),
             self.viewport.height(),
+            wgpu::TextureFormat::Rgba8UnormSrgb,
         );
     }
 

@@ -155,15 +155,16 @@ fn headless_run() {
     let mut groundish = 0u32;
     for p in img.rgba.as_chunks::<4>().0.iter() {
         let (r, g, bl) = (p[0], p[1], p[2]);
-        let lum = r as u32 + g as u32 + bl as u32;
+        // CORE-16 域重钉：地面亮面 r≈130..137 / 影斑 r≈112..127 双峰（编码域），
+        // 分界 128（旧域 lum<260 的线性阈在编码域失效）；阈 4000=实测 ~10k 的 −60%
         if r.abs_diff(g) < 18 && r.abs_diff(bl) < 26 && (40..200).contains(&r) {
             groundish += 1;
-            if lum < 260 {
+            if r < 129 {
                 dark += 1;
             }
         }
     }
-    assert!(dark > 800, "影斑不足（城市应投影成片）dark={dark}");
+    assert!(dark > 4000, "影斑不足（城市应投影成片）dark={dark}");
     println!(
         "OK shadow demo dark={}/{} buildings={}",
         dark,

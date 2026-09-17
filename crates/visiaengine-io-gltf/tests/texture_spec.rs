@@ -110,7 +110,10 @@ fn textured_glb_reads_uv_texture_factors() {
     assert_eq!(m.uv.len(), 4, "GLTF-11: TEXCOORD_0 读取");
     assert_eq!(m.uv[3], [0.0, 1.0]);
     assert_eq!(m.texture, Some(0), "baseColorTexture→image 槽位");
-    assert!((m.base_color[0] - 0.5).abs() < 1e-6);
+    assert!(
+        (m.base_color[0] - 0.7354).abs() < 1e-3,
+        "IR 面=sRGB 约定（CORE-16）"
+    ); // linear_to_srgb(0.5)
     assert!(
         (m.metallic_factor - 0.2).abs() < 1e-6,
         "因子收纳（mock-up 面 M2）"

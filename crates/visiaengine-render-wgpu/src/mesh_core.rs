@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use visiaengine_core::srgb_to_linear;
 use wgpu::util::DeviceExt as _;
 
 use visiaengine_render::{
@@ -547,11 +548,13 @@ impl MeshCore {
             },
             None => (false, None),
         };
+        // CORE-16 咽喉一：base_color 宿主面=sRGB（CSS 惯例），写出=线性（文档串注同批）
+        let lin = srgb_to_linear(desc.base_color);
         let block = [
-            desc.base_color[0],
-            desc.base_color[1],
-            desc.base_color[2],
-            desc.base_color[3],
+            lin[0],
+            lin[1],
+            lin[2],
+            lin[3],
             desc.repeat[0],
             desc.repeat[1],
             desc.specular,
@@ -594,7 +597,9 @@ impl MeshCore {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            // CORE-16：宿主纹理字节=sRGB 编码（PNG/JPEG/位图惯例），Srgb 格式
+            // =采样时硬件解码进线性光照域（与材质块/clear 同域，K3 片）。
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
@@ -642,7 +647,13 @@ impl MeshCore {
                 reason: "empty instance table".into(),
             });
         }
-        let bytes = bytemuck::cast_slice(desc.data);
+        let mut data = desc.data.to_vec(); // CORE-16 咽喉五：实例色线性化副本（链乘同域）
+        for inst in &mut data {
+            inst.color = srgb_to_linear([inst.color[0], inst.color[1], inst.color[2], 1.0])[..3]
+                .try_into()
+                .expect("3ch");
+        }
+        let bytes = bytemuck::cast_slice(&data);
         let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("instances"),
             size: bytes.len() as u64,
@@ -763,7 +774,14 @@ impl MeshCore {
                 reason: "empty stroke table".into(),
             });
         }
-        let bytes = bytemuck::cast_slice(desc.data);
+        // CORE-16 咽喉三：扩片族色=线性化副本入表（Pod 契约不变，消费面=色域注记）
+        let mut data = desc.data.to_vec();
+        for seg in &mut data {
+            seg.color = srgb_to_linear([seg.color[0], seg.color[1], seg.color[2], 1.0])[..3]
+                .try_into()
+                .expect("3ch");
+        }
+        let bytes = bytemuck::cast_slice(&data);
         let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("strokes"),
             size: bytes.len() as u64,
@@ -790,7 +808,13 @@ impl MeshCore {
                 reason: "empty point table".into(),
             });
         }
-        let bytes = bytemuck::cast_slice(desc.data);
+        let mut data = desc.data.to_vec(); // CORE-16 咽喉三同型（点色线性化副本）
+        for m in &mut data {
+            m.color = srgb_to_linear([m.color[0], m.color[1], m.color[2], 1.0])[..3]
+                .try_into()
+                .expect("3ch");
+        }
+        let bytes = bytemuck::cast_slice(&data);
         let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("points"),
             size: bytes.len() as u64,
@@ -883,6 +907,9 @@ impl MeshCore {
                 | DrawCommand::DrawPoints { .. } => None,
             })
             .unwrap_or([0.0; 4]);
+        // CORE-16 咽喉二：ClearColor 宿主面=sRGB；srgb 目标 load 按线性解释
+        // （探针实锤 0.05 直载→63 亮），先转线性保 CSS 原感字节形
+        let cl = srgb_to_linear(clear);
         self.ensure_depth(width.max(1), height.max(1));
         let depth_view = self
             .depth_cache
@@ -1001,11 +1028,12 @@ impl MeshCore {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
+                        // CORE-16 咽喉二：ClearColor 经上方 cl（srgb 目标 load=线性域，探针实锤）
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: f64::from(clear[0]),
-                            g: f64::from(clear[1]),
-                            b: f64::from(clear[2]),
-                            a: f64::from(clear[3]),
+                            r: f64::from(cl[0]),
+                            g: f64::from(cl[1]),
+                            b: f64::from(cl[2]),
+                            a: f64::from(cl[3]),
                         }),
                         store: wgpu::StoreOp::Store,
                     },

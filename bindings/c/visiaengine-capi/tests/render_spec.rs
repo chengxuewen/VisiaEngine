@@ -182,21 +182,22 @@ fn textured_glb_mount_renders_checker() {
         visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
         0
     );
+    // CORE-16 域重钉（实测 56/23px）：sRGB 纹理+LINEAR 滤波下纯格心并入混色带，
+    // 品红族按 **b 双峰**分治（红格带 b<135 / 白格带 b≥135，r=172 恒定域）。
+    // uv 断链=全采 texel(0,0) 红 → 白族恒 0 的 canary 语义原样保持。
     let (mut reds, mut violets) = (0u32, 0u32);
     for y in 40..80 {
         for x in 50..110 {
             let p = &buf[((y * 160 + x) * 4) as usize..][..4];
-            // 红 texel×base → (R,0,B)品红族；白 texel×base → (R,G,B) G≈R/2。
-            // uv 断链=全采 (0,0) 红 texel → 第二族恒 0。
-            if p[0] > 60 && p[1] < 15 {
+            if p[0] > 150 && p[2] < 135 {
                 reds += 1;
-            } else if p[0] > 40 && p[1] > 25 && p[2] > 40 {
+            } else if p[0] > 150 && p[2] >= 135 {
                 violets += 1;
             }
         }
     }
     assert!(
-        reds > 30 && violets > 30,
+        reds > 30 && violets > 15,
         "棋盘双族缺失 red={reds} violet={violets}"
     );
     assert_eq!(visiaengine_destroy(ve), 0);
