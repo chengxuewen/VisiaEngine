@@ -268,3 +268,4 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   8 crate 不变**
 - 非目标挂账：盖帽 stencil（BIM 内腔演示单）· 六面盒 · OR/union · 硬件 CLIP_DISTANCES
   双路（wgpu30 存在但 DX12 未在列）· 交互剖切滑杆（E901 挂键候需）· LAS（票据制候令）
+- 决策入册：**D17 八裁决点**（discard 单路+复评触发/≤4 AND/无盖帽/Mᵀ恒等式/全族受裁/caster 同裁/重试环/E813）

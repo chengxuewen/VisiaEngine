@@ -120,3 +120,22 @@
 - **数据模型**: 云=单实体单 DrawPoints，origin=f64 bbox 中心+local f32（mount_geo 同构，D7 零新数学）；云级 meta 走 attr_* 缀查（零新查询口）；逐点属性/查询口随拾取族一并后置。
 - **容量**: cap=4M（声明先拒非半收）；release 实测 1M=upload 127ms/frame 914ms（lavapipe，bench_pcl json 在册），改数窗=一次（常量+条款+测试三处同 commit）。
 - **过程账**: 红队攻出的价值——「S 档纯 CPU 预着色=不可交付」并入 M；「ray_aabb 复用云级 pick」被四家打穿后置；bench.sh 恒真绿（PIT-25）由 G3 顺带根修。
+
+## D17: 剖面裁切带八裁决点（2026-09-17，B2 计划轮探针对抗 + 用户「按推荐全带开工」）
+- **a 路线**：fs discard 单路——wgpu 30 硬件 CLIP_DISTANCES 实核存在（docs.rs）但
+  DX12 后端未在列 + feature-gate 需双路分叉；复评触发=discard 边缘质量真疼（客户投诉锯齿）。
+- **b 面数**：≤4 AND（单面/角剖/三轴盒档）；六面盒/OR-union（three.js 双组形）=非目标，
+  升 6 仅 MAX_PLANES 一处（定长 Pod 布局锁）。
+- **c 盖帽**：不做（剖开见空心如实文档）；stencil cap 触发=BIM 内腔演示单。
+- **d 精度**：世界系数 f64（n 指保留侧+面上=保留闭区间），shader 走 model-space 恒等式
+  `n_m=Mᵀn, d_m=d+n·(o+t_M)`（f64 相乘后降 f32）——实施中自查根修两处（Mᵀ/平移列），
+  教训：列主序下「法向乘矩阵」方向必以恒等式推导，勿凭直觉。
+- **e 受裁族**：全绘制族（mesh/inst/stroke/point 逐像素）——「裁世界不裁类型」。
+- **f 阴影**：caster 同 discard（剖掉的楼不留整块影；three.js clipShadows 默认 false
+  是历史包袱非理由）。
+- **g 拾取**：命中点 keeps 负侧→排除重试环（剖开可见者必可拾）；capi pick=positions×
+  IDENTITY 既有事实以「两帧合一」注记，不顺手扩 origin 域（独立缺口独立立项）。
+- **h 面**：E813 C 单例无头活体门；交互剖切滑杆挂账（E901 键控=演示需求触发）。
+- **红利记录**：View 块扩段方案（origin+transform 已在 view_block 签名）使本带
+  **零新 binding/绑组/缓冲**——比探针预估的独立 binding9 省一整层施工；
+  「先查数据通路再定挂点」纪律（think-before-act）实证。
