@@ -13,7 +13,7 @@ endif()
 # 原生例（C/C++/Qt exe）注册宏：真身=名字=ctest 条目；display 族 LABELS 交 -LE/-L 分流
 function(visiaengine_add_example _n)
   # ARGS 必须 multivalue：单值口会只吞 "--frames"（列表拍扁实锤，E801 超时案）
-  cmake_parse_arguments(_A "DISPLAY;X11;QT;SDL3;CPP;INTERACTIVE" "" "ARGS" ${ARGN})
+  cmake_parse_arguments(_A "DISPLAY;X11;QT;SDL3;CPP" "" "ARGS" ${ARGN})
   if(_A_DISPLAY)
     set(_lbl "example;native;display")
   else()
@@ -49,14 +49,20 @@ function(visiaengine_add_example _n)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     SKIP_RETURN_CODE 77
     LABELS "${_lbl}")
-  if(_A_INTERACTIVE)  # 交互 run 步骤（rs 族 cargo-run_* 同制：零参=看窗口，run-gui 探测 :0 回退）
+  # run 步骤=人验形态，全例必发（rs 族 cargo-run_* 对称制）：零参常驻——
+  # DISPLAY 族经 run-gui（IDE 无 DISPLAY 探测 :0 回退），headless 族直跑终端输出即验收面
+  if(_A_DISPLAY)
     add_custom_target(run_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
               ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh $<TARGET_FILE:${_n}>
       USES_TERMINAL)
-    add_dependencies(run_${_n} ${_n})
-    set_target_properties(run_${_n} PROPERTIES FOLDER "examples/${_lang}")
+  else()
+    add_custom_target(run_${_n}
+      COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:${_n}>
+      USES_TERMINAL)
   endif()
+  add_dependencies(run_${_n} ${_n})
+  set_target_properties(run_${_n} PROPERTIES FOLDER "examples/${_lang}")
   set_property(GLOBAL APPEND PROPERTY VE_REGISTERED_EXAMPLES ${_n})
 endfunction()
 

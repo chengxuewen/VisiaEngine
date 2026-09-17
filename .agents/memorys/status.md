@@ -219,3 +219,14 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   （两档 zoom 10px/φ24 跨档锁，列采样=与 zoom 无关相位纪律）
 - 基线：**167 passed · 117↔117 · GATE-ABI 22/22 · GATE-DOCS E 21 件 · ctest 22 条 · ci 十段 ✓ ·
   WEB MIRROR ✓**；结构事故自纠：E402 带遗留 _disp 四僵尸行清除（edit-safety #18 族再现一例）
+
+## 双模人验收口（2026-09-17，用户令「例全检 + cmake run target 齐」）
+- native run 步全例覆盖：宏 INTERACTIVE 关键字废除，run_<name> 无条件发（DISPLAY 族 run-gui
+  包装/:0 回退、headless 族直跑=终端 OK 行人验面）——E702 窗口例首次获得 run 目标；矩阵=
+  rs cargo-run_*×12 + native run_*×9（+qt 宏外自注册 E703）
+- E502 双模化：色彩标定例从「headless 秒退」升格无参常驻人验窗（四色板 960×600，Esc/关窗退）
+  + --frames 自断言路原样保留（ctest）；两路同源 build 数据、config.format 显式 Srgb 优先
+- 审计结论（全例逐跑实测）：窗口例无参=常驻 ✓×10；自退例=设计身份 ✓（终端输出/PNG 落盘即
+  人验面，拾取替身=E402、色彩=E502 窗、恒宽=E503）——除 E502 外无隐性分叉
+- tutorials.md「人验形态」段：双模约定成文（IDE 零参=人验 / ctest argv=自动，C15 单源）
+- 基线：167 passed · 117↔117 · GATE-DOCS ✓ · CMAKE-SMOKE ✓ · qt-configure ✓ · ci 十段全绿

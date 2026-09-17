@@ -46,3 +46,17 @@
 `[[example]]` 块；C/C++ 例=对应 `examples/<lang>/CMakeLists.txt` 的
 `visiaengine_add_example()` 行（反-glob 中央账 configure 硬错，禁注释式禁用）。
 E703（Qt 宿主带）仅 qt-pixi 预设下存在。
+
+## 人验形态（双模约定 · IDE 手跑与自动测试同一入口）
+
+所有例子经统一 argv 双模分路：IDE 的 `cargo-run_*`（rs）/`run_*`（native）目标**零参启动 = 人验形态**；
+ctest / `--frames N` = 自动化短退形态（argv 单源纪律：注册表参数只服 ctest，run 步零参——C15）。
+
+| 人验形态 | 例 | 无参启动行为 | 看什么 |
+|---|---|---|---|
+| **窗口常驻** | E101 / E201 / E202 / E301 / E402 / E501 / E502 / E503 / E702 / E801 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
+| **自退自证** | E203 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E901 | 跑完打印 `OK …` 行退出 | 终端输出即验收面（E901 另落 `target/twin_city.png`） |
+
+**无头证据例“秒退=设计”**：其产物是终端断言行或 PNG/PPM 落盘，非交互窗；要交互验收走同能力域窗口例
+（拾取→E402、色彩→E502 无参窗、光影→E501 无参窗、恒宽→E503）。native run 步全例覆盖（DISPLAY 族经
+run-gui 探测 `:0` 回退；headless 族直跑，IDE 无 DISPLAY 亦可）。
