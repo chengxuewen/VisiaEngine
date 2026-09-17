@@ -23,9 +23,11 @@ pub use ffi::{
     visiaengine_remove_entity, visiaengine_render, visiaengine_viewport,
 };
 
-/// CAPI-18 native 独占（点云直通；wasm 桥走 bytes/扁平形于 MIR 片）。
+/// CAPI-18/19 native 独占（wasm 面走 bytes 桥于 wasm  crate）。
 #[cfg(not(target_arch = "wasm32"))]
-pub use ffi::visiaengine_add_points;
+pub use ffi::{
+    VE_PCL_FASTFAIL, VE_PCL_LENIENT, VePclReport, visiaengine_add_points, visiaengine_load_pcl,
+};
 
 /// CAPI-17 native 独占（wasm32 无 C ABI 事件面——JS 闭包走 visiaengine-wasm 桥）。
 #[cfg(not(target_arch = "wasm32"))]

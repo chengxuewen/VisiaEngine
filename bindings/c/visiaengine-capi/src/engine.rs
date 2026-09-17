@@ -601,6 +601,16 @@ impl Engine {
         }
     }
 
+    /// CAPI-19: 点云文件装载。RED 桩=恒 Err（成功路测试必红）。
+    pub fn load_pcl(
+        &mut self,
+        path: &str,
+        lenient: bool,
+    ) -> Result<(u64, visiaengine_io_points::PclReport), String> {
+        let _ = (path, lenient);
+        Err("RED 桩：load_pcl 未实装".to_string())
+    }
+
     /// CAPI-18: 点云直通（单实体单 DrawPoints；origin=[0,0,0] 宿主系局部——
     /// 非有限照收=宿主责任域，load 侧才挂 RepairPolicy；失败 despawn 回滚同 CAPI-15）。
     pub fn add_points(&mut self, raw: &[crate::ffi::VePointMark]) -> Result<u64, String> {

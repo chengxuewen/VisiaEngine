@@ -890,6 +890,44 @@ pub struct VePointsDesc {
     pub count: u64,
 }
 
+/// CAPI-19 报告结构（io-points PclReport 的 C 镜像；struct_size 前瞻门同谱）。
+#[repr(C)]
+pub struct VePclReport {
+    pub struct_size: usize,
+    pub dropped_non_finite: u32,
+    pub dropped_out_of_domain: u32,
+    pub dropped_unsupported: u32,
+    pub truncated_points: u32,
+    pub kept: u64,
+}
+
+/// CAPI-19 装载策略。
+pub const VE_PCL_FASTFAIL: u32 = 0;
+pub const VE_PCL_LENIENT: u32 = 1;
+
+/// CAPI-19：点云文件装载。RED 桩=门全真、行为恒 -3（成功路必红）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_load_pcl(
+    ve: u64,
+    path: *const std::os::raw::c_char,
+    policy: u32,
+    out_entity: *mut u64,
+    out_report: *mut VePclReport,
+) -> i32 {
+    let _ = (path, policy, out_entity, out_report);
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(_) => VE_ERR_IO,
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
 /// CAPI-18：点云直通装载（raw 解引用在栅栏内=FFI 边界既定例外，allow 系记录裁决）。
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]

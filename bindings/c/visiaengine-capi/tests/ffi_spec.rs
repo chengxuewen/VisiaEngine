@@ -3,13 +3,14 @@
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VE_OK, VeInput, VeMeshDesc, VePointMark, VePointsDesc, visiaengine_abi_version,
-    visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach, visiaengine_attr_bool,
-    visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy,
-    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
-    visiaengine_entity_visible, visiaengine_last_error, visiaengine_load_gltf,
-    visiaengine_on_input, visiaengine_pick, visiaengine_readback, visiaengine_remove_entity,
-    visiaengine_render, visiaengine_viewport,
+    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeInput, VeMeshDesc, VePclReport, VePointMark,
+    VePointsDesc, visiaengine_abi_version, visiaengine_add_mesh, visiaengine_add_points,
+    visiaengine_attach, visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str,
+    visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
+    visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
+    visiaengine_last_error, visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_on_input,
+    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
+    visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -244,7 +245,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        23,
+        24,
         "extern 入口计数（cfg-gated 行首式）"
     );
     assert_eq!(
@@ -493,5 +494,79 @@ fn add_points_domain_table() {
     assert_eq!(visiaengine_render(ve), VE_OK, "双云重放");
     // ⑤ 句柄门同谱
     assert_eq!(visiaengine_add_points(0, &desc, &mut out), VE_ERR_ARG);
+    assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+/// CAPI-19 装载域：成功路+meta 缀查+policy/NULL/句柄三门（桩恒 -3=RED 靶）。
+// spec: CAPI-19
+#[test]
+fn load_pcl_mount_meta_and_gates() {
+    let ve = visiaengine_create_headless(160, 120);
+    let path = std::ffi::CString::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../resources/data/pcl_tetra_ascii.ply"
+    ))
+    .unwrap();
+    let mut ent: u64 = u64::MAX;
+    let mut rep = VePclReport {
+        struct_size: std::mem::size_of::<VePclReport>(),
+        dropped_non_finite: u32::MAX,
+        dropped_out_of_domain: u32::MAX,
+        dropped_unsupported: u32::MAX,
+        truncated_points: u32::MAX,
+        kept: u64::MAX,
+    };
+    assert_eq!(
+        visiaengine_load_pcl(ve, path.as_ptr(), VE_PCL_LENIENT, &mut ent, &mut rep),
+        VE_OK,
+        "桩恒-3=RED 靶（GREEN 片转 0）"
+    );
+    assert_ne!(ent, u64::MAX, "成功必写 out_entity");
+    assert_eq!(rep.kept, 4, "ascii 四净点");
+    assert_eq!(rep.dropped_non_finite, 0);
+    // 云级 meta 缀查（CAPI-19：pcl 位形走 attr 域，键不撞靠位形全局唯一）
+    let mut pc = 0f64;
+    assert_eq!(
+        visiaengine_attr_f64(ve, ent, c"point_count".as_ptr(), &mut pc),
+        0,
+        "point_count 可查"
+    );
+    assert_eq!(pc, 4.0);
+    let mut buf = [0i8; 32];
+    assert_eq!(
+        visiaengine_attr_str(
+            ve,
+            ent,
+            c"format".as_ptr(),
+            buf.as_mut_ptr(),
+            buf.len() as u64
+        ),
+        0,
+        "format 可查"
+    );
+    assert_eq!(visiaengine_render(ve), VE_OK, "点云重放路真");
+    // 参数域三连
+    assert_eq!(
+        visiaengine_load_pcl(ve, path.as_ptr(), 9, &mut ent, &mut rep),
+        VE_ERR_ARG
+    );
+    assert_eq!(
+        visiaengine_load_pcl(ve, std::ptr::null(), VE_PCL_FASTFAIL, &mut ent, &mut rep),
+        VE_ERR_ARG
+    );
+    assert_eq!(
+        visiaengine_load_pcl(
+            ve,
+            path.as_ptr(),
+            VE_PCL_FASTFAIL,
+            std::ptr::null_mut(),
+            &mut rep
+        ),
+        VE_ERR_ARG
+    );
+    assert_eq!(
+        visiaengine_load_pcl(0, path.as_ptr(), VE_PCL_FASTFAIL, &mut ent, &mut rep),
+        VE_ERR_ARG
+    );
     assert_eq!(visiaengine_destroy(ve), 0);
 }

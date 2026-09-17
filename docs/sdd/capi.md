@@ -49,3 +49,6 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-18: 点云直通装载（add_points）
 `visiaengine_add_points(ve, const VePointsDesc*, uint64_t* out_entity) -> int32`：raw 数组直通（复用引擎内部 create_points→DrawPoints 路，渲染 IR 零改动）。值域分工表（C15，对 CAPI-01/15 既有行零撞位）：返回码 0=成功唯一形、非 0=既有 VE_ERR_* 谱；out_entity **仅成功时有效**、实体位形 0 合法禁当失败哨兵（CAPI-01 分工）；struct_size 前瞻门照 CAPI-15（小于所需=拒）；count=0/NULL marks/退化=**零提交**+VE_ERR_ARG（CAPI-15 同谱）。域语义：VePointMark{pos f32×3(宿主系局部坐标，origin=[0,0,0])，radius_px 屏幕像素(REND-30)，color sRGB×3(CORE-16 宿主面)}；**非有限坐标照收**——本口=宿主责任，脏数据四分类在 load 侧（IO-*，明写分工）；点数本口不设帽（唯一点数守卫在装载侧）。云=单实体单 DrawPoints（共识 5）；拾取域不含本口产物（CAPI-04 mesh-only 既成口径，本条不改写）。
+
+## CAPI-19: 点云文件装载（load_pcl）
+`visiaengine_load_pcl(ve, path, policy, uint64_t* out_entity, VePclReport* out_report) -> int32`：policy=VE_PCL_FASTFAIL(0)/VE_PCL_LENIENT(1)，越值=VE_ERR_ARG；out 双非空必需（NULL=ARG，成功唯一写点、失败零部分写——attr_str 纪律同谱）。成功=0 且 云=单实体（IO-06）；report 逐类导出（struct_size 前瞻门）。云级 meta（point_count/format/bbox 8 列）注册进属性域：**pcl 位形 attr_f64/str 可查**（geo attr_of 之后缀查，键不撞——位形编码全局唯一）。非有限/溢出列的丢弃语义归 io-points 四类（本口零翻译）；管理域（枚举/显隐/删除）=items 外与 CAPI-18 同谱。容量门在 IO-05（Err→VE_ERR_IO+错误串，超帽非半收）。path 不存在/解析失败=VE_ERR_IO；句柄门 CAPI-03 既成。

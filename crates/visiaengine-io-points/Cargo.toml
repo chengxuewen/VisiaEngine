@@ -1,0 +1,12 @@
+[package]
+name = "visiaengine-io-points"
+description = "点云装载（架构② io-* 族）：PLY(ascii/binary_le) → CPU 侧核心数据。零渲染依赖。"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+visiaengine-core.workspace = true
+thiserror.workspace = true

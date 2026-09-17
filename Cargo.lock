@@ -2122,6 +2122,7 @@ dependencies = [
  "visiaengine-core",
  "visiaengine-geo",
  "visiaengine-io-gltf",
+ "visiaengine-io-points",
  "visiaengine-render",
  "visiaengine-render-wgpu",
  "web-sys",
@@ -2155,6 +2156,14 @@ dependencies = [
  "gltf",
  "image",
  "proptest",
+ "thiserror 2.0.20",
+ "visiaengine-core",
+]
+
+[[package]]
+name = "visiaengine-io-points"
+version = "0.1.0"
+dependencies = [
  "thiserror 2.0.20",
  "visiaengine-core",
 ]
