@@ -1,0 +1,13 @@
+[package]
+name = "visiaengine-io-text"
+description = "文字标注装载（架构② io-* 族）：fontdue 栅格 → GlyphCache atlas + 屏幕恒大小 LabelMark。零渲染依赖。"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+visiaengine-core.workspace = true
+thiserror.workspace = true
+fontdue.workspace = true

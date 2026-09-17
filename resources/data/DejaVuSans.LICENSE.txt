@@ -1,0 +1,3 @@
+DejaVu Sans — subject to the Font license at https://dejavu-fonts.github.io/License.html
+(Apache-2.0-compatible permissive license derived from Bitstream Vera). Used as the io-text
+label rendering test/demo fixture. Not linked into any crate; distributed as a data asset only.
