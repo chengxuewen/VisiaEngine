@@ -142,6 +142,16 @@ impl ApplicationHandler for App {
         let bbox = doc.layer_bbox().expect("non-empty layer");
         let origin = [(bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0, 0.0];
         let neg = [-origin[0], -origin[1]];
+        // 装载期取景拟合（E201 灰屏案 dc397ca 同族根修）：D7 契约下 DrawMesh 世界位形
+        // = origin+local，相机 target 必须对准世界层原点——[0,0,0] 机位对着距 park
+        // 数百万米的空处 = 全帧只剩清屏色。像素门见 geo_pipeline::golden_geo_window_fit。
+        let (hx, hy) = ((bbox[2] - bbox[0]) / 2.0, (bbox[3] - bbox[1]) / 2.0);
+        let load_aspect = size.width as f64 / size.height.max(1) as f64;
+        let tan_h = (self.rig.fov_y * 0.5).tan();
+        self.rig.target = origin;
+        self.rig.dist = (hx / (tan_h * load_aspect)).max(hy / tan_h) * 1.3;
+        // ortho 装饰位 + 描边宽度基准（REND-29）：目标深度处世界半宽 → px_world_scale 精确路
+        self.rig.zoom = self.rig.dist * tan_h * load_aspect;
         for f in doc.features() {
             for gp in match tessellate(&f.kind.shifted(neg), &f.style) {
                 Ok(v) => v,

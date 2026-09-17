@@ -185,3 +185,9 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 新增：PIT-22（验证通道≠用户通道 DISPLAY 族·PIT-18 泛化）、PIT-23（CMake/ctest 恒真/吞噬三形·E801 死挂案）、edit-safety ###19（管道尾吃 rc·带病入库实锤）、testing.md「视觉例双保险」（像素门+三自证+T3 清单+转发壳断言）、conventions C15（哨兵先对条款分工表/参数不侍二主）、C16（决策呈交=人话+示意+目录+逐项）
 - 会话主线：v1.3 结构轮（S0-S5 七笔）+ FOLDER 位置定则 + E201/E301 交互根修 + B1 数据带（RED→GREEN 四口 21 入口 ctest 18 条）；基线 160 passed·115↔115·GATE-ABI 21·ci 十段
 - 下一步队列（不变）：push 候令（领先 7+本笔）→ T3 人验五条（E201/E301/E801/测试面板/RA lens）→ B2 剖面裁切计划轮候令
+
+## E202 灰屏根修（2026-09-17，D7 相机位形契约的第二见）
+- 根因：resumed() 拟合缺失——DrawMesh 世界位形=origin+local（D7），相机 target 留 [0,0,0] 对 3857 世界系 park 差数百万米 → 全帧清屏色；离屏探针复刻案发参数实证（四变体全空）后修复：target=层 bbox 中心 + dist/zoom 装载期拟合
+- 永装门：geo_pipeline::golden_geo_window_fit（spec WGPU-11 多例同条款，spec-trace 115↔115 不动）——谓词三自证齐：canary 案发机位恒 0 px、修复路 23222px 实测阈 12000（−48% 保守位）
+- 同族清屏：E901/E401/E201/E301 机位逐例核对无撞（E201/301 数据住局部系 origin=0 自洽）；PIT-22/双保险纪律第二次抓真案（灰屏家族三见：E201/E301/E202）
+- 基线：161 passed · 十段全绿 · ctest 18 条不回退

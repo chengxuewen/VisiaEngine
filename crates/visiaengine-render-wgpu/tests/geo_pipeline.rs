@@ -215,3 +215,102 @@ fn golden_scalar_ramp_pixels() {
     assert!(reddish > 20, "h50 纯高红色族像素缺失: {reddish}");
     assert!(midyellow > 20, "h25 中点黄族像素缺失: {midyellow}");
 }
+
+// spec: WGPU-11
+/// E202 窗口路镜像像素门（2026-09-17 灰屏案根修随带，testing.md 视觉例双保险第 1 条）。
+/// 谓词三自证：①正例=拟合式机位必出楼；②canary=案发机位（target 世界原点外的 [0,0,0]）
+/// 必空帧——断死"画面来自机位正确"而非背景巧合；③阈=实测 23222 的 −48%。
+#[test]
+fn golden_geo_window_fit() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../resources/data/park.geojson"
+    );
+    let doc = load_geojson(path).expect("fixture");
+    let [x0, y0, x1, y1] = doc.layer_bbox().expect("bbox");
+    let origin = [(x0 + x1) / 2.0, (y0 + y1) / 2.0, 0.0];
+    let neg = [-origin[0], -origin[1]];
+    let mut backend = match HeadlessBackend::new(W, H) {
+        Some(b) => b,
+        None => {
+            eprintln!("SKIP: no adapter");
+            return;
+        }
+    };
+    let mut commands = vec![DrawCommand::ClearColor {
+        rgba: [0.05, 0.07, 0.10, 1.0],
+    }];
+    for f in doc.features() {
+        for gp in tessellate(&f.kind.shifted(neg), &f.style).unwrap() {
+            let visiaengine_geo::GeoPart::Fill(p) = gp else {
+                continue;
+            };
+            if p.positions.is_empty() {
+                continue;
+            }
+            let mesh = backend
+                .create_mesh(&MeshDesc {
+                    positions: &p.positions,
+                    normals: &vec![[0.0, 0.0, 1.0]; p.positions.len()],
+                    indices: &p.indices,
+                    uv: &[],
+                })
+                .unwrap();
+            let mat = backend.create_material(p.color).unwrap();
+            commands.push(DrawCommand::DrawMesh {
+                mesh,
+                material: mat,
+                origin,
+                transform: [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+            });
+        }
+    }
+    let render = |be: &mut HeadlessBackend, rig: &CameraRig| {
+        let aspect = W as f32 / H as f32;
+        let (near, far) = ((rig.dist * 0.01) as f32, (rig.dist * 30.0) as f32);
+        let frame = Frame {
+            viewport: Viewport::new(W, H, 1.0),
+            camera: Camera::perspective(rig.fov_y as f32, aspect, near, far),
+            view_rot: rig.view_rotation(),
+            eye: rig.eye(),
+            proj: rig
+                .perspective(rig.fov_y as f32, aspect, near, far)
+                .unwrap(),
+            px_world_scale: 2.0 * rig.zoom as f32 / W as f32,
+            shadow: None,
+            commands: commands.clone(),
+        };
+        be.render_to_pixels(&frame).expect("render")
+    };
+    let nonclear = |img: &visiaengine_render_wgpu::OffscreenFrame| -> u32 {
+        img.rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| [p[0], p[1], p[2]] != [13, 18, 26])
+            .count() as u32
+    };
+    // canary：案发机位（E202 出生形，target=[0,0,0] 对世界 3857 系数据）必须全空帧
+    let rig_broken = CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0);
+    assert_eq!(
+        nonclear(&render(&mut backend, &rig_broken)),
+        0,
+        "案发机位意外出图——谓词没锁住灰屏案"
+    );
+    // 修复机位：E202 resumed() 装载期拟合式逐字镜像
+    let mut rig = rig_broken;
+    let (hx, hy) = ((x1 - x0) / 2.0, (y1 - y0) / 2.0);
+    let load_aspect = W as f64 / H.max(1) as f64;
+    let tan_h = (rig.fov_y * 0.5).tan();
+    rig.target = origin;
+    rig.dist = (hx / (tan_h * load_aspect)).max(hy / tan_h) * 1.3;
+    rig.zoom = rig.dist * tan_h * load_aspect;
+    let img = render(&mut backend, &rig);
+    let nc = nonclear(&img);
+    assert!(nc > 12_000, "窗口拟合路 park 覆盖不足: {nc} px");
+}
