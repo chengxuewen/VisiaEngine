@@ -230,3 +230,18 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   人验面，拾取替身=E402、色彩=E502 窗、恒宽=E503）——除 E502 外无隐性分叉
 - tutorials.md「人验形态」段：双模约定成文（IDE 零参=人验 / ctest argv=自动，C15 单源）
 - 基线：167 passed · 117↔117 · GATE-DOCS ✓ · CMAKE-SMOKE ✓ · qt-configure ✓ · ci 十段全绿
+
+## 点云数据族带（2026-09-17，D16/hyperplan 计划 pcl-data-band.md，M0→G 全收）
+- 口面：CAPI-18 add_points（23 入口 minor=4）+ CAPI-19 load_pcl（24 入口 minor=5，
+  VePclReport 四类导出/meta attr 缀查）；三面镜像全带（头/hpp/wasm loadPclBytes+d.ts/
+  web-mirror 钉×2）；C15 值域表先写（attr found=1/none=0 测试纠偏入册）
+- io-points 新 crate（裁决 C 授权）：PLY ascii/bin_le 自写 ~420 行零新依赖；四类分型
+  「点级触发 FastFail、列/元素级只计数」落点澄清入条款；截断双语义双向断言；
+  spec-trace IO 前缀 + **第三检机器锁**（负例 FOO-01→红实测在册）
+- 例/门：E204 双模（螺旋自断言阈随点数缩放量纲 + --file 装载路 + 常驻窗）；
+  G1 100k 批量完整性 / G2 远原点互逆点版（逐字节等）；G3 --points 支 1M 实测入册
+- **工具链根修**：bench.sh 包名 S1 后死链 + 缺席 continue 恒真（PIT-25 入档，MISSING→exit1）；
+  rustfmt 误喂 Cargo.toml 事故（edit-safety #20 入档）；测试锚三处 rustfmt 重排教训=锚必现读
+- 基线：**181 passed · spec-trace 125↔125 · GATE-ABI 24/24 · GATE-DOCS E 22 件三方 ·
+  ctest 23 条 · CMAKE-SMOKE ✓ · WEB ✓ · audit try1 ✓（PIT-7 第 7 见）· 8 crate**
+- 余账：LAS 二带（判据=客户演示单）· 拾取族触发制 · cap 改数窗一次 · push 候令

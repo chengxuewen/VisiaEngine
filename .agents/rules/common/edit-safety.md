@@ -235,3 +235,10 @@ grep -c "重复模式" <file>    # 期望 1；>1 = edit 重复插入
 **先例**: 2026-09-16 B1d 带（fmt 段两文件未 rustfmt，断言词表无 `Diff in` → "FAILED=0" 假绿入库，4dc7f4f 收案）。
 **验证**: `bash -c 'false | tail -1 && echo BAD'` 必打印 BAD=反例在案；门禁调用逐处 `grep -nE '\| *(tail|head).*&&'` 人工过目。
 **阻塞条件**: 新加门禁命令带管道尾且无 pipefail。
+
+### 20. rustfmt 只喂 .ts/.rs 白名单——非 Rust 输入会重写坏文件（2026-09-17 实锤）
+
+**规则**: 批量 rustfmt 的命令清单**禁止**出现 Cargo.toml/*.md/*.json 等非 .rs 文件——rustfmt 会按 Rust 词法解析并把原文件重写/破坏（本案 Cargo.toml 中文注释被当 token 报错+重写，git checkout 还原）。
+**先例**: 点云带 M2，`rustfmt --edition 2024 … Cargo.toml` 误喂，工作区损坏一次。
+**验证**: rustfmt 调用行 `grep -nE 'rustfmt.*\.(toml|md|json|toml)'` 或脚本里 `${f##*.}` 断言==rs。
+**阻塞条件**: 任何 rustfmt 命令的文件参数含非 .rs。

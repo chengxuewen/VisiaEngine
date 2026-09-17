@@ -174,3 +174,9 @@
   处必须写明 **绕序=外法向 CCW** 契约（已入金训注）。
 - **验证**: 新共享几何出生即跑一条「正面射线必中/背面射线必不中」双向断言（E402 门的
   corner-canary 形）；`grep -n 'CCW' crates/visiaengine-render-wgpu/src/offscreen.rs` 契约行在位。
+
+## PIT-25: 工具链静默断链——包名漂移 + 缺席 continue 恒真（2026-09-17，点云带 G3 挖出）
+- **症状**: `bash scripts/bench.sh` 常年 `BENCH ✓/exit 0`，但 resources/bench/*.json 自 S1 迁移后两轮未更新（时间戳停在 9-14）。
+- **根因**: 双重静默——①spec 里 `-p visiaengine-render-wgpu --example E601…` 在例子迁 `examples/rs`（包名 examples）后 cargo 直接报错；②脚本对"无 RESULT 行"只 `continue` 不置错，管道+`|| true` 吞 rc（edit-safety #19 同族）→ 死链被恒真绿掩盖。
+- **解法**: 包名改 `-p examples`；缺席计数 `MISSING>0 → exit 1`（工具链故障与性能劣化分离：后者红字 exit 0 维持观测档）；新例 bench_pcl 挂同链。
+- **验证**: `bash scripts/bench.sh` 三 json 时间戳当日 + 故意 `sed` 错包名一次必 exit 1（正/负例自证，PIT-21 纪律）。

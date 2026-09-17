@@ -113,3 +113,10 @@
 - **决策**: ①`crates/`=纯核心 5 库；capi→`bindings/c/visiaengine-capi`（src+手写头+tests 同栖，probe 同级），wasm→`bindings/js/rust/`（实测路径引用=0，仅 members+一行 path 地雷），`bindings/cpp`(hpp)/`bindings/qt`(widget.hpp)/`bindings/js/demo`；目录法一句话：examples/=教学例、bindings/=实现+头+验收+包壳。②宿主三分：headless 主力（readback 断言）+ **SDL3**（conda 3.4.16，xid 属性=attach 合同同构，S0 双态实证）+ Qt 专带演示；FetchContent 兜底不建（D5 单源）。③C/C++ SDK 例=**E8xx 带**；孪生共号 `.c/.cpp` 分家（目标名 `_c/_cpp` 尾）；资产逃生口=目录名=文件茎。④hpp 不开 SDD 账（widget.hpp 先例；三壳语义住头注释、活体锚 CAPI-nn；触发器=壳长新行为时建 cpp.md+扩 spec-trace 双正则，30 分钟无利息）。⑤install 树=S-c β：本轮仅 fail-loud 守卫，树+树外演练=打包轮硬债（模板钉 §7）。
 - **原因**: 主流六仓实测（iceoryx2/slint/SDL3/Vulkan-Hpp/Sascha/filament）+ 红队 G 组缺口全收编；examples 中心化=6/6 主流一致，「tests 栖绑定价、examples 集中」两分法。
 - **影响**: 例子门禁=可 ctest 枚举单源；toolchain 批（compile_commands/.clang-format/.vscode presets always+.gitignore L56 negation 死锁修复）；PIT-19（pixi clobber→conda Xvfb XKB 死）入账。
+
+## D16: 点云带范围裁决（2026-09-17，hyperplan 三回合对抗 + 用户「按推荐」）
+- **范围**: M0 ramp 暴露 + M1 add_points 直通 + M2 io-points(PLY ascii/bin_le) 同带；**LAS=二带**（判据：AV/测绘客户先行演示单，本机无证据；las crate 0.11.1 MIT 已核可入）；拾取族整块后置（触发=交互需求 ∧ bench>16ms）；法向/简化/EDL/逐点查询全部非目标。
+- **命名**: 新前缀 `IO-*`（io-* 族律=命名跟随 crate），spec-trace **第三检机器锁**同 commit（白名单外前缀=红；正/负例自证在册）——把「扩前缀漏正则双侧静默失明」降维成门禁问题。
+- **数据模型**: 云=单实体单 DrawPoints，origin=f64 bbox 中心+local f32（mount_geo 同构，D7 零新数学）；云级 meta 走 attr_* 缀查（零新查询口）；逐点属性/查询口随拾取族一并后置。
+- **容量**: cap=4M（声明先拒非半收）；release 实测 1M=upload 127ms/frame 914ms（lavapipe，bench_pcl json 在册），改数窗=一次（常量+条款+测试三处同 commit）。
+- **过程账**: 红队攻出的价值——「S 档纯 CPU 预着色=不可交付」并入 M；「ray_aabb 复用云级 pick」被四家打穿后置；bench.sh 恒真绿（PIT-25）由 G3 顺带根修。
