@@ -31,3 +31,15 @@ highlight = "all"
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://index.crates.io"]
+
+[advisories]
+# 例外白名单（逐条理由+复评触发；D-18 候选=已随 S2 N1 呈交用户裁决 A 案通过 2026-09-18）
+ignore = [
+    # RUSTSEC-2026-0192: ttf-parser「作者宣告停维护」——类别=unmaintained，非漏洞。
+    # 攻击面判定：字体字节=宿主注入自有资产（同 load_gltf 信任级），非第三方网络输入；
+    # parse panic 由 capi_guard 栅栏兜底（VE_ERR_PANIC 谱）。
+    # 换栈成本：ab_glyph 同依 ttf-parser（C 案无效）；swash/skrifa 直用=+45KB gz 触 R2+工期 2×。
+    # 复评触发：① fontdue 出 skrifa 后端版本 ② 不可信字体输入成为真实用例（在线包下载路）
+    #           ③ 出现真 PoC 崩溃样本。命中任一 = io-text 换 swash（接口面已隔离，非破坏）。
+    "RUSTSEC-2026-0192",
+]
