@@ -4,16 +4,16 @@
 
 ## OVERVIEW
 
-VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**批 0-5 已收官（2026-09-14）**：八 crate workspace、**139 条** SDD 契约（spec-trace 双向锁）、ctest 统一例子清单（24 条）+ 四 gate（style/trace/abi/docs）+ cmake-smoke 三态三锚；golden 真机无 SKIP；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
+VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D 渲染管线，面向 GIS/数字孪生/自动驾驶仿真/BIM 展示，以 SDK 形态（C API FFI）嵌入 Qt/Flutter/C#/Web，Open Core 模式。技术栈 2026-09-03 白皮书 v0.1.0 定案：**Rust 核心 + wgpu 渲染**（D4 终审：wgpu 直用自研管线 `visiaengine-render-wgpu`，不采用 Bevy）。**批 0-5 已收官（2026-09-14）**：九 crate workspace、**152 条** SDD 契约（spec-trace 双向锁）、ctest 统一例子清单（31 条）+ 四 gate（style/trace/abi/docs）+ cmake-smoke 三态三锚；golden 真机无 SKIP；agent 配置由前身项目 MediaServo（Rust WebRTC，栈不同勿混淆）移植并已中性化。
 
 ## STRUCTURE
 
 ```
 ./
 ├── Cargo.toml/lock   # workspace（members=crates/*+examples/rs+bindings 两 FFI crate，S1/S2 定）；deny.toml licenses/bans
-├── crates/           # 纯核心 6：core→render（trait+IR/camera/rebase）→render-wgpu（wgpu 后端/管线/offscreen）+ io-gltf + io-points（PLY 点云，IO-* 族）+ geo（GeoJSON→3857→细分→样式/GPU 扩片输出 GEO-24）
+├── crates/           # 纯核心 7：core→render（trait+IR/camera/rebase）→render-wgpu（wgpu 后端/管线/offscreen）+ io-gltf + io-points（PLY 点云，IO-* 族）+ io-text（fontdue 栅格标注，IO-07..09）+ geo（GeoJSON→3857→细分→样式/GPU 扩片输出 GEO-24）
 ├── examples/         # 例子按语言：rs=cargo example 教程系×12（[[example]] 注册壳包）；c=C 例（E701/702；S4 起 E8xx+template）；cpp/qt 随 S4 开；跑面单源=ctest/pixi smoke
-├── bindings/         # 实现面一窝同栖：c/visiaengine-capi（C ABI 26 入口+手写头+CAPI 条款测试）· c/probe · cpp/include（S4 hpp）· qt/widget.hpp · js/rust/visiaengine-wasm（CAPI-09 镜像）+ js/demo
+├── bindings/         # 实现面一窝同栖：c/visiaengine-capi（C ABI 33 入口+手写头+CAPI 条款测试）· c/probe · cpp/include（S4 hpp）· qt/widget.hpp · js/rust/visiaengine-wasm（CAPI-09 镜像）+ js/demo
 ├── docs/sdd/         # 行为契约条款（CORE/REND/WGPU-NN，与测试 // spec: 双向追溯：scripts/spec-trace.sh）
 ├── docs/tutorials.md # E 编号教程索引（文件名=头注=索引三方锁=scripts/gate-docs.sh）
 ├── .github/workflows # ci.yml 待命（GitHub 镜像日激活；本机等价=pixi run ci+同款 grep）

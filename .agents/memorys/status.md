@@ -346,3 +346,21 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   CMAKE-SMOKE ✓ · WEB MIRROR 3/3 · ci 十段 0 红 · D21 入册**
 - 余账：push 候令（④ 四笔+前带累计）· set_material_alpha/软影/OIT/逐实例 alpha/逐顶点 alpha
   全挂触发制 · ⑤b capi 二波不变
+
+## ⑤b 二波小地图导航带基线（2026-09-18，计划 capi-minimap-nav-band v1.1·Momus OKAY 0B/2A 修入）
+- 口面：CAPI-25 set_map（VeMapView 比例表；NULL=关=旧路；域拒零副作用）+ CAPI-26
+  navigate_click（区外/无图拒；实体→地面两阶段；保角保距 [裁决 e]）+ CAPI-27
+  get_camera（VeCameraPose 复用双向=入参 fly/出参读回，宿主预置 struct_size 先检后写）；
+  30→33 入口 minor=9；三面镜像全带（头/hpp 三薄转发/wasm 4 桥 setMap·clearMap·
+  navigateClick·getCameraPose+d.ts 名册+mirror 钉 0x…0009）
+- 引擎态：MapView+set_map/map_rect/map_rig（主 target 派生顶视）/navigate_click/
+  camera_pose；render 双投分支（⑤b render_view_rects 消费首实证；None=旧路 canary）；
+  pick 小图区优先路由；apply_input 小图区 kind1..4=消费 no-op
+- 例：E816_minimap_nav.c 五段活体门（canary 逐字节/角区双族 1596g+756r/小图 pick/
+  600ms 飞行 257 tick 到站 (3.579,3.714,0)/值域拒+无图拒）；ctest #31
+- 教训如实：E816 首版把两水平面当「墙」——顶视=红盖绿 g=42 探针现形（PIT-8 四见，
+  场景几何先探针后断言）；段5 终态 canary 比旧 ref=飞行挪相机必破（写后自查根修，
+  基线重取形）；ffi_spec use 块漏三函数名（regex 换行锚未命中=edit-safety #9 族）
+- 基线：**226 passed · spec-trace 152↔152 · GATE-ABI 33/33 · GATE-DOCS ✓ E 30 件
+  三方 · ctest 31 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3（abi 钉 0x…0009）· ci 十段
+  0 红 · 9 crate · R2 零触（web gz 增量 web-check 打印为账）**

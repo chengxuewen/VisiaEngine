@@ -211,3 +211,20 @@
   断言带 (10,30)）——半透明正确性的可判定形。
 - **v0 残留声明入条款**：单 mesh 自叠不可序（RTT/OIT 后带）· 半透件全实影（three.js 同择）
   · 材质 a==1∧texel a<1 走旧路（无暗语义）· 逐实例 alpha 需独立布局裁决。
+
+## D22: ⑤b 二波小地图导航带裁决（2026-09-18，双探针+Momus OKAY 0B/2A→修入 + 用户批准）
+- **丙案：主+固定副视口+引擎内部 hit-test 路由**（甲=宿主分发/乙=VeInput 加字段均判退）。
+  探针 B 实锤 `struct_size` 严格 `<` 前瞻门=给 VeInput 加字段会断所有旧宿主——
+  宿主只报屏幕 px，区内外判定/双投路由住引擎（VeInput 零触）。
+- **MapView=比例表形**（fx/fy/fw/fh∈[0,1]+zoom），resize 自动跟随零宿主义务；
+  小图 rig=主 target 派生跟随顶视（零同步口，双 rig 漂移半径=构造 0）。
+- **[裁决 e] navigate_click 仅换 target 保 dist/fov/yaw/pitch**：小图点击=平移意图，
+  非重新构图（E816 f64 逐位断言锁）。两阶段命中=实体优先（pick_geo 顶视）→
+  地面 z=0 兜底（REND-37 ray_ground）；区外/无图=拒（无暗改道，C15 值域先对表）。
+- **路由序：小图区优先**（视觉顶层=输入顶层，ImGui 焦点制同理）；小图区内 kind1..4
+  指针/滚轮=消费 no-op（v0 无拖图语义，导航走 CAPI-26 明口）。
+- **canary 构造保证**：map=None ⇒ 旧单帧路逐字节（E816 段1+段5 双形实证，段5 教训
+  =飞行后基线必须重取，写后自查根修一例）。
+- 账：152 条 · 33 入口 minor=9 · ctest 31（E816 五段活体门实测 1596g/756r/target
+  (3.579,3.714,0)）· wasm 桥 4 名（setMap/clearMap/navigateClick/getCameraPose，
+  C 三口之 clear=NULL 在 web 分裂二法）· R2 零新依赖。
