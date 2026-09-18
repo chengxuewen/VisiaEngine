@@ -43,6 +43,10 @@ path = "E204_pcl_viewer.rs"
 name = "E205_text_labels"
 path = "E205_text_labels.rs"
 [[example]]
+name = "E302_fly_camera"
+path = "E302_fly_camera.rs"
+
+[[example]]
 name = "E301_switch_camera"
 path = "E301_switch_camera.rs"
 [[example]]

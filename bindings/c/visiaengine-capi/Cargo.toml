@@ -26,4 +26,5 @@ visiaengine-geo.workspace = true
 # I2 起追加：visiaengine-{render-wgpu,geo,io-gltf} + wgpu + raw-window-handle（§3 边界）
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement"], optional = true }

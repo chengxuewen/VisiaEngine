@@ -12,6 +12,7 @@
 | E204 | 数据装载·点云（螺旋自断言双模 + `--file` PLY 装载路） | `examples/rs/E204_pcl_viewer.rs` | IO-01..06 / CAPI-18/19 / WGPU-18 | `pixi run smoke-pcl-viewer` |
 | E205 | 图注文字·标注双模（io-text 全链活例；无参常驻窗/`--frames` 白墨断言） | `examples/rs/E205_text_labels.rs` | IO-07..09 / REND-33 / WGPU-24/25 | `pixi run smoke-text-labels` |
 | E301 | 相机与视图（透视↔正交无级切换） | `examples/rs/E301_switch_camera.rs` | REND-10..17 | `pixi run smoke-switch-camera` |
+| E302 | 相机飞行·预设巡览（双模：1/2/3 视角互飞/拖滚中断=飞行 cancel；`--frames` 端点+最短弧+渲染三断言） | `examples/rs/E302_fly_camera.rs` | REND-34 / CAPI-23 | `pixi run smoke-fly-camera` |
 | E401 | 交互·拾取高亮（射线→pick→CPU 覆写闭环） | `examples/rs/E401_pick_demo.rs` | REND-21..24 / WGPU-12/13 | `pixi run smoke-pick` |
 | E402 | 交互·hover/多选窗（悬停=橙预览 点选=黄多选 toggle 拖=轨道 R=清空） | `examples/rs/E402_pick_interactive.rs` | REND-21/23 / WGPU-12 | `pixi run smoke-pick-hover` |
 | E501 | 材质与光影（instanced 城 + PCSS 软影；双模式=无参交互窗/`--frames` headless） | `examples/rs/E501_shadow_demo.rs` | REND-31 / WGPU-14..20 | `pixi run smoke-shadow-demo` |
@@ -29,6 +30,7 @@
 | E812 | SDK 消费·程序化增删（位形互异/退化零提交/再入拒） | `examples/cpp/E812_mesh_add.cpp` | CAPI-15/16 | `ctest -R example_E812` |
 | E802 | SDK 消费·C++ headless（hpp 门面活体验收；readback→PPM 落盘） | `examples/cpp/E802_offscreen.cpp` | CAPI-04/05 | `ctest -R example_E802` |
 | E814 | SDK 消费·C 文字标注（时序门/utf8 多字节/白墨活体门） | `examples/c/E814_labels_headless.c` | CAPI-21/22 | `ctest -R example_E814_labels_headless` |
+| E815 | SDK 消费·C 相机飞行（idle 即 done/瞬移/进度单调/cancel/域拒 活体门） | `examples/c/E815_fly_camera.c` | CAPI-23/24 | `ctest -R example_E815_fly_camera` |
 | E813 | SDK 消费·剖面裁切（半刀/角域三面 AND/值域拒/清空复原，readback 三段活体门） | `examples/c/E813_section_clip.c` | CAPI-20 | `ctest -R example_E813_section_clip` |
 | E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS；交互窗带 C 剖切刀/[/] 刀高/L 标签；`--frames` 离屏 PNG+断言） | `examples/rs/E901_twin_city.rs` | 批 4 全成果面 + REND-32/33 活键演示 | `pixi run smoke-twin-city`（T2 新增） |
 
@@ -58,7 +60,7 @@ ctest / `--frames N` = 自动化短退形态（argv 单源纪律：注册表参�
 
 | 人验形态 | 例 | 无参启动行为 | 看什么 |
 |---|---|---|---|
-| **窗口常驻** | E101 / E201 / E202 / E205 / E301 / E402 / E501 / E502 / E503 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
+| **窗口常驻** | E101 / E201 / E202 / E205 / E301 / E302 / E402 / E501 / E502 / E503 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
 | **自退自证** | E203 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E813 / E814 | 跑完打印 `OK …` 行退出 | 终端输出即验收面 |
 
 **无头证据例“秒退=设计”**：其产物是终端断言行或 PNG/PPM 落盘，非交互窗；要交互验收走同能力域窗口例

@@ -45,8 +45,26 @@ enum Proj {
 struct Fly {
     from: CameraRig,
     to: CameraRig,
-    start: std::time::Instant,
+    start_ms: f64,
     dur_s: f64,
+}
+
+/// 双平台单调毫秒钟：native=进程锚点差值（Instant 单调语义保留），wasm=Date.now()
+/// （std::time 在 wasm32-unknown-unknown 运行时不可用——Web 是本 SDK 主舞台，
+/// 此 shim 免 flyTo 触 capi_guard -4 假死）。
+#[must_use]
+fn now_ms() -> f64 {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::sync::LazyLock;
+        static T0: LazyLock<std::time::Instant> = LazyLock::new(std::time::Instant::now);
+        #[allow(clippy::cast_precision_loss)]
+        return T0.elapsed().as_secs_f64() * 1000.0;
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now()
+    }
 }
 
 pub struct Engine {
@@ -692,7 +710,7 @@ impl Engine {
         self.fly = Some(Fly {
             from: self.rig,
             to,
-            start: std::time::Instant::now(),
+            start_ms: now_ms(),
             dur_s: dur_ms as f64 / 1000.0,
         });
         Ok(())
@@ -709,14 +727,14 @@ impl Engine {
     pub fn fly_progress(&self) -> Option<f64> {
         self.fly
             .as_ref()
-            .map(|f| (f.start.elapsed().as_secs_f64() / f.dur_s).clamp(0.0, 1.0))
+            .map(|f| ((now_ms() - f.start_ms) / 1000.0 / f.dur_s).clamp(0.0, 1.0))
     }
 
     /// 每帧推进（render 首行）：t>=1 直落 to 原值（端点精确 REND-16 同谱）；
     /// 否则 fly_sample 采样落 rig（zoom 同步——ortho 族消费面）。
     fn advance_fly(&mut self) {
         let Some(f) = &self.fly else { return };
-        let t = f.start.elapsed().as_secs_f64() / f.dur_s;
+        let t = (now_ms() - f.start_ms) / 1000.0 / f.dur_s;
         let rig = if t >= 1.0 {
             f.to
         } else {
@@ -1279,16 +1297,25 @@ mod mut_spec_tests {
         let mut e = Engine::new_headless(160, 120).expect("adapter");
         // dur=0 = 瞬移形（立即落位非错误）；near/far 恒现值 [A1]
         let near0 = e.rig.near;
-        assert!(e.fly_to([1.0, 2.0, 3.0], 0.3, 0.2, 12.0, 25.0, 1.0, 0).is_ok());
+        assert!(
+            e.fly_to([1.0, 2.0, 3.0], 0.3, 0.2, 12.0, 25.0, 1.0, 0)
+                .is_ok()
+        );
         assert!(e.fly_state_done(), "瞬移后即 done");
         assert!((e.rig.target[0] - 1.0).abs() < 1e-9, "瞬移落位");
         assert!((e.rig.near - near0).abs() < 1e-12, "near 恒 from 现值");
         // 域拒：dist<=0 / 非有限 / fov>=π
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, -1.0, 25.0, 1.0, 500).is_err());
-        assert!(e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, f64::NAN, 500).is_err());
+        assert!(
+            e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, f64::NAN, 500)
+                .is_err()
+        );
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, 4.0, 500).is_err());
         // 起飞 200ms：进度单调 → 到达落位精确（t>=1 直返 to 原值）
-        assert!(e.fly_to([5.0, 5.0, 0.0], 0.7, 0.5, 40.0, 30.0, 1.1, 200).is_ok());
+        assert!(
+            e.fly_to([5.0, 5.0, 0.0], 0.7, 0.5, 40.0, 30.0, 1.1, 200)
+                .is_ok()
+        );
         assert!(!e.fly_state_done());
         let p1 = e.fly_progress().expect("t1");
         std::thread::sleep(std::time::Duration::from_millis(120));
@@ -1307,15 +1334,24 @@ mod mut_spec_tests {
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, 50.0, 30.0, 1.1, 5000).is_ok());
         assert!(e.apply_input(5, 0.0, 0.0, 0.0).is_some(), "键输入消费");
         assert!(!e.fly_state_done(), "键不打断飞行 [定案 A 派]");
-        assert!(e.apply_input(2, 10.0, 10.0, 0.0).is_some(), "指针按下仍消费");
+        assert!(
+            e.apply_input(2, 10.0, 10.0, 0.0).is_some(),
+            "指针按下仍消费"
+        );
         assert!(e.fly_state_done(), "cancel 即不在飞（idle/done 合并）");
         assert!(e.fly_progress().is_none(), "cancel 后无进度");
         // 改道连续性：leg1 中途 → leg2 from=当前采样 ⇒ 首帧零跳变
-        assert!(e.fly_to([9.0, 9.0, 0.0], 0.7, 0.5, 44.0, 30.0, 1.1, 3000).is_ok());
+        assert!(
+            e.fly_to([9.0, 9.0, 0.0], 0.7, 0.5, 44.0, 30.0, 1.1, 3000)
+                .is_ok()
+        );
         std::thread::sleep(std::time::Duration::from_millis(60));
         let _ = e.render();
         let mid = e.rig.target;
-        assert!(e.fly_to([-9.0, -9.0, 0.0], 0.7, 0.5, 44.0, 30.0, 1.1, 3000).is_ok());
+        assert!(
+            e.fly_to([-9.0, -9.0, 0.0], 0.7, 0.5, 44.0, 30.0, 1.1, 3000)
+                .is_ok()
+        );
         let _ = e.render();
         let d = (e.rig.target[0] - mid[0]).abs();
         assert!(d < 0.5, "改道首帧连续（跳距 {d}）");

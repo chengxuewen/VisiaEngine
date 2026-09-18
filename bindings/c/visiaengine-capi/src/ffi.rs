@@ -1286,22 +1286,23 @@ pub extern "C" fn visiaengine_fly_state(ve: u64, out_t01: *mut f64) -> i32 {
     capi_guard!(
         {
             match gate(ve) {
-                Gate::Live(i) => match with_engine(i, |e| Ok((e.fly_state_done(), e.fly_progress())))
-                {
-                    Ok((true, _)) => 1,
-                    Ok((false, Some(t))) => {
-                        if !out_t01.is_null() {
-                            // SAFETY: 非空已判；单 f64 写（仅飞中路）
-                            unsafe { *out_t01 = t };
+                Gate::Live(i) => {
+                    match with_engine(i, |e| Ok((e.fly_state_done(), e.fly_progress()))) {
+                        Ok((true, _)) => 1,
+                        Ok((false, Some(t))) => {
+                            if !out_t01.is_null() {
+                                // SAFETY: 非空已判；单 f64 写（仅飞中路）
+                                unsafe { *out_t01 = t };
+                            }
+                            0
                         }
-                        0
+                        Ok((false, None)) => 1, // 理论不可达（推进原子性），保守归 done
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_STATE
+                        }
                     }
-                    Ok((false, None)) => 1, // 理论不可达（推进原子性），保守归 done
-                    Err(msg) => {
-                        set_err(msg);
-                        VE_ERR_STATE
-                    }
-                },
+                }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
             }

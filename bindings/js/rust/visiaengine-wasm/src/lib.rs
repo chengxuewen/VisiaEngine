@@ -154,11 +154,7 @@ impl VisiaEngine {
     #[must_use]
     #[wasm_bindgen(js_name = flyState)]
     pub fn fly_state(&self) -> i32 {
-        if self.inner.fly_state_done() {
-            1
-        } else {
-            0
-        }
+        if self.inner.fly_state_done() { 1 } else { 0 }
     }
 
     /// 进度 [0,1]（done/idle=1.0 单主值域，与 C 面「done 不写 out」合并语义同谱）。
