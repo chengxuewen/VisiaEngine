@@ -180,3 +180,19 @@
   **改道 from=当前采样**保连续 [A3]；yaw 最短弧住 fly_sample 构造件——**mix_rig 零触碰**
   =REND-15/16 存量断言零回归（wrap 对照用线性中点反证双向锁）。
 - dur_ms=0=瞬移形（非错误值域）；高度弧线/Van Wijk=AV 漫游单触发。
+
+## D20: ⑤b 多视口带裁决（2026-09-18，双探针+Momus OKAY 0B/2A→修入 + 用户「全带开工」）
+- **范围刀**：本带=分屏管线+活例（纯 rs）；capi 多视口口/click-to-fly=二波（CAPI-25 预留）；
+  共享 viewer 库=另立项（E501/E901/E302/E303 四例同构 ≥3 阈值已破线，账转 D21 候选）。
+- **clear 语义本机定论**（裁决门现行锁）：wgpu30 LoadOp::Clear=**整个 attachment**
+  （AllClear 形后区吞前区 redA=0；与 Vulkan render-area 定论一致）⇒ **首 pass Clear
+  （全幅底色=缝色零新机制）+ 后续 pass Load 色**为唯一安全形；AllClear 枚举位=探针/教学。
+- **深度每 pass 必清**（E303 现行抓的现行雷，覆写探针预期）：pass 间 Load 会拿主视
+  不透明地面的深度把小窗整幅 occlusion 吞（nonsky_map=0 现行）；scissor 圈地内重清
+  零副作用、pass 间深度无消费者 ⇒ Clear+Discard 每 pass（免 Store 带宽）。
+- **rect 挂点=不触 Frame**（ViewportRect 独立类型走渲染调用参数，第 44 兜底波免交）；
+  full-rect 不发 set_* =旧路逐位等 canary 锁；FOV/px 皆 per-Frame 独立（两投自治构图）。
+- **caster 一趟共享 map**（light-space 与主相机无关）；小窗=右上正方（长条=构图错实测）。
+- **fov 单位雷清剿**（存量真 bug）：perspective=弧度消费（look_at 默认 π/3），E501/E302
+  曾传 46/55/60 度数=投影畸变（E302 窗面 bright 96→1987 实证曾烂）；orbit 文档钉死单位；
+  教训=像素门没看过的窗面=没验过的面（T3 人验与 headless 断言双保险的本带分册）。

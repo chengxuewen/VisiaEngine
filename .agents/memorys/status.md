@@ -313,3 +313,19 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   ci 十段 0 红 · 9 crate 不变**
 - 非目标挂账：多视口分屏（四坑清单 D19/触发=分屏演示单）· 高度弧线 · 多关键帧巡览 ·
   惯性阻尼 · fly 事件推送 · CJK 内嵌（S2 余账）
+
+## ⑤b 多视口分屏带基线（2026-09-18，计划 multiview-split-screen-band v1.1·Momus OKAY + 用户「全带开工」）
+- 管线：render_view_rects（N Frame×ViewportRect 单 surface/单全幅 depth 多 pass；首 pass
+  Clear 全区底色+后区 Load 色+**每 pass 深度 Clear+Discard**）；caster 一趟共享 map；
+  full-rect 零 set_*=旧路逐位等 canary；REND-35 ViewportRect 独立类型**零触 Frame**（44 兜底波免交）
+- 裁决门定论：wgpu30 LoadOp::Clear=整个 attachment（AllClear redA=0 现行锁，Vulkan 定论一致）——
+  两探针分歧由本机像素门裁决（E303 首跑又抓深度 Load 吞图雷→每 pass 清形，探针预期被覆写）
+- 存量雷清剿：fov 弧度/度数单位（E501/E302 窗面投影畸变实锤，E302 bright 96→1987）；
+  camera.rs orbit 文档钉单位；multiview 四门（裁决/互不侵犯+缝色/深度围栏/共享影 328×328 阈 150）
+- 例：E303_split_screen 双模（96×64 四断言+右上正方小窗跟随；常驻窗 ✓）；注册四面+gate 全套
+- 教训入册：「像素门没看过的窗面=没验过的面」（D20 末条）；隔离探针法（单投全屏 ISO→多视口
+  差分）两分钟定位 pass 间差异；U1 漏写 REND-35 体被 spec-trace 143 现形抓（靶/体成对纪律）
+- 基线：**214 passed · spec-trace 144↔144 · GATE-ABI 30（未动）· GATE-DOCS ✓ E 28 件三方 ·
+  ctest 29 条 · CMAKE-SMOKE ✓ · ci 十段 0 红 · R2 零触（纯 rs 带）· 9 crate**
+- 余账：push 候令（含本带 3 笔）· capi 多视口二波（CAPI-25/click-to-fly）· 共享 viewer 库立项候令 ·
+  半透明④带/打包轮/LAS 候令
