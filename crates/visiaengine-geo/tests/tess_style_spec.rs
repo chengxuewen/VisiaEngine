@@ -189,20 +189,19 @@ fn geopart_units_and_closure_semantics() {
 #[test]
 fn fill_opacity_flows_to_part_color_alpha() {
     // ④ 透明族判源链首段：fill-opacity→part 材质 a（GEO-12 域钳 [0,1] 已在）
-    let style = {
-        let mut s = visiaengine_geo::StyleRecord::default();
-        s.fill = [1.0, 0.0, 0.0, 1.0];
-        s.fill_opacity = 0.8;
-        s
+    let style = visiaengine_geo::StyleRecord {
+        fill: [1.0, 0.0, 0.0, 1.0],
+        fill_opacity: 0.8,
+        ..Default::default()
     };
-    let parts = visiaengine_geo::tessellate(
-        &poly(square(4.0), vec![]),
-        &style,
-    )
-    .expect("tess");
+    let parts = visiaengine_geo::tessellate(&poly(square(4.0), vec![]), &style).expect("tess");
     for gp in &parts {
         if let visiaengine_geo::GeoPart::Fill(t) = gp {
-            assert!((t.color[3] - 0.8).abs() < 1e-6, "part alpha 必须是 0.8  got {:?}", t.color);
+            assert!(
+                (t.color[3] - 0.8).abs() < 1e-6,
+                "part alpha 必须是 0.8  got {:?}",
+                t.color
+            );
             return;
         }
     }

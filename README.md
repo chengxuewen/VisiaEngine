@@ -35,7 +35,7 @@
 
 ## 开发状态
 
-**Phase 1 现状（数字以门禁实报为准）**：8 crate workspace（核心 6 + bindings 面 2）、**144 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON/点云(PLY) 装载 + 材质纹理（PBR mock-up）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 方向光 PCSS 软影 + 2D↔3D 无级切换 + 拾取/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**ctest 统一例子清单（24 条，含 SDL3 窗口族 xvfb 子态）+ 三 gate（abi/trace/docs）+ cmake-smoke 三态三锚 + bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。**宿主嵌入**：C ABI 26 入口（事件推送+点云直通/文件装载+剖面裁切）（人审手写头 + 双 C demo 真跑；属性读三口 + B1 数据带显隐/程序化增删）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt 宿主实证 ✅（header-only widget+真窗 smoke 三态）；npm/pip 打包挂 Alpha。
+**Phase 1 现状（数字以门禁实报为准）**：8 crate workspace（核心 6 + bindings 面 2）、**148 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON/点云(PLY) 装载 + 材质纹理（PBR mock-up）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 半透明双 pass 画家序 + 方向光 PCSS 软影 + 2D↔3D 无级切换 + 拾取/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**ctest 统一例子清单（24 条，含 SDL3 窗口族 xvfb 子态）+ 三 gate（abi/trace/docs）+ cmake-smoke 三态三锚 + bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。**宿主嵌入**：C ABI 26 入口（事件推送+点云直通/文件装载+剖面裁切）（人审手写头 + 双 C demo 真跑；属性读三口 + B1 数据带显隐/程序化增删）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt 宿主实证 ✅（header-only widget+真窗 smoke 三态）；npm/pip 打包挂 Alpha。
 
 ```bash
 ```bash

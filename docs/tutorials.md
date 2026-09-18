@@ -19,6 +19,7 @@
 | E501 | 材质与光影（instanced 城 + PCSS 软影；双模式=无参交互窗/`--frames` headless） | `examples/rs/E501_shadow_demo.rs` | REND-31 / WGPU-14..20 | `pixi run smoke-shadow-demo` |
 | E502 | 材质与光影·色彩标定（sRGB 全链往返「所见即所得」活证；四色板 headless） | `examples/rs/E502_color_tuning.rs` | CORE-16 / WGPU-14 | `pixi run smoke-color-tuning`（例内自断言） |
 | E503 | 材质与光影·扩片族独立课（屏幕恒线宽/真圆点·缩放秀） | `examples/rs/E503_stroke_points.rs` | REND-29/30 / WGPU-17/18 | `ctest -L display`（cmake-smoke xvfb 子态） |
+| E504 | 玻璃与水体·透明活例（双模：1/2=水 alpha 重传材质；`--frames` 水膜衰减带+恒顶标签断言，含 a=1.0 对照语义锁） | `examples/rs/E504_glass_water.rs` | REND-36 / WGPU-27/28 | `pixi run smoke-glass-water` |
 | E601 | 规模与性能（10 万楼块单 draw 压力例） | `examples/rs/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin`（`pixi run bench` 出制品） |
 | E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗双模=无参常驻/`--frames` 快退） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
@@ -61,7 +62,7 @@ ctest / `--frames N` = 自动化短退形态（argv 单源纪律：注册表参�
 
 | 人验形态 | 例 | 无参启动行为 | 看什么 |
 |---|---|---|---|
-| **窗口常驻** | E101 / E201 / E202 / E205 / E301 / E302 / E303 / E402 / E501 / E502 / E503 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
+| **窗口常驻** | E101 / E201 / E202 / E205 / E301 / E302 / E303 / E402 / E501 / E502 / E503 / E504 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
 | **自退自证** | E203 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E813 / E814 | 跑完打印 `OK …` 行退出 | 终端输出即验收面 |
 
 **无头证据例“秒退=设计”**：其产物是终端断言行或 PNG/PPM 落盘，非交互窗；要交互验收走同能力域窗口例

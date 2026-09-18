@@ -51,6 +51,10 @@ name = "E303_split_screen"
 path = "E303_split_screen.rs"
 
 [[example]]
+name = "E504_glass_water"
+path = "E504_glass_water.rs"
+
+[[example]]
 name = "E301_switch_camera"
 path = "E301_switch_camera.rs"
 [[example]]

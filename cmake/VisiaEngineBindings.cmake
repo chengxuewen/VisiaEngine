@@ -76,7 +76,7 @@ function(visiaengine_setup_bindings)
   endif()
 
   # ── Rust 族：argv 唯一户口（pixi smoke 只做 `ctest -R` 转发壳，抄写面归零）──
-  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E302_fly_camera E303_split_screen
+  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E302_fly_camera E303_split_screen E504_glass_water
                 E301_switch_camera E401_pick_demo E402_pick_interactive E501_shadow_demo
                 E502_color_tuning E503_stroke_points E601_bench_twin E901_twin_city)
   set(_disp_E101_clear ON)
@@ -89,6 +89,7 @@ function(visiaengine_setup_bindings)
   set(_args_E201_load_gltf "resources/data/twoprim.glb;--frames;3")
   set(_args_E202_geo_viewer "resources/data/park.geojson;--frames;3")
   set(_args_E301_switch_camera "resources/data/twoprim.glb;--frames;3")
+  set(_args_E504_glass_water "--frames;1")
   set(_args_E303_split_screen "--frames;1")
   set(_args_E302_fly_camera "--frames;1")
   set(_args_E205_text_labels "--frames;1")

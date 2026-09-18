@@ -196,3 +196,18 @@
 - **fov 单位雷清剿**（存量真 bug）：perspective=弧度消费（look_at 默认 π/3），E501/E302
   曾传 46/55/60 度数=投影畸变（E302 窗面 bright 96→1987 实证曾烂）；orbit 文档钉死单位；
   教训=像素门没看过的窗面=没验过的面（T3 人验与 headless 断言双保险的本带分册）。
+
+## D21: ④ 半透明带裁决（2026-09-18，双探针+Momus OKAY 0B/3A 修入 + 用户「全带开工」）
+- **三无纪律**：零新口（alpha 已在 add_mesh 四元组路；热改口 set_material_alpha 挂账触发制）/
+  零依赖 / 零 IR 字段（透明判定=材质 alpha<1 后端侧表分拣，WGPU-28 编排）。
+- **V0 混合域定案**：本机 wgpu30=线性域（棋盘门 151 vs 编码域预言 83 单值判案，
+  与 Vulkan spec 一致；预言算术首版漏算 Lambert shade 系数——PIT-8「预言含全链因子」扩注）。
+- **透明管线=Variant 扩值三员**（FlatT/TexturedT/InstancedT；bgl/layout 全同仅管线态；
+  懒建不预建）；blend=SRC_ALPHA 标准式（Labels 同方程）、depthWrite=false、compare 保 Less。
+- **两 pass 编排**：无透明且无标签=旧单路零触（golden 保真构造）；pass2=视深降序画家
+  （键 origin+M 平移列 f64 D7 律；同键提交序稳定）+Labels 恒顶收尾；**pass2 深度 Load**
+  承不透明遮挡（与 ⑤b 视口间清深形分域——两套 Load/Clear 语义各得其所）。
+- **E504 双向语义锁**：水膜「衰减对比」而非「消灭对比」（a=1.0 对照 52 / a=0.5 实测 15，
+  断言带 (10,30)）——半透明正确性的可判定形。
+- **v0 残留声明入条款**：单 mesh 自叠不可序（RTT/OIT 后带）· 半透件全实影（three.js 同择）
+  · 材质 a==1∧texel a<1 走旧路（无暗语义）· 逐实例 alpha 需独立布局裁决。
