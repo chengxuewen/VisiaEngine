@@ -109,3 +109,6 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-35: ViewportRect 视口矩形（⑤b）
 `ViewportRect{x,y,width,height}`（u32 物理像素，原点顶左）：独立类型**不触 Frame**（裁决 a——Frame 保全屏语义，第 44 兜底波免交；rect 走渲染调用参数 `render_view_rects`，每投携独立 Frame×共享资源表）。`full(w,h)`=全屏形（canary 逐位等入口）；`contains/local`＝输入路由最小形（宿主 hit-test 后取区局部 px，`screen_to_ray_*` 的 w/h 传 rect 尺寸即复用，REND-21/22 签名零改）。视口间重叠未定义（v0 纪律：不重叠构图）。
+
+## REND-36: 透明材质语义（④）
+**单一判=材质 alpha<1**（`MatGpu.alpha=base_color[3]`，srgb_to_linear a 道透传实证）⇒ 该 DrawMesh/DrawInstances 件走透明管线（WGPU-27）；alpha==1 恒不透明路=**构造级 golden 保真**（分拣对其零触）。**材质 a==1 ∧ texel a<1 不透明**——纹理 alpha 仅在材质 a<1 管线内参与 `a=base.a·texel.a` 合成（无暗语义 [Momus-A3]）；逐顶点 alpha 后置声明。caster 对半透件**按不透明投影**（v0 语义，three.js 同择；软影=Alpha 档触发）。pick 域与 alpha 无关（几何求交零触）。宿主改 alpha 唯一路=重传材质（remove+add）；热改口 `set_material_alpha` 挂账（触发=交互调明度）。

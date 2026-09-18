@@ -85,3 +85,9 @@ View 块尾缀 80B 段（float 44..64：`planes: array<vec4,4>` + `clip_count` +
 
 ## WGPU-26: 多视口分屏管线（⑤b）
 `render_view_rects(passes: &[(Frame, ViewportRect)], view, w, h, fmt, policy)`：单 surface **单全幅 depth**（键=surface 尺寸，rect 不参键——视口同尺寸零重建）上 N 个 scissor 圈地 pass，各携独立 Frame（相机/px_world_scale 自治，命令与资源表共享）。**clear 语义本机定论（裁决门 2026-09-18 实测）**：wgpu30 `LoadOp::Clear` 作用**整个 attachment**（AllClear 形下后区吞前区=现行；与 Vulkan render-area 定论一致）⇒ **安全形=首 pass Clear（全幅底色，缝隙色顺带）+ 后续 pass Load**，为唯一公开形（`MultiClearPolicy::AllClear` 仅探针/教学位）。depth：**每 pass 必 Clear(1.0)+Discard**——首 pass 全幅 clear 已覆盖全区、后续 Load 会拿主视不透明地面的深度把小图整幅 occlusion 吞掉（2026-09-18 像素门现行抓得）；pass 间深度无消费者故免 Store 带宽；**scissor 圈栅格**令跨区深度互不可见（色/深写入围栏，共享深度零串扰=门③锁）。caster pre-pass **一趟**（frame0 配置；light-space 数学与主相机无关 → 双投共享 shadow map [裁决 d]，门④双区影现行锁）。**canary 纪律**：`ViewportRect::full` 或等 full 的 rect **不发 set_viewport/set_scissor 调用**（默认全架=旧路**逐字节等**，门②锁）；`render_view_format` 旧口零触。色 clear 单主=首 Frame 的 ClearColor（后续 Frame 之 ClearColor 不消费，与 find_map 律同形）。
+
+## WGPU-27: 透明管线三员（④）
+`Variant +{ FlatT, TexturedT, InstancedT }`：与同族 base **bgl/layout 全同**（仅管线态差异：`blend=SRC_ALPHA/ONE_MINUS_SRC_ALPHA`（Labels 同标准式）+ `depth_write=false` + compare 保 **Less**（被不透明遮=遮，透明互见由画家序保证）；polygon-offset 不加）。懒建=alpha<1 材质出现才建（管线 8→上限 11 非预建）。fs 族复用不新增入口（alpha 输出路 WGPU-15 已在）。
+
+## WGPU-28: 两 pass 编排与画家序（④）
+`run_main_pass` 三分拣（trans/opaque/labels，trans 判据=材质表查 alpha）：**无透明且无标签 ⇒ 旧单 pass 路（零触保真）**；否则 pass1=opaque（vec 序原样，color/depth 承调用方 ops，store 条件升 Store 以承深度）+ pass2=**trans 按视深降序**（键=`origin+M 平移列` 的 |·−eye|² f64，D7 同律；**同键=提交序稳定**——sort_by 构造保证）+ Labels 恒顶收尾。**pass2=color Load + depth Load**（承 pass1 不透明深度做遮挡 [Momus-A2]——勿套 ⑤b 视口间清深形）；labels-only 退化形 pass2 depth Clear 即可。多视口路（WGPU-26）每视口内同套编排（run_main_pass 单点）。混合域=**线性本机定案**（V0 裁决门 151 vs 83 单值判，与 Vulkan spec 一致；异后端翻域=跨平台账非本带修复面）。画家残留声明：单 mesh 自叠不可序、跨件嵌套=RTT/OIT 后带。

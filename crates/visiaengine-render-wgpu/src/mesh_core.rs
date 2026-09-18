@@ -82,6 +82,9 @@ struct MatGpu {
     buf: wgpu::Buffer,
     textured: bool,
     view: Option<wgpu::TextureView>,
+    /// ④ 透明谓词源：材质 alpha（宿主面=a 道原值，srgb_to_linear 透传）。
+    /// alpha<1 ⇒ 该件走透明管线（REND-36 单一判；材质 a==1∧texel a<1 走旧路=声明）。
+    alpha: f32,
 }
 
 /// 管线变体（REND-27 键源；Textured×Instanced 组合不装 [四不装②]）。
@@ -97,6 +100,11 @@ enum Variant {
     /// WGPU-19 caster pass（无色彩目标；Mesh=DrawMesh 源，Inst=DrawInstances 源）
     ShadowMesh,
     ShadowInst,
+    /// ④ 透明三员（REND-36/WGPU-27）：blend=SRC_ALPHA 标准式（Labels 同方程）+
+    /// depthWrite=false/compare 保 Less；layout 与不透明同源零扩（WGPU-14 编号零破先例同制）。
+    FlatT,
+    TexturedT,
+    InstancedT,
 }
 
 /// ⑤b 多视口 clear 策略（默认=安全形；AllClear 仅裁决探针）。
@@ -199,8 +207,9 @@ impl MeshCore {
                 },
             ];
             match variant {
-                Variant::Flat => {}
-                Variant::Textured => {
+                // ④ T 族 bgl 与同族全同（layout 零扩 [WGPU-27]；穷举同步器此臂现行点名）
+                Variant::Flat | Variant::FlatT => {}
+                Variant::Textured | Variant::TexturedT => {
                     entries.push(wgpu::BindGroupLayoutEntry {
                         binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
@@ -218,16 +227,18 @@ impl MeshCore {
                         count: None,
                     });
                 }
-                Variant::Instanced => entries.push(wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(32),
-                    },
-                    count: None,
-                }),
+                Variant::Instanced | Variant::InstancedT => {
+                    entries.push(wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(32),
+                        },
+                        count: None,
+                    })
+                }
                 // WGPU-18 点表 storage（32B/条下限，binding6；材质不参与同裁决点 a）
                 Variant::Points => {
                     entries.remove(1);
@@ -293,7 +304,12 @@ impl MeshCore {
             }
             if matches!(
                 variant,
-                Variant::Flat | Variant::Textured | Variant::Instanced
+                Variant::Flat
+                    | Variant::Textured
+                    | Variant::Instanced
+                    | Variant::FlatT
+                    | Variant::TexturedT
+                    | Variant::InstancedT
             ) {
                 entries.extend_from_slice(&[
                     wgpu::BindGroupLayoutEntry {
@@ -641,6 +657,7 @@ impl MeshCore {
                 buf,
                 textured,
                 view,
+                alpha: lin[3], // a 道透传=srgb_to_linear 原值 [REND-36 单一判源]
             },
         );
         Ok(id)
@@ -1293,11 +1310,118 @@ impl MeshCore {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    /// ④ 两 pass 编排 [WGPU-28]：透明族=材质 a<1 分拣（REND-36 单一判）→
+    /// pass1 不透明（vec 序原样）+ pass2 透明按视深降序（画家，D7 f64 距离）+ Labels 恒顶收尾；
+    /// **无透明且无标签=旧单 pass 路（字节保）**；pass2 depth Load 承 pass1 深度 [Momus-A2]。
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     fn run_main_pass(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         frame: &Frame,
+        view: &wgpu::TextureView,
+        depth_view: &wgpu::TextureView,
+        color_format: wgpu::TextureFormat,
+        sh_params: &wgpu::Buffer,
+        sh_view: &wgpu::TextureView,
+        color_load: wgpu::LoadOp<wgpu::Color>,
+        depth_load: wgpu::LoadOp<f32>,
+        depth_store: wgpu::StoreOp,
+        rect: Option<visiaengine_render::ViewportRect>,
+    ) {
+        let mut trans: Vec<&DrawCommand> = Vec::new();
+        let mut opaque: Vec<&DrawCommand> = Vec::new();
+        let mut labels: Vec<&DrawCommand> = Vec::new();
+        for cmd in &frame.commands {
+            match cmd {
+                DrawCommand::DrawMesh { material, .. }
+                | DrawCommand::DrawInstances { material, .. }
+                    if self.materials.get(material).is_some_and(|m| m.alpha < 1.0) =>
+                {
+                    trans.push(cmd);
+                }
+                DrawCommand::DrawLabels { .. } => labels.push(cmd),
+                _ => opaque.push(cmd),
+            }
+        }
+        if trans.is_empty() && labels.is_empty() {
+            let all: Vec<&DrawCommand> = frame.commands.iter().collect();
+            self.one_main_pass(
+                encoder,
+                frame,
+                &all,
+                view,
+                depth_view,
+                color_format,
+                sh_params,
+                sh_view,
+                color_load,
+                depth_load,
+                depth_store,
+                rect,
+            );
+            return;
+        }
+        let p1_store = if trans.is_empty() {
+            depth_store
+        } else {
+            wgpu::StoreOp::Store // 透明 pass 需承不透明深度 [Momus-A2]
+        };
+        self.one_main_pass(
+            encoder,
+            frame,
+            &opaque,
+            view,
+            depth_view,
+            color_format,
+            sh_params,
+            sh_view,
+            color_load,
+            depth_load,
+            p1_store,
+            rect,
+        );
+        if !trans.is_empty() {
+            let eye = frame.eye;
+            trans.sort_by(|a, b| cmd_view_depth2(b, eye).total_cmp(&cmd_view_depth2(a, eye)));
+            trans.extend(labels.iter().copied());
+            self.one_main_pass(
+                encoder,
+                frame,
+                &trans,
+                view,
+                depth_view,
+                color_format,
+                sh_params,
+                sh_view,
+                wgpu::LoadOp::Load,
+                wgpu::LoadOp::Load,
+                wgpu::StoreOp::Discard,
+                rect,
+            );
+        } else {
+            self.one_main_pass(
+                encoder,
+                frame,
+                &labels,
+                view,
+                depth_view,
+                color_format,
+                sh_params,
+                sh_view,
+                wgpu::LoadOp::Load,
+                wgpu::LoadOp::Clear(1.0),
+                wgpu::StoreOp::Discard,
+                rect,
+            );
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn one_main_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &Frame,
+        cmds: &[&DrawCommand],
         view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
         color_format: wgpu::TextureFormat,
@@ -1341,18 +1465,19 @@ impl MeshCore {
                 1.0,
             );
         }
-        self.draw_frame_commands(&mut pass, frame, color_format, sh_params, sh_view);
+        self.draw_frame_commands(&mut pass, frame, cmds, color_format, sh_params, sh_view);
     }
 
     fn draw_frame_commands(
         &mut self,
         pass: &mut wgpu::RenderPass,
         frame: &Frame,
+        cmds: &[&DrawCommand],
         color_format: wgpu::TextureFormat,
         sh_params: &wgpu::Buffer,
         sh_view: &wgpu::TextureView,
     ) {
-        for cmd in &frame.commands {
+        for &cmd in cmds {
             match cmd {
                 // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
                 // 漏臂=编译失败（契约面兑现，非静默跳过）
@@ -1490,10 +1615,12 @@ impl MeshCore {
                     };
                     let buf = mat.buf.clone();
                     let (textured, view) = (mat.textured, mat.view.clone());
-                    let variant = if textured {
-                        Variant::Textured
-                    } else {
-                        Variant::Flat
+                    let transparent = mat.alpha < 1.0;
+                    let variant = match (textured, transparent) {
+                        (false, false) => Variant::Flat,
+                        (false, true) => Variant::FlatT,
+                        (true, false) => Variant::Textured,
+                        (true, true) => Variant::TexturedT,
                     };
                     let pipeline = match self.pipelines.get(&(color_format, variant)) {
                         Some(p) => p.clone(),
@@ -1612,7 +1739,12 @@ impl MeshCore {
                         continue;
                     };
                     let buf = mat.buf.clone();
-                    let pipeline = match self.pipelines.get(&(color_format, Variant::Instanced)) {
+                    let variant = if mat.alpha < 1.0 {
+                        Variant::InstancedT
+                    } else {
+                        Variant::Instanced
+                    };
+                    let pipeline = match self.pipelines.get(&(color_format, variant)) {
                         Some(p) => p.clone(),
                         None => {
                             let p = build_pipeline(
@@ -1620,10 +1752,9 @@ impl MeshCore {
                                 &self.layout_inst,
                                 &self.shader,
                                 color_format,
-                                Variant::Instanced,
+                                variant,
                             );
-                            self.pipelines
-                                .insert((color_format, Variant::Instanced), p.clone());
+                            self.pipelines.insert((color_format, variant), p.clone());
                             p
                         }
                     };
@@ -1717,6 +1848,24 @@ impl MeshCore {
     }
 }
 
+/// ④ 画家排序键：entity 面心≈origin+M 平移列 的 |·−eye|²（f64 D7 域；
+/// 远原点相减同律 PIT-5/REND-20）。同键=提交序稳定（sort_by 稳定性构造保证 [裁决 h]）。
+fn cmd_view_depth2(cmd: &DrawCommand, eye: [f64; 3]) -> f64 {
+    let (o, t) = match *cmd {
+        DrawCommand::DrawMesh {
+            origin, transform, ..
+        }
+        | DrawCommand::DrawInstances {
+            origin, transform, ..
+        } => (origin, transform),
+        _ => return 0.0,
+    };
+    (0..3).fold(0.0f64, |acc, i| {
+        let d = o[i] + t[3][i] - eye[i];
+        acc + d * d
+    })
+}
+
 /// 按目标色彩格式建管线（`Rgba8Unorm` 与 `Bgra8Unorm*` 系由 surface caps 决定）。
 #[must_use]
 #[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
@@ -1769,7 +1918,8 @@ fn build_pipeline(
     })];
     let color_targets: &[Option<wgpu::ColorTargetState>] = match variant {
         Variant::ShadowMesh | Variant::ShadowInst => &[],
-        Variant::Labels => &cts_label,
+        // ④ 透明族=Labels 同标准式（Momus 注：本式即 ALPHA_BLENDING 非预乘标准）
+        Variant::Labels | Variant::FlatT | Variant::TexturedT | Variant::InstancedT => &cts_label,
         _ => &cts,
     };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1778,7 +1928,7 @@ fn build_pipeline(
         vertex: wgpu::VertexState {
             module: shader,
             entry_point: Some(match variant {
-                Variant::Instanced => "vs_inst",
+                Variant::Instanced | Variant::InstancedT => "vs_inst",
                 Variant::Strokes => "vs_stroke",
                 Variant::Points => "vs_point",
                 Variant::Labels => "vs_label",
@@ -1796,7 +1946,11 @@ fn build_pipeline(
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             // WGPU-24 恒顶 [裁决点 e]：标签不写深度+Always（覆盖语义；命令序末位天然叠放）
-            depth_write_enabled: Some(!matches!(variant, Variant::Labels)),
+            // WGPU-27 透明族：不写深度（互见/画家序定合成 [裁决 d]），compare 保 Less（被不透明遮=遮）
+            depth_write_enabled: Some(!matches!(
+                variant,
+                Variant::Labels | Variant::FlatT | Variant::TexturedT | Variant::InstancedT
+            )),
             depth_compare: Some(if matches!(variant, Variant::Labels) {
                 wgpu::CompareFunction::Always
             } else {
@@ -1825,7 +1979,7 @@ fn build_pipeline(
         fragment: Some(wgpu::FragmentState {
             module: shader,
             entry_point: Some(match variant {
-                Variant::Textured => "fs_textured",
+                Variant::Textured | Variant::TexturedT => "fs_textured",
                 Variant::Strokes => "fs_stroke",
                 Variant::Points => "fs_point",
                 Variant::Labels => "fs_label",
