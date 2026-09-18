@@ -11,7 +11,7 @@ pub mod rebase;
 
 mod picking;
 
-pub use camera::{CameraRig, screen_to_ray_ortho, screen_to_ray_persp};
+pub use camera::{CameraRig, Easing, screen_to_ray_ortho, screen_to_ray_persp};
 pub use contract::{
     BackendError, Camera, Capability, ClipSetup, DrawCommand, Frame, Instance, InstanceDesc,
     InstanceId, LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark,

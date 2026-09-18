@@ -102,3 +102,6 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-33: LabelMark/DrawLabels 标签表契约（S2）
 `LabelMark` **64B=4×vec4 Pod** 布局锁（`pos(xyz+pad) color(线性 rgba) uv(u0v0u1v1) metrics(w_px,h_px,dx右,dy上)`——字节偏移钉 pos@0/color@16/uv@32/metrics@48，REND-30 同制）。**色=线性域**（sRGB→线性住生产者 io-text/CAPI 面，CORE-16 咽喉扩展=label 表）。`DrawCommand +{ DrawLabels{table,origin,transform} }` 第 6 变体：`table=TableId`（create_labels 产物）、origin D7 世界锚、transform=位姿（多数恒等）；`kind()="draw-labels"`；**材质不挂**（扩片族裁决 a 同谱——色住表）。`RenderBackend::create_labels` 默认体=显式 Err（族协议第 6 员，静默跳过封堵）。atlas 纹理**不入口**（后端单例通道，WGPU-24——命令仅携带 quad 表句柄）。穷举同步器四臂更新（contract_spec stub.render/kind 自检/mesh origin 测 + mesh_core clear-find/draw-loop 占位臂，出图实装=N3）。
+
+## REND-34: flyTo 位姿采样 + 缓动（⑤a）
+`Easing{Linear, CubicInOut(smoothstep 3x²−2x³), CubicOut(1−(1−x)³)}`：`ease:[0,1]→[0,1]` **单调增+端点逐位精确+域外钳制**（三锁逐位断言）。`CameraRig::fly_sample(from,to,t,easing)`：**纯函数**——墙钟推进器住 engine（分层定案：render crate 无 std::time，宿主 render() 零 dt 义务 [D8 事实的正解]）；`t=0/1` 恒 from/to 原值快路（终点 yaw 保原始数，与 mix_rig 端点语义同谱 REND-16）；**yaw 最短弧**=to.yaw 经 ±2π 整数倍归一到 from.yaw+Δ(Δ∈(−π,π]) 再插（姿态 mod 2π 等价；|Δ|≤π 零干预纯线性——wrap 修正住采样器**不动 mix_rig**，REND-15/16 存量断言零触）。near/far 不经 pose（CAPI-23 无深度域=恒 from 现值，PIT-5/REND-14 锁连带 [Momus-A1]）。飞行中改道（CAPI-23 重入）from=当前采样快照=构造性连续 [Momus-A3]。

@@ -12,6 +12,31 @@ fn down(m: [[f64; 4]; 4]) -> [[f32; 4]; 4] {
     m.map(|col| col.map(|v| v as f32))
 }
 
+/// 缓动曲线（REND-34）：f:[0,1]->[0,1] 单调增、端点逐位精确（f(0)=0/f(1)=1）、域外钳制。
+/// flyTo 时钟住 engine，本层纯数学（分层定案=计划 T1）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Easing {
+    /// 恒等（调试/线性巡览）
+    Linear,
+    /// smoothstep 3x^2-2x^3：慢起慢收（默认观感，近 MapLibre bezier 族）
+    CubicInOut,
+    /// 1-(1-x)^3：快起慢收（到达减速落位感）
+    CubicOut,
+}
+
+impl Easing {
+    /// 曲线求值（钳域 + 端点逐位；二次式在 0/1 处即精确）。
+    #[must_use]
+    pub fn ease(self, t: f64) -> f64 {
+        let x = t.clamp(0.0, 1.0);
+        match self {
+            Self::Linear => x,
+            Self::CubicInOut => x * x * (3.0 - 2.0 * x),
+            Self::CubicOut => 1.0 - (1.0 - x).powi(3),
+        }
+    }
+}
+
 /// 轨道相机 rig：target 为中心，yaw/pitch/dist 球面（f64 稳态，输出 f32 矩阵）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CameraRig {
@@ -108,6 +133,28 @@ impl CameraRig {
             near: l(a.near, b.near),
             far: l(a.far, b.far),
         }
+    }
+
+    /// flyTo 位姿采样（REND-34）：纯函数（墙钟推进器住 engine——宿主零 dt 义务，D8 正解）。
+    /// 最短弧：to.yaw 经 ±2pi 整数倍归一到 from.yaw+delta (delta in (-pi,pi]) 再插值
+    /// （姿态 mod 2pi 等价；小 delta<=pi 零干预纯线性——wrap 修正住采样器，不动 mix_rig）。
+    /// 端点精确快路：t=0/1 直返 from/to 原值（终点 yaw 保原始数，归一只作用途中，REND-16 同谱）。
+    /// near/far 不经飞行输入（CAPI-23 pose 无深度域=恒 from 现值，PIT-5/REND-14 锁连带）。
+    #[must_use]
+    pub fn fly_sample(from: &Self, to: &Self, t: f64, easing: Easing) -> Self {
+        match t {
+            0.0 => return *from,
+            1.0 => return *to,
+            _ => {}
+        }
+        let raw = to.yaw - from.yaw;
+        let tau = std::f64::consts::TAU;
+        let d = raw - (raw / tau).round() * tau;
+        let mut bent = *to;
+        if d != raw {
+            bent.yaw = from.yaw + d;
+        }
+        Self::mix_rig(from, &bent, easing.ease(t))
     }
 
     #[must_use]
