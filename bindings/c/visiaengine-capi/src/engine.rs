@@ -1175,6 +1175,54 @@ mod mut_spec_tests {
         }
     }
 
+    // spec: CAPI-23
+    #[test]
+    fn fly_to_wallclock_advance_cancel_and_reroute() {
+        let mut e = Engine::new_headless(160, 120).expect("adapter");
+        let pose = |t: [f64; 3], d: f64| -> Result<u64, String> {
+            e.fly_to(t, 0.7, 0.5, d, 30.0, 1.1, 200)
+        };
+        // dur=0 = 瞬移形（立即落位，非错误）
+        assert!(e.fly_to([1.0, 2.0, 3.0], 0.3, 0.2, 12.0, 25.0, 1.0, 0).is_ok());
+        assert_eq!(e.fly_state_done(), true, "瞬移后即 done");
+        assert!((e.rig.target[0] - 1.0).abs() < 1e-9, "瞬移落位");
+        assert!((e.rig.near - 0.1).abs() < 1e-12, "near/far 恒 from 现值 [A1]");
+        // 域拒：dist<=0 / 非有限
+        assert!(e.fly_to([0.0; 3], 0.0, 0.0, -1.0, 25.0, 1.0, 500).is_err());
+        assert!(e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, f64::NAN, 500).is_err());
+        // 起飞 200ms：进度单调 → 到达位姿精确
+        pose([5.0, 5.0, 0.0], 40.0).expect("fly");
+        assert!(!e.fly_state_done());
+        let p1 = e.fly_progress().expect("t1");
+        std::thread::sleep(std::time::Duration::from_millis(120));
+        let _ = e.render();
+        let p2 = e.fly_progress().unwrap_or(1.0);
+        assert!(p2 >= p1, "进度单调 {p1}->{p2}");
+        while !e.fly_state_done() {
+            let _ = e.render();
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert!((e.rig.target[0] - 5.0).abs() < 1e-9, "到达落位精确（t>=1 直返 to）");
+        // 输入打断（MapLibre A 派）：飞行中 pointer-down = cancel → done 且可再飞
+        pose([0.0, 0.0, 0.0], 50.0).expect("refly");
+        assert!(e.apply_input(2, 10.0, 10.0, 0.0).is_some(), "输入仍消费");
+        assert!(e.fly_state_done(), "cancel 即不在飞（idle/done 合并）");
+        assert!(e.fly_progress().is_none(), "cancel 后无进度可写");
+        // 飞行中改道：from=当前采样位姿（连续性：新飞 t=0 == 改道瞬间 rig，不跳变）
+        pose([9.0, 9.0, 0.0], 44.0).expect("leg1");
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        let _ = e.render();
+        let mid = e.rig.target;
+        pose([-9.0, -9.0, 0.0], 44.0).expect("leg2 改道");
+        let _ = e.render();
+        assert!(
+            (e.rig.target[0] - mid[0]).abs() < 1.0,
+            "改道首帧必连续（跳变={:?}→{:?}）",
+            mid,
+            e.rig.target
+        );
+    }
+
     // spec: CAPI-13
     #[test]
     fn hide_filters_pick_keeps_enumeration() {

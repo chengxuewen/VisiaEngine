@@ -65,6 +65,16 @@ fn stale_doors(ve: u64) {
         VE_ERR_ARG,
         "CAPI-20 读口同谱"
     );
+    assert_eq!(
+        visiaengine_fly_to(ve, std::ptr::null(), 0),
+        VE_ERR_ARG,
+        "CAPI-23 stale 谱"
+    );
+    assert_eq!(
+        visiaengine_fly_state(ve, std::ptr::null_mut()),
+        VE_ERR_ARG,
+        "CAPI-24 stale 谱"
+    );
     assert_eq!(visiaengine_entity_set_visible(ve, 0, 1), VE_ERR_ARG);
     assert_eq!(visiaengine_entity_visible(ve, 0), VE_ERR_ARG);
     assert_eq!(
@@ -253,11 +263,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0007,
+        0x0001_0008,
         "major 1 · minor 6（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0007, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0008, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -273,7 +283,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        28,
+        30,
         "extern 入口计数（cfg-gated 行首式；24→26=CAPI-20 剖面双口）"
     );
     assert_eq!(
@@ -806,5 +816,39 @@ fn add_label_returncode_axis_zero_commit_and_position() {
     let mut sentinel = u64::MAX;
     assert_eq!(visiaengine_add_label(ve, &tiny, &mut sentinel), VE_ERR_ARG);
     assert_eq!(sentinel, u64::MAX, "门败 out 零写");
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-23
+#[test]
+fn fly_ports_domain_and_progress() {
+    let ve = visiaengine_create_headless(160, 120);
+    // pose 域：NULL/struct_size 门/坏参
+    assert_eq!(visiaengine_fly_to(ve, std::ptr::null(), 100), VE_ERR_ARG);
+    let mut pose = VeCameraPose {
+        struct_size: std::mem::size_of::<VeCameraPose>(),
+        target: [3.0, 4.0, 0.0],
+        yaw: 0.6,
+        pitch: 0.4,
+        dist: 30.0,
+        zoom: 20.0,
+        fov: 1.0,
+    };
+    assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_OK);
+    let mut t01 = -7.0f64;
+    assert_eq!(visiaengine_fly_state(ve, &mut t01), 0, "飞行中");
+    assert!((0.0..=1.0).contains(&{ t01 }), "out 飞中写 [0,1) got {t01}");
+    // 瞬移形：dur=0 → rc=0 且 state 立 done（done 路 out 不写=B1 零部分写谱）
+    assert_eq!(visiaengine_fly_to(ve, &pose, 0), VE_OK);
+    let mut sentinel = -9.0f64;
+    assert_eq!(visiaengine_fly_state(ve, &mut sentinel), 1, "done 含 idle");
+    assert_eq!(sentinel, -9.0, "done 路 out 零写");
+    assert_eq!(visiaengine_fly_state(ve, std::ptr::null_mut()), 1, "NULL out=仅状态");
+    // 坏参域：dist/zoom/fov 非法
+    pose.dist = -1.0;
+    assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_ERR_ARG, "dist 域");
+    pose.dist = 30.0;
+    pose.fov = 4.0;
+    assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_ERR_ARG, "fov<π 域");
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
