@@ -53,6 +53,14 @@ public:
     }
     int32_t entity_visible(std::uint64_t entity) { return visiaengine_entity_visible(h_, entity); }
     // CAPI-20 剖面裁切（B9 薄转发不开 SDD 账；VeClipPlane=头 POD 直用）
+    // CAPI-21/22 文字标注（薄转发；VeLabelSpec 头 POD 直用）
+    int32_t load_font(const std::uint8_t *data, std::size_t len) {
+        return visiaengine_load_font(h_, data, len);
+    }
+    int32_t add_label(const VeLabelSpec &spec, std::uint64_t *out_entity) {
+        return visiaengine_add_label(h_, &spec, out_entity);
+    }
+
     int32_t set_clips(const VeClipPlane *planes, std::size_t n) {
         return visiaengine_set_clips(h_, planes, n);
     }

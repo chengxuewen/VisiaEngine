@@ -33,6 +33,7 @@ pub use ffi::{
 #[cfg(not(target_arch = "wasm32"))]
 pub use ffi::visiaengine_set_event_callback;
 pub use ffi::{VeClipPlane, visiaengine_get_clips, visiaengine_set_clips}; // CAPI-20
+pub use ffi::{VeLabelSpec, visiaengine_add_label, visiaengine_load_font}; // CAPI-21/22
 
 #[doc(hidden)]
 pub mod test_util {

@@ -128,6 +128,34 @@ impl VisiaEngine {
         self.inner.clips().into_iter().flatten().collect()
     }
 
+    // ── S2 文字带镜像（CAPI-21/22 薄叶）──
+    /// 注字体（bytes=TTF/OTF 全式；替换式）。0=成功，负=错误码（同 C 面）。
+    #[wasm_bindgen(js_name = loadFont)]
+    pub fn load_font(&mut self, data: &[u8]) -> i32 {
+        match self.inner.set_font(data) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// 世界锚标签：pos3+srgb 色 4+utf8 文本；成功=位形 bigint（0 合法=CAPI-01 web 投影），
+    /// 拒/败=MISS(0xFFFF...)（addMesh 同谱）。
+    #[must_use]
+    #[wasm_bindgen(js_name = addLabel)]
+    pub fn add_label(&mut self, pos: &[f64], color: &[f32], text: &str, size_px: f32) -> u64 {
+        if pos.len() != 3 || color.len() != 4 {
+            return crate::MISS;
+        }
+        let c = [color[0], color[1], color[2], color[3]];
+        match self
+            .inner
+            .add_label([pos[0], pos[1], pos[2]], text, c, size_px)
+        {
+            Ok(bits) => bits,
+            Err(_) => crate::MISS,
+        }
+    }
+
     /// 扁平三元组面（js 数组=调用期拷贝，bindgen 天然）；退化=0 哨兵与 C 面同谱。
     #[must_use]
     #[allow(clippy::needless_pass_by_value)]

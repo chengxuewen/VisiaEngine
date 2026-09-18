@@ -3,14 +3,15 @@
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeClipPlane, VeInput, VeMeshDesc, VePclReport,
-    VePointMark, VePointsDesc, visiaengine_abi_version, visiaengine_add_mesh,
-    visiaengine_add_points, visiaengine_attach, visiaengine_attr_bool, visiaengine_attr_f64,
-    visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
-    visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
-    visiaengine_get_clips, visiaengine_last_error, visiaengine_load_gltf, visiaengine_load_pcl,
-    visiaengine_on_input, visiaengine_pick, visiaengine_readback, visiaengine_remove_entity,
-    visiaengine_render, visiaengine_set_clips, visiaengine_viewport,
+    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeClipPlane, VeInput, VeLabelSpec, VeMeshDesc,
+    VePclReport, VePointMark, VePointsDesc, visiaengine_abi_version, visiaengine_add_label,
+    visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach, visiaengine_attr_bool,
+    visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy,
+    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
+    visiaengine_entity_visible, visiaengine_get_clips, visiaengine_last_error,
+    visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_on_input,
+    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
+    visiaengine_set_clips, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -41,6 +42,23 @@ fn stale_doors(ve: u64) {
         visiaengine_set_clips(ve, std::ptr::null(), 0),
         VE_ERR_ARG,
         "CAPI-20 新口入 stale 谱"
+    );
+    assert_eq!(
+        visiaengine_load_font(ve, std::ptr::null(), 0),
+        VE_ERR_ARG,
+        "CAPI-21 stale 谱"
+    );
+    let lspec = VeLabelSpec {
+        struct_size: std::mem::size_of::<VeLabelSpec>(),
+        pos: [0.0; 3],
+        color: [1.0; 4],
+        size_px: 16.0,
+        text: std::ptr::null(),
+    };
+    assert_eq!(
+        visiaengine_add_label(ve, &lspec, std::ptr::null_mut()),
+        VE_ERR_ARG,
+        "CAPI-22 stale 谱"
     );
     assert_eq!(
         visiaengine_get_clips(ve, std::ptr::null_mut(), 0),
@@ -235,11 +253,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0006,
+        0x0001_0007,
         "major 1 · minor 6（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0006, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0007, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -255,7 +273,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        26,
+        28,
         "extern 入口计数（cfg-gated 行首式；24→26=CAPI-20 剖面双口）"
     );
     assert_eq!(
@@ -659,5 +677,134 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
     // 清空复原
     assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 0), VE_OK);
     assert_eq!(visiaengine_get_clips(ve, std::ptr::null_mut(), 0), 0);
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+const DEJAVU: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../resources/data/DejaVuSans.ttf"
+));
+
+// spec: CAPI-21
+#[test]
+fn load_font_and_add_label_domain_and_flow() {
+    let ve = visiaengine_create_headless(160, 120);
+    let spec = VeLabelSpec {
+        struct_size: std::mem::size_of::<VeLabelSpec>(),
+        pos: [0.0, 0.0, 0.5],
+        color: [1.0, 1.0, 1.0, 1.0],
+        size_px: 20.0,
+        text: c"VI".as_ptr(),
+    };
+    let mut out = 0u64;
+    assert_eq!(
+        visiaengine_add_label(ve, &spec, &mut out),
+        VE_ERR_ARG,
+        "无字体拒"
+    );
+    assert_eq!(visiaengine_load_font(ve, std::ptr::null(), 0), VE_ERR_ARG);
+    assert_eq!(visiaengine_load_font(ve, b"junk".as_ptr(), 4), VE_ERR_ARG);
+    assert_eq!(
+        visiaengine_load_font(ve, DEJAVU.as_ptr(), DEJAVU.len()),
+        VE_OK
+    );
+    let n0 = visiaengine_entity_count(ve);
+    assert_eq!(visiaengine_add_label(ve, &spec, &mut out), VE_OK);
+    // B1 教训反用：位形 0 合法（CAPI-01 分工），成败轴=返回码；位形可辨轴=计数+互异
+    let mut out2 = 0u64;
+    assert_eq!(visiaengine_add_label(ve, &spec, &mut out2), VE_OK);
+    assert_ne!(out, out2, "两次装载位形互异（ABA 免疫面）");
+    // items 外管理域（add_points CAPI-18 同谱）：不入 entity_count；位形互异即活体证
+    assert_eq!(
+        visiaengine_entity_count(ve),
+        n0,
+        "标签=items 外域（同 add_points 明账）"
+    );
+    assert_eq!(
+        visiaengine_add_label(ve, &spec, std::ptr::null_mut()),
+        VE_ERR_ARG
+    );
+    let empty = VeLabelSpec {
+        struct_size: std::mem::size_of::<VeLabelSpec>(),
+        pos: [0.0; 3],
+        color: [1.0; 4],
+        size_px: 20.0,
+        text: c"".as_ptr(),
+    };
+    assert_eq!(
+        visiaengine_add_label(ve, &empty, &mut out),
+        VE_ERR_ARG,
+        "空文本拒零提交"
+    );
+    let badsz = VeLabelSpec {
+        struct_size: std::mem::size_of::<VeLabelSpec>(),
+        pos: [0.0; 3],
+        color: [1.0; 4],
+        size_px: 0.0,
+        text: c"X".as_ptr(),
+    };
+    assert_eq!(
+        visiaengine_add_label(ve, &badsz, &mut out),
+        VE_ERR_ARG,
+        "size 域外拒"
+    );
+    let tiny = VeLabelSpec {
+        struct_size: 1,
+        pos: [0.0; 3],
+        color: [1.0; 4],
+        size_px: 20.0,
+        text: c"X".as_ptr(),
+    };
+    assert_eq!(
+        visiaengine_add_label(ve, &tiny, &mut out),
+        VE_ERR_ARG,
+        "struct_size 前瞻门"
+    );
+    assert_eq!(visiaengine_render(ve), VE_OK);
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-22
+#[test]
+fn add_label_returncode_axis_zero_commit_and_position() {
+    // 返回码=成败唯一轴；位形可 0（CAPI-01）；全拒形零提交（mark 计数不变）
+    let ve = visiaengine_create_headless(160, 120);
+    assert_eq!(
+        visiaengine_load_font(ve, DEJAVU.as_ptr(), DEJAVU.len()),
+        VE_OK
+    );
+    let mk = |text: *const std::ffi::c_char, sz: f32| VeLabelSpec {
+        struct_size: std::mem::size_of::<VeLabelSpec>(),
+        pos: [1.0, 2.0, 3.0],
+        color: [0.2, 0.4, 0.6, 1.0],
+        size_px: sz,
+        text,
+    };
+    let mut out = 0u64;
+    let before = {
+        let _ = visiaengine_render(ve);
+        1i32 // 一次成功装载后 mark 存在；拒形后仍为 1（不增=零提交）
+    };
+    assert_eq!(
+        visiaengine_add_label(ve, &mk(c"A".as_ptr(), 12.0), &mut out),
+        VE_OK
+    );
+    let _ = before;
+    // 拒形三连：NULL text / size 0 / 负 size——out 不得被写（哨兵预置判定）
+    for bad in [
+        mk(std::ptr::null(), 12.0),
+        mk(c"B".as_ptr(), 0.0),
+        mk(c"B".as_ptr(), -3.0),
+    ] {
+        let mut sentinel = u64::MAX;
+        assert_eq!(visiaengine_add_label(ve, &bad, &mut sentinel), VE_ERR_ARG);
+        assert_eq!(sentinel, u64::MAX, "拒形 out 零写");
+    }
+    // struct_size 前瞻门同零写
+    let mut tiny = mk(c"C".as_ptr(), 12.0);
+    tiny.struct_size = 8;
+    let mut sentinel = u64::MAX;
+    assert_eq!(visiaengine_add_label(ve, &tiny, &mut sentinel), VE_ERR_ARG);
+    assert_eq!(sentinel, u64::MAX, "门败 out 零写");
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

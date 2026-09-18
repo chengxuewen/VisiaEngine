@@ -116,6 +116,20 @@ typedef struct { double nx, ny, nz, d; } VeClipPlane;
 int32_t  visiaengine_set_clips(uint64_t ve, const VeClipPlane *planes, size_t n);
 /* 读回：返回≥0=当前面数（错误=负码专属）；buf NULL=仅计数；cap 截断=写 min 而返回真数。 */
 int32_t  visiaengine_get_clips(uint64_t ve, VeClipPlane *buf, size_t cap);
+/* 文字标注（CAPI-21/22，档①引擎自管）：load_font 注入 TTF/OTF 字节（替换式；无默认
+   字体=文字管线休眠）。add_label 世界锚 f64 [D7]、色=宿主 sRGB/CSS 面（CORE-16 咽喉转
+   线性）、text=NUL 终止 UTF-8；成功 rc=0 写 *out_entity（位形 0 合法=CAPI-01，成败看
+   rc=CAPI-15 谱）。管理域=items 外（add_points CAPI-18 同谱）：不入 remove/enumeration，
+   明账 v0。未载字体=add_label 显式拒（时序门；休眠语义只属 GEO-25 样式域）。 */
+typedef struct {
+    size_t             struct_size; /* 前瞻门 = sizeof(VeLabelSpec) */
+    double             pos[3];
+    float              color[4];    /* sRGB/CSS */
+    float              size_px;
+    const char        *text;        /* UTF-8, NUL 终止 */
+} VeLabelSpec;
+int32_t  visiaengine_load_font(uint64_t ve, const uint8_t *data, size_t len);
+int32_t  visiaengine_add_label(uint64_t ve, const VeLabelSpec *spec, uint64_t *out_entity);
 
 #ifdef __cplusplus
 }  /* extern "C" */

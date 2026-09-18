@@ -650,8 +650,6 @@ impl Engine {
     }
 
     /// CAPI-21：装载/替换标注字体（bytes=TTF/OTF 全式；解析失败=Err 不动现存字体）。
-    // N5 接 visiaengine_load_font 口后即活（本带先行=暂死声明位）。
-    #[allow(dead_code)]
     pub fn set_font(&mut self, bytes: &[u8]) -> Result<(), String> {
         let f =
             visiaengine_io_text::FontFace::from_bytes(bytes).map_err(|e| format!("font: {e:?}"))?;
@@ -792,6 +790,62 @@ impl Engine {
             }
         };
         self.extra_cmds.push(DrawCommand::DrawPoints {
+            table,
+            origin: [0.0; 3],
+            transform: IDENTITY,
+        });
+        Ok(enc_entity(id))
+    }
+
+    /// CAPI-22：世界锚单标签（add_points 同谱=items 外管理域，位形可枚举、
+    /// v0 删除不入 remove 面=明账）。**字体未载=显式拒**（数据口无休眠义，
+    /// 与 GEO-25 样式休眠成对：样式休眠/口拒）。空文本/size 域外=拒零提交。
+    pub fn add_label(
+        &mut self,
+        world: [f64; 3],
+        text: &str,
+        rgba_srgb: [f32; 4],
+        size_px: f32,
+    ) -> Result<u64, String> {
+        let Some(face) = self.font.as_ref() else {
+            return Err("add_label: font not loaded (CAPI-21 first)".into());
+        };
+        if text.is_empty() || size_px <= 0.0 || !size_px.is_finite() {
+            return Err("add_label: empty text / size domain".into());
+        }
+        let (quads, pen) = visiaengine_io_text::layout(text, face, &mut self.glyphs, size_px);
+        if quads.is_empty() {
+            return Err("add_label: no raster quads".into());
+        }
+        let lin = visiaengine_core::srgb_to_linear(rgba_srgb);
+        let marks: Vec<visiaengine_render::LabelMark> = quads
+            .iter()
+            .map(|q| {
+                visiaengine_render::LabelMark::new(
+                    [world[0] as f32, world[1] as f32, world[2] as f32],
+                    lin,
+                    [q.uv0[0], q.uv0[1], q.uv1[0], q.uv1[1]],
+                    [
+                        q.size_px[0],
+                        q.size_px[1],
+                        q.top_left_px[0] - pen / 2.0,
+                        q.top_left_px[1],
+                    ],
+                )
+            })
+            .collect();
+        let id = self.scene.spawn();
+        let table = match self
+            .backend
+            .create_labels(&visiaengine_render::LabelTableDesc { data: &marks })
+        {
+            Ok(t) => t,
+            Err(e) => {
+                let _ = self.scene.despawn(id);
+                return Err(format!("create_labels: {e:?}"));
+            }
+        };
+        self.extra_cmds.push(DrawCommand::DrawLabels {
             table,
             origin: [0.0; 3],
             transform: IDENTITY,

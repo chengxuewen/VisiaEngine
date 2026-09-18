@@ -55,3 +55,9 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-20: 剖面裁切双口（B2）
 `visiaengine_set_clips(ve, const VeClipPlane *planes, size_t n)` / `visiaengine_get_clips(ve, VeClipPlane *buf, size_t cap)`。`VeClipPlane{nx,ny,nz,d}`=世界系数 32B Pod（法向指**保留侧**，判据 `dot(n,P)+d ≥ 0`，面上=保留）。**值域表 [C15]**：`n∈[0,4]`（MAX 与 REND-32 同源），**n=0=唯一清空形**（planes NULL+0 合法）；`NULL∧n>0`→-1；`n>4`→-1（**界检先于解引用**，越界零读）；零法向/非有限→-1+错误串（ClipSetup::new 同源门，不截断不吞）。归一化引擎侧做：读回恒单位形（(0,2,0,2)→(0,1,0,1)，w 同步除）。get **返回≥0=当前面数**（<0 专属错误谱，返回值不兼二主）；buf NULL=仅计数；`cap<面数` 截断写=写 min 返真数（n=3,cap=2→返 3 写 2）。owner 线程门=显隐口同谱；例外集不入。行为面：render 管线 fs discard（REND-32 换算律；WGPU-21/22/23 含 caster/扩片族同裁）+ **pick 命中点 keeps 谓词负侧→排除重试环**（剖开可见者必可拾；与 hidden 过滤正交叠加）。wasm 镜像=setClips(扁平 4n)/getClips→Float64 面；abi minor=6。
+
+## CAPI-21: 标注字体装载（S2）
+`visiaengine_load_font(ve, const uint8_t *data, size_t len)`：**替换式**装载/更新字体（TTF/OTF 全式字节；宿主注入=唯一源，**无默认字体**，CJK 15MB 级不可内嵌的定案面）。NULL/len=0/非字体=**-1+错误串**且**不动现存字体**（失败保旧=装载器语义，io-points FastFail 同谱）；成功=0。换字体=GlyphCache 作废重建（dirty→下帧 render 前 atlas 全量重传 [WGPU-24]）。wasm 面 `loadFont(Uint8Array)`。时序前提：CAPI-22 add_label 与 GEO-25 样式产标皆依赖已载字体。
+
+## CAPI-22: 世界锚标签装载口（S2）
+`visiaengine_add_label(ve, const VeLabelSpec{struct_size,pos[f64;3],color[sRGB 4],size_px,text=*const char NUL UTF-8}, uint64_t *out_entity)`。**成败=返回码**（0 成功写 out，位形 0 合法 [CAPI-01]——B1 add_mesh 教训的第二消费者）；**结构门**：NULL spec/out、struct_size<sizeof、NULL text、坏 UTF-8（to_str 失败）、pos 非有限、color∉[0,1]⁴、size_px≤0/非有限、空文本=**全部 -1 零提交**（domain 表先于副作用）。**时序门：字体未载=显式拒**（与 GEO-25 样式休眠成对：休眠只属样式域，数据口无休眠义）。管理域=items 外（CAPI-18 同谱：不入 entity_count/remove——v0 明账，删除路=全清重建触发制）。center 对齐（MapLibre 默认锚，pen/2 平移）；色经 `core::srgb_to_linear` 咽喉（宿主 sRGB 面 [CORE-16 咽喉六：label 表]）。wasm `addLabel(pos3,color4,text,size_px)→bigint|MISS`；hpp 薄转发。abi minor=7。

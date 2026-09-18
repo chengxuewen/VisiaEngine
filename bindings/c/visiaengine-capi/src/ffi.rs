@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 6 // major 1 · minor 6（CAPI-20 剖面裁切=MAJOR 内追加；>>16==1 校验面不变）
+    (1 << 16) | 7 // major 1 · minor 7（CAPI-21/22 文字双口=MAJOR 内追加；>>16==1 校验面不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1110,6 +1110,113 @@ pub extern "C" fn visiaengine_get_clips(ve: u64, buf: *mut VeClipPlane, cap: usi
                         VE_ERR_STATE
                     }
                 },
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-22 值结构（struct_size 前瞻门=VeMeshDesc 同谱；pos=世界 f64 [D7]，
+/// color=宿主 sRGB 面 [CORE-16]，text=NUL 终止 UTF-8）。
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VeLabelSpec {
+    pub struct_size: usize,
+    pub pos: [f64; 3],
+    pub color: [f32; 4],
+    pub size_px: f32,
+    pub text: *const std::ffi::c_char,
+}
+
+/// CAPI-21：装载/替换标注字体（owner 线程；NULL/0/非 TTF=-1+错误串，成功不动现存字体）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_load_font(ve: u64, data: *const u8, len: usize) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if data.is_null() || len == 0 {
+                        set_err("load_font: null/empty".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: data[0..len] 由宿主保证有效（同 load_* 字节契约）
+                    let bytes = unsafe { std::slice::from_raw_parts(data, len) };
+                    match with_engine(i, |e| e.set_font(bytes)) {
+                        Ok(()) => VE_OK,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-22：世界锚单标签（owner 线程；无字体=拒 [时序门]；NULL spec/坏 out/struct_size
+/// 门/空文本/size 域外/坏 UTF-8=-1 零提交；成功=0 写 *out（位形可 0=15 谱 CAPI-01 同制））。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_add_label(
+    ve: u64,
+    spec: *const VeLabelSpec,
+    out_entity: *mut u64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if spec.is_null() {
+                        set_err("add_label: null spec".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: spec 非空已验；struct_size 门先于字段读 [FFI-R:CS-4]
+                    let hdr = unsafe { *spec };
+                    if hdr.struct_size < std::mem::size_of::<VeLabelSpec>() {
+                        set_err("add_label: struct_size too small".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    if hdr.text.is_null() {
+                        set_err("add_label: null text".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    if out_entity.is_null() {
+                        set_err("add_label: null out_entity".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: text 指针非空且 NUL 终止（宿主契约，同 path 口族）
+                    let text = match unsafe { std::ffi::CStr::from_ptr(hdr.text) }.to_str() {
+                        Ok(t) => t,
+                        Err(_) => {
+                            set_err("add_label: invalid utf-8".to_string());
+                            return VE_ERR_ARG;
+                        }
+                    };
+                    let finite = hdr.pos.iter().all(|v| v.is_finite())
+                        && hdr.color.iter().all(|v| (0.0..=1.0).contains(v));
+                    if !finite || !hdr.size_px.is_finite() {
+                        set_err("add_label: non-finite spec".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| e.add_label(hdr.pos, text, hdr.color, hdr.size_px)) {
+                        Ok(bits) => {
+                            // SAFETY: out_entity 非空已验；成功唯一写点
+                            unsafe { *out_entity = bits };
+                            VE_OK
+                        }
+                        Err(msg) => {
+                            set_err(format!("add_label: {msg}"));
+                            VE_ERR_ARG
+                        }
+                    }
+                }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
             }

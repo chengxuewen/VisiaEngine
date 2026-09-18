@@ -27,6 +27,7 @@
 | E811 | SDK 消费·显隐孪生（C++ 面；hpp 转发验收） | `examples/cpp/E811_entity_hide_cpp.cpp` | CAPI-13/14 | `ctest -R example_E811_entity_hide_cpp` |
 | E812 | SDK 消费·程序化增删（位形互异/退化零提交/再入拒） | `examples/cpp/E812_mesh_add.cpp` | CAPI-15/16 | `ctest -R example_E812` |
 | E802 | SDK 消费·C++ headless（hpp 门面活体验收；readback→PPM 落盘） | `examples/cpp/E802_offscreen.cpp` | CAPI-04/05 | `ctest -R example_E802` |
+| E814 | SDK 消费·C 文字标注（时序门/utf8 多字节/白墨活体门） | `examples/c/E814_labels_headless.c` | CAPI-21/22 | `ctest -R example_E814_labels_headless` |
 | E813 | SDK 消费·剖面裁切（半刀/角域三面 AND/值域拒/清空复原，readback 三段活体门） | `examples/c/E813_section_clip.c` | CAPI-20 | `ctest -R example_E813_section_clip` |
 | E901 | 垂直切片 seed·孪生城（geo 底图×instanced×PCSS；双模=无参常驻窗/`--frames` 离屏 PNG+断言） | `examples/rs/E901_twin_city.rs` | 批 4 全成果面 | `pixi run smoke-twin-city`（T2 新增） |
 
@@ -57,12 +58,12 @@ ctest / `--frames N` = 自动化短退形态（argv 单源纪律：注册表参�
 | 人验形态 | 例 | 无参启动行为 | 看什么 |
 |---|---|---|---|
 | **窗口常驻** | E101 / E201 / E202 / E301 / E402 / E501 / E502 / E503 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链，余者标题即操作提示 |
-| **自退自证** | E203 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E813 | 跑完打印 `OK …` 行退出 | 终端输出即验收面 |
+| **自退自证** | E203 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E813 / E814 | 跑完打印 `OK …` 行退出 | 终端输出即验收面 |
 
 **无头证据例“秒退=设计”**：其产物是终端断言行或 PNG/PPM 落盘，非交互窗；要交互验收走同能力域窗口例
 （拾取→E402、色彩→E502 无参窗、光影→E501 无参窗、恒宽→E503）。native run 步全例覆盖（DISPLAY 族经
 run-gui 探测 `:0` 回退；headless 族直跑，IDE 无 DISPLAY 亦可）。
 
 native 例窗况定性（2026-09-17 E702 修案同轮盘点）：真窗口例=E702/E801/E703 三枚（无参全常驻）；
-其余 C/C++ 例（E701/E704/E802/E810/E811×2/E812/E813）=无头证据例，终端 `OK …` 行/PPM 落盘
+其余 C/C++ 例（E701/E704/E802/E810/E811×2/E812/E813/E814）=无头证据例，终端 `OK …` 行/PPM 落盘
 即其人验面，秒退=设计身份。

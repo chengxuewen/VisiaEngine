@@ -60,6 +60,30 @@ int main(int argc, char **argv) {
         return 1;
     }
     printf("OK attrs name=%s opacity=%.2f missing-intact\n", nm, op);
+    /* 文字闭环（CAPI-21/22）：注字体→世界锚标签→渲染；时序门活广告 */
+    FILE *ff = fopen("resources/data/DejaVuSans.ttf", "rb");
+    if (!ff) { puts("FAIL font open"); return 1; }
+    static unsigned char fbuf[1024 * 1024];
+    size_t flen = fread(fbuf, 1, sizeof fbuf, ff);
+    fclose(ff);
+    VeLabelSpec lspec = {0};
+    lspec.struct_size = sizeof lspec;
+    lspec.pos[0] = 0.0; lspec.pos[1] = 0.0; lspec.pos[2] = 1.0;
+    lspec.color[0] = lspec.color[1] = lspec.color[2] = 1.0f; lspec.color[3] = 1.0f;
+    lspec.size_px = 20.0f;
+    lspec.text = "E701";
+    uint64_t lab = 0;
+    if (visiaengine_add_label(ve, &lspec, &lab) != VE_ERR_ARG) {
+        puts("FAIL label-before-font gate"); return 1;
+    }
+    if (flen == 0 || flen == sizeof fbuf || visiaengine_load_font(ve, fbuf, flen) != VE_OK) {
+        puts("FAIL load_font"); return 1;
+    }
+    if (visiaengine_add_label(ve, &lspec, &lab) != VE_OK) {
+        printf("FAIL add_label: %s\n", visiaengine_last_error(ve)); return 1;
+    }
+    if (visiaengine_render(ve) != VE_OK) { puts("FAIL render labels"); return 1; }
+    puts("OK font+label");
     visiaengine_destroy(ve);
     puts("OK capi headless input+pick+attrs");
     return 0;
