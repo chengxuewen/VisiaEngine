@@ -85,10 +85,36 @@ impl HeadlessBackend {
         (target, view)
     }
 
+    /// ⑤b 多视口渲染+回读（rect 域；策略= WGPU-26 安全/裁决两形）。
+    #[must_use]
+    pub fn render_to_pixels_rects(
+        &mut self,
+        passes: &[(Frame, visiaengine_render::ViewportRect)],
+        policy: crate::MultiClearPolicy,
+    ) -> Option<OffscreenFrame> {
+        let (w, h) = (self.viewport.width(), self.viewport.height());
+        self.core.render_view_rects(
+            passes,
+            &self.target_view,
+            w,
+            h,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            policy,
+        );
+        self.read_back()
+    }
+
     /// 渲染并回读（同步）。
     #[must_use]
     pub fn render_to_pixels(&mut self, frame: &Frame) -> Option<OffscreenFrame> {
         self.render(frame);
+        self.read_back()
+    }
+
+    /// 回读现 target（行对齐去 padding；_pixels/_rects 共用尾）。
+    #[must_use]
+    fn read_back(&mut self) -> Option<OffscreenFrame> {
+        let _unused: Option<Frame> = None;
         let (w, h) = (self.viewport.width(), self.viewport.height());
         // 行对齐（COPY_BYTES_PER_ROW_ALIGNMENT）：任意 w 合法（capi 宿主尺寸不可控——
         // 原实现仅 64px 倍数宽度可用，golden 域恰好躲过，I2 出图链实锤修复）

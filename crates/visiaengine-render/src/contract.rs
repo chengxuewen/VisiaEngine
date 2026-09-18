@@ -212,6 +212,57 @@ impl Viewport {
     }
 }
 
+/// 视口矩形（REND-35，⑤b）：全幅 surface 内一块 scissor 圈地区域。
+/// **不触 Frame**（裁决 a：Frame 保全屏语义，第 44 兜底波免交）——rect 走渲染调用参数，
+/// 每投携带自己的相机 Frame 共享同一 surface/depth。坐标 = surface 物理像素，原点在顶左。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ViewportRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl ViewportRect {
+    /// 构造即验非退化（width/height>0，由调用方保证——0 尺寸 rect 是宿主 bug）。
+    #[must_use]
+    pub const fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    /// 是否包含给定 surface 物理像素点（输入路由 hit-test，最小形引擎无状态）。
+    #[must_use]
+    pub const fn contains(&self, px: u32, py: u32) -> bool {
+        px >= self.x && px < self.x + self.width && py >= self.y && py < self.y + self.height
+    }
+
+    /// 区内局部坐标（区原点相对）——screen_to_ray_* 的 w/h 传本 rect 尺寸即复用。
+    #[must_use]
+    pub const fn local(&self, px: u32, py: u32) -> Option<(f32, f32)> {
+        if self.contains(px, py) {
+            Some(((px - self.x) as f32, (py - self.y) as f32))
+        } else {
+            None
+        }
+    }
+
+    /// 全幅单视口（旧全屏语义的 rect 形——canary 逐位等用）。
+    #[must_use]
+    pub const fn full(width: u32, height: u32) -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        }
+    }
+}
+
 /// 相机投影（2D/2.5D/3D 统一入口的投影侧；插值切换属后续片）。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Camera {

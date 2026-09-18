@@ -99,6 +99,15 @@ enum Variant {
     ShadowInst,
 }
 
+/// ⑤b 多视口 clear 策略（默认=安全形；AllClear 仅裁决探针）。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MultiClearPolicy {
+    /// 首 pass Clear（全幅底色），后续 Load——wgpu30 安全形（WGPU-26 实测锁）。
+    FirstClearRestLoad,
+    /// 每 pass 都 Clear（Clear respects area 则互存；全区则后吞前——分歧探针）。
+    AllClear,
+}
+
 /// GPU 实例表（WGPU-16）：32B/条 storage 缓冲 + 条数。
 struct GpuInstances {
     buf: wgpu::Buffer,
@@ -1082,6 +1091,111 @@ impl MeshCore {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        self.run_shadow_caster(&mut encoder, frame, color_format, &sh_view);
+        self.run_main_pass(
+            &mut encoder,
+            frame,
+            view,
+            &depth_view,
+            color_format,
+            &sh_params,
+            &sh_view,
+            wgpu::LoadOp::Clear(wgpu::Color {
+                r: f64::from(cl[0]),
+                g: f64::from(cl[1]),
+                b: f64::from(cl[2]),
+                a: f64::from(cl[3]),
+            }),
+            wgpu::LoadOp::Clear(1.0),
+            wgpu::StoreOp::Discard,
+            None,
+        );
+        self.queue.submit(std::iter::once(encoder.finish()));
+    }
+
+    /// ⑤b 多视口分屏（WGPU-26）：单 surface/单全幅 depth 上 N 个 scissor 圈地区域，
+    /// 各携自己的 Frame（相机独立、命令共享）。**安全形=首 pass Clear（全幅底色=缝色）
+    /// + 后续 Load**；`AllClear` 仅裁决探针用。depth：非末 pass Store、末 pass Discard
+    ///   （同旧形）；caster 一趟（frame0 配置——light-space 与主相机无关，双投共享 [裁决 d]）。
+    ///   full-rect 不 set viewport/scissor=旧路逐位等（canary 锁）。
+    pub fn render_view_rects(
+        &mut self,
+        passes: &[(Frame, visiaengine_render::ViewportRect)],
+        view: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+        color_format: wgpu::TextureFormat,
+        policy: MultiClearPolicy,
+    ) {
+        let Some((head_frame, _)) = passes.first() else {
+            return;
+        };
+        let clear = head_frame
+            .commands
+            .iter()
+            .find_map(|c| match c {
+                DrawCommand::ClearColor { rgba } => Some(*rgba),
+                _ => None,
+            })
+            .unwrap_or([0.0; 4]);
+        let cl = srgb_to_linear(clear);
+        self.ensure_depth(width.max(1), height.max(1));
+        let depth_view = self
+            .depth_cache
+            .as_ref()
+            .map(|(_, _, _, v)| v.clone())
+            .expect("depth just ensured");
+        let (_sh0_params, sh0_view) = self.shadow_frame_res(head_frame);
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        self.run_shadow_caster(&mut encoder, head_frame, color_format, &sh0_view);
+        let n = passes.len();
+        for (i, (frame, rect)) in passes.iter().enumerate() {
+            let (sfp, sfv) = self.shadow_frame_res(frame);
+            let clear_this = i == 0 || matches!(policy, MultiClearPolicy::AllClear);
+            let full = *rect == visiaengine_render::ViewportRect::full(width, height);
+            self.run_main_pass(
+                &mut encoder,
+                frame,
+                view,
+                &depth_view,
+                color_format,
+                &sfp,
+                &sfv,
+                if clear_this {
+                    wgpu::LoadOp::Clear(wgpu::Color {
+                        r: f64::from(cl[0]),
+                        g: f64::from(cl[1]),
+                        b: f64::from(cl[2]),
+                        a: f64::from(cl[3]),
+                    })
+                } else {
+                    wgpu::LoadOp::Load
+                },
+                if clear_this {
+                    wgpu::LoadOp::Clear(1.0)
+                } else {
+                    wgpu::LoadOp::Load
+                },
+                if i == n - 1 {
+                    wgpu::StoreOp::Discard
+                } else {
+                    wgpu::StoreOp::Store
+                },
+                if full { None } else { Some(*rect) },
+            );
+        }
+        self.queue.submit(std::iter::once(encoder.finish()));
+    }
+
+    fn run_shadow_caster(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &Frame,
+        color_format: wgpu::TextureFormat,
+        sh_view: &wgpu::TextureView,
+    ) {
         // ===== WGPU-19 caster pre-pass（shadow=Some 才跑；DrawMesh/DrawInstances 投影，
         // 扩片族不投 [不装②]；无色彩目标 pass，bias 住 caster 管线 depth_stencil）=====
         if frame.shadow.is_some() && self.shadow_active(frame) {
@@ -1089,7 +1203,7 @@ impl MeshCore {
                 label: Some("shadow-pass"),
                 color_attachments: &[],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &sh_view,
+                    view: sh_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
@@ -1182,316 +1296,237 @@ impl MeshCore {
                 sp.draw_indexed(0..index_count, 0, 0..inst_count);
             }
         }
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("mesh-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    resolve_target: None,
-                    depth_slice: None,
-                    ops: wgpu::Operations {
-                        // CORE-16 咽喉二：ClearColor 经上方 cl（srgb 目标 load=线性域，探针实锤）
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: f64::from(cl[0]),
-                            g: f64::from(cl[1]),
-                            b: f64::from(cl[2]),
-                            a: f64::from(cl[3]),
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &depth_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Discard,
-                    }),
-                    stencil_ops: None,
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn run_main_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &Frame,
+        view: &wgpu::TextureView,
+        depth_view: &wgpu::TextureView,
+        color_format: wgpu::TextureFormat,
+        sh_params: &wgpu::Buffer,
+        sh_view: &wgpu::TextureView,
+        color_load: wgpu::LoadOp<wgpu::Color>,
+        depth_load: wgpu::LoadOp<f32>,
+        depth_store: wgpu::StoreOp,
+        rect: Option<visiaengine_render::ViewportRect>,
+    ) {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("mesh-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: color_load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: depth_load,
+                    store: depth_store,
                 }),
-                ..Default::default()
-            });
-            for cmd in &frame.commands {
-                match cmd {
-                    // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
-                    // 漏臂=编译失败（契约面兑现，非静默跳过）
-                    DrawCommand::ClearColor { .. } => {}
-                    DrawCommand::DrawLabels {
-                        table,
-                        origin,
-                        transform,
-                    } => {
-                        let mvp_buf = self.uniform(
-                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
-                            "view",
-                        );
-                        let Some(gi) = self.labels_t.get(table) else {
-                            continue; // 缺表=skip（族纪律，WGPU-18 同谱）
-                        };
-                        let Some((_, atlas_view)) = &self.glyph_atlas else {
-                            static ONCE: std::sync::Once = std::sync::Once::new();
-                            ONCE.call_once(|| {
-                                eprintln!(
-                                    "warn: labels present but atlas unset — skipped [WGPU-24]"
-                                );
-                            });
-                            continue; // atlas 未上传=整族不可见（族纪律+warn-once）
-                        };
-                        let tbuf = gi.buf.clone();
-                        let count = gi.count;
-                        let apv = atlas_view.clone();
-                        let pipeline = match self.pipelines.get(&(color_format, Variant::Labels)) {
-                            Some(p) => p.clone(),
-                            None => {
-                                let p = build_pipeline(
-                                    &self.device,
-                                    &self.layout_label,
-                                    &self.shader,
-                                    color_format,
-                                    Variant::Labels,
-                                );
-                                self.pipelines
-                                    .insert((color_format, Variant::Labels), p.clone());
-                                p
-                            }
-                        };
-                        pass.set_pipeline(&pipeline);
-                        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            label: Some("label-bg"),
-                            layout: &self.bgl_label,
-                            entries: &[
-                                wgpu::BindGroupEntry {
-                                    binding: 0,
-                                    resource: mvp_buf.as_entire_binding(),
-                                },
-                                wgpu::BindGroupEntry {
-                                    binding: 11,
-                                    resource: tbuf.as_entire_binding(),
-                                },
-                                wgpu::BindGroupEntry {
-                                    binding: 12,
-                                    resource: wgpu::BindingResource::TextureView(&apv),
-                                },
-                                wgpu::BindGroupEntry {
-                                    binding: 13,
-                                    resource: wgpu::BindingResource::Sampler(&self.label_smp),
-                                },
-                            ],
+                stencil_ops: None,
+            }),
+            ..Default::default()
+        });
+        // scissor 圈栅格（色/深写入围栏）；full-rect 不走此支=旧路逐位等（canary）
+        if let Some(r) = rect {
+            pass.set_scissor_rect(r.x, r.y, r.width.max(1), r.height.max(1));
+            pass.set_viewport(
+                r.x as f32,
+                r.y as f32,
+                r.width as f32, // scissor/viewport 域（尺寸恒小值，cast 安全）
+                r.height as f32,
+                0.0,
+                1.0,
+            );
+        }
+        self.draw_frame_commands(&mut pass, frame, color_format, sh_params, sh_view);
+    }
+
+    fn draw_frame_commands(
+        &mut self,
+        pass: &mut wgpu::RenderPass,
+        frame: &Frame,
+        color_format: wgpu::TextureFormat,
+        sh_params: &wgpu::Buffer,
+        sh_view: &wgpu::TextureView,
+    ) {
+        for cmd in &frame.commands {
+            match cmd {
+                // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
+                // 漏臂=编译失败（契约面兑现，非静默跳过）
+                DrawCommand::ClearColor { .. } => {}
+                DrawCommand::DrawLabels {
+                    table,
+                    origin,
+                    transform,
+                } => {
+                    let mvp_buf = self.uniform(
+                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        "view",
+                    );
+                    let Some(gi) = self.labels_t.get(table) else {
+                        continue; // 缺表=skip（族纪律，WGPU-18 同谱）
+                    };
+                    let Some((_, atlas_view)) = &self.glyph_atlas else {
+                        static ONCE: std::sync::Once = std::sync::Once::new();
+                        ONCE.call_once(|| {
+                            eprintln!("warn: labels present but atlas unset — skipped [WGPU-24]");
                         });
-                        pass.set_bind_group(0, &bg, &[]);
-                        pass.set_vertex_buffer(0, self.quad_vb.slice(..));
-                        pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
-                        pass.draw_indexed(0..6, 0, 0..count);
-                    }
-                    DrawCommand::DrawPoints {
-                        table,
-                        origin,
-                        transform,
-                    } => {
-                        let mvp_buf = self.uniform(
-                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
-                            "view",
-                        );
-                        let Some(gi) = self.points_t.get(table) else {
-                            continue; // 缺表=skip（族纪律，WGPU-18）
-                        };
-                        let tbuf = gi.buf.clone();
-                        let count = gi.count;
-                        let pipeline = match self.pipelines.get(&(color_format, Variant::Points)) {
-                            Some(p) => p.clone(),
-                            None => {
-                                let p = build_pipeline(
-                                    &self.device,
-                                    &self.layout_point,
-                                    &self.shader,
-                                    color_format,
-                                    Variant::Points,
-                                );
-                                self.pipelines
-                                    .insert((color_format, Variant::Points), p.clone());
-                                p
-                            }
-                        };
-                        pass.set_pipeline(&pipeline);
-                        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            label: Some("point-bg"),
-                            layout: &self.bgl_point,
-                            entries: &[
-                                wgpu::BindGroupEntry {
-                                    binding: 0,
-                                    resource: mvp_buf.as_entire_binding(),
-                                },
-                                wgpu::BindGroupEntry {
-                                    binding: 6,
-                                    resource: tbuf.as_entire_binding(),
-                                },
-                            ],
-                        });
-                        pass.set_bind_group(0, &bg, &[]);
-                        pass.set_vertex_buffer(0, self.quad_vb.slice(..));
-                        pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
-                        pass.draw_indexed(0..6, 0, 0..count);
-                    }
-                    DrawCommand::DrawMesh {
-                        mesh,
-                        material,
-                        origin,
-                        transform,
-                    } => {
-                        let mvp_buf = self.uniform(
-                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
-                            "view",
-                        );
-                        let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
-                            Some(gm) => (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count),
-                            None => continue,
-                        };
-                        let Some(mat) = self.materials.get(material) else {
-                            continue;
-                        };
-                        let buf = mat.buf.clone();
-                        let (textured, view) = (mat.textured, mat.view.clone());
-                        let variant = if textured {
-                            Variant::Textured
-                        } else {
-                            Variant::Flat
-                        };
-                        let pipeline = match self.pipelines.get(&(color_format, variant)) {
-                            Some(p) => p.clone(),
-                            None => {
-                                let layout = if textured {
-                                    &self.layout_tex
-                                } else {
-                                    &self.layout
-                                };
-                                let p = build_pipeline(
-                                    &self.device,
-                                    layout,
-                                    &self.shader,
-                                    color_format,
-                                    variant,
-                                );
-                                self.pipelines.insert((color_format, variant), p.clone());
-                                p
-                            }
-                        };
-                        pass.set_pipeline(&pipeline);
-                        let bg = if textured {
-                            let Some(view) = view else { continue };
-                            self.ensure_sampler();
-                            let sampler = self.sampler.clone().expect("sampler just ensured");
-                            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                                label: Some("mesh-bg-tex"),
-                                layout: &self.bgl_tex,
-                                entries: &[
-                                    wgpu::BindGroupEntry {
-                                        binding: 0,
-                                        resource: mvp_buf.as_entire_binding(),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 2,
-                                        resource: buf.as_entire_binding(),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 3,
-                                        resource: wgpu::BindingResource::TextureView(&view),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 4,
-                                        resource: wgpu::BindingResource::Sampler(&sampler),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 1,
-                                        resource: sh_params.as_entire_binding(),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 7,
-                                        resource: wgpu::BindingResource::TextureView(&sh_view),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 8,
-                                        resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
-                                    },
-                                ],
-                            })
-                        } else {
-                            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                                label: Some("mesh-bg"),
-                                layout: &self.bgl,
-                                entries: &[
-                                    wgpu::BindGroupEntry {
-                                        binding: 0,
-                                        resource: mvp_buf.as_entire_binding(),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 2,
-                                        resource: buf.as_entire_binding(),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 1,
-                                        resource: sh_params.as_entire_binding(),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 7,
-                                        resource: wgpu::BindingResource::TextureView(&sh_view),
-                                    },
-                                    wgpu::BindGroupEntry {
-                                        binding: 8,
-                                        resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
-                                    },
-                                ],
-                            })
-                        };
-                        pass.set_bind_group(0, &bg, &[]);
-                        pass.set_vertex_buffer(0, vbuf.slice(..));
-                        pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
-                        pass.draw_indexed(0..index_count, 0, 0..1);
-                    }
-                    // ponytail: 两臂 ~25 行 mvp/查表/管线缓存 同形——提公共 helper 的触发
-                    // =4de 第三消费者（线/点扩片）；现保持 Flat/Textured 路径逐字不动=零回归构造保证
-                    DrawCommand::DrawInstances {
-                        mesh,
-                        material,
-                        instances,
-                        origin,
-                        transform,
-                    } => {
-                        let mvp_buf = self.uniform(
-                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
-                            "view",
-                        );
-                        let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
-                            Some(gm) => (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count),
-                            None => continue,
-                        };
-                        let Some(gi) = self.instances.get(instances) else {
-                            continue; // 缺表=skip（mesh 缺失同纪律，WGPU-16）
-                        };
-                        let inst_buf = gi.buf.clone();
-                        let count = gi.count;
-                        let Some(mat) = self.materials.get(material) else {
-                            continue;
-                        };
-                        let buf = mat.buf.clone();
-                        let pipeline = match self.pipelines.get(&(color_format, Variant::Instanced))
-                        {
-                            Some(p) => p.clone(),
-                            None => {
-                                let p = build_pipeline(
-                                    &self.device,
-                                    &self.layout_inst,
-                                    &self.shader,
-                                    color_format,
-                                    Variant::Instanced,
-                                );
-                                self.pipelines
-                                    .insert((color_format, Variant::Instanced), p.clone());
-                                p
-                            }
-                        };
-                        pass.set_pipeline(&pipeline);
-                        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            label: Some("mesh-bg-inst"),
-                            layout: &self.bgl_inst,
+                        continue; // atlas 未上传=整族不可见（族纪律+warn-once）
+                    };
+                    let tbuf = gi.buf.clone();
+                    let count = gi.count;
+                    let apv = atlas_view.clone();
+                    let pipeline = match self.pipelines.get(&(color_format, Variant::Labels)) {
+                        Some(p) => p.clone(),
+                        None => {
+                            let p = build_pipeline(
+                                &self.device,
+                                &self.layout_label,
+                                &self.shader,
+                                color_format,
+                                Variant::Labels,
+                            );
+                            self.pipelines
+                                .insert((color_format, Variant::Labels), p.clone());
+                            p
+                        }
+                    };
+                    pass.set_pipeline(&pipeline);
+                    let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("label-bg"),
+                        layout: &self.bgl_label,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: mvp_buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 11,
+                                resource: tbuf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 12,
+                                resource: wgpu::BindingResource::TextureView(&apv),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 13,
+                                resource: wgpu::BindingResource::Sampler(&self.label_smp),
+                            },
+                        ],
+                    });
+                    pass.set_bind_group(0, &bg, &[]);
+                    pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+                    pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..6, 0, 0..count);
+                }
+                DrawCommand::DrawPoints {
+                    table,
+                    origin,
+                    transform,
+                } => {
+                    let mvp_buf = self.uniform(
+                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        "view",
+                    );
+                    let Some(gi) = self.points_t.get(table) else {
+                        continue; // 缺表=skip（族纪律，WGPU-18）
+                    };
+                    let tbuf = gi.buf.clone();
+                    let count = gi.count;
+                    let pipeline = match self.pipelines.get(&(color_format, Variant::Points)) {
+                        Some(p) => p.clone(),
+                        None => {
+                            let p = build_pipeline(
+                                &self.device,
+                                &self.layout_point,
+                                &self.shader,
+                                color_format,
+                                Variant::Points,
+                            );
+                            self.pipelines
+                                .insert((color_format, Variant::Points), p.clone());
+                            p
+                        }
+                    };
+                    pass.set_pipeline(&pipeline);
+                    let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("point-bg"),
+                        layout: &self.bgl_point,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: mvp_buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 6,
+                                resource: tbuf.as_entire_binding(),
+                            },
+                        ],
+                    });
+                    pass.set_bind_group(0, &bg, &[]);
+                    pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+                    pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..6, 0, 0..count);
+                }
+                DrawCommand::DrawMesh {
+                    mesh,
+                    material,
+                    origin,
+                    transform,
+                } => {
+                    let mvp_buf = self.uniform(
+                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        "view",
+                    );
+                    let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
+                        Some(gm) => (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count),
+                        None => continue,
+                    };
+                    let Some(mat) = self.materials.get(material) else {
+                        continue;
+                    };
+                    let buf = mat.buf.clone();
+                    let (textured, view) = (mat.textured, mat.view.clone());
+                    let variant = if textured {
+                        Variant::Textured
+                    } else {
+                        Variant::Flat
+                    };
+                    let pipeline = match self.pipelines.get(&(color_format, variant)) {
+                        Some(p) => p.clone(),
+                        None => {
+                            let layout = if textured {
+                                &self.layout_tex
+                            } else {
+                                &self.layout
+                            };
+                            let p = build_pipeline(
+                                &self.device,
+                                layout,
+                                &self.shader,
+                                color_format,
+                                variant,
+                            );
+                            self.pipelines.insert((color_format, variant), p.clone());
+                            p
+                        }
+                    };
+                    pass.set_pipeline(&pipeline);
+                    let bg = if textured {
+                        let Some(view) = view else { continue };
+                        self.ensure_sampler();
+                        let sampler = self.sampler.clone().expect("sampler just ensured");
+                        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("mesh-bg-tex"),
+                            layout: &self.bgl_tex,
                             entries: &[
                                 wgpu::BindGroupEntry {
                                     binding: 0,
@@ -1502,8 +1537,12 @@ impl MeshCore {
                                     resource: buf.as_entire_binding(),
                                 },
                                 wgpu::BindGroupEntry {
-                                    binding: 5,
-                                    resource: inst_buf.as_entire_binding(),
+                                    binding: 3,
+                                    resource: wgpu::BindingResource::TextureView(&view),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 4,
+                                    resource: wgpu::BindingResource::Sampler(&sampler),
                                 },
                                 wgpu::BindGroupEntry {
                                     binding: 1,
@@ -1511,72 +1550,175 @@ impl MeshCore {
                                 },
                                 wgpu::BindGroupEntry {
                                     binding: 7,
-                                    resource: wgpu::BindingResource::TextureView(&sh_view),
+                                    resource: wgpu::BindingResource::TextureView(sh_view),
                                 },
                                 wgpu::BindGroupEntry {
                                     binding: 8,
                                     resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
                                 },
                             ],
-                        });
-                        pass.set_bind_group(0, &bg, &[]);
-                        pass.set_vertex_buffer(0, vbuf.slice(..));
-                        pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
-                        pass.draw_indexed(0..index_count, 0, 0..count);
-                    }
-                    DrawCommand::DrawStrokes {
-                        table,
-                        origin,
-                        transform,
-                    } => {
-                        let mvp_buf = self.uniform(
-                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
-                            "view",
-                        );
-                        let Some(gi) = self.strokes_t.get(table) else {
-                            continue; // 缺表=skip（族纪律，WGPU-17）
-                        };
-                        let tbuf = gi.buf.clone();
-                        let count = gi.count;
-                        let pipeline = match self.pipelines.get(&(color_format, Variant::Strokes)) {
-                            Some(p) => p.clone(),
-                            None => {
-                                let p = build_pipeline(
-                                    &self.device,
-                                    &self.layout_stroke,
-                                    &self.shader,
-                                    color_format,
-                                    Variant::Strokes,
-                                );
-                                self.pipelines
-                                    .insert((color_format, Variant::Strokes), p.clone());
-                                p
-                            }
-                        };
-                        pass.set_pipeline(&pipeline);
-                        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            label: Some("stroke-bg"),
-                            layout: &self.bgl_stroke,
+                        })
+                    } else {
+                        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("mesh-bg"),
+                            layout: &self.bgl,
                             entries: &[
                                 wgpu::BindGroupEntry {
                                     binding: 0,
                                     resource: mvp_buf.as_entire_binding(),
                                 },
                                 wgpu::BindGroupEntry {
-                                    binding: 5,
-                                    resource: tbuf.as_entire_binding(),
+                                    binding: 2,
+                                    resource: buf.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 1,
+                                    resource: sh_params.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 7,
+                                    resource: wgpu::BindingResource::TextureView(sh_view),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 8,
+                                    resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
                                 },
                             ],
-                        });
-                        pass.set_bind_group(0, &bg, &[]);
-                        pass.set_vertex_buffer(0, self.quad_vb.slice(..));
-                        pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
-                        pass.draw_indexed(0..6, 0, 0..count);
-                    }
+                        })
+                    };
+                    pass.set_bind_group(0, &bg, &[]);
+                    pass.set_vertex_buffer(0, vbuf.slice(..));
+                    pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..index_count, 0, 0..1);
+                }
+                // ponytail: 两臂 ~25 行 mvp/查表/管线缓存 同形——提公共 helper 的触发
+                // =4de 第三消费者（线/点扩片）；现保持 Flat/Textured 路径逐字不动=零回归构造保证
+                DrawCommand::DrawInstances {
+                    mesh,
+                    material,
+                    instances,
+                    origin,
+                    transform,
+                } => {
+                    let mvp_buf = self.uniform(
+                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        "view",
+                    );
+                    let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
+                        Some(gm) => (gm.vbuf.clone(), gm.ibuf.clone(), gm.index_count),
+                        None => continue,
+                    };
+                    let Some(gi) = self.instances.get(instances) else {
+                        continue; // 缺表=skip（mesh 缺失同纪律，WGPU-16）
+                    };
+                    let inst_buf = gi.buf.clone();
+                    let count = gi.count;
+                    let Some(mat) = self.materials.get(material) else {
+                        continue;
+                    };
+                    let buf = mat.buf.clone();
+                    let pipeline = match self.pipelines.get(&(color_format, Variant::Instanced)) {
+                        Some(p) => p.clone(),
+                        None => {
+                            let p = build_pipeline(
+                                &self.device,
+                                &self.layout_inst,
+                                &self.shader,
+                                color_format,
+                                Variant::Instanced,
+                            );
+                            self.pipelines
+                                .insert((color_format, Variant::Instanced), p.clone());
+                            p
+                        }
+                    };
+                    pass.set_pipeline(&pipeline);
+                    let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("mesh-bg-inst"),
+                        layout: &self.bgl_inst,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: mvp_buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 5,
+                                resource: inst_buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: sh_params.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 7,
+                                resource: wgpu::BindingResource::TextureView(sh_view),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 8,
+                                resource: wgpu::BindingResource::Sampler(&self.sh_sampler),
+                            },
+                        ],
+                    });
+                    pass.set_bind_group(0, &bg, &[]);
+                    pass.set_vertex_buffer(0, vbuf.slice(..));
+                    pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..index_count, 0, 0..count);
+                }
+                DrawCommand::DrawStrokes {
+                    table,
+                    origin,
+                    transform,
+                } => {
+                    let mvp_buf = self.uniform(
+                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        "view",
+                    );
+                    let Some(gi) = self.strokes_t.get(table) else {
+                        continue; // 缺表=skip（族纪律，WGPU-17）
+                    };
+                    let tbuf = gi.buf.clone();
+                    let count = gi.count;
+                    let pipeline = match self.pipelines.get(&(color_format, Variant::Strokes)) {
+                        Some(p) => p.clone(),
+                        None => {
+                            let p = build_pipeline(
+                                &self.device,
+                                &self.layout_stroke,
+                                &self.shader,
+                                color_format,
+                                Variant::Strokes,
+                            );
+                            self.pipelines
+                                .insert((color_format, Variant::Strokes), p.clone());
+                            p
+                        }
+                    };
+                    pass.set_pipeline(&pipeline);
+                    let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("stroke-bg"),
+                        layout: &self.bgl_stroke,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: mvp_buf.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 5,
+                                resource: tbuf.as_entire_binding(),
+                            },
+                        ],
+                    });
+                    pass.set_bind_group(0, &bg, &[]);
+                    pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+                    pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..6, 0, 0..count);
                 }
             }
         }
-        self.queue.submit(std::iter::once(encoder.finish()));
     }
 }
 

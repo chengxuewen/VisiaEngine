@@ -16,6 +16,6 @@ pub use contract::{
     BackendError, Camera, Capability, ClipSetup, DrawCommand, Frame, Instance, InstanceDesc,
     InstanceId, LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark,
     PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc, TableId,
-    TextureDesc, TextureId, Viewport, clip_to_local,
+    TextureDesc, TextureId, Viewport, ViewportRect, clip_to_local,
 };
 pub use picking::{MeshCandidate, PickHit, pick_meshes};

@@ -82,3 +82,6 @@ View 块尾缀 80B 段（float 44..64：`planes: array<vec4,4>` + `clip_count` +
 
 ## WGPU-25: 标签受裁=锚判（S2）
 `out.wpos = 锚点 l.pos.xyz`（非展开顶点）→ fs `clipped(in.wpos)` 整标同生共死——**半截标签不是标注**。判据与 WGPU-21 同一 `clipped()`（AND 世界面经 REND-33 表域为 entity-local 锚点，view_block 不涉）。labels 不入 caster（无投影面 [不装② 续]）。
+
+## WGPU-26: 多视口分屏管线（⑤b）
+`render_view_rects(passes: &[(Frame, ViewportRect)], view, w, h, fmt, policy)`：单 surface **单全幅 depth**（键=surface 尺寸，rect 不参键——视口同尺寸零重建）上 N 个 scissor 圈地 pass，各携独立 Frame（相机/px_world_scale 自治，命令与资源表共享）。**clear 语义本机定论（裁决门 2026-09-18 实测）**：wgpu30 `LoadOp::Clear` 作用**整个 attachment**（AllClear 形下后区吞前区=现行；与 Vulkan render-area 定论一致）⇒ **安全形=首 pass Clear（全幅底色，缝隙色顺带）+ 后续 pass Load**，为唯一公开形（`MultiClearPolicy::AllClear` 仅探针/教学位）。depth：非末 pass Store、末 pass Discard（旧形保持）；**scissor 圈栅格**令跨区深度互不可见（色/深写入围栏，共享深度零串扰=门③锁）。caster pre-pass **一趟**（frame0 配置；light-space 数学与主相机无关 → 双投共享 shadow map [裁决 d]，门④双区影现行锁）。**canary 纪律**：`ViewportRect::full` 或等 full 的 rect **不发 set_viewport/set_scissor 调用**（默认全架=旧路**逐字节等**，门②锁）；`render_view_format` 旧口零触。色 clear 单主=首 Frame 的 ClearColor（后续 Frame 之 ClearColor 不消费，与 find_map 律同形）。

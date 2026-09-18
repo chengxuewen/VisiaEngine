@@ -14,6 +14,7 @@ pub mod mesh_core;
 mod offscreen;
 
 pub use headless::HeadlessBackend;
+pub use mesh_core::MultiClearPolicy;
 pub use offscreen::{
     OffscreenFrame, render_offscreen_cube, render_offscreen_cube_at, render_offscreen_triangle,
     unit_box_mesh,
