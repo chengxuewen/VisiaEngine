@@ -295,3 +295,21 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 孪生城常驻窗挂键：**C=剖切刀 ON/OFF（z≤6m 起刀，影随刀塌）· [ / ]=刀高 ±1m（clamp 0.5..15）· L=三塔屋顶标注（Tower-A/B/C，io-text 全链窗形首演）· Esc=退出**；标题实时回显状态
 - 构造面教训一则（写后自查根修）：首版「append 再 pop 复原基底」的 swap 逻辑在无字体分支会**掏空全部命令**——正解=基底永不掺标签，redraw 帧按开关拼接（show 域住渲染不住构造）
 - 验证：headless 路零回归（bright=3019 dark=2426 原值）· 22s 存活+真窗节点 ✓ · SMOKE ✓ · ctest #14 Passed · ci 十段 0 红 202 passed · 条款/入口/ctest 计数全不动（纯消费者面）
+
+## ⑤a 相机飞行带基线（2026-09-18，计划 camera-flyto-band v1.1·Momus OKAY 0B/3A 修入）
+- 口面：CAPI-23 fly_to（pose f64 八位 struct_size 门/瞬移形/改道连续/near-far 恒现值）+
+  CAPI-24 fly_state（done 含 idle 单主/out 飞中写）；28→30 入口 minor=8；三面镜像全带
+  （wasm flyTo·flyState·flyProgress+d.ts+hpp）；E701 无新段（E815 独立例）
+- IR：REND-34 Easing 三族+fly_sample 纯函数（端点恒 from/to 原值快路；yaw 最短弧住采样器
+  构造件 mix_rig 零触碰=REND-15/16 存量零回归）；E302 反证锁（线性中点两侧对照）
+- **wasm 时钟雷先拆**：std::time 于 wasm32-unknown-unknown 运行时不可用→now_ms() 双形 shim
+  （native Instant 进程锚/wasm js_sys::Date::now；js-sys 0.3 target dep）——编译过≠跑得通
+- 例：E302_fly_camera 双模（1/2/3 预设互飞/拖滚 cancel/R/Esc；headless 四断言 bright 实测
+  96 阈 40）+ E815_fly_camera.c 无头活体（idle 即 done/瞬移/进度单调 14 样本/cancel/域拒×4）
+- 教训如实：wasm 桥 pose 扁平 7/8 元手滑自纠；借用闭包三 borrow 错→展开直写；中文锚 heredoc
+  绊（#9 跨带复发第 N 见）；T2 漏 gate-docs（E815 tutorials 行）T3 抓回=门禁互保
+- 基线：**209 passed · spec-trace 142↔142 · GATE-ABI 30/30 · GATE-DOCS ✓ E 27 件三方 ·
+  ctest 28 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3（abi 钉 0x…0008）+ pair_mirror ✓ ·
+  ci 十段 0 红 · 9 crate 不变**
+- 非目标挂账：多视口分屏（四坑清单 D19/触发=分屏演示单）· 高度弧线 · 多关键帧巡览 ·
+  惯性阻尼 · fly 事件推送 · CJK 内嵌（S2 余账）

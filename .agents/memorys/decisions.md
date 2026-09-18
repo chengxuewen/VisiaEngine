@@ -164,3 +164,19 @@
 - **R2 体积战果**：wasm gz 429401→490967 = **+14.3%（阈 15% 内过线，零余量如实记）**；
   探针预估 +6% 偏乐观（真实=字体栈+shader+label 链）。复评触发：wasm 面真投产 or
   需 CJK 内嵌时重判（退路=feature gate 字体栅格仅 native，R2 纹理退路同款）。
+
+## D19: ⑤a 相机飞行带裁决（2026-09-18，双探针对抗 + Momus OKAY 0B/3A + 用户「全带开工」）
+- **范围刀**：本带=flyTo 纯飞行；**多视口分屏=独立带**（四坑清单入非目标：depth_cache 单例升 Map/
+  scissor 零实证/输入 px 路由/双 px_world_scale——探针双一致，混带=拖垮验证节奏）。WGPU-26 预留。
+- **分层定案（被迫即正解）**：render crate 零 std::time——纯函数 fly_sample(from,to,t,easing) 住 render；
+  墙钟推进器住 engine。**wasm 运行时雷主动拆**：std::time::Instant 在 wasm32-unknown-unknown 不可用
+  （flyTo 会触 capi_guard -4 假死）→ now_ms() shim 双形（native=Instant 进程锚/wasm=js_sys::Date::now）
+  ——Web 是主舞台，编译过≠跑得通，写于踩前。
+- **缓动**：Easing{Linear,CubicInOut(smoothstep),CubicOut}；capi 面固定 CubicInOut（加参=YAGNI）。
+- **中断=MapLibre A 派**：指针/滚轮（kind 1/2/4）首行 cancel；键(5) 不打断（测试反证在）。
+- **done/idle 合并单主**：fly_state 返回 1=不在飞（cancel 后=1 可再飞）；out_t01 仅飞中写、
+  done 零写（B1 零部分写谱）；wasm 拆 flyState+flyProgress(done=1.0) 免 JS 双值编码。
+- **near/far 不飞行**（pose 无深度域=恒现值，PIT-5/REND-14 连带 [Momus-A1]）；
+  **改道 from=当前采样**保连续 [A3]；yaw 最短弧住 fly_sample 构造件——**mix_rig 零触碰**
+  =REND-15/16 存量断言零回归（wrap 对照用线性中点反证双向锁）。
+- dur_ms=0=瞬移形（非错误值域）；高度弧线/Van Wijk=AV 漫游单触发。
