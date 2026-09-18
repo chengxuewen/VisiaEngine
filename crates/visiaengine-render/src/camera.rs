@@ -86,6 +86,8 @@ impl CameraRig {
         }
     }
 
+    /// 全参轨道构造。**fov_y 单位=弧度**（与 look_at 默认 FRAC_PI_3 / perspective 消费同制；
+    /// 角度制数字直接传入=投影畸变雷，例面三处前科 [2026-09-18 E303 抓档]）。
     /// 轨道参数构造（正交俯拍常用：pitch=90° 即地图视角）。
     #[must_use]
     #[allow(clippy::too_many_arguments)]

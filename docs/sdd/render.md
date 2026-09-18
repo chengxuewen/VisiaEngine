@@ -105,3 +105,7 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-34: flyTo 位姿采样 + 缓动（⑤a）
 `Easing{Linear, CubicInOut(smoothstep 3x²−2x³), CubicOut(1−(1−x)³)}`：`ease:[0,1]→[0,1]` **单调增+端点逐位精确+域外钳制**（三锁逐位断言）。`CameraRig::fly_sample(from,to,t,easing)`：**纯函数**——墙钟推进器住 engine（分层定案：render crate 无 std::time，宿主 render() 零 dt 义务 [D8 事实的正解]）；`t=0/1` 恒 from/to 原值快路（终点 yaw 保原始数，与 mix_rig 端点语义同谱 REND-16）；**yaw 最短弧**=to.yaw 经 ±2π 整数倍归一到 from.yaw+Δ(Δ∈(−π,π]) 再插（姿态 mod 2π 等价；|Δ|≤π 零干预纯线性——wrap 修正住采样器**不动 mix_rig**，REND-15/16 存量断言零触）。near/far 不经 pose（CAPI-23 无深度域=恒 from 现值，PIT-5/REND-14 锁连带 [Momus-A1]）。飞行中改道（CAPI-23 重入）from=当前采样快照=构造性连续 [Momus-A3]。
+
+
+## REND-35: ViewportRect 视口矩形（⑤b）
+`ViewportRect{x,y,width,height}`（u32 物理像素，原点顶左）：独立类型**不触 Frame**（裁决 a——Frame 保全屏语义，第 44 兜底波免交；rect 走渲染调用参数 `render_view_rects`，每投携独立 Frame×共享资源表）。`full(w,h)`=全屏形（canary 逐位等入口）；`contains/local`＝输入路由最小形（宿主 hit-test 后取区局部 px，`screen_to_ray_*` 的 w/h 传 rect 尺寸即复用，REND-21/22 签名零改）。视口间重叠未定义（v0 纪律：不重叠构图）。

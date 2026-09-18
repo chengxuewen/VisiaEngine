@@ -1150,7 +1150,6 @@ impl MeshCore {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         self.run_shadow_caster(&mut encoder, head_frame, color_format, &sh0_view);
-        let n = passes.len();
         for (i, (frame, rect)) in passes.iter().enumerate() {
             let (sfp, sfv) = self.shadow_frame_res(frame);
             let clear_this = i == 0 || matches!(policy, MultiClearPolicy::AllClear);
@@ -1173,16 +1172,12 @@ impl MeshCore {
                 } else {
                     wgpu::LoadOp::Load
                 },
-                if clear_this {
-                    wgpu::LoadOp::Clear(1.0)
-                } else {
-                    wgpu::LoadOp::Load
-                },
-                if i == n - 1 {
-                    wgpu::StoreOp::Discard
-                } else {
-                    wgpu::StoreOp::Store
-                },
+                // WGPU-26 定案修正：深度**每 pass 必清**（首 pass 的全幅 clear 覆盖全区，
+                // 后续 pass 若 Load 会拿主视不透明地面的深度做 occlusion=小地图整幅被吞，
+                // 2026-09-18 像素门现行抓得）；色仅首 pass Clear（=缝底色），后区不擦。
+                // pass 间深度无消费者 ⇒ 全 Discard（免 Store 带宽）。
+                wgpu::LoadOp::Clear(1.0),
+                wgpu::StoreOp::Discard,
                 if full { None } else { Some(*rect) },
             );
         }

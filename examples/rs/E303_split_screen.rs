@@ -1,15 +1,16 @@
-//! E302 · 相机飞行 —— 预设视角 flyTo 巡览（⑤a REND-34 交互面）。
-//! 双模（E501/E901 同制）：无参=常驻窗（1/2/3=预设视角 拖/滚轮=cancel+轨道 R=回家 Esc=退）；
-//! `--frames N`=确定性纯函数断言路（墙钟不进 CI 契约）。
+//! E303 · 分屏驾驶舱 —— 主透视 3D + 右栏正射顶视小地图（⑤b WGPU-26 活例）。
+//! 双模（E901/E302 同制）：无参=常驻窗（1/2/3=飞行 拖/滚轮=主视接管 R=回家 Esc=退）；
+//! `--frames N`=离屏断言快退（分区族计数+缝色+顶视覆盖，PIT-8 探针定阈）。
+//! 小地图 rig=target 跟随主相机（同批命令双投两相机=WGPU-26 安全形）。
 
 use std::sync::Arc;
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Easing, Frame, Instance, InstanceDesc, MaterialDesc, MeshDesc,
-    RenderBackend, ShadowSetup, Viewport,
+    RenderBackend, ShadowSetup, Viewport, ViewportRect,
 };
 use visiaengine_render_wgpu::mesh_core::MeshCore;
-use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
+use visiaengine_render_wgpu::{HeadlessBackend, MultiClearPolicy, unit_box_mesh};
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
@@ -17,9 +18,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
 
-const W: u32 = 640;
-const H: u32 = 480;
-const SIDE: usize = 10;
+const SIDE: usize = 12;
 const ID64: [[f64; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
@@ -27,79 +26,118 @@ const ID64: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-struct Tower {
-    offset: [f32; 3],
-    height: f32,
+trait Up {
+    fn m(&mut self, d: &MeshDesc<'_>) -> u64;
+    fn t(&mut self, d: &MaterialDesc) -> u64;
+    fn i(&mut self, d: &InstanceDesc<'_>) -> u64;
 }
 
-fn city() -> Vec<Tower> {
-    let step = 2.4f32;
+impl Up for HeadlessBackend {
+    fn m(&mut self, d: &MeshDesc<'_>) -> u64 {
+        self.create_mesh(d).expect("m")
+    }
+    fn t(&mut self, d: &MaterialDesc) -> u64 {
+        self.create_material_desc(d).expect("t")
+    }
+    fn i(&mut self, d: &InstanceDesc<'_>) -> u64 {
+        self.create_instances(d).expect("i")
+    }
+}
+
+impl Up for MeshCore {
+    fn m(&mut self, d: &MeshDesc<'_>) -> u64 {
+        self.upload_mesh(d).expect("m")
+    }
+    fn t(&mut self, d: &MaterialDesc) -> u64 {
+        self.upload_material_desc(d).expect("t")
+    }
+    fn i(&mut self, d: &InstanceDesc<'_>) -> u64 {
+        self.create_instances(d).expect("i")
+    }
+}
+
+fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
+    let mut cmds = vec![DrawCommand::ClearColor {
+        rgba: [0.42, 0.58, 0.80, 1.0],
+    }];
+    let ground = up.m(&MeshDesc {
+        positions: &[
+            [-30.0, -30.0, -0.05],
+            [30.0, -30.0, -0.05],
+            [30.0, 30.0, -0.05],
+            [-30.0, 30.0, -0.05],
+        ],
+        normals: &[[0.0, 0.0, 1.0]; 4],
+        indices: &[0, 1, 2, 0, 2, 3],
+        uv: &[],
+    });
+    let gm = up.t(&MaterialDesc {
+        base_color: [0.62, 0.63, 0.66, 1.0],
+        texture: None,
+        repeat: [1.0, 1.0],
+        specular: 0.0,
+    });
+    cmds.push(DrawCommand::DrawMesh {
+        mesh: ground,
+        material: gm,
+        origin: [0.0; 3],
+        transform: ID64,
+    });
+    let (pos, nrm, idx) = unit_box_mesh();
+    let boxy = up.m(&MeshDesc {
+        positions: &pos,
+        normals: &nrm,
+        indices: &idx,
+        uv: &[],
+    });
+    let bm = up.t(&MaterialDesc {
+        base_color: [1.0, 1.0, 1.0, 1.0],
+        texture: None,
+        repeat: [1.0, 1.0],
+        specular: 0.0,
+    });
+    let step = 2.2f32;
     let span = step * SIDE as f32 / 2.0;
-    (0..SIDE)
+    let insts: Vec<Instance> = (0..SIDE)
         .flat_map(|gy| {
             (0..SIDE).map(move |gx| {
                 let i = gx + gy * SIDE;
-                Tower {
-                    offset: [
+                let v = 0.78 + (i * 104729 % 7) as f32 * 0.02;
+                Instance::new(
+                    [
                         -span + gx as f32 * step + step * 0.4,
                         -span + gy as f32 * step + step * 0.4,
-                        -0.06,
+                        0.0,
                     ],
-                    height: 1.6 + (i * 7919 % 11) as f32 * 1.15,
-                }
+                    1.6 + (i * 7919 % 11) as f32 * 1.05,
+                    [v, v * 1.02, v * 1.08],
+                )
             })
         })
-        .collect()
-}
-
-/// 预设三元（头注/标题文案同源）：1 航拍 / 2 街景 / 3 最高塔顶。
-fn presets() -> [CameraRig; 3] {
-    let c = city();
-    let tall = c
-        .iter()
-        .max_by(|a, b| a.height.total_cmp(&b.height))
-        .unwrap();
-    [
-        CameraRig::orbit([0.0, 0.0, 2.0], 0.8, 0.95, 95.0, 40.0, 46.0, 0.5, 400.0),
-        CameraRig::orbit(
-            [0.0, -2.0, 1.2],
-            -2.1,
-            0.05,
-            14.0,
-            14.0,
-            std::f64::consts::FRAC_PI_3,
-            0.3,
-            200.0,
-        ),
-        CameraRig::orbit(
-            [
-                f64::from(tall.offset[0]),
-                f64::from(tall.offset[1]),
-                f64::from(tall.height) * 0.6,
-            ],
-            2.4,
-            0.28,
-            12.0,
-            10.0,
-            55.0,
-            0.3,
-            200.0,
-        ),
-    ]
+        .collect();
+    let iid = up.i(&InstanceDesc { data: &insts });
+    cmds.push(DrawCommand::DrawInstances {
+        mesh: boxy,
+        material: bm,
+        instances: iid,
+        origin: [0.0; 3],
+        transform: ID64,
+    });
+    cmds
 }
 
 fn shadow_setup(w: u32, h: u32) -> ShadowSetup {
     let ld = [0.35f32, 0.5, 0.79];
     let nn = (ld[0] * ld[0] + ld[1] * ld[1] + ld[2] * ld[2]).sqrt();
     let leye = [
-        f64::from(ld[0] / nn) * 80.0,
-        f64::from(ld[1] / nn) * 80.0,
-        f64::from(ld[2] / nn) * 80.0,
+        f64::from(ld[0] / nn) * 70.0,
+        f64::from(ld[1] / nn) * 70.0,
+        f64::from(ld[2] / nn) * 70.0,
     ];
     let lrig = CameraRig::look_at(leye, [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
     ShadowSetup {
         proj: lrig
-            .ortho_frame(45.0, w as f32, h as f32, 1.0, 160.0)
+            .ortho_frame(34.0, w.max(1) as f32, h.max(1) as f32, 1.0, 140.0)
             .expect("lp"),
         view_rot: lrig.view_rotation(),
         eye: lrig.eye(),
@@ -109,137 +147,114 @@ fn shadow_setup(w: u32, h: u32) -> ShadowSetup {
     }
 }
 
-fn frame_of(rig: &CameraRig, commands: Vec<DrawCommand>, w: u32, h: u32) -> Frame {
-    let aspect = w as f32 / h.max(1) as f32;
-    let (near, far) = (0.3f32, 400.0f32);
-    Frame {
-        viewport: Viewport::new(w, h, 1.0),
-        camera: Camera::perspective(rig.fov_y as f32, aspect, near, far),
-        view_rot: rig.view_rotation(),
-        eye: rig.eye(),
-        proj: rig
-            .perspective(rig.fov_y as f32, aspect, near, far)
+fn rects(sw: u32, sh: u32) -> (ViewportRect, ViewportRect) {
+    let side = (sh / 2).max(16); // 右上角正方形小窗（长条=构图错）
+    (
+        ViewportRect::new(0, 0, sw, sh),
+        ViewportRect::new(sw - side, 0, side, side),
+    )
+}
+
+fn main_frames(
+    cmds: &[DrawCommand],
+    main: &CameraRig,
+    sw: u32,
+    sh: u32,
+) -> Vec<(Frame, ViewportRect)> {
+    let (mrect, map) = rects(sw, sh);
+    let [mx, my, _] = main.target;
+    let map_rig = CameraRig::look_at([mx, my, 45.0], [mx, my, 0.0], [0.0, 1.0, 0.0]);
+    let aspect = mrect.width as f32 / mrect.height.max(1) as f32;
+    let f_main = Frame {
+        viewport: Viewport::new(mrect.width, mrect.height, 1.0),
+        camera: Camera::perspective(main.fov_y as f32, aspect, 0.3, 300.0),
+        view_rot: main.view_rotation(),
+        eye: main.eye(),
+        proj: main
+            .perspective(main.fov_y as f32, aspect, 0.3, 300.0)
             .expect("p"),
         px_world_scale: 0.12,
-        shadow: Some(shadow_setup(w, h)),
+        shadow: Some(shadow_setup(mrect.width, mrect.height)),
         clip: None,
-        commands,
-    }
+        commands: cmds.to_vec(),
+    };
+    let f_map = Frame {
+        viewport: Viewport::new(map.width, map.height, 1.0),
+        camera: Camera::ortho(
+            26.0,
+            26.0 * map.height as f32 / map.width as f32,
+            0.5,
+            200.0,
+        ),
+        view_rot: map_rig.view_rotation(),
+        eye: map_rig.eye(),
+        proj: map_rig
+            .ortho_frame(26.0, map.width as f32, map.height as f32, 0.5, 200.0)
+            .expect("mp"),
+        px_world_scale: 52.0 / map.width as f32,
+        shadow: f_main.shadow,
+        clip: None,
+        commands: cmds.to_vec(),
+    };
+    vec![(f_main, mrect), (f_map, map)]
 }
 
-/// 场景上传（双路同源脸，REND-33 Ctor 先例——本例两脸够用不升格 trait）。
-macro_rules! upload_scene {
-    ($b:expr) => {{
-        let b = $b;
-        let mut cmds = vec![DrawCommand::ClearColor {
-            rgba: [0.42, 0.58, 0.80, 1.0],
-        }];
-        let ground = b.m(&MeshDesc {
-            positions: &[
-                [-30.0, -30.0, -0.1],
-                [30.0, -30.0, -0.1],
-                [30.0, 30.0, -0.1],
-                [-30.0, 30.0, -0.1],
-            ],
-            normals: &[[0.0, 0.0, 1.0]; 4],
-            indices: &[0, 1, 2, 0, 2, 3],
-            uv: &[],
-        });
-        let gmat = b.mt(&MaterialDesc {
-            base_color: [0.62, 0.63, 0.66, 1.0],
-            texture: None,
-            repeat: [1.0, 1.0],
-            specular: 0.0,
-        });
-        cmds.push(DrawCommand::DrawMesh {
-            mesh: ground,
-            material: gmat,
-            origin: [0.0; 3],
-            transform: ID64,
-        });
-        let (pos, nrm, idx) = unit_box_mesh();
-        let boxy = b.m(&MeshDesc {
-            positions: &pos,
-            normals: &nrm,
-            indices: &idx,
-            uv: &[],
-        });
-        let bmat = b.mt(&MaterialDesc {
-            base_color: [1.0, 1.0, 1.0, 1.0],
-            texture: None,
-            repeat: [1.0, 1.0],
-            specular: 0.0,
-        });
-        let insts: Vec<Instance> = city()
-            .iter()
-            .map(|t| {
-                let v = 0.74 + (t.height * 7.0 % 3.0) as f32 * 0.02;
-                Instance::new(t.offset, t.height, [v, v * 1.02, v * 1.08])
-            })
-            .collect();
-        let iid = b.inst(&InstanceDesc { data: &insts });
-        cmds.push(DrawCommand::DrawInstances {
-            mesh: boxy,
-            material: bmat,
-            instances: iid,
-            origin: [0.0; 3],
-            transform: ID64,
-        });
-        cmds
-    }};
+fn presets() -> [CameraRig; 3] {
+    [
+        CameraRig::orbit([0.0, 0.0, 4.0], 0.7, 0.9, 80.0, 40.0, 0.802_851, 0.3, 400.0),
+        CameraRig::orbit(
+            [0.0, -6.0, 1.2],
+            -1.8,
+            0.06,
+            10.0,
+            12.0,
+            std::f64::consts::FRAC_PI_3,
+            0.3,
+            200.0,
+        ),
+        CameraRig::orbit([8.0, 8.0, 5.0], 2.2, 0.3, 12.0, 12.0, 0.959_931, 0.3, 200.0),
+    ]
 }
 
-// ── headless 路（确定性：纯函数断言，零墙钟）────────────────────────────────
+// ── headless 路 ───────────────────────────────────────────────────────────────
 fn headless_run() {
-    let p = presets();
-    let [a, b, _c] = p;
-    // 端点精确（REND-16 同谱）+ 中点不重合
-    for e in [Easing::Linear, Easing::CubicInOut, Easing::CubicOut] {
-        assert_eq!(CameraRig::fly_sample(&a, &b, 0.0, e).target, a.target);
-        assert_eq!(CameraRig::fly_sample(&a, &b, 1.0, e).target, b.target);
-        let m = CameraRig::fly_sample(&a, &b, 0.5, e);
-        assert!(
-            (m.dist - a.dist).abs() > 1.0 && (m.dist - b.dist).abs() > 1.0,
-            "中点漂浮 {e:?}"
-        );
-    }
-    // 大角飞行（航拍→街景 yaw 跨度大）走最短弧：中点 yaw 与线性均值两侧对比可证
-    let mut wide_b = b;
-    wide_b.yaw = a.yaw + 5.9; // |Δ|>π ⇒ 线性中点 ~a.yaw+2.95，最短弧中点 ~a.yaw-0.24
-    let mid = CameraRig::fly_sample(&a, &wide_b, 0.5, Easing::Linear);
+    const W: u32 = 96;
+    const H: u32 = 64;
+    let mut b = HeadlessBackend::new(W, H).expect("adapter");
+    let cmds = scene(&mut b);
+    let rig = presets()[0];
+    let passes = main_frames(&cmds, &rig, W, H);
+    let img = b
+        .render_to_pixels_rects(&passes, MultiClearPolicy::FirstClearRestLoad)
+        .expect("render split");
+    let (mr, map) = rects(W, H);
+    let fam = |r: &ViewportRect, f: fn([u8; 4]) -> bool| -> u32 {
+        (r.y..r.y + r.height)
+            .flat_map(|y| (r.x..r.x + r.width).map(move |x| (x, y)))
+            .filter(|(x, y)| {
+                let i = ((y * W + x) * 4) as usize;
+                f([
+                    img.rgba[i],
+                    img.rgba[i + 1],
+                    img.rgba[i + 2],
+                    img.rgba[i + 3],
+                ])
+            })
+            .count() as u32
+    };
+    let area_m = mr.width * mr.height;
+    let is_sky = |p: [u8; 4]| p[2] as i32 - p[0] as i32 > 40 && p[2] > 180;
+    let is_roof = |p: [u8; 4]| p[0] > 148 && p[2] > 148; // 楼顶亮族（v≥0.78×shade 高段）
+    let non_sky = |r: &ViewportRect| -> u32 { r.width * r.height - fam(r, is_sky) };
+    let (ns_m, ns_g) = (non_sky(&mr), non_sky(&map));
+    let roofs = fam(&map, is_roof);
+    assert!(ns_m > area_m * 35 / 100, "主视地面主导不足 {ns_m}/{area_m}"); // 斜视天顶带合理（实测 51%）
     assert!(
-        (mid.yaw - (a.yaw - 0.23)).abs() < 0.2,
-        "wrap 未生效：mid yaw {0} 期望 ~{1}",
-        mid.yaw,
-        a.yaw - 0.23
+        ns_g > map.width * map.height * 9 / 10,
+        "小地图应全幅地面（顶视构图）got {ns_g}"
     );
-    // 渲染路通（帧环消费 fly_sample 位姿=展示形与断言路同源）
-    let mut backend = HeadlessBackend::new(W, H).expect("adapter");
-    struct Face<'x>(&'x mut HeadlessBackend);
-    impl Face<'_> {
-        fn m(&mut self, d: &MeshDesc<'_>) -> u64 {
-            self.0.create_mesh(d).expect("m")
-        }
-        fn mt(&mut self, d: &MaterialDesc) -> u64 {
-            self.0.create_material_desc(d).expect("mt")
-        }
-        fn inst(&mut self, d: &InstanceDesc<'_>) -> u64 {
-            self.0.create_instances(d).expect("i")
-        }
-    }
-    let cmds = upload_scene!(&mut Face(&mut backend));
-    let img = backend
-        .render_to_pixels(&frame_of(&mid, cmds, W, H))
-        .expect("render");
-    let bright = img
-        .rgba
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .filter(|q| q[0] > 150 && q[1] > 150 && q[2] > 150)
-        .count();
-    assert!(bright > 40, "飞行中景亮面缺席 {bright}"); // 实测 96 的 −58% 保守位（PIT-8）
-    println!("OK fly_camera endpoints+wrap+mid-render bright={bright}");
+    assert!(roofs > 40, "小地图楼顶族缺席 {roofs}（城投达？）");
+    println!("OK split_screen nonsky={ns_m}+{ns_g} roofs={roofs}（双投分区现行）");
 }
 
 // ── 交互路 ───────────────────────────────────────────────────────────────────
@@ -260,24 +275,12 @@ struct App {
     dragging: Option<(f64, f64)>,
     commands: Vec<DrawCommand>,
     presets: [CameraRig; 3],
-}
-
-struct FaceRef<'x>(&'x mut MeshCore);
-impl FaceRef<'_> {
-    fn m(&mut self, d: &MeshDesc<'_>) -> u64 {
-        self.0.upload_mesh(d).expect("m")
-    }
-    fn mt(&mut self, d: &MaterialDesc) -> u64 {
-        self.0.upload_material_desc(d).expect("mt")
-    }
-    fn inst(&mut self, d: &InstanceDesc<'_>) -> u64 {
-        self.0.create_instances(d).expect("i")
-    }
+    ready: bool,
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.core.is_some() {
+        if self.ready {
             return;
         }
         let window = Arc::new(
@@ -285,7 +288,9 @@ impl ApplicationHandler for App {
                 .create_window(
                     WindowAttributes::default()
                         .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("E302 相机飞行 · 1/2/3=预设 R=回家 拖/滚轮=中断接管 Esc=退出"),
+                        .with_title(
+                            "E303 分屏驾驶舱 · 主透视+右栏顶视 · 1/2/3 飞行 拖滚=接管 R=回家",
+                        ),
                 )
                 .expect("window"),
         );
@@ -301,12 +306,12 @@ impl ApplicationHandler for App {
             }))
             .ok()
         else {
-            eprintln!("no adapter — lavapipe/real GPU required");
+            eprintln!("no adapter");
             event_loop.exit();
             return;
         };
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e302"),
+            label: Some("visiaengine-e303"),
             required_features: wgpu::Features::empty(),
             required_limits: adapter.limits(),
             ..Default::default()
@@ -319,11 +324,12 @@ impl ApplicationHandler for App {
             .expect("cfg");
         config.format = caps.formats[0];
         surface.configure(&core.device, &config);
-        self.commands = upload_scene!(&mut FaceRef(&mut core));
+        self.commands = scene(&mut core);
         self.core = Some(core);
         self.surface = Some(surface);
         self.config = Some(config);
         self.window = Some(window);
+        self.ready = true;
         self.request_redraw();
     }
 
@@ -340,6 +346,7 @@ impl ApplicationHandler for App {
                     config.width = sz.width;
                     config.height = sz.height;
                     surface.configure(&core.device, config);
+                    self.request_redraw();
                 }
             }
             WindowEvent::MouseInput {
@@ -347,7 +354,6 @@ impl ApplicationHandler for App {
                 state,
                 ..
             } => {
-                // A 派中断：拖=取消飞行后接管（CAPI-23 语义同制）
                 if matches!(state, ElementState::Pressed) {
                     self.flight = None;
                 }
@@ -373,7 +379,6 @@ impl ApplicationHandler for App {
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                // 墙钟推进（例内自配——rs 层消费者与 capi 引擎同形不同体）
                 if let Some(f) = &self.flight {
                     let t = f.start.elapsed().as_secs_f64() / f.dur_s;
                     self.rig = if t >= 1.0 {
@@ -390,31 +395,27 @@ impl ApplicationHandler for App {
                 else {
                     return;
                 };
-                let frame = frame_of(
-                    &self.rig,
-                    self.commands.clone(),
-                    config.width,
-                    config.height,
-                );
+                let passes = main_frames(&self.commands, &self.rig, config.width, config.height);
                 match surface.get_current_texture() {
                     wgpu::CurrentSurfaceTexture::Success(tex)
                     | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
                         let view = tex
                             .texture
                             .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
+                        core.render_view_rects(
+                            &passes,
                             &view,
                             config.width,
-                            config.height.max(1),
+                            config.height,
                             config.format,
+                            MultiClearPolicy::FirstClearRestLoad,
                         );
                         core.queue.present(tex);
                     }
                     wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                         surface.configure(&core.device, config);
                     }
-                    other => eprintln!("skipped: {other:?}"),
+                    other => eprintln!("skip {other:?}"),
                 }
                 self.request_redraw();
             }
@@ -472,7 +473,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         headless_run();
         return Ok(());
     }
-    let p = presets();
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
@@ -480,11 +480,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         core: None,
         surface: None,
         config: None,
-        rig: p[0],
+        rig: presets()[0],
         flight: None,
         dragging: None,
         commands: Vec::new(),
-        presets: p,
+        presets: presets(),
+        ready: false,
     };
     event_loop.run_app(&mut app)?;
     Ok(())

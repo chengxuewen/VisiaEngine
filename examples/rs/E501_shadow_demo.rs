@@ -385,7 +385,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         core: None,
         surface: None,
         config: None,
-        rig: CameraRig::orbit([0.0, 0.0, 2.0], 0.0, 0.55, 46.0, 40.0, 55.0, 0.1, 1000.0),
+        rig: CameraRig::orbit(
+            [0.0, 0.0, 2.0],
+            0.0,
+            0.55,
+            46.0,
+            40.0,
+            0.959_931,
+            0.1,
+            1000.0,
+        ),
         dragging: None,
         scene: None,
     };

@@ -47,6 +47,10 @@ name = "E302_fly_camera"
 path = "E302_fly_camera.rs"
 
 [[example]]
+name = "E303_split_screen"
+path = "E303_split_screen.rs"
+
+[[example]]
 name = "E301_switch_camera"
 path = "E301_switch_camera.rs"
 [[example]]

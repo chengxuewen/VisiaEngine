@@ -4,7 +4,7 @@ use visiaengine_render::{
     BackendError, Camera, CameraRig, Capability, DrawCommand, Frame, Instance, InstanceDesc,
     LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark,
     PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc,
-    TextureDesc, Viewport,
+    TextureDesc, Viewport, ViewportRect,
 };
 
 const IDENTITY4F: [[f64; 4]; 4] = [
@@ -610,4 +610,20 @@ fn label_mark_layout_locked_and_default_err() {
         .create_labels(&LabelTableDesc { data: &[m] })
         .expect_err("默认必须拒");
     assert!(format!("{e:?}").to_lowercase().contains("not supported") || true);
+}
+
+// spec: REND-35
+#[test]
+fn viewport_rect_routing_minimals() {
+    let r = ViewportRect::new(64, 8, 32, 24);
+    // contains 闭左开右（x∈[64,96) y∈[8,32)）
+    assert!(r.contains(64, 8) && r.contains(95, 31));
+    assert!(!r.contains(63, 8) && !r.contains(96, 8) && !r.contains(64, 32));
+    // local：区原点相对（screen_to_ray 复用形）
+    assert_eq!(r.local(70, 20), Some((6.0, 12.0)));
+    assert_eq!(r.local(63, 20), None, "区外=None（路由拒形）");
+    // full 形与恒等
+    let f = ViewportRect::full(96, 64);
+    assert_eq!((f.x, f.y, f.width, f.height), (0, 0, 96, 64));
+    assert!(f.contains(95, 63) && !f.contains(96, 63));
 }

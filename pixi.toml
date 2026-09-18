@@ -92,6 +92,7 @@ smoke-pick-hover = "bash scripts/smoke-rs.sh E402_pick_interactive"   # L2：hov
 smoke-measure = "bash scripts/smoke-rs.sh E203_measure_cli"   # L2：量测 CLI（纯 CPU）
 smoke-bench-twin = "bash scripts/smoke-rs.sh E601_bench_twin"
 smoke-shadow-demo = "bash scripts/smoke-rs.sh E501_shadow_demo"
+smoke-split-screen = "bash scripts/smoke-rs.sh E303_split_screen"
 smoke-fly-camera = "bash scripts/smoke-rs.sh E302_fly_camera"
 smoke-text-labels = "bash scripts/smoke-rs.sh E205_text_labels"
 smoke-pcl-viewer = "bash scripts/smoke-rs.sh E204_pcl_viewer"   # L2：点云双模（headless 自断言路）
