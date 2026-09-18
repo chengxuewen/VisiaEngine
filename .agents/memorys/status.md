@@ -269,3 +269,24 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 非目标挂账：盖帽 stencil（BIM 内腔演示单）· 六面盒 · OR/union · 硬件 CLIP_DISTANCES
   双路（wgpu30 存在但 DX12 未在列）· 交互剖切滑杆（E901 挂键候需）· LAS（票据制候令）
 - 决策入册：**D17 八裁决点**（discard 单路+复评触发/≤4 AND/无盖帽/Mᵀ恒等式/全族受裁/caster 同裁/重试环/E813）
+
+## S2 文字标注带基线（2026-09-18，计划 io-text-labels-band v1.1·Momus OKAY 0B/A-1 修入）
+- 带义：档①+方案 I（引擎自管 fontdue 栅格，用户明裁）——标注/图注渲染从「SDK 短板」转正
+- 口面：CAPI-21 load_font（替换式；失败保旧）+ CAPI-22 add_label（struct_size 前瞻门+
+  时序门「无字体=拒」+值域全谱零提交；26→28 入口 minor=7）；三面镜像全带（头 POD/hpp 薄
+  转发/wasm loadFont+addLabel→bigint+MISS/d.ts 钉/mirror 值对）；E701 文字闭环段+gate-abi 28
+- 新 crate：visiaengine-io-text 第 9 个（face/GlyphCache R8-shelf-512²-1px 缝-满则重烘/layout
+  LTR；IO-07..09 三条款；fontdue 锁 default=false+hashbrown【探针盲点本地源码补正】）
+- 管线：REND-33 LabelMark 64B 4×vec4 布局锁+DrawLabels 第 6 变体+create_labels 默认拒；
+  WGPU-24 独立 bgl(0+11+12+13)+R8 atlas+ClampToEdge+恒顶(Always/不写深)+SRC_ALPHA；
+  WGPU-25 锚判整标同生共死；GEO-25 text-field"{prop}"剥壳/常量二形+列缺值 skip 不落字面量
+- 例三门：E205 双模（white=667/warm=348 探针阈；ortho 跨 zoom assert_eq 逐像素等）/
+  E814 C 活体（时序门+utf8+white=3917）/labels.rs WGPU 双测（atlas texel/恒大小/锚判双向）
+- 教训入档：PIT-28（pen 是 px 不可进 anchor 世界坐标——hist 探针抓出，三口 grep 律）；
+  #17 双纠（计划 140=REND-32 双计虚账，实账 139 粘 log；「位形可枚举」断言两次方向错=
+  items 外域语义未先对表）；E0449 cfg(test) 跨 crate 不可见教训→自省口转正 API
+- 基线：**202 passed · spec-trace 139↔139 · GATE-ABI 28/28 · GATE-DOCS ✓ E 25 件三方 ·
+  ctest 26 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3（abi 钉 0x…0007）· ci 十段 0 红 · 9 crate**
+- R2 复账：wasm gz 429401→490967=+14.3%（阈内过线零余量，探针预估 +6% 偏乐观如实记）
+- 余账：push 候令 · billboard/halo/避让/换行富文本/文本更新口=label 后带触发制 ·
+  CJK=宿主注字体同口（演示明账拉丁 fixture）

@@ -187,3 +187,9 @@
 - **解法**: 构造前 `if m > 0 {}` 守卫（NULL∧任意长、任意∧0 长全躲开）；或先 is_null 早退再构造。
 - **验证**: ffi_spec `set_get_clips_full_domain_roundtrip_truncation` 的 NULL-buf 段 + `cargo test -p visiaengine-capi`（debug 档即炸回归）。
 - **禁止**: 任何 FFI 口对可能为 NULL 的 buf 无条件 from_raw_parts（哪怕长度为 0）。
+
+## PIT-28: 标签居中的 px 平移只能进 dx 域——anchor 是世界坐标 (2026-09-18)
+- **症状**: E205 三段标签金色副标完全不渲染（hist 无黄色系），白/青在但偏移异常。
+- **根因**: `anchor_x = cx - pen/2` 把**像素** pen 从**世界**锚点减（-4−50 世界米=出屏）。capi `add_label` 正本式=center 对齐全部落在 dx(px) 分量：`dx = top_left_px - pen/2`，anchor 原样世界位。
+- **解法**: anchor 只进世界坐标，一切 px 语义（含对齐平移）住 metrics/dx 域（vs 统一乘 px_scale）。
+- **验证**: 三口互证（capi engine.rs / hpp 转发展 / E205 例）grep `pen / 2.0` 必须全部出现在 LabelMark 第 4 参数组内，第 1 参数组内出现=红。

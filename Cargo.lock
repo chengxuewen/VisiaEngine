@@ -435,6 +435,7 @@ dependencies = [
  "visiaengine-geo",
  "visiaengine-io-gltf",
  "visiaengine-io-points",
+ "visiaengine-io-text",
  "visiaengine-render",
  "visiaengine-render-wgpu",
  "wgpu",

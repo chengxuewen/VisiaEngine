@@ -139,3 +139,28 @@
 - **红利记录**：View 块扩段方案（origin+transform 已在 view_block 签名）使本带
   **零新 binding/绑组/缓冲**——比探针预估的独立 binding9 省一整层施工；
   「先查数据通路再定挂点」纪律（think-before-act）实证。
+
+## D18: S2 文字面带八裁决点（2026-09-18，探针 A/B 对抗 + 用户「档①引擎自管·全带开工」）
+- **a 档位/方案**：档①最小可用 + 方案 I（引擎自管 fontdue 栅格）——用户三选一明裁；
+  非宿主自管（SDK 价值折半）、非标准档（swash 触 R2）。MSDF 路线否（Rust 生态≈0，msdf-font 1★）。
+- **b 依赖锁形**：fontdue `default-features=false, features=["hashbrown"]`——
+  关 SIMD（wasm 陷阱 #25/#72）保 hashbrown（no_std 下 std/hashbrown 二选一 [docs 实测，
+  探针报告未点出，N0 冒烟补正]）；ttf-parser RUSTSEC-2026-0192 deny-ignore
+  （unmaintained 非漏洞；攻击面=宿主注入自有资产+panic 栅栏；ab_glyph 同依=换无效；
+  三复评触发入 deny 注释）。
+- **c 新 crate 落点**：`crates/visiaengine-io-text`（第 9 crate，纯 CPU：face/cache/layout），
+  GPU 态住 render-wgpu；接口隔离使 swash 升级非破坏。
+- **d 命名空间**：复用 IO 前缀（IO-07..09，白名单已含=第三检零改动）非新立 TEXT-。
+- **e 标签坐标**：世界锚定 + 屏幕恒大小（ortho 精确路 assert_eq 跨 zoom 逐像素等锁）；
+  色=线性域直传（sRGB 咽喉 label 表=core::srgb_to_linear，咽喉六）；center 对齐落 dx 域
+  （PIT-28：pen 是 px 不可进 anchor 世界坐标）。恒顶：depth write=false/Always + 命令序末位。
+- **f atlas**：R8 单槽 512² + shelf 装箱 + 1px 缝（采样渗色防）；满则全清重烘透明降级
+  （[ponytail] 逐字 LRU 待 profile）；set_glyph_atlas 全量替换（io-text dirty 驱动）。
+- **g 受裁**：标签走 WGPU-21 clipped() 同一判据（锚点 model-space，REND-33 表域）；
+  caster 不投（无投影面续不装②）。
+- **h 双口镜像**：CAPI-21 load_font + CAPI-22 add_label（26→28，abi minor=7 非 8）；
+  三面镜像全带（头 POD 直用/hpp 薄转发/wasm loadFont+addLabel→bigint+MISS）；
+  管理域=items 外（add_points 同谱，不入 entity_count/remove）。
+- **R2 体积战果**：wasm gz 429401→490967 = **+14.3%（阈 15% 内过线，零余量如实记）**；
+  探针预估 +6% 偏乐观（真实=字体栈+shader+label 链）。复评触发：wasm 面真投产 or
+  需 CJK 内嵌时重判（退路=feature gate 字体栅格仅 native，R2 纹理退路同款）。

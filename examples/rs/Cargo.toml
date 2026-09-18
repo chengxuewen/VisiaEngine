@@ -15,6 +15,7 @@ visiaengine-render-wgpu.workspace = true
 visiaengine-io-gltf.workspace = true
 visiaengine-geo.workspace = true
 visiaengine-io-points.workspace = true
+visiaengine-io-text.workspace = true
 # 三方直用面 = examples/rs/*.rs 顶行+全路径引用实扫（S1 清点：image×1 pollster×4 wgpu×4 winit×4）
 wgpu.workspace = true
 winit.workspace = true
@@ -37,6 +38,10 @@ path = "E203_measure_cli.rs"
 [[example]]
 name = "E204_pcl_viewer"
 path = "E204_pcl_viewer.rs"
+
+[[example]]
+name = "E205_text_labels"
+path = "E205_text_labels.rs"
 [[example]]
 name = "E301_switch_camera"
 path = "E301_switch_camera.rs"
