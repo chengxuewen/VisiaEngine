@@ -1,9 +1,9 @@
 //! L1 无头后端：MeshCore + 离屏 target + 回读（golden 测试消费面）。
 
 use visiaengine_render::{
-    BackendError, Capability, Frame, InstanceDesc, InstanceId, MaterialDesc, MaterialId, MeshDesc,
-    MeshId, PointTableDesc, RenderBackend, StrokeTableDesc, TableId, TextureDesc, TextureId,
-    Viewport,
+    BackendError, Capability, Frame, InstanceDesc, InstanceId, LabelTableDesc, MaterialDesc,
+    MaterialId, MeshDesc, MeshId, PointTableDesc, RenderBackend, StrokeTableDesc, TableId,
+    TextureDesc, TextureId, Viewport,
 };
 
 use crate::mesh_core::MeshCore;
@@ -209,9 +209,23 @@ impl RenderBackend for HeadlessBackend {
     fn create_points(&mut self, desc: &PointTableDesc<'_>) -> Result<TableId, BackendError> {
         self.core.create_points(desc)
     }
+
+    fn create_labels(&mut self, desc: &LabelTableDesc<'_>) -> Result<TableId, BackendError> {
+        self.core.create_labels(desc)
+    }
 }
 
 impl HeadlessBackend {
+    /// glyph atlas 上传（WGPU-24）：io-text `GlyphCache::pixels()` 直喂（R8 全量替换）。
+    pub fn set_glyph_atlas(
+        &mut self,
+        r8: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<(), BackendError> {
+        self.core.set_glyph_atlas(r8, width, height)
+    }
+
     /// attach 面（CAPI-06）：裸句柄建 swapchain（配置成功才返回；失败不动现目标）。
     ///
     /// # Safety

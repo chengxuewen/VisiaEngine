@@ -29,3 +29,4 @@ image = { workspace = true }   # E901 PNG 落盘（人检图，T3 素材）
 # 装配示例专用（dev 面不传染正常依赖图：example 是 io×render 合流的演示位）
 visiaengine-io-gltf.workspace = true
 visiaengine-geo.workspace = true
+visiaengine-io-text.workspace = true

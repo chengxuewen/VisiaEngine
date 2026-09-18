@@ -7,8 +7,9 @@ use visiaengine_core::srgb_to_linear;
 use wgpu::util::DeviceExt as _;
 
 use visiaengine_render::{
-    BackendError, Capability, DrawCommand, Frame, InstanceDesc, MaterialDesc, MaterialId, MeshDesc,
-    MeshId, PointTableDesc, StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport,
+    BackendError, Capability, DrawCommand, Frame, InstanceDesc, LabelTableDesc, MaterialDesc,
+    MaterialId, MeshDesc, MeshId, PointTableDesc, StrokeTableDesc, TableId, TextureDesc, TextureId,
+    Viewport,
 };
 
 struct GpuMesh {
@@ -37,6 +38,14 @@ pub struct MeshCore {
     strokes_t: HashMap<TableId, GpuInstances>,
     /// 点表（WGPU-18）：id → (storage buffer, 点数)
     points_t: HashMap<TableId, GpuInstances>,
+    bgl_label: wgpu::BindGroupLayout,
+    layout_label: wgpu::PipelineLayout,
+    /// 标签表（WGPU-24）：id → (storage buffer, quad 数)
+    labels_t: HashMap<TableId, GpuInstances>,
+    /// glyph atlas 单槽（WGPU-24）：R8 纹理 + view（io-text 全量上传，None=表在场也跳过）
+    glyph_atlas: Option<(wgpu::Texture, wgpu::TextureView)>,
+    /// atlas 采样器（ClampToEdge+Linear，常驻）
+    label_smp: wgpu::Sampler,
     /// 共享扩片四边形（side∈±1，2 三角）——strokes/points 常设顶点源
     quad_vb: wgpu::Buffer,
     quad_ib: wgpu::Buffer,
@@ -83,6 +92,8 @@ enum Variant {
     Instanced,
     Strokes,
     Points,
+    /// 文字标签贴片（WGPU-24/S2）：atlas 覆盖率 × 表色，屏幕恒大小（bgl=0+11+12+13）。
+    Labels,
     /// WGPU-19 caster pass（无色彩目标；Mesh=DrawMesh 源，Inst=DrawInstances 源）
     ShadowMesh,
     ShadowInst,
@@ -224,6 +235,38 @@ impl MeshCore {
                 }
                 // WGPU-19 接收端三元在 match 后统一追加（dummy 常驻=动态分支非布局分支）
                 Variant::ShadowMesh | Variant::ShadowInst => unreachable!("caster bgl 独立造"),
+                // WGPU-24 标签：表(11 storage 64B)+atlas 纹(12)+采样(13)；材质不挂 [裁决 a]
+                Variant::Labels => {
+                    entries.remove(1);
+                    entries.extend_from_slice(&[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 11,
+                            visibility: wgpu::ShaderStages::VERTEX,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(64),
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 12,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                                multisampled: false,
+                            },
+                            count: None,
+                        },
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 13,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                            count: None,
+                        },
+                    ]);
+                }
                 // WGPU-17 线段表 storage（48B/条下限）；材质 binding2 不参与 [裁决点 a]
                 Variant::Strokes => {
                     entries.remove(1);
@@ -317,6 +360,7 @@ impl MeshCore {
         let bgl_inst = mk_bgl("mesh-bgl-inst", Variant::Instanced);
         let bgl_stroke = mk_bgl("mesh-bgl-stroke", Variant::Strokes);
         let bgl_point = mk_bgl("mesh-bgl-point", Variant::Points);
+        let bgl_label = mk_bgl("mesh-bgl-label", Variant::Labels);
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("mesh-pl"),
             bind_group_layouts: &[Some(&bgl_flat)],
@@ -351,6 +395,11 @@ impl MeshCore {
         let layout_point = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("mesh-pl-point"),
             bind_group_layouts: &[Some(&bgl_point)],
+            immediate_size: 0,
+        });
+        let layout_label = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("mesh-pl-label"),
+            bind_group_layouts: &[Some(&bgl_label)],
             immediate_size: 0,
         });
         let layout_shadow = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -425,6 +474,14 @@ impl MeshCore {
             );
         }
         let _ = dummy;
+        let label_smp = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("atlas-smp"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
         Self {
             device,
             queue,
@@ -448,11 +505,16 @@ impl MeshCore {
             layout_inst,
             layout_stroke,
             layout_point,
+            bgl_label,
+            layout_label,
             bgl: bgl_flat,
             bgl_tex,
             bgl_inst,
             bgl_stroke,
             bgl_point,
+            labels_t: HashMap::new(),
+            glyph_atlas: None,
+            label_smp,
             depth_cache: None,
             shadow_map: None,
             sh_dummy,
@@ -848,6 +910,85 @@ impl MeshCore {
         Ok(id)
     }
 
+    /// 标签表上传（WGPU-24）：64B/条；空表建期拒（族纪律同 points）。
+    /// 色=线性域直传（sRGB 咽喉在生产者 io-text/CAPI 面，非此处——label 表与
+    /// point/stroke 表分域：后者 CPU 副本转换，label 由 layout 上游给线性值）。
+    pub fn create_labels(&mut self, desc: &LabelTableDesc<'_>) -> Result<TableId, BackendError> {
+        if desc.data.is_empty() {
+            return Err(BackendError {
+                reason: "empty label table".into(),
+            });
+        }
+        let bytes = bytemuck::cast_slice(desc.data);
+        let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("labels"),
+            size: bytes.len() as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.queue.write_buffer(&buf, 0, bytes);
+        self.next_id += 1;
+        let id = self.next_id;
+        self.labels_t.insert(
+            id,
+            GpuInstances {
+                buf,
+                count: desc.data.len() as u32,
+            },
+        );
+        Ok(id)
+    }
+
+    /// glyph atlas 上传/重建（WGPU-24）：R8 单通道覆盖率，全量替换（io-text dirty 驱动）。
+    pub fn set_glyph_atlas(
+        &mut self,
+        r8: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<(), BackendError> {
+        if r8.len() != (width * height) as usize || width == 0 || height == 0 {
+            return Err(BackendError {
+                reason: "atlas len != w*h (R8)".into(),
+            });
+        }
+        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("glyph-atlas"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::R8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            r8,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(width),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        self.glyph_atlas = Some((tex, view));
+        Ok(())
+    }
+
     fn ensure_sampler(&mut self) {
         if self.sampler.is_none() {
             self.sampler = Some(self.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -1068,9 +1209,73 @@ impl MeshCore {
                     // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
                     // 漏臂=编译失败（契约面兑现，非静默跳过）
                     DrawCommand::ClearColor { .. } => {}
-                    // REND-33 Labels：管线出图在 N3（atlas 通道+vs/fs_label）落地，
-                    // 本带 N2 仅立 IR——穷举臂占位（缺 create_labels 后端=表不建，此臂空转安全）
-                    DrawCommand::DrawLabels { .. } => {}
+                    DrawCommand::DrawLabels {
+                        table,
+                        origin,
+                        transform,
+                    } => {
+                        let mvp_buf = self.uniform(
+                            bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                            "view",
+                        );
+                        let Some(gi) = self.labels_t.get(table) else {
+                            continue; // 缺表=skip（族纪律，WGPU-18 同谱）
+                        };
+                        let Some((_, atlas_view)) = &self.glyph_atlas else {
+                            static ONCE: std::sync::Once = std::sync::Once::new();
+                            ONCE.call_once(|| {
+                                eprintln!(
+                                    "warn: labels present but atlas unset — skipped [WGPU-24]"
+                                );
+                            });
+                            continue; // atlas 未上传=整族不可见（族纪律+warn-once）
+                        };
+                        let tbuf = gi.buf.clone();
+                        let count = gi.count;
+                        let apv = atlas_view.clone();
+                        let pipeline = match self.pipelines.get(&(color_format, Variant::Labels)) {
+                            Some(p) => p.clone(),
+                            None => {
+                                let p = build_pipeline(
+                                    &self.device,
+                                    &self.layout_label,
+                                    &self.shader,
+                                    color_format,
+                                    Variant::Labels,
+                                );
+                                self.pipelines
+                                    .insert((color_format, Variant::Labels), p.clone());
+                                p
+                            }
+                        };
+                        pass.set_pipeline(&pipeline);
+                        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("label-bg"),
+                            layout: &self.bgl_label,
+                            entries: &[
+                                wgpu::BindGroupEntry {
+                                    binding: 0,
+                                    resource: mvp_buf.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 11,
+                                    resource: tbuf.as_entire_binding(),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 12,
+                                    resource: wgpu::BindingResource::TextureView(&apv),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 13,
+                                    resource: wgpu::BindingResource::Sampler(&self.label_smp),
+                                },
+                            ],
+                        });
+                        pass.set_bind_group(0, &bg, &[]);
+                        pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+                        pass.set_index_buffer(self.quad_ib.slice(..), wgpu::IndexFormat::Uint32);
+                        pass.draw_indexed(0..6, 0, 0..count);
+                    }
                     DrawCommand::DrawPoints {
                         table,
                         origin,
@@ -1381,31 +1586,49 @@ fn build_pipeline(
 ) -> wgpu::RenderPipeline {
     let stroke_attrs = wgpu::vertex_attr_array![0 => Float32x2];
     let mesh_attrs = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
-    let buffers: [Option<wgpu::VertexBufferLayout>; 1] =
-        if matches!(variant, Variant::Strokes | Variant::Points) {
-            [Some(wgpu::VertexBufferLayout {
-                array_stride: (2 * std::mem::size_of::<f32>()) as u64,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &stroke_attrs,
-            })]
-        } else {
-            [Some(wgpu::VertexBufferLayout {
-                array_stride: (8 * std::mem::size_of::<f32>()) as u64,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &mesh_attrs,
-            })]
-        };
+    let buffers: [Option<wgpu::VertexBufferLayout>; 1] = if matches!(
+        variant,
+        Variant::Strokes | Variant::Points | Variant::Labels
+    ) {
+        [Some(wgpu::VertexBufferLayout {
+            array_stride: (2 * std::mem::size_of::<f32>()) as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &stroke_attrs,
+        })]
+    } else {
+        [Some(wgpu::VertexBufferLayout {
+            array_stride: (8 * std::mem::size_of::<f32>()) as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &mesh_attrs,
+        })]
+    };
     let cts = [Some(wgpu::ColorTargetState {
         format: color_format,
         blend: None,
         write_mask: wgpu::ColorWrites::ALL,
     })];
-    let color_targets: &[Option<wgpu::ColorTargetState>] =
-        if matches!(variant, Variant::ShadowMesh | Variant::ShadowInst) {
-            &[]
-        } else {
-            &cts
-        };
+    // WGPU-24：标签=alpha 混合（覆盖率直出）——其余族保持无混合不透明
+    let cts_label = [Some(wgpu::ColorTargetState {
+        format: color_format,
+        blend: Some(wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
+        }),
+        write_mask: wgpu::ColorWrites::ALL,
+    })];
+    let color_targets: &[Option<wgpu::ColorTargetState>] = match variant {
+        Variant::ShadowMesh | Variant::ShadowInst => &[],
+        Variant::Labels => &cts_label,
+        _ => &cts,
+    };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("mesh-pipeline"),
         layout: Some(layout),
@@ -1415,6 +1638,7 @@ fn build_pipeline(
                 Variant::Instanced => "vs_inst",
                 Variant::Strokes => "vs_stroke",
                 Variant::Points => "vs_point",
+                Variant::Labels => "vs_label",
                 Variant::ShadowMesh => "vs_shadow",
                 Variant::ShadowInst => "vs_shadow_inst",
                 _ => "vs",
@@ -1428,8 +1652,13 @@ fn build_pipeline(
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
+            // WGPU-24 恒顶 [裁决点 e]：标签不写深度+Always（覆盖语义；命令序末位天然叠放）
+            depth_write_enabled: Some(!matches!(variant, Variant::Labels)),
+            depth_compare: Some(if matches!(variant, Variant::Labels) {
+                wgpu::CompareFunction::Always
+            } else {
+                wgpu::CompareFunction::Less
+            }),
             stencil: wgpu::StencilState::default(),
             // polygon-offset 伴生件 [E3D:B7③]：扩片族盖面不斗同深度 z-fight
             bias: if matches!(variant, Variant::Strokes | Variant::Points) {
@@ -1456,6 +1685,7 @@ fn build_pipeline(
                 Variant::Textured => "fs_textured",
                 Variant::Strokes => "fs_stroke",
                 Variant::Points => "fs_point",
+                Variant::Labels => "fs_label",
                 Variant::ShadowMesh | Variant::ShadowInst => "fs_shadow",
                 _ => "fs",
             }),

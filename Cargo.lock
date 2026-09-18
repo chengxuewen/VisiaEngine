@@ -2245,6 +2245,7 @@ dependencies = [
  "visiaengine-core",
  "visiaengine-geo",
  "visiaengine-io-gltf",
+ "visiaengine-io-text",
  "visiaengine-render",
  "web-sys",
  "wgpu",

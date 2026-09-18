@@ -69,6 +69,18 @@ struct Mark {
 };
 @group(0) @binding(6) var<storage, read> marks: array<Mark>;
 
+// WGPU-24 标签表（Labels bgl 专属：binding11 表 + 12 atlas 纹理 + 13 atlas 采样器）。
+// 64B=4×vec4 与 LabelMark 逐字节同形（REND-33 布局锁）。atlas=R8 覆盖率单通道。
+struct Label {
+    pos: vec4<f32>,       // (xyz entity-local 锚, pad)
+    color: vec4<f32>,     // 线性 RGBA
+    uv: vec4<f32>,        // (u0, v0, u1, v1)
+    metrics: vec4<f32>,   // (w_px, h_px, dx 右正, dy 上正)
+};
+@group(0) @binding(11) var<storage, read> labels: array<Label>;
+@group(0) @binding(12) var atlas: texture_2d<f32>;
+@group(0) @binding(13) var atlas_smp: sampler;
+
 struct VsIn {
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -261,6 +273,44 @@ fn fs_point(in: FsIn) -> @location(0) vec4<f32> {
         discard;
     }
     return vec4<f32>(in.color, 1.0);
+}
+
+/// 标签 vs（WGPU-24）：世界锚点 quad，屏幕恒大小（px×px_scale 沿 right/up 展开）。
+/// 恒顶：fs 写固定近深度 + 命令序末位（覆盖语义 [裁决点 e]，非遮挡）。
+@vertex
+fn vs_label(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
+    var out: FsIn;
+    let l = labels[ii];
+    let w = l.metrics.x; // 字形宽 px
+    let h = l.metrics.y; // 字形高 px
+    let dx = l.metrics.z; // 左上角相对锚 (右正)
+    let dy = l.metrics.w; // 左上角相对锚 (上正)
+    // side.x=-1→左(u=0,+dx), +1→右(u=1,+dx+w)；side.y=+1→顶(v=0), -1→底(v=1,+dy-h)。
+    let offx = dx + (in.side.x * 0.5 + 0.5) * w;
+    let offy = dy - (0.5 - in.side.y * 0.5) * h;
+    let p = l.pos.xyz + view.right * (offx * view.px_scale) + view.up * (offy * view.px_scale);
+    out.pos = view.view_proj * vec4<f32>(p, 1.0);
+    out.light_clip = vec4<f32>(0.0);
+    out.wpos = l.pos.xyz; // WGPU-25 锚判：整标同生共死（fs 对锚点裁，非逐像素）
+    // uv：side.x=-1→u0,+1→u1；side.y=+1(顶)→v0, -1(底)→v1
+    let tu = (in.side.x + 1.0) * 0.5;
+    let tv = (1.0 - in.side.y) * 0.5;
+    out.uv = mix(l.uv.xy, l.uv.zw, vec2<f32>(tu, tv));
+    out.color = l.color.rgb;
+    return out;
+}
+
+/// 标签 fs：atlas 覆盖率单通道 × 表色线性直出（无光照链 [裁决点 a 同谱]）。
+@fragment
+fn fs_label(in: FsIn) -> @location(0) vec4<f32> {
+    if (clipped(in.wpos)) {
+        discard; // 锚在负侧=整标灭 [WGPU-25]
+    }
+    let cov = textureSample(atlas, atlas_smp, in.uv).r;
+    if (cov < 0.02) {
+        discard;
+    }
+    return vec4<f32>(in.color * cov, cov);
 }
 
 /// Flat 变体（shadow 关闭=`× mix(0.25,1,1.0)=×1.0` 逐位恒等=零回归续存）。

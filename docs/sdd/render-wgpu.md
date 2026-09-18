@@ -76,3 +76,9 @@ View 块尾缀 80B 段（float 44..64：`planes: array<vec4,4>` + `clip_count` +
 
 ## WGPU-23: 扩片族同裁（B2）
 `fs_stroke`/`fs_point` 头部同判据（wpos=扩片插值 model 位=**逐像素**粒度，「裁世界不裁类型」的族一致性）。点盘跨面=半盘（几何正解非缺陷）；侧内盘逐位不动（tests 分色族断言：黄线半裁/绿盘不动/蓝盘清零）。线表/点表坐标=entity-local（REND-20 同款），换算共用 view_block 一条路。
+
+## WGPU-24: 标签管线（S2）
+`Variant::Labels` 独立 bgl（binding0 view + 11 表 storage 64B stride + 12 atlas `texture_2d<R8Unorm>` + 13 sampler **ClampToEdge**+Linear——atlas 禁 Repeat 越界采样）。`set_glyph_atlas(r8,w,h)`：len≠w·h 拒、全量替换（io-text dirty 驱动，v0 单槽）；`create_labels` 空表建期拒（族纪律）。**色=线性直传**（sRGB 咽喉在生产者面，与 point/stroke 的 CPU 副本转换分域——label 表由 io 上游给线性值）。vs_label：锚点投影后沿 `view.right/up ×(px·px_world_scale)` 展开（**屏幕恒大小**：ortho 精确路 `px_scale=2·zoom/W` 下跨 zoom 逐像素等，tests 锁 assert_eq；透视=近似随深度，E202 同谱分工）。恒顶 [裁决点 e]：`depth_write=false + CompareFunction::Always`，命令序末位天然叠放。**atlas 缺位=族 skip+warn-once**（表在场也不瞎画——WGPU-18 缺表纪律同谱）。fs_label：`cov=atlas.r`，`cov<0.02 discard`，色×cov 直出 + SRC_ALPHA 混合。
+
+## WGPU-25: 标签受裁=锚判（S2）
+`out.wpos = 锚点 l.pos.xyz`（非展开顶点）→ fs `clipped(in.wpos)` 整标同生共死——**半截标签不是标注**。判据与 WGPU-21 同一 `clipped()`（AND 世界面经 REND-33 表域为 entity-local 锚点，view_block 不涉）。labels 不入 caster（无投影面 [不装② 续]）。
