@@ -61,3 +61,9 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-22: 世界锚标签装载口（S2）
 `visiaengine_add_label(ve, const VeLabelSpec{struct_size,pos[f64;3],color[sRGB 4],size_px,text=*const char NUL UTF-8}, uint64_t *out_entity)`。**成败=返回码**（0 成功写 out，位形 0 合法 [CAPI-01]——B1 add_mesh 教训的第二消费者）；**结构门**：NULL spec/out、struct_size<sizeof、NULL text、坏 UTF-8（to_str 失败）、pos 非有限、color∉[0,1]⁴、size_px≤0/非有限、空文本=**全部 -1 零提交**（domain 表先于副作用）。**时序门：字体未载=显式拒**（与 GEO-25 样式休眠成对：休眠只属样式域，数据口无休眠义）。管理域=items 外（CAPI-18 同谱：不入 entity_count/remove——v0 明账，删除路=全清重建触发制）。center 对齐（MapLibre 默认锚，pen/2 平移）；色经 `core::srgb_to_linear` 咽喉（宿主 sRGB 面 [CORE-16 咽喉六：label 表]）。wasm `addLabel(pos3,color4,text,size_px)→bigint|MISS`；hpp 薄转发。abi minor=7。
+
+## CAPI-23: 相机飞行起飞口（⑤a）
+`visiaengine_fly_to(ve, const VeCameraPose *pose, uint64_t dur_ms)`。`VeCameraPose{struct_size 前瞻门, target[f64;3] 世界系 D7, yaw/pitch 弧度, dist>0, zoom>0, fov∈(0,π)}`——**near/far 不入 pose**（深度域恒当前 rig 现值，[Momus-A1] PIT-5/REND-14 锁连带；「全量位姿」措辞废弃）。墙钟推进器住 **engine**（render crate 零 std::time=分层定案 T1；宿主 render() 即 tick，零 dt 义务 [D8 事实正解]）。**dur_ms=0=瞬移形**（立即落位非错误值）；**飞行中重入=改道**：from=当前位姿快照、t 归零（首帧构造连续 [Momus-A3]，拒重入形废弃）。**中断=MapLibre A 派**：apply_input 的指针/滚轮系（kind 1/2/4）首行 cancel；键(5) 与未知不打断。值域：0=起飞（含瞬移）；NULL/struct_size 门/域外/非有限=-1+错误串（VE_ERR_ARG 族同码，last_error 分辨=既有族制）。缓动固定 CubicInOut（rs 层可用 Easing 全族；capi 加参数=YAGNI）。wasm `flyTo(f64[8], durMs)`；hpp 薄转发。
+
+## CAPI-24: 飞行状态读回口（⑤a）
+`visiaengine_fly_state(ve, double *out_t01)`：返回 **1=done（idle/done 合并单主——「不在飞」唯一态）/ 0=飞行中**；`out_t01` 仅飞中写 [0,1)（done 路**零写**=B1 零部分写谱，NULL=仅状态=get_clips 同制）。cancel 后=done 且可立即再飞（重入值域闭环）。wasm 分形：`flyState()→0|1` + `flyProgress()→[0,1]`（done/idle=1.0，与 C 面「done 不写 out」合并语义同谱——JS 无双值编码义务）。

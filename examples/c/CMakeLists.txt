@@ -11,7 +11,8 @@ visiaengine_add_example(E701_demo_headless)
 visiaengine_add_example(E810_attr_survey)   # 数据带：属性遍历 survey（零新口，CAPI-04/10 全景）
 visiaengine_add_example(E811_entity_hide_c)
 visiaengine_add_example(E813_section_clip)
-visiaengine_add_example(E814_labels_headless)  # 文字带：字体注入+锚标签+utf8 活体门（CAPI-21/22）  # 剖面带：set/get_clips+拾取重试+值域拒（CAPI-20 活体门）  # 数据带：显隐孪生·C 面（CAPI-13/14）
+visiaengine_add_example(E814_labels_headless)
+visiaengine_add_example(E815_fly_camera)  # 飞行带：墙钟推进/进度单调/cancel（CAPI-23/24 活体门）  # 文字带：字体注入+锚标签+utf8 活体门（CAPI-21/22）  # 剖面带：set/get_clips+拾取重试+值域拒（CAPI-20 活体门）  # 数据带：显隐孪生·C 面（CAPI-13/14）
 visiaengine_add_example(E704_host_callback)  # 事件带：CAPI-17 推送口三态验收（进度/错误/摘除）
 if(SDL3_FOUND)
   visiaengine_add_example(E801_sdl_window DISPLAY SDL3 ARGS "--frames;3")  # 双模：无参交互窗（run_E801 路）/--frames headless 快退（ctest 路）

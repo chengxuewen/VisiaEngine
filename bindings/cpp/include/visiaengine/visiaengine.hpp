@@ -52,6 +52,14 @@ public:
         return visiaengine_entity_set_visible(h_, entity, visible ? 1 : 0);
     }
     int32_t entity_visible(std::uint64_t entity) { return visiaengine_entity_visible(h_, entity); }
+    // CAPI-23/24 相机飞行（B9 薄转发；pose 域校验住引擎）
+    int32_t fly_to(const VeCameraPose &pose, std::uint64_t dur_ms) {
+        return visiaengine_fly_to(h_, &pose, dur_ms);
+    }
+    int32_t fly_state(double *out_t01 = nullptr) const {
+        return visiaengine_fly_state(h_, out_t01);
+    }
+
     // CAPI-20 剖面裁切（B9 薄转发不开 SDD 账；VeClipPlane=头 POD 直用）
     // CAPI-21/22 文字标注（薄转发；VeLabelSpec 头 POD 直用）
     int32_t load_font(const std::uint8_t *data, std::size_t len) {

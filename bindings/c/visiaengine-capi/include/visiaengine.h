@@ -116,6 +116,21 @@ typedef struct { double nx, ny, nz, d; } VeClipPlane;
 int32_t  visiaengine_set_clips(uint64_t ve, const VeClipPlane *planes, size_t n);
 /* 读回：返回≥0=当前面数（错误=负码专属）；buf NULL=仅计数；cap 截断=写 min 而返回真数。 */
 int32_t  visiaengine_get_clips(uint64_t ve, VeClipPlane *buf, size_t cap);
+/* 相机飞行（CAPI-23/24，⑤a）：墙钟推进器住引擎（宿主 render() 即 tick，零 dt 义务——
+   D8 无主循环事实的正解）。位姿=位姿六分量+fov 全 f64；near/far 不入 pose（深度域恒
+   现值，PIT-5/REND-14 锁）。dur_ms=0=瞬移形（非错误）。飞行中重入=改道（from=当前
+   采样位姿，首帧连续）。中断：任意指针/滚轮输入 cancel（MapLibre A 派），键不打断。 */
+typedef struct {
+    size_t struct_size; /* 前瞻门 = sizeof(VeCameraPose) */
+    double target[3];   /* 轨道中心（世界系，D7） */
+    double yaw, pitch;  /* 弧度；飞行走最短弧（mod 2π 姿态等价） */
+    double dist;        /* 球面距 >0（透视） */
+    double zoom;        /* 正交半宽 >0（ortho 族消费） */
+    double fov;         /* 透视竖 FOV ∈ (0, π) */
+} VeCameraPose;
+int32_t  visiaengine_fly_to(uint64_t ve, const VeCameraPose *pose, uint64_t dur_ms);
+/* 状态：1=done(含 idle) / 0=飞行中；out_t01 仅飞中写 [0,1)（NULL=仅状态）。 */
+int32_t  visiaengine_fly_state(uint64_t ve, double *out_t01);
 /* 文字标注（CAPI-21/22，档①引擎自管）：load_font 注入 TTF/OTF 字节（替换式；无默认
    字体=文字管线休眠）。add_label 世界锚 f64 [D7]、色=宿主 sRGB/CSS 面（CORE-16 咽喉转
    线性）、text=NUL 终止 UTF-8；成功 rc=0 写 *out_entity（位形 0 合法=CAPI-01，成败看

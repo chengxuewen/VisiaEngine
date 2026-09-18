@@ -128,6 +128,46 @@ impl VisiaEngine {
         self.inner.clips().into_iter().flatten().collect()
     }
 
+    // ── ⑤a 飞行带镜像（CAPI-23/24 薄叶）──
+    /// 起飞/改道：pose 扁平 8=[target3, yaw, pitch, dist, zoom, fov]；durMs=0 瞬移形。
+    /// 0=起飞，-1=域拒（同 C 面）。
+    #[wasm_bindgen(js_name = flyTo)]
+    pub fn fly_to(&mut self, pose: &[f64], dur_ms: u32) -> i32 {
+        if pose.len() != 8 {
+            return -1;
+        }
+        match self.inner.fly_to(
+            [pose[0], pose[1], pose[2]],
+            pose[3],
+            pose[4],
+            pose[5],
+            pose[6],
+            pose[7],
+            u64::from(dur_ms),
+        ) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// 状态：1=done(含 idle) / 0=飞行中（C 面同谱；无句柄错误域）。
+    #[must_use]
+    #[wasm_bindgen(js_name = flyState)]
+    pub fn fly_state(&self) -> i32 {
+        if self.inner.fly_state_done() {
+            1
+        } else {
+            0
+        }
+    }
+
+    /// 进度 [0,1]（done/idle=1.0 单主值域，与 C 面「done 不写 out」合并语义同谱）。
+    #[must_use]
+    #[wasm_bindgen(js_name = flyProgress)]
+    pub fn fly_progress(&self) -> f64 {
+        self.inner.fly_progress().unwrap_or(1.0)
+    }
+
     // ── S2 文字带镜像（CAPI-21/22 薄叶）──
     /// 注字体（bytes=TTF/OTF 全式；替换式）。0=成功，负=错误码（同 C 面）。
     #[wasm_bindgen(js_name = loadFont)]

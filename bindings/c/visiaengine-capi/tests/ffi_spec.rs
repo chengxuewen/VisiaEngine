@@ -3,15 +3,16 @@
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeClipPlane, VeInput, VeLabelSpec, VeMeshDesc,
-    VePclReport, VePointMark, VePointsDesc, visiaengine_abi_version, visiaengine_add_label,
-    visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach, visiaengine_attr_bool,
-    visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless, visiaengine_destroy,
-    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
-    visiaengine_entity_visible, visiaengine_get_clips, visiaengine_last_error,
-    visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_on_input,
-    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
-    visiaengine_set_clips, visiaengine_viewport,
+    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeCameraPose, VeClipPlane, VeInput, VeLabelSpec,
+    VeMeshDesc, VePclReport, VePointMark, VePointsDesc, visiaengine_abi_version,
+    visiaengine_add_label, visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach,
+    visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless,
+    visiaengine_destroy, visiaengine_entity_at, visiaengine_entity_count,
+    visiaengine_entity_set_visible, visiaengine_entity_visible, visiaengine_fly_state,
+    visiaengine_fly_to, visiaengine_get_clips, visiaengine_last_error, visiaengine_load_font,
+    visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_on_input, visiaengine_pick,
+    visiaengine_readback, visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
+    visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -843,12 +844,47 @@ fn fly_ports_domain_and_progress() {
     let mut sentinel = -9.0f64;
     assert_eq!(visiaengine_fly_state(ve, &mut sentinel), 1, "done 含 idle");
     assert_eq!(sentinel, -9.0, "done 路 out 零写");
-    assert_eq!(visiaengine_fly_state(ve, std::ptr::null_mut()), 1, "NULL out=仅状态");
+    assert_eq!(
+        visiaengine_fly_state(ve, std::ptr::null_mut()),
+        1,
+        "NULL out=仅状态"
+    );
     // 坏参域：dist/zoom/fov 非法
     pose.dist = -1.0;
     assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_ERR_ARG, "dist 域");
     pose.dist = 30.0;
     pose.fov = 4.0;
     assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_ERR_ARG, "fov<π 域");
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-24
+#[test]
+fn fly_state_progress_zero_write_and_idle_done() {
+    // done/idle 合并单主：未起飞=done(1)、done 路 out 零写、NULL=仅状态
+    let ve = visiaengine_create_headless(80, 80);
+    let mut t = 123.0f64;
+    assert_eq!(visiaengine_fly_state(ve, &mut t), 1, "idle=done 单主");
+    assert_eq!(t, 123.0, "done 路 out 绝不可写 [B1 零部分写]");
+    assert_eq!(
+        visiaengine_fly_state(ve, std::ptr::null_mut()),
+        1,
+        "NULL 仅状态"
+    );
+    let pose = VeCameraPose {
+        struct_size: std::mem::size_of::<VeCameraPose>(),
+        target: [1.0, 1.0, 0.0],
+        yaw: 0.3,
+        pitch: 0.2,
+        dist: 20.0,
+        zoom: 15.0,
+        fov: 0.9,
+    };
+    // 长飞行 → 飞中 out 写 [0,1) 且 progress>0（墙钟真走）
+    assert_eq!(visiaengine_fly_to(ve, &pose, 3000), VE_OK);
+    let _ = visiaengine_render(ve);
+    let mut tp = -1.0;
+    assert_eq!(visiaengine_fly_state(ve, &mut tp), 0, "飞行中");
+    assert!((0.0..1.0).contains(&tp), "飞中 out∈[0,1) got {tp}");
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

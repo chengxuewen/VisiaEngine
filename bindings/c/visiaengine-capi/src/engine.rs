@@ -41,6 +41,14 @@ enum Proj {
     Ortho,
 }
 
+/// CAPI-23 推进器状态：from 起飞快照 / to 目标 / 起止时钟 / 时长。
+struct Fly {
+    from: CameraRig,
+    to: CameraRig,
+    start: std::time::Instant,
+    dur_s: f64,
+}
+
 pub struct Engine {
     pub w: u32,
     pub h: u32,
@@ -64,6 +72,9 @@ pub struct Engine {
     /// CAPI-20: 剖面裁切世界面（None/空=全保留；render 逐帧入 Frame.clip，
     /// pick 命中点 keeps 谓词负侧=排除重试 [WGPU-21 管线面同一世界帧]）
     clip: Option<visiaengine_render::ClipSetup>,
+    /// CAPI-23：飞行推进器（墙钟住 engine——render crate 零 std::time 的分层定案；
+    /// None=idle/done 合并态）
+    fly: Option<Fly>,
     frame_cache: Option<Vec<u8>>,
     /// CAPI-19：点云云级 meta（位形→单行 AttrSet；attr_* 缀查域，geo 图先查）。
     pcl_meta: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
@@ -108,6 +119,7 @@ impl Engine {
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
             clip: None,
+            fly: None,
             font: None,
             glyphs: visiaengine_io_text::GlyphCache::new(),
             frame_cache: None,
@@ -422,6 +434,10 @@ impl Engine {
     // ===== 输入/相机（CAPI-05）=====
 
     pub fn apply_input(&mut self, kind: u32, px: f32, py: f32, wheel: f32) -> Option<bool> {
+        // CAPI-23 中断语义（MapLibre A 派）：指针/滚轮即 cancel；键(5)与未知不打断
+        if matches!(kind, 1 | 2 | 4) {
+            self.fly = None;
+        }
         match kind {
             2 => {
                 self.down = true;
@@ -472,6 +488,7 @@ impl Engine {
     // ===== 渲染/回读（CAPI-04）=====
 
     pub fn render(&mut self) -> Result<(), String> {
+        self.advance_fly();
         let mut commands = vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.10, 1.0],
         }];
@@ -632,6 +649,86 @@ impl Engine {
     }
 
     /// CAPI-13: 显隐切换（严格存在域校验；render/pick 过滤、枚举域不变）。
+    /// CAPI-23：起飞/改道。位姿六分量+fov，**near/far 恒当前 rig 现值**（[Momus-A1]
+    /// 深度域不飞行）；`dur_ms=0`=瞬移形（立即落位，非错误值）；飞行中重入=改道
+    /// （from=当前位姿快照，t 归零——首帧连续免跳变 [Momus-A3]）。
+    /// 域拒：非有限 / dist≤0 / zoom≤0 / fov∉(0,π)。
+    #[allow(clippy::too_many_arguments)]
+    pub fn fly_to(
+        &mut self,
+        target: [f64; 3],
+        yaw: f64,
+        pitch: f64,
+        dist: f64,
+        zoom: f64,
+        fov: f64,
+        dur_ms: u64,
+    ) -> Result<(), String> {
+        let ok = target.iter().all(|v| v.is_finite())
+            && [yaw, pitch, dist, zoom, fov].iter().all(|v| v.is_finite())
+            && dist > 0.0
+            && zoom > 0.0
+            && fov > 0.0
+            && fov < std::f64::consts::PI;
+        if !ok {
+            return Err("fly_to: pose domain (finite/dist>0/zoom>0/fov in (0,pi))".into());
+        }
+        let to = CameraRig {
+            target,
+            yaw,
+            pitch,
+            dist,
+            zoom,
+            fov_y: fov,
+            near: self.rig.near,
+            far: self.rig.far,
+        };
+        if dur_ms == 0 {
+            self.rig = to;
+            self.zoom = self.rig.zoom;
+            self.fly = None;
+            return Ok(());
+        }
+        self.fly = Some(Fly {
+            from: self.rig,
+            to,
+            start: std::time::Instant::now(),
+            dur_s: dur_ms as f64 / 1000.0,
+        });
+        Ok(())
+    }
+
+    /// CAPI-24 语义源：不在飞=done（idle/done 合并单主值域）。
+    #[must_use]
+    pub fn fly_state_done(&self) -> bool {
+        self.fly.is_none()
+    }
+
+    /// 飞行中进度 [0,1)（done/idle=None——out 不写路的引擎形）。
+    #[must_use]
+    pub fn fly_progress(&self) -> Option<f64> {
+        self.fly
+            .as_ref()
+            .map(|f| (f.start.elapsed().as_secs_f64() / f.dur_s).clamp(0.0, 1.0))
+    }
+
+    /// 每帧推进（render 首行）：t>=1 直落 to 原值（端点精确 REND-16 同谱）；
+    /// 否则 fly_sample 采样落 rig（zoom 同步——ortho 族消费面）。
+    fn advance_fly(&mut self) {
+        let Some(f) = &self.fly else { return };
+        let t = f.start.elapsed().as_secs_f64() / f.dur_s;
+        let rig = if t >= 1.0 {
+            f.to
+        } else {
+            CameraRig::fly_sample(&f.from, &f.to, t, visiaengine_render::Easing::CubicInOut)
+        };
+        self.rig = rig;
+        self.zoom = rig.zoom;
+        if t >= 1.0 {
+            self.fly = None;
+        }
+    }
+
     /// CAPI-20：世界面系数组 [nx,ny,nz,d]（法向指保留侧，`dot(n,P)+d≥0` 保留，
     /// AND 组合）。n=0=唯一清空形；退化/非有限/超 4 拒（ClipSetup::new 同源门）。
     pub fn set_clips(&mut self, planes: &[[f64; 4]]) -> Result<(), String> {
@@ -925,6 +1022,7 @@ impl Engine {
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
             clip: None,
+            fly: None,
             font: None,
             glyphs: visiaengine_io_text::GlyphCache::new(),
             frame_cache: None,
@@ -1179,48 +1277,48 @@ mod mut_spec_tests {
     #[test]
     fn fly_to_wallclock_advance_cancel_and_reroute() {
         let mut e = Engine::new_headless(160, 120).expect("adapter");
-        let pose = |t: [f64; 3], d: f64| -> Result<u64, String> {
-            e.fly_to(t, 0.7, 0.5, d, 30.0, 1.1, 200)
-        };
-        // dur=0 = 瞬移形（立即落位，非错误）
+        // dur=0 = 瞬移形（立即落位非错误）；near/far 恒现值 [A1]
+        let near0 = e.rig.near;
         assert!(e.fly_to([1.0, 2.0, 3.0], 0.3, 0.2, 12.0, 25.0, 1.0, 0).is_ok());
-        assert_eq!(e.fly_state_done(), true, "瞬移后即 done");
+        assert!(e.fly_state_done(), "瞬移后即 done");
         assert!((e.rig.target[0] - 1.0).abs() < 1e-9, "瞬移落位");
-        assert!((e.rig.near - 0.1).abs() < 1e-12, "near/far 恒 from 现值 [A1]");
-        // 域拒：dist<=0 / 非有限
+        assert!((e.rig.near - near0).abs() < 1e-12, "near 恒 from 现值");
+        // 域拒：dist<=0 / 非有限 / fov>=π
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, -1.0, 25.0, 1.0, 500).is_err());
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, f64::NAN, 500).is_err());
-        // 起飞 200ms：进度单调 → 到达位姿精确
-        pose([5.0, 5.0, 0.0], 40.0).expect("fly");
+        assert!(e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, 4.0, 500).is_err());
+        // 起飞 200ms：进度单调 → 到达落位精确（t>=1 直返 to 原值）
+        assert!(e.fly_to([5.0, 5.0, 0.0], 0.7, 0.5, 40.0, 30.0, 1.1, 200).is_ok());
         assert!(!e.fly_state_done());
         let p1 = e.fly_progress().expect("t1");
         std::thread::sleep(std::time::Duration::from_millis(120));
         let _ = e.render();
         let p2 = e.fly_progress().unwrap_or(1.0);
         assert!(p2 >= p1, "进度单调 {p1}->{p2}");
-        while !e.fly_state_done() {
+        let mut guard = 0;
+        while !e.fly_state_done() && guard < 60 {
             let _ = e.render();
             std::thread::sleep(std::time::Duration::from_millis(20));
+            guard += 1;
         }
-        assert!((e.rig.target[0] - 5.0).abs() < 1e-9, "到达落位精确（t>=1 直返 to）");
-        // 输入打断（MapLibre A 派）：飞行中 pointer-down = cancel → done 且可再飞
-        pose([0.0, 0.0, 0.0], 50.0).expect("refly");
-        assert!(e.apply_input(2, 10.0, 10.0, 0.0).is_some(), "输入仍消费");
+        assert!((e.rig.target[0] - 5.0).abs() < 1e-9, "到达落位精确");
+        assert!((e.rig.dist - 40.0).abs() < 1e-9, "dist 全量落位");
+        // 输入打断（A 派）：pointer-down cancel → done+无进度+可再飞；键(5)不打断
+        assert!(e.fly_to([0.0; 3], 0.0, 0.0, 50.0, 30.0, 1.1, 5000).is_ok());
+        assert!(e.apply_input(5, 0.0, 0.0, 0.0).is_some(), "键输入消费");
+        assert!(!e.fly_state_done(), "键不打断飞行 [定案 A 派]");
+        assert!(e.apply_input(2, 10.0, 10.0, 0.0).is_some(), "指针按下仍消费");
         assert!(e.fly_state_done(), "cancel 即不在飞（idle/done 合并）");
-        assert!(e.fly_progress().is_none(), "cancel 后无进度可写");
-        // 飞行中改道：from=当前采样位姿（连续性：新飞 t=0 == 改道瞬间 rig，不跳变）
-        pose([9.0, 9.0, 0.0], 44.0).expect("leg1");
+        assert!(e.fly_progress().is_none(), "cancel 后无进度");
+        // 改道连续性：leg1 中途 → leg2 from=当前采样 ⇒ 首帧零跳变
+        assert!(e.fly_to([9.0, 9.0, 0.0], 0.7, 0.5, 44.0, 30.0, 1.1, 3000).is_ok());
         std::thread::sleep(std::time::Duration::from_millis(60));
         let _ = e.render();
         let mid = e.rig.target;
-        pose([-9.0, -9.0, 0.0], 44.0).expect("leg2 改道");
+        assert!(e.fly_to([-9.0, -9.0, 0.0], 0.7, 0.5, 44.0, 30.0, 1.1, 3000).is_ok());
         let _ = e.render();
-        assert!(
-            (e.rig.target[0] - mid[0]).abs() < 1.0,
-            "改道首帧必连续（跳变={:?}→{:?}）",
-            mid,
-            e.rig.target
-        );
+        let d = (e.rig.target[0] - mid[0]).abs();
+        assert!(d < 0.5, "改道首帧连续（跳距 {d}）");
     }
 
     // spec: CAPI-13

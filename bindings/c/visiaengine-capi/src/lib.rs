@@ -34,6 +34,7 @@ pub use ffi::{
 pub use ffi::visiaengine_set_event_callback;
 pub use ffi::{VeClipPlane, visiaengine_get_clips, visiaengine_set_clips}; // CAPI-20
 pub use ffi::{VeLabelSpec, visiaengine_add_label, visiaengine_load_font}; // CAPI-21/22
+pub use ffi::{VeCameraPose, visiaengine_fly_state, visiaengine_fly_to}; // CAPI-23/24
 
 #[doc(hidden)]
 pub mod test_util {

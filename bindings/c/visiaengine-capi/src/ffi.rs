@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 7 // major 1 · minor 7（CAPI-21/22 文字双口=MAJOR 内追加；>>16==1 校验面不变）
+    (1 << 16) | 8 // major 1 · minor 8（CAPI-23/24 相机飞行双口=MAJOR 内追加；>>16==1 不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1217,6 +1217,91 @@ pub extern "C" fn visiaengine_add_label(
                         }
                     }
                 }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+// ── ⑤a 飞行带（CAPI-23/24）：墙钟推进器薄叶（分层=计划 T1）──
+
+/// CAPI-23 值结构（struct_size 前瞻门=VeMeshDesc 同谱；位姿六分量+fov，
+/// **near/far 不入 pose=恒 from 现值** [Momus-A1/PIT-5 连带]）。
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VeCameraPose {
+    pub struct_size: usize,
+    pub target: [f64; 3],
+    pub yaw: f64,
+    pub pitch: f64,
+    pub dist: f64,
+    pub zoom: f64,
+    pub fov: f64,
+}
+
+/// CAPI-23：起飞/改道（owner 线程门同族）。0=起飞（dur_ms=0=瞬移亦 0）；
+/// NULL/struct_size 门/域外=-1+错误串。飞行中重入合法（from=当前采样位姿）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_fly_to(ve: u64, pose: *const VeCameraPose, dur_ms: u64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if pose.is_null() {
+                        set_err("fly_to: null pose".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: 非空已验；64B Pod 直读（宿主保证 [addr,addr+size) 有效）
+                    let p = unsafe { *pose };
+                    if p.struct_size < std::mem::size_of::<VeCameraPose>() {
+                        set_err("fly_to: struct_size too small".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| {
+                        e.fly_to(p.target, p.yaw, p.pitch, p.dist, p.zoom, p.fov, dur_ms)
+                    }) {
+                        Ok(()) => VE_OK,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-24：飞行状态。返回 **1=done（含 idle/done 合并）/ 0=飞行中**；
+/// out_t01 仅飞中写 [0,1)（done 路零写=B1 谱），NULL=仅状态（get_clips 同制）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_fly_state(ve: u64, out_t01: *mut f64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => match with_engine(i, |e| Ok((e.fly_state_done(), e.fly_progress())))
+                {
+                    Ok((true, _)) => 1,
+                    Ok((false, Some(t))) => {
+                        if !out_t01.is_null() {
+                            // SAFETY: 非空已判；单 f64 写（仅飞中路）
+                            unsafe { *out_t01 = t };
+                        }
+                        0
+                    }
+                    Ok((false, None)) => 1, // 理论不可达（推进原子性），保守归 done
+                    Err(msg) => {
+                        set_err(msg);
+                        VE_ERR_STATE
+                    }
+                },
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
             }

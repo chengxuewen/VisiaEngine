@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gate-abi（I2 / 计划 v1.4 §6）：默认 feature 构建 + nm 白名单==28 + demo 编译运行。
+# gate-abi（I2 / 计划 v1.4 §6）：默认 feature 构建 + nm 白名单==30 + demo 编译运行。
 # 工具检索序：PATH → host-spike conda 前缀件（[FFI-R:FC-M1] 裸 nm/cc 无实证）；
 # 两者皆缺=SKIP exit0（条件段 shell 门自写，[v13-LEDG/env-W4]——CI/新克隆不误红）。
 set -uo pipefail
@@ -11,8 +11,8 @@ cargo build -p visiaengine-capi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; 
 SO=target/debug/libvisiaengine.so
 [ -f "$SO" ] || { echo "GATE-ABI ✗ 缺 $SO（[lib] name 检查）"; exit 1; }
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
-echo "ABI-SYMBOLS="$N/28" | SO_SIZE=$(du -h "$SO" | cut -f1)"
-[ "$N" = "28" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
+echo "ABI-SYMBOLS="$N/30" | SO_SIZE=$(du -h "$SO" | cut -f1)"
+[ "$N" = "30" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
 "$CC" -I bindings/c/visiaengine-capi/include examples/c/E701_demo_headless.c \
       -L target/debug -lvisiaengine -o target/demo_headless || { echo "GATE-ABI ✗ demo 编译"; exit 1; }
 LD_LIBRARY_PATH=$PWD/target/debug ./target/demo_headless resources/data/twoprim.glb \
