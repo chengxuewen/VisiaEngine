@@ -851,8 +851,6 @@ impl Engine {
     }
 
     /// CAPI-25：开/关小地图（比例表 0..1，fw/fh>0，zoom>0；域拒零副作用；None=清空旧路）。
-    // W3 接 visiaengine_set_map 三口后即活（先行暂死注记）。
-    #[allow(dead_code)]
     pub fn set_map(&mut self, rect: Option<(f32, f32, f32, f32)>, zoom: f64) -> Result<(), String> {
         let Some((fx, fy, fw, fh)) = rect else {
             self.map = None;
@@ -905,7 +903,6 @@ impl Engine {
     }
 
     /// CAPI-26：小地图点击导航（两阶段：实体命中优先→地面 z=0 兜底；主 rig 保角保距换 target）。
-    #[allow(dead_code)]
     pub fn navigate_click(&mut self, px: f32, py: f32, dur_ms: u64) -> Result<(), String> {
         let rect = self.map_rect().ok_or("navigate_click: map not set")?;
         let (lx, ly) = rect
@@ -930,7 +927,6 @@ impl Engine {
 
     /// CAPI-27：主相机位姿读回（宿主 HUD/到达断言）。
     #[must_use]
-    #[allow(dead_code)]
     pub fn camera_pose(&self) -> CameraRig {
         self.rig
     }

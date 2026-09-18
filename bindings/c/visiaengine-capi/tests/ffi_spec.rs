@@ -4,15 +4,15 @@
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
     VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeCameraPose, VeClipPlane, VeInput, VeLabelSpec,
-    VeMeshDesc, VePclReport, VePointMark, VePointsDesc, visiaengine_abi_version,
+    VeMapView, VeMeshDesc, VePclReport, VePointMark, VePointsDesc, visiaengine_abi_version,
     visiaengine_add_label, visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach,
     visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless,
     visiaengine_destroy, visiaengine_entity_at, visiaengine_entity_count,
     visiaengine_entity_set_visible, visiaengine_entity_visible, visiaengine_fly_state,
-    visiaengine_fly_to, visiaengine_get_clips, visiaengine_last_error, visiaengine_load_font,
-    visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_on_input, visiaengine_pick,
-    visiaengine_readback, visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
-    visiaengine_viewport,
+    visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips, visiaengine_last_error,
+    visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_navigate_click,
+    visiaengine_on_input, visiaengine_pick, visiaengine_readback, visiaengine_remove_entity,
+    visiaengine_render, visiaengine_set_clips, visiaengine_set_map, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -75,6 +75,21 @@ fn stale_doors(ve: u64) {
         visiaengine_fly_state(ve, std::ptr::null_mut()),
         VE_ERR_ARG,
         "CAPI-24 stale 谱"
+    );
+    assert_eq!(
+        visiaengine_set_map(ve, std::ptr::null()),
+        VE_ERR_ARG,
+        "CAPI-25 stale 谱"
+    );
+    assert_eq!(
+        visiaengine_navigate_click(ve, 1.0, 1.0, 0),
+        VE_ERR_ARG,
+        "CAPI-26 stale 谱"
+    );
+    assert_eq!(
+        visiaengine_get_camera(ve, std::ptr::null_mut()),
+        VE_ERR_ARG,
+        "CAPI-27 stale 谱"
     );
     assert_eq!(visiaengine_entity_set_visible(ve, 0, 1), VE_ERR_ARG);
     assert_eq!(visiaengine_entity_visible(ve, 0), VE_ERR_ARG);
@@ -264,11 +279,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0008,
+        0x0001_0009,
         "major 1 · minor 6（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0008, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_0009, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -284,7 +299,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        30,
+        33,
         "extern 入口计数（cfg-gated 行首式；24→26=CAPI-20 剖面双口）"
     );
     assert_eq!(
@@ -886,5 +901,91 @@ fn fly_state_progress_zero_write_and_idle_done() {
     let mut tp = -1.0;
     assert_eq!(visiaengine_fly_state(ve, &mut tp), 0, "飞行中");
     assert!((0.0..1.0).contains(&tp), "飞中 out∈[0,1) got {tp}");
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-25
+#[test]
+fn map_nav_pose_ports_domain_matrix() {
+    let ve = visiaengine_create_headless(200, 100);
+    // set_map NULL=关闭 OK（无图清也无错）
+    assert_eq!(visiaengine_set_map(ve, std::ptr::null()), VE_OK);
+    let bad = VeMapView {
+        struct_size: std::mem::size_of::<VeMapView>(),
+        fx: 0.7,
+        fy: 0.0,
+        fw: 0.4, // 越界
+        fh: 0.4,
+        zoom: 40.0,
+    };
+    assert_eq!(visiaengine_set_map(ve, &bad), VE_ERR_ARG, "界和拒");
+    let tiny = VeMapView {
+        struct_size: 8,
+        ..bad
+    };
+    assert_eq!(visiaengine_set_map(ve, &tiny), VE_ERR_ARG, "struct_size 门");
+    let good = VeMapView {
+        struct_size: std::mem::size_of::<VeMapView>(),
+        fx: 0.72,
+        fy: 0.02,
+        fw: 0.26,
+        fh: 0.96,
+        zoom: 30.0,
+    };
+    assert_eq!(visiaengine_set_map(ve, &good), VE_OK);
+    // get_camera：NULL/门/正常读；navigate：NaN 拒
+    let mut pose = VeCameraPose {
+        struct_size: 0,
+        target: [0.0; 3],
+        yaw: 0.0,
+        pitch: 0.0,
+        dist: 0.0,
+        zoom: 0.0,
+        fov: 0.0,
+    };
+    pose.struct_size = std::mem::size_of::<VeCameraPose>();
+    assert_eq!(visiaengine_get_camera(ve, std::ptr::null_mut()), VE_ERR_ARG);
+    let mut tiny_p = pose;
+    tiny_p.struct_size = 8;
+    assert_eq!(
+        visiaengine_get_camera(ve, &mut tiny_p),
+        VE_ERR_ARG,
+        "out 门先检"
+    );
+    assert_eq!(
+        visiaengine_get_camera(ve, &mut pose),
+        VE_OK,
+        "预置 struct_size 正常读"
+    );
+    assert!(pose.dist > 0.0 && pose.fov > 0.0 && pose.zoom > 0.0);
+    assert_eq!(
+        visiaengine_navigate_click(ve, f32::NAN, 3.0, 0),
+        VE_ERR_ARG,
+        "NaN px 拒"
+    );
+    assert_eq!(
+        visiaengine_navigate_click(ve, 10.0, 50.0, 0),
+        VE_ERR_ARG,
+        "区外拒(主视区)"
+    );
+    assert_eq!(
+        visiaengine_navigate_click(ve, 180.0, 50.0, 0),
+        VE_OK,
+        "区内导航(地面兜底)"
+    );
+    let mut pose2 = pose;
+    pose2.struct_size = std::mem::size_of::<VeCameraPose>();
+    assert_eq!(visiaengine_get_camera(ve, &mut pose2), VE_OK);
+    assert!(
+        (pose2.target[0] - pose.target[0]).abs() > 1.0,
+        "导航后 target 已变"
+    );
+    assert!((pose2.dist - pose.dist).abs() < 1e-12, "保距 [裁决 e]");
+    assert_eq!(
+        visiaengine_set_map(ve, std::ptr::null()),
+        VE_OK,
+        "关图复原路"
+    );
+    assert_eq!(visiaengine_render(ve), VE_OK, "关后旧单帧路通");
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

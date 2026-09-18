@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 8 // major 1 · minor 8（CAPI-23/24 相机飞行双口=MAJOR 内追加；>>16==1 不变）
+    (1 << 16) | 9 // major 1 · minor 9（CAPI-25..27 小地图三口=MAJOR 内追加；>>16==1 不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1297,6 +1297,134 @@ pub extern "C" fn visiaengine_fly_state(ve: u64, out_t01: *mut f64) -> i32 {
                             0
                         }
                         Ok((false, None)) => 1, // 理论不可达（推进原子性），保守归 done
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_STATE
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+// ── ⑤b 二波（CAPI-25..27）：小地图/导航/位姿读回 ──
+
+/// CAPI-25 值结构（比例表；NULL=关闭清空）。
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct VeMapView {
+    pub struct_size: usize,
+    pub fx: f32,
+    pub fy: f32,
+    pub fw: f32,
+    pub fh: f32,
+    pub zoom: f64,
+}
+
+/// CAPI-25：开/关小地图（NULL=关；域拒=-1 零副作用；resize 自动跟随）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_set_map(ve: u64, cfg: *const VeMapView) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if cfg.is_null() {
+                        return match with_engine(i, |e| e.set_map(None, 0.0)) {
+                            Ok(()) => VE_OK,
+                            Err(msg) => {
+                                set_err(msg);
+                                VE_ERR_ARG
+                            }
+                        };
+                    }
+                    // SAFETY: 非空已验；Pod 直读（宿主保证 [addr,size) 有效）
+                    let m = unsafe { *cfg };
+                    if m.struct_size < std::mem::size_of::<VeMapView>() {
+                        set_err("set_map: struct_size too small".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| e.set_map(Some((m.fx, m.fy, m.fw, m.fh)), m.zoom)) {
+                        Ok(()) => VE_OK,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-26：小地图点击导航（区外/无图=拒无暗改道；命中实体优先地面兜底）。
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_navigate_click(ve: u64, px: f32, py: f32, dur_ms: u64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if !px.is_finite() || !py.is_finite() {
+                        set_err("navigate_click: non-finite px/py".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| e.navigate_click(px, py, dur_ms)) {
+                        Ok(()) => VE_OK,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::State => VE_ERR_STATE,
+                Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-27：主相机位姿读回（out.struct_size 由宿主预置=门；NULL=拒）。
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_get_camera(ve: u64, out: *mut VeCameraPose) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if out.is_null() {
+                        set_err("get_camera: null out".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    // SAFETY: 非空已验；先读门字段再写（宿主预置 struct_size）
+                    let hdr = unsafe { *out };
+                    if hdr.struct_size < std::mem::size_of::<VeCameraPose>() {
+                        set_err("get_camera: struct_size too small".to_string());
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| Ok(e.camera_pose())) {
+                        Ok(rig) => {
+                            // SAFETY: 非空+门过；全字段一次写（Pod 无 Drop）
+                            unsafe {
+                                *out = VeCameraPose {
+                                    struct_size: hdr.struct_size,
+                                    target: rig.target,
+                                    yaw: rig.yaw,
+                                    pitch: rig.pitch,
+                                    dist: rig.dist,
+                                    zoom: rig.zoom,
+                                    fov: rig.fov_y,
+                                };
+                            }
+                            VE_OK
+                        }
                         Err(msg) => {
                             set_err(msg);
                             VE_ERR_STATE

@@ -145,6 +145,24 @@ typedef struct {
 } VeLabelSpec;
 int32_t  visiaengine_load_font(uint64_t ve, const uint8_t *data, size_t len);
 int32_t  visiaengine_add_label(uint64_t ve, const VeLabelSpec *spec, uint64_t *out_entity);
+/* 小地图导航（CAPI-25..27，⑤b 二波）：主+固定副视口单 surface 双投（⑤b 多 pass 基建
+   消费首实证）。小地图 rig=主 target 派生跟随顶视（零同步口）；宿主只报屏幕 px，
+   区内外判定/双投路由住引擎内部（非宿主分发=VeInput 零触，struct_size 严格门不破旧宿主）。 */
+typedef struct {
+    size_t struct_size; /* 前瞻门 = sizeof(VeMapView) */
+    float  fx, fy, fw, fh; /* 比例表 0..1（resize 自动跟随）；fw/fh>0 */
+    double zoom;           /* 顶视半宽 >0（越小越远景） */
+} VeMapView;
+/* CAPI-25：开/关小地图。cfg NULL=清空回旧单帧全幅路（逐字节 canary=旧行为）；
+   域拒（比例出 [0,1]/零尺寸/zoom≤0/NaN）=VE_ERR_ARG 零副作用。 */
+int32_t  visiaengine_set_map(uint64_t ve, const VeMapView *cfg);
+/* CAPI-26：小地图点击导航（先 set_map 后调；区外/无图=拒无暗改道）。两阶段：
+   顶视正交射线拾实体优先→地面 z=0 兜底；主 rig 保角保距仅换 target（裁决 e）；
+   dur_ms 走 CAPI-23 飞行路（0=瞬移）。px=宿主屏幕坐标（左上原点，与 on_input 同系）。 */
+int32_t  visiaengine_navigate_click(uint64_t ve, float px, float py, uint64_t dur_ms);
+/* CAPI-27：主相机位姿读回（宿主 HUD/到达断言/「当前机位=渲染真值」单源）。
+   out 由宿主预置 struct_size=sizeof(VeCameraPose)（先检后写）；NULL=拒。 */
+int32_t  visiaengine_get_camera(uint64_t ve, VeCameraPose *out);
 
 #ifdef __cplusplus
 }  /* extern "C" */

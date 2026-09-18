@@ -191,6 +191,50 @@ impl VisiaEngine {
             Err(_) => crate::MISS,
         }
     }
+    // ── ⑤b 二波小地图镜像（CAPI-25..27 薄叶）──
+    /// CAPI-25 开小地图：比例表 fx/fy/fw/fh∈[0,1]（fw/fh>0）+zoom>0；0=开，-1=域拒。关闭用 clearMap()。
+    #[wasm_bindgen(js_name = setMap)]
+    pub fn set_map(&mut self, fx: f32, fy: f32, fw: f32, fh: f32, zoom: f64) -> i32 {
+        match self.inner.set_map(Some((fx, fy, fw, fh)), zoom) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-25 关小地图（回旧单帧全幅路）。0=成功。
+    #[wasm_bindgen(js_name = clearMap)]
+    pub fn clear_map(&mut self) -> i32 {
+        match self.inner.set_map(None, 0.0) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-26 点击导航：顶视拾实体优先→地面兜底；主 rig 保角保距换 target；dur_ms=0 瞬移。
+    #[wasm_bindgen(js_name = navigateClick)]
+    pub fn navigate_click(&mut self, px: f32, py: f32, dur_ms: u32) -> i32 {
+        match self.inner.navigate_click(px, py, u64::from(dur_ms)) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-27 主相机位姿读回：扁平 8=[target3, yaw, pitch, dist, zoom, fov]（flyTo 同形）。
+    #[must_use]
+    #[wasm_bindgen(js_name = getCameraPose)]
+    pub fn get_camera_pose(&self) -> Vec<f64> {
+        let r = self.inner.camera_pose();
+        vec![
+            r.target[0],
+            r.target[1],
+            r.target[2],
+            r.yaw,
+            r.pitch,
+            r.dist,
+            r.zoom,
+            r.fov_y,
+        ]
+    }
 
     /// 扁平三元组面（js 数组=调用期拷贝，bindgen 天然）；退化=0 哨兵与 C 面同谱。
     #[must_use]
