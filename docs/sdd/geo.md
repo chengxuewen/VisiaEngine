@@ -75,3 +75,6 @@ simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` �
 
 ## GEO-24: GeoPart 输出切换（4de）
 `tessellate → Vec<GeoPart>`：`{Fill(TessPart), Strokes(Vec<LineStrip>), Markers(Vec<Marker>)}`——线/点**不再 CPU 扩条带/方块**（`tess_stroke`/`quad` 退役，`PartKind` 缩至 `{Fill}`）。中立类型（geo 零 render-IR 依赖，分层不变式；扩片转换住消费者=三处同形注记 pending 4de 后提取）。`LineStrip{pts(相邻点=段，环输出闭合首尾同点), color:[f32;3], width_px}` / `Marker{pos, color, radius_px}`——**px 单位语义 [裁决点 a 纠偏]**：MapLibre stroke-width/circle-radius 本义像素，旧 `_m` 字段系误释；样式键名（含 D9 别名）不动，`stroke_width_px` 默认 1.5（原 3.0 世界单位随单位重释归正）、`radius_px` 默认 4.0，stroke-width 值 floor 0.5px。`stroke_width_px==0` → 不出 Strokes part（关描边语义保真）。
+
+## GEO-25: 文本样式三键（S2/B2后）
+`StyleRecord +{ text_field: Option<Box<str>>, text_size_px(默认 14), text_color(宿主 sRGB 面=GEO-12 同制，线性化住消费端咽喉 CORE-16) }`（**Copy→Clone**，零涟漪实测）。解析（style_from_attrs，v8 layout 域正本无 simplestyle 对应=主键即正本）：`text-field` 值花括号剥壳 `"{prop}"`→列名；**裸串=常量文本**；分辨律住消费端（CAPI-22/引擎挂载）：**属性列存在（`attrs.names()` 判）→列语义**（该列存在而行值缺=**skip 不落字面量**，杜绝 `"{name}"` 漏成文本）；列不存在→字面量。`text-size` clamp [1,256]；`text-color` 复用 parse_color。输出形：装载端产 `LabelMark` 合**一 doc 一表一 DrawLabels**（origin=层中心，锚=bbox 中心+**center 对齐**（MapLibre 默认），z=0.1 恒顶层）。无字体装载=整段零收集零输出不报错（休眠形，CAPI-22 时序门配套）。

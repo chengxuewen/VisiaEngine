@@ -5,6 +5,7 @@
 use visiaengine_core::{EntityId, Scene};
 
 use crate::ffi::enc_entity; // CAPI-10 反标键=宿主可见位形（CAPI-08 编码单源）
+use visiaengine_io_text::GLYPH_ATLAS_PX;
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MaterialId, MeshCandidate, MeshDesc,
     MeshId, PointMark, PointTableDesc, RenderBackend, StrokeSeg, StrokeTableDesc, Viewport,
@@ -66,6 +67,10 @@ pub struct Engine {
     frame_cache: Option<Vec<u8>>,
     /// CAPI-19：点云云级 meta（位形→单行 AttrSet；attr_* 缀查域，geo 图先查）。
     pcl_meta: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
+    /// CAPI-21：标注字体（None=文字管线休眠——样式/口在，零输出 [GEO-25/CAPI-22]）
+    font: Option<visiaengine_io_text::FontFace>,
+    /// 跨装载常驻的字形图集（dirty→render 前全量重传 [WGPU-24]）
+    glyphs: visiaengine_io_text::GlyphCache,
 
     /// CAPI-17 事件锚（fn/user 裸指针 usize 形；触发域=owner 线程，
     /// 与 CAPI-03 亲和门同谱，故 Send 包装安全）。
@@ -103,6 +108,8 @@ impl Engine {
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
             clip: None,
+            font: None,
+            glyphs: visiaengine_io_text::GlyphCache::new(),
             frame_cache: None,
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
@@ -267,7 +274,9 @@ impl Engine {
         let [x0, y0, x1, y1] = doc.layer_bbox().ok_or("empty layer")?;
         let origin = [(x0 + x1) / 2.0, (y0 + y1) / 2.0, 0.0];
         let radius = ((x1 - x0) / 2.0).max((y1 - y0) / 2.0) * FIT_PAD;
-        self.zoom = radius;
+        // 退化层（单点/单线=半径 0）与 eye 同下限——ortho zoom=0=必崩既有洞，
+        // S2 标签单点测试抓回（存量 geo 测试全多点故未踏）
+        self.zoom = radius.max(10.0);
         self.rig = CameraRig::look_at(
             [origin[0], origin[1], radius.max(10.0)],
             origin,
@@ -278,6 +287,9 @@ impl Engine {
         let doc_no = self.geo_docs.len(); // CAPI-12: 本次装载在保留面中的序号
         let mut rows: Vec<(u64, (usize, usize))> = Vec::new();
         let mut n = 0usize;
+        // GEO-25：标签请求（字体休眠=整段零收集，零输出不报错）
+        let mut label_marks: Vec<visiaengine_render::LabelMark> = Vec::new();
+        let cols = doc.attrs();
         for (row, f) in doc.features().iter().enumerate() {
             let id = self.scene.spawn();
             rows.push((enc_entity(id), (doc_no, row))); // CAPI-10: 键=宿主可见位形；行=GEO-17 展平下标
@@ -288,6 +300,41 @@ impl Engine {
                 n as u64,
                 doc.features().len() as u64,
             );
+            if let (Some(face), Some(field)) = (self.font.as_ref(), f.style.text_field.as_deref()) {
+                // 列语义优先（列在且行值缺=skip 不落字面量）；列不存在=常量文本
+                let is_col = cols.names().any(|c| c == field);
+                let text: Option<&str> = if is_col {
+                    cols.str_value(row, field)
+                } else {
+                    Some(field)
+                };
+                if let (Some(t), Some([x0, y0, x1, y1])) = (text, f.world_bbox) {
+                    let (ax, ay) = ((x0 + x1) / 2.0 + neg[0], (y0 + y1) / 2.0 + neg[1]);
+                    let (quads, pen) = visiaengine_io_text::layout(
+                        t,
+                        face,
+                        &mut self.glyphs,
+                        f.style.text_size_px,
+                    );
+                    if !quads.is_empty() {
+                        let lin = visiaengine_core::srgb_to_linear(f.style.text_color);
+                        let anchor = [ax as f32, ay as f32, 0.1]; // 恒顶 0.1（无深度竞争，纯序语义）
+                        label_marks.extend(quads.iter().map(|q| {
+                            visiaengine_render::LabelMark::new(
+                                anchor,
+                                lin,
+                                [q.uv0[0], q.uv0[1], q.uv1[0], q.uv1[1]],
+                                [
+                                    q.size_px[0],
+                                    q.size_px[1],
+                                    q.top_left_px[0] - pen / 2.0, // MapLibre 默认 center 锚
+                                    q.top_left_px[1],
+                                ],
+                            )
+                        }));
+                    }
+                }
+            }
             let parts = visiaengine_geo::tessellate(&f.kind.shifted(neg), &f.style)
                 .map_err(|e| format!("tessellate: {e}"))?;
             // [PIT-8 提取位] LineStrip→StrokeSeg / Marker→PointMark 转换与
@@ -353,6 +400,17 @@ impl Engine {
                     }
                 }
             }
+        }
+        if !label_marks.is_empty() {
+            let table = self
+                .backend
+                .create_labels(&visiaengine_render::LabelTableDesc { data: &label_marks })
+                .map_err(|e| format!("labels: {e}"))?;
+            self.extra_cmds.push(DrawCommand::DrawLabels {
+                table,
+                origin,
+                transform: IDENTITY,
+            });
         }
         self.geo_docs.push(doc); // CAPI-12 保留面（部分失败=未 push，反标同步不发布）
         for (id, r) in rows {
@@ -427,6 +485,12 @@ impl Engine {
                 origin: it.origin,
                 transform: IDENTITY,
             });
+        }
+        if self.glyphs.take_dirty() {
+            let g = GLYPH_ATLAS_PX;
+            self.backend
+                .set_glyph_atlas(self.glyphs.pixels(), g, g)
+                .map_err(|e| format!("atlas: {e}"))?;
         }
         commands.append(&mut self.extra_cmds.clone());
         let (hw, hh) = self.half_extents();
@@ -582,6 +646,17 @@ impl Engine {
             visiaengine_render::ClipSetup::new(planes)
                 .ok_or("set_clips: degenerate plane (zero normal / non-finite)")?,
         );
+        Ok(())
+    }
+
+    /// CAPI-21：装载/替换标注字体（bytes=TTF/OTF 全式；解析失败=Err 不动现存字体）。
+    // N5 接 visiaengine_load_font 口后即活（本带先行=暂死声明位）。
+    #[allow(dead_code)]
+    pub fn set_font(&mut self, bytes: &[u8]) -> Result<(), String> {
+        let f =
+            visiaengine_io_text::FontFace::from_bytes(bytes).map_err(|e| format!("font: {e:?}"))?;
+        self.font = Some(f);
+        self.glyphs = visiaengine_io_text::GlyphCache::new(); // 换字体=图集作废重建
         Ok(())
     }
 
@@ -796,6 +871,8 @@ impl Engine {
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
             clip: None,
+            font: None,
+            glyphs: visiaengine_io_text::GlyphCache::new(),
             frame_cache: None,
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
@@ -973,6 +1050,75 @@ mod mut_spec_tests {
         assert!(e.set_clips(&[[0.0, 0.0, 0.0, 1.0]]).is_err());
         assert!(e.set_clips(&[[f64::NAN, 0.0, 0.0, 0.0]]).is_err());
         assert!(e.set_clips(&[[0.0, 1.0, 0.0, 0.0]; 5]).is_err());
+    }
+
+    fn geo(fc: &str) -> visiaengine_geo::GeoDocument {
+        visiaengine_geo::parse_geojson_lenient(fc.as_bytes())
+            .unwrap()
+            .0
+    }
+
+    const DEJAVU: &[u8] = include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../resources/data/DejaVuSans.ttf"
+    ));
+
+    // spec: GEO-25
+    #[test]
+    fn geo_labels_mount_only_with_font_and_text_style() {
+        let fc = r#"{"type":"FeatureCollection","features":[
+          {"type":"Feature","properties":{"text-field":"{name}"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}
+        ]}"#;
+        let mut e = Engine::new_headless(160, 120).expect("adapter");
+        // 无字体：样式在也零输出（挂载即过，不报错）
+        assert_eq!(e.mount_geo(geo(fc)).unwrap(), 1);
+        assert_eq!(e.label_cmd_count(), 0, "无字体=零标签输出");
+        // 注字体+重装：产表入列
+        e.set_font(DEJAVU).expect("font");
+        let mut e2 = Engine::new_headless(160, 120).expect("adapter");
+        e2.set_font(DEJAVU).expect("font");
+        assert_eq!(e2.mount_geo(geo(fc)).unwrap(), 1);
+        assert_eq!(e2.label_cmd_count(), 1, "一 doc 一标签表命令");
+        assert_eq!(e2.render(), Ok(()), "标签帧渲染路通");
+        // 列在（首行 name 建列）但该行为空→列语义 skip，不落字面量 "{name}" 文本
+        let miss = r#"{"type":"FeatureCollection","features":[
+          {"type":"Feature","properties":{"text-field":"{name}","name":"X"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}},
+          {"type":"Feature","properties":{"text-field":"{name}"},"geometry":{"type":"Point","coordinates":[11.0,51.0]}}
+        ]}"#;
+        let mut e3 = Engine::new_headless(160, 120).expect("adapter");
+        e3.set_font(DEJAVU).expect("font");
+        e3.mount_geo(geo(miss)).unwrap();
+        assert_eq!(e3.label_cmd_count(), 1, "一表合流");
+        assert_eq!(
+            e3.label_mark_total(),
+            1,
+            "缺值行=skip（X 一片，第二行零片）"
+        );
+        // 常量文本（列不存在=字面量形）
+        let lit = r#"{"type":"FeatureCollection","features":[
+          {"type":"Feature","properties":{"text-field":"Gate"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}
+        ]}"#;
+        let mut e4 = Engine::new_headless(160, 120).expect("adapter");
+        e4.set_font(DEJAVU).expect("font");
+        e4.mount_geo(geo(lit)).unwrap();
+        assert_eq!(e4.label_cmd_count(), 1, "字面量文本产标");
+    }
+
+    impl Engine {
+        /// extra_cmds 中标签命令数（GEO-25 零输出/宿主自省口）。
+        #[must_use]
+        pub fn label_cmd_count(&self) -> usize {
+            self.extra_cmds
+                .iter()
+                .filter(|c| matches!(c, DrawCommand::DrawLabels { .. }))
+                .count()
+        }
+
+        /// 标签表总 quad 数（列/字面量语义分辨口，宿主可自省）。
+        #[must_use]
+        pub fn label_mark_total(&self) -> usize {
+            self.backend.label_mark_total()
+        }
     }
 
     // spec: CAPI-13

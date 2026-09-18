@@ -21,6 +21,7 @@ visiaengine-render.workspace = true
 visiaengine-render-wgpu.workspace = true
 visiaengine-io-gltf.workspace = true
 visiaengine-io-points.workspace = true
+visiaengine-io-text.workspace = true
 visiaengine-geo.workspace = true
 # I2 起追加：visiaengine-{render-wgpu,geo,io-gltf} + wgpu + raw-window-handle（§3 边界）
 

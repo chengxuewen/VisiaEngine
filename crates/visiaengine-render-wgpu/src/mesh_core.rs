@@ -939,6 +939,12 @@ impl MeshCore {
         Ok(id)
     }
 
+    /// labels_t 各表 count 和（族语义断言口）。
+    #[must_use]
+    pub fn label_mark_total(&self) -> usize {
+        self.labels_t.values().map(|g| g.count as usize).sum()
+    }
+
     /// glyph atlas 上传/重建（WGPU-24）：R8 单通道覆盖率，全量替换（io-text dirty 驱动）。
     pub fn set_glyph_atlas(
         &mut self,

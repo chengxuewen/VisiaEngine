@@ -107,3 +107,44 @@ fn simplestyle_primary_wins_over_v8_alias() {
         "fill 主键胜 fill-color 别名"
     );
 }
+
+// spec: GEO-25
+#[test]
+fn text_style_keys_parsed_column_template_and_literal() {
+    // "{name}"=列引用模板；裸串=常量；缺键=None（默认不产标签）
+    let fc = r##"{"type":"FeatureCollection","features":[
+      {"type":"Feature","properties":{"text-field":"{name}","text-size":18,
+        "text-color":"#112233","name":"Gate"},"geometry":
+        {"type":"Point","coordinates":[10.0,50.0]}},
+      {"type":"Feature","properties":{"text-field":"Static"},"geometry":
+        {"type":"Point","coordinates":[11.0,51.0]}}
+    ]}"##;
+    let (doc, _) = parse_geojson_with(fc.as_bytes(), RepairPolicy::Lenient).unwrap();
+    let s0 = &doc.features()[0].style;
+    assert_eq!(s0.text_field.as_deref(), Some("name"), "花括号剥壳=列名");
+    assert!((s0.text_size_px - 18.0).abs() < 1e-6);
+    assert_eq!(
+        s0.text_color,
+        [
+            0x11 as f32 / 255.0,
+            0x22 as f32 / 255.0,
+            0x33 as f32 / 255.0,
+            1.0
+        ],
+        "text-color 复用 parse_color（宿主 sRGB 面，GEO-12 同制）"
+    );
+    assert_eq!(
+        doc.features()[1].style.text_field.as_deref(),
+        Some("Static"),
+        "裸串=常量原样"
+    );
+    assert!(
+        (doc.features()[1].style.text_size_px - 14.0).abs() < 1e-6,
+        "默认 14px"
+    );
+    // 无 text 键（既有全部 fixture 路）=None 零回归
+    assert!(doc.features()[1].style.text_field.is_some());
+    let plain = r##"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"fill":"#ff0000"},"geometry":{"type":"Point","coordinates":[1.0,2.0]}}]}"##;
+    let (d2, _) = parse_geojson_with(plain.as_bytes(), RepairPolicy::Lenient).unwrap();
+    assert!(d2.features()[0].style.text_field.is_none(), "缺键=None");
+}

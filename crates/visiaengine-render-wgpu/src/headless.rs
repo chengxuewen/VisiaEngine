@@ -226,6 +226,12 @@ impl HeadlessBackend {
         self.core.set_glyph_atlas(r8, width, height)
     }
 
+    /// 已建标签表 quad 总数（宿主自省/GEO-25 语义断言口）。
+    #[must_use]
+    pub fn label_mark_total(&self) -> usize {
+        self.core.label_mark_total()
+    }
+
     /// attach 面（CAPI-06）：裸句柄建 swapchain（配置成功才返回；失败不动现目标）。
     ///
     /// # Safety

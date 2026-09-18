@@ -76,7 +76,7 @@ impl Default for StyleRecord {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StyleRecord {
     pub fill: [f32; 4],
     pub fill_opacity: f32,
@@ -84,6 +84,12 @@ pub struct StyleRecord {
     pub stroke_width_px: f32,
     pub marker_color: [f32; 4],
     pub radius_px: f32,
+    /// GEO-25：标签文本源（`"{prop}"` 剥壳=属性列名；裸串=常量文本；None=无标签）。
+    pub text_field: Option<Box<str>>,
+    /// 标签字号 px（屏幕恒大小，默认 14）。
+    pub text_size_px: f32,
+    /// 标签色（宿主 sRGB 面=GEO-12 同制；线性化住消费端咽喉）。
+    pub text_color: [f32; 4],
 }
 
 #[derive(Clone, Debug)]
@@ -160,7 +166,7 @@ pub fn web_mercator(lon: f64, lat: f64) -> Option<[f64; 2]> {
 
 /// 默认样式（GEO-13；simplestyle 六键解析属 H2）。
 #[must_use]
-pub const fn default_style() -> StyleRecord {
+pub fn default_style() -> StyleRecord {
     StyleRecord {
         fill: [0.0, 0.45, 1.0, 1.0],
         fill_opacity: 1.0,
@@ -168,6 +174,9 @@ pub const fn default_style() -> StyleRecord {
         stroke_width_px: 1.5,
         marker_color: [0.0, 0.45, 1.0, 1.0],
         radius_px: 4.0,
+        text_field: None,
+        text_size_px: 14.0,
+        text_color: [1.0, 1.0, 1.0, 1.0],
     }
 }
 

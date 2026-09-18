@@ -56,6 +56,23 @@ pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     if let Some(v) = f64_first(a, row, "marker-radius", "circle-radius") {
         s.radius_px = v as f32;
     }
+    // GEO-25 三键（v8 layout 域主键；无 simplestyle 对应=主键即正本）
+    if let Some(v) = a.str_value(row, "text-field") {
+        let owned = v.trim();
+        let field = owned
+            .strip_prefix('{')
+            .and_then(|t| t.strip_suffix('}'))
+            .unwrap_or(owned);
+        if !field.is_empty() {
+            s.text_field = Some(field.into());
+        }
+    }
+    if let Some(v) = a.f64(row, "text-size") {
+        s.text_size_px = (v as f32).clamp(1.0, 256.0);
+    }
+    if let Some(c) = a.str_value(row, "text-color").and_then(parse_color) {
+        s.text_color = c;
+    }
     apply_scalar_ramp(a, row, &mut s);
     s
 }
