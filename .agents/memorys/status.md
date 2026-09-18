@@ -329,3 +329,20 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   ctest 29 条 · CMAKE-SMOKE ✓ · ci 十段 0 红 · R2 零触（纯 rs 带）· 9 crate**
 - 余账：push 候令（含本带 3 笔）· capi 多视口二波（CAPI-25/click-to-fly）· 共享 viewer 库立项候令 ·
   半透明④带/打包轮/LAS 候令
+
+## ④ 半透明带基线（2026-09-18，计划 translucent-water-band v1.1·Momus OKAY 0B/3A 修入）
+- 三无纪律兑现：**零新口/零依赖/零 IR 字段**（入口 30·abi·R2 全静；透明判定=材质 alpha<1
+  后端侧表分拣 WGPU-28）；材质 a==1 恒旧路=**golden 全族零重录构造保证**（labels 族两 pass 现行）
+- V0 混合域定案：本机 wgpu30=线性域（151 vs 83 棋盘门单值判案，Vulkan spec 一致）；
+  预言算术首版漏算 Lambert shade——PIT-8 扩注「预言含全链因子」
+- 管线：Variant 扩 FlatT/TexturedT/InstancedT（bgl/layout 全同仅管线态：SRC_ALPHA 标准式+
+  不写深+Less 保留遮挡）；两 pass=opaque vec 序 + trans 视深降序（f64 D7 键 origin+M 平移列，
+  同键提交序稳定）+ Labels 恒顶；**pass2 depth Load 承遮挡**（与 ⑤b 视口间清深分域）
+- E504 双向语义锁：水膜=衰减对比（52→15 对照带 (10,30)），非消灭对比；1/2 键=重传材质
+  改 alpha 的宿主路活演示；GEO-26 靶+条款（park α=0.8 WGPU-11 门复测零重录余量内）
+- 教训：透明序测试「近远」命名被相机位打脸一次（z50 俯视→z7=近；期望归正引擎零触）；
+  amend 连坐三犯（fmt/clippy/Mats 死码——终验前本地全链先行，勿以 amend 当 lint 循环）
+- 基线：**220 passed · 148↔148 · GATE-ABI 30/30 · GATE-DOCS ✓ E 29 件三方 · ctest 30 条 ·
+  CMAKE-SMOKE ✓ · WEB MIRROR 3/3 · ci 十段 0 红 · D21 入册**
+- 余账：push 候令（④ 四笔+前带累计）· set_material_alpha/软影/OIT/逐实例 alpha/逐顶点 alpha
+  全挂触发制 · ⑤b capi 二波不变
