@@ -344,3 +344,22 @@ pub fn screen_to_ray_ortho(rig: &CameraRig, px: f32, py: f32, w: f32, h: f32) ->
         dir: Vec3::new(fwd[0], fwd[1], fwd[2]),
     })
 }
+
+/// REND-37：世界射线 → 地面平面 z=0 求交（导航用；非拾取——拾取走 ray-triangle）。
+/// `t=−o.z/d.z`，`d.z≥−1e-9`（水平/上向/近水平）或 `t≤0`（地面出发向上/背向）=None（域内拒，免 t 爆炸）。
+#[must_use]
+pub fn ray_ground_intersect(ray: visiaengine_core::Ray) -> Option<visiaengine_core::Vec3> {
+    let (o, d) = (ray.origin, ray.dir);
+    if d.z >= -1e-9 {
+        return None;
+    }
+    let t = -o.z / d.z;
+    if t <= 0.0 || !t.is_finite() {
+        return None;
+    }
+    Some(visiaengine_core::Vec3::new(
+        o.x + d.x * t,
+        o.y + d.y * t,
+        0.0,
+    ))
+}

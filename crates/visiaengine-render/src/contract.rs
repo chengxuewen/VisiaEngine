@@ -251,6 +251,28 @@ impl ViewportRect {
         }
     }
 
+    /// 比例表 → 像素 rect（⑤b 二波 [REND-37]：set_map 宿主语言=比例，resize 自动跟）。
+    /// 策略钉死：边=round（半跨进一制一致）、右/下缘 min(surface 界)、尺寸下限保 1
+    /// （与 render_view_rects scissor max(1) 合流）；脏 frac（负/超 1/NaN）钳域不 panic。
+    #[must_use]
+    pub fn from_frac(fx: f32, fy: f32, fw: f32, fh: f32, surface_w: u32, surface_h: u32) -> Self {
+        let cl = |v: f32| v.clamp(0.0, 1.0);
+        let (fx, fy) = (cl(fx), cl(fy));
+        let (fw, fh) = (cl(fw), cl(fh));
+        let x0 = (fx * surface_w as f32).round() as i64;
+        let y0 = (fy * surface_h as f32).round() as i64;
+        let x1 = ((fx + fw) * surface_w as f32).round().min(surface_w as f32) as i64;
+        let y1 = ((fy + fh) * surface_h as f32).round().min(surface_h as f32) as i64;
+        let w = (x1 - x0).max(1).min(surface_w as i64 - x0.max(0));
+        let h = (y1 - y0).max(1).min(surface_h as i64 - y0.max(0));
+        Self {
+            x: x0.max(0) as u32,
+            y: y0.max(0) as u32,
+            width: w.max(1) as u32,
+            height: h.max(1) as u32,
+        }
+    }
+
     /// 全幅单视口（旧全屏语义的 rect 形——canary 逐位等用）。
     #[must_use]
     pub const fn full(width: u32, height: u32) -> Self {

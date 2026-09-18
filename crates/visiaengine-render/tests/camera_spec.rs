@@ -220,3 +220,88 @@ fn fly_sample_yaw_shortest_arc_wrap() {
         "小 Δ 必须纯线性"
     );
 }
+
+// spec: REND-37
+#[test]
+fn ray_ground_intersect_six_forms() {
+    use visiaengine_core::{Ray, Vec3};
+    let v = |x: f64, y: f64, z: f64| Vec3::new(x, y, z);
+    // ① 正下：原点 (1,2,50) 方向 (0,0,-1) → t=50 → (1,2,0)
+    let hit = visiaengine_render::ray_ground_intersect(Ray {
+        origin: v(1.0, 2.0, 50.0),
+        dir: v(0.0, 0.0, -1.0),
+    })
+    .expect("正下必交");
+    assert!(
+        (hit.x - 1.0).abs() < 1e-9 && (hit.y - 2.0).abs() < 1e-9 && hit.z.abs() < 1e-9,
+        "got {hit:?}"
+    );
+    // ② 斜射
+    let hit = visiaengine_render::ray_ground_intersect(Ray {
+        origin: v(0.0, 0.0, 10.0),
+        dir: v(0.0, -1.0, -1.0),
+    })
+    .expect("斜射");
+    assert!(
+        (hit.x).abs() < 1e-9 && (hit.y + 10.0).abs() < 1e-9 && hit.z.abs() < 1e-9,
+        "got {hit:?}"
+    );
+    // ③ 水平视线拒（d.z=0）
+    assert!(
+        visiaengine_render::ray_ground_intersect(Ray {
+            origin: v(0.0, 0.0, 10.0),
+            dir: v(0.0, -1.0, 0.0)
+        })
+        .is_none()
+    );
+    // ④ 近水平（|d.z|<eps）拒：t 爆炸护栏
+    assert!(
+        visiaengine_render::ray_ground_intersect(Ray {
+            origin: v(0.0, 0.0, 10.0),
+            dir: v(0.0, -1.0, -1e-12)
+        })
+        .is_none()
+    );
+    // ⑤ 背向（朝上）拒
+    assert!(
+        visiaengine_render::ray_ground_intersect(Ray {
+            origin: v(0.0, 0.0, 10.0),
+            dir: v(0.0, 0.0, 1.0)
+        })
+        .is_none()
+    );
+    // ⑥ 地下出发向上=背向；地下朝下=t<0 亦拒（地面之下无导航语义）
+    assert!(
+        visiaengine_render::ray_ground_intersect(Ray {
+            origin: v(0.0, 0.0, -5.0),
+            dir: v(0.0, 0.0, -1.0)
+        })
+        .is_none()
+    );
+}
+
+// spec: REND-37
+#[test]
+fn viewport_rect_from_frac_seam_accounting() {
+    use visiaengine_render::ViewportRect;
+    // 半幅整除：128×.25=32 精确
+    let r = ViewportRect::from_frac(0.25, 0.0, 0.5, 1.0, 128, 64);
+    assert_eq!((r.x, r.y, r.width, r.height), (32, 0, 64, 64));
+    // 缝账①：两邻片共边无缝（右缘=邻左缘）
+    let a = ViewportRect::from_frac(1.0 / 3.0, 0.0, 1.0 / 3.0, 1.0, 128, 64);
+    let b = ViewportRect::from_frac(2.0 / 3.0, 0.0, 1.0 / 3.0, 1.0, 128, 64);
+    assert_eq!(a.x + a.width, b.x, "缝断裂/重叠：{:?} {:?}", a, b);
+    // 缝账②：末片右缘钉到 surface 界（无 1px 漏底）
+    let z = ViewportRect::from_frac(0.75, 0.0, 0.25, 1.0, 127, 64); // 奇数宽舍入场景
+    assert_eq!(z.x + z.width, 127);
+    // 越界钳制（宿主脏值防御）：0.9+0.5 → w 截到边界且 ≥1
+    let c = ViewportRect::from_frac(0.9, 0.0, 0.5, 1.0, 100, 100);
+    assert!(c.width >= 1 && c.x + c.width <= 100);
+    // 零尺寸=保 1（scissor 域下限，与 render_view_rects max(1) 合流）
+    let n = ViewportRect::from_frac(0.5, 0.5, 0.0, 0.0, 100, 100);
+    assert!(
+        n.width >= 1 && n.height >= 1,
+        "零尺寸=保 1（scissor 下限钉死）got {:?}",
+        (n.width, n.height)
+    );
+}

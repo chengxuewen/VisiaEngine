@@ -112,3 +112,6 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-36: 透明材质语义（④）
 **单一判=材质 alpha<1**（`MatGpu.alpha=base_color[3]`，srgb_to_linear a 道透传实证）⇒ 该 DrawMesh/DrawInstances 件走透明管线（WGPU-27）；alpha==1 恒不透明路=**构造级 golden 保真**（分拣对其零触）。**材质 a==1 ∧ texel a<1 不透明**——纹理 alpha 仅在材质 a<1 管线内参与 `a=base.a·texel.a` 合成（无暗语义 [Momus-A3]）；逐顶点 alpha 后置声明。caster 对半透件**按不透明投影**（v0 语义，three.js 同择；软影=Alpha 档触发）。pick 域与 alpha 无关（几何求交零触）。宿主改 alpha 唯一路=重传材质（remove+add）；热改口 `set_material_alpha` 挂账（触发=交互调明度）。
+
+## REND-37: 导航数学两件（⑤b 二波）
+`ray_ground_intersect(Ray)→Option<Vec3>`：地面平面 z=0 求交（**导航语义非拾取**——实体命中走 ray-triangle REND-21/22 域）；域内拒三形=`d.z≥−1e-9`（水平/上向/近水平 t 爆炸护栏）∧ `t≤0`（背向/地下出发）∧ 非有限。`ViewportRect::from_frac(fx,fy,fw,fh,S,H)`：比例表→像素 rect（set_map 宿主语言=比例、resize 自动跟的几何底座）；策略钉=边 round、右/下缘 min(surface 界)、尺寸下限保 1（scissor max(1) 合流）、frac 脏值 clamp 域不 panic。**共边无缝律**：邻片 `x+width==next.x`（round 半跨一致构造）——E816/canary 依赖。
