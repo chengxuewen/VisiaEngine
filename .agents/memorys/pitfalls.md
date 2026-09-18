@@ -193,3 +193,10 @@
 - **根因**: `anchor_x = cx - pen/2` 把**像素** pen 从**世界**锚点减（-4−50 世界米=出屏）。capi `add_label` 正本式=center 对齐全部落在 dx(px) 分量：`dx = top_left_px - pen/2`，anchor 原样世界位。
 - **解法**: anchor 只进世界坐标，一切 px 语义（含对齐平移）住 metrics/dx 域（vs 统一乘 px_scale）。
 - **验证**: 三口互证（capi engine.rs / hpp 转发展 / E205 例）grep `pen / 2.0` 必须全部出现在 LabelMark 第 4 参数组内，第 1 参数组内出现=红。
+
+## PIT-29: orbit 构造传度数=perspective 吃弧度——三例带病现行 (2026-09-18)
+- **症状**: E303 顶视 OK 但主视地面仅占 51%/构图怪；E302 headless bright=96（阈 40 擦过）；E501 窗面同雷（无人细看）。
+- **根因**: `CameraRig::perspective`/look_at 默认 `FRAC_PI_3`=**弧度**制；`orbit(...)` 调用位曾传 46/55/60（当度数）→ tan(23 rad) 负值投影翻转/压扁。lavapipe 不报错=静默烂画面。
+- **解法**: 全用弧度（0.802_851=46°、FRAC_PI_3=60°、0.959_931=55°）；`orbit` 文档钉死单位并注前科。修后 E302 bright 96→1987、E501 dark=19642 精确、E303 构图成立。
+- **验证**: 例面 grep `orbit\(.*[0-9]\.[0-9], [0-9]{2}\.0` 出度数量级（>7 的 fov 位）=红；窗例像素门（E302/E303 headless 断言族）跑绿。
+- **教训**: 像素门没看过的窗面=没验过的面——T3 人验不可达时，headless 结构断言必须覆盖窗例的同一帧形（本带双保险成例）。
