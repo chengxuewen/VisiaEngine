@@ -67,3 +67,12 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-24: 飞行状态读回口（⑤a）
 `visiaengine_fly_state(ve, double *out_t01)`：返回 **1=done（idle/done 合并单主——「不在飞」唯一态）/ 0=飞行中**；`out_t01` 仅飞中写 [0,1)（done 路**零写**=B1 零部分写谱，NULL=仅状态=get_clips 同制）。cancel 后=done 且可立即再飞（重入值域闭环）。wasm 分形：`flyState()→0|1` + `flyProgress()→[0,1]`（done/idle=1.0，与 C 面「done 不写 out」合并语义同谱——JS 无双值编码义务）。
+
+## CAPI-25: 小地图视口开关（⑤b 二波）
+`visiaengine_set_map(ve, const VeMapView *cfg_or_null)`：比例表 `{struct_size, fx,fy,fw,fh∈[0,1], zoom>0}` 右上/任意角顶视小窗（语义=主 target 派生跟随顶视，零双 rig）。**None/关=清空回旧单帧路（canary 构造保真）**；域拒（界和>1+ε、非有限、zoom≤0）=-1 零副作用。resize 自动跟随（比例表经 `ViewportRect::from_frac` 每帧重算，REND-37）。**输入路由定案 [裁决 a]**：小图区内指针/滚轮（kind 1..4）=消费但 no-op（v0 无拖图语义——导航走 CAPI-26 显式口，拒绝 kind 枚举暗扩）；`pick(ve,px,py)` 小图区命中=以小图 ortho rig 拾取（视觉顶层=输入顶层）。wasm `setMap(f64[4], zoom)`/`clearMap()`。
+
+## CAPI-26: 小地图点击导航（⑤b 二波）
+`visiaengine_navigate_click(ve, px, py, dur_ms)`（px,py=全幅 surface 坐标）。区外/无图=**-1 拒（无暗改道）**；区内两阶段（探针 A 组 3）：小图 rig 拾取实体命中→hit.point.xy；否则 `ray_ground_intersect`（REND-37）z=0 地面兜底；皆无（地平视线出界）=-1。动作=主 rig **仅换 target（z=0），dist/yaw/pitch/fov 恒定 [裁决 e]**，走 fly_rig（dur=0 瞬移=fly 同谱）；中断语义继承 CAPI-23（指针 cancel 后区外拒）。
+
+## CAPI-27: 主相机位姿读回（⑤b 二波）
+`visiaengine_get_camera(ve, VeCameraPose *out)`：主 rig 全量读出（复用 VeCameraPose 结构，方向=out 参数——与 fly_to 的 in 职分离清晰 [C15 复核：一次调用一职]）；NULL/struct_size 门=-1。**到达断言/宿主 HUD 面**：fly 完成后 out==目标位姿逐位（端点精确 REND-16 谱）；idle 读当前稳态。wasm `getCameraPose()→Float64Array[6]`（target3+yaw/pitch/dist）。

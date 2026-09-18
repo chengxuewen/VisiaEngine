@@ -132,6 +132,47 @@ impl Swapchain {
     ///
     /// # Errors
     /// 未配置/设备错误传播。
+    /// ⑤b 二波：多视口帧序（小窗开启时主+顶视两投）。
+    pub fn render_multi(
+        &mut self,
+        core: &mut MeshCore,
+        passes: &[(Frame, visiaengine_render::ViewportRect)],
+    ) -> Result<SwapOutcome, BackendError> {
+        if !self.configured {
+            self.configure(core)?;
+        }
+        match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(tex)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                let view = tex
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+                let fmt = self.chosen.expect("configured");
+                core.render_view_rects(
+                    passes,
+                    &view,
+                    self.width,
+                    self.height,
+                    fmt,
+                    crate::MultiClearPolicy::FirstClearRestLoad,
+                );
+                core.queue.present(tex);
+                Ok(SwapOutcome::Presented)
+            }
+            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+                Ok(SwapOutcome::Skipped)
+            }
+            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                self.configured = false;
+                self.configure(core)?;
+                Ok(SwapOutcome::Reconfigured)
+            }
+            _ => Err(BackendError {
+                reason: "surface acquire failed".into(),
+            }),
+        }
+    }
+
     pub fn render(
         &mut self,
         core: &mut MeshCore,

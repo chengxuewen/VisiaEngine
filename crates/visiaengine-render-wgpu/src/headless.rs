@@ -288,4 +288,13 @@ impl HeadlessBackend {
     ) -> Result<crate::surface::SwapOutcome, BackendError> {
         sw.render(&mut self.core, frame)
     }
+
+    /// ⑤b 二波：swapchain 多帧路。
+    pub fn render_swapchain_multi(
+        &mut self,
+        passes: &[(visiaengine_render::Frame, visiaengine_render::ViewportRect)],
+        sw: &mut crate::surface::Swapchain,
+    ) -> Result<crate::surface::SwapOutcome, BackendError> {
+        sw.render_multi(&mut self.core, passes)
+    }
 }

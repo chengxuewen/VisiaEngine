@@ -9,9 +9,10 @@ use visiaengine_io_text::GLYPH_ATLAS_PX;
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MaterialId, MeshCandidate, MeshDesc,
     MeshId, PointMark, PointTableDesc, RenderBackend, StrokeSeg, StrokeTableDesc, Viewport,
-    pick_meshes, screen_to_ray_ortho, screen_to_ray_persp,
+    ViewportRect, pick_meshes, ray_ground_intersect, screen_to_ray_ortho, screen_to_ray_persp,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
+use visiaengine_render_wgpu::MultiClearPolicy;
 use visiaengine_render_wgpu::surface::Swapchain;
 
 /// 输入→相机引擎策略（非事件透传）：按下后移动=orbit，滚轮=共享 zoom。
@@ -93,6 +94,8 @@ pub struct Engine {
     /// CAPI-23：飞行推进器（墙钟住 engine——render crate 零 std::time 的分层定案；
     /// None=idle/done 合并态）
     fly: Option<Fly>,
+    /// ⑤b 二波：小地图（None=关；旧宿主零感知）
+    map: Option<MapView>,
     frame_cache: Option<Vec<u8>>,
     /// CAPI-19：点云云级 meta（位形→单行 AttrSet；attr_* 缀查域，geo 图先查）。
     pcl_meta: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
@@ -104,6 +107,16 @@ pub struct Engine {
     /// CAPI-17 事件锚（fn/user 裸指针 usize 形；触发域=owner 线程，
     /// 与 CAPI-03 亲和门同谱，故 Send 包装安全）。
     evt: Option<EvtSink>,
+}
+
+/// ⑤b 二波 CAPI-25：小地图视口（比例表+世界半高；None=关=旧单帧路，主 target 派生跟随）。
+#[derive(Clone, Copy, Debug)]
+pub struct MapView {
+    pub fx: f32,
+    pub fy: f32,
+    pub fw: f32,
+    pub fh: f32,
+    pub zoom: f64,
 }
 
 /// SAFETY: 锚仅在 owner 线程被 gate 后触发（回调线程契约见 CAPI-17 条款体）。
@@ -138,6 +151,7 @@ impl Engine {
             hidden: Vec::new(),
             clip: None,
             fly: None,
+            map: None,
             font: None,
             glyphs: visiaengine_io_text::GlyphCache::new(),
             frame_cache: None,
@@ -456,6 +470,14 @@ impl Engine {
         if matches!(kind, 1 | 2 | 4) {
             self.fly = None;
         }
+        // CAPI-25 配套：小图区内指针/滚轮=消费 no-op（v0 无拖图语义；导航走 navigate_click）
+        if matches!(kind, 1..=4)
+            && self
+                .map_rect()
+                .is_some_and(|r| r.contains(px.max(0.0) as u32, py.max(0.0) as u32))
+        {
+            return Some(true);
+        }
         match kind {
             2 => {
                 self.down = true;
@@ -570,6 +592,45 @@ impl Engine {
             clip: self.clip,
             commands,
         };
+        // ⑤b 二波：map=Some ⇒ 主全幅+小图角窗两投；None ⇒ 旧单帧路（canary 构造保真）
+        if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig()) {
+            let (rw, rh) = (r.width.max(1), r.height.max(1));
+            let proj = mrig
+                .ortho_frame(mrig.zoom as f32, rw as f32, rh as f32, 0.1, 1000.0)
+                .ok_or("map ortho degenerate")?;
+            let map_frame = Frame {
+                viewport: Viewport::new(rw, rh, 1.0),
+                camera: Camera::ortho(
+                    mrig.zoom as f32,
+                    (mrig.zoom * f64::from(rh) / f64::from(rw.max(1))) as f32,
+                    0.1,
+                    1000.0,
+                ),
+                view_rot: mrig.view_rotation(),
+                eye: mrig.eye(),
+                proj,
+                px_world_scale: (2.0 * mrig.zoom / f64::from(rw)) as f32,
+                shadow: None,
+                clip: self.clip,
+                commands: frame.commands.clone(),
+            };
+            let passes = [(frame, ViewportRect::full(self.w, self.h)), (map_frame, r)];
+            return match &mut self.target {
+                TargetMode::Headless => {
+                    let img = self
+                        .backend
+                        .render_to_pixels_rects(&passes, MultiClearPolicy::FirstClearRestLoad)
+                        .ok_or("render failed")?;
+                    self.frame_cache = Some(img.rgba);
+                    Ok(())
+                }
+                TargetMode::Window(sw) => self
+                    .backend
+                    .render_swapchain_multi(&passes, sw)
+                    .map(|_| ())
+                    .map_err(|e| e.to_string()),
+            };
+        }
         match &mut self.target {
             TargetMode::Headless => {
                 let img = self
@@ -632,20 +693,40 @@ impl Engine {
 
     /// 屏幕拾取（复用 REND-21..24；ortho/persp 双路）。命中=EntityId。
     pub fn pick(&self, px: f32, py: f32) -> Option<EntityId> {
-        let ray = match self.mode {
-            Proj::Persp => screen_to_ray_persp(&self.rig, px, py, self.w as f32, self.h as f32)?,
-            Proj::Ortho => screen_to_ray_ortho(&self.rig, px, py, self.w as f32, self.h as f32)?,
+        // ⑤b 二波路由：小图区优先（视觉顶层=输入顶层）；其余=主 rig 原语义
+        if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig())
+            && let Some((lx, ly)) = r.local(px.max(0.0) as u32, py.max(0.0) as u32)
+        {
+            let (id, _) = self.pick_geo(&mrig, true, lx, ly, r.width, r.height)?;
+            return Some(id);
+        }
+        let ortho = matches!(self.mode, Proj::Ortho);
+        let (id, _) = self.pick_geo(&self.rig, ortho, px, py, self.w, self.h)?;
+        Some(id)
+    }
+
+    /// 拾取核（rig/投影形/局部 px 全参数化：主视口与小图共用；返回 (位形, 命中点 xy)）。
+    fn pick_geo(
+        &self,
+        rig: &CameraRig,
+        ortho: bool,
+        px: f32,
+        py: f32,
+        w: u32,
+        h: u32,
+    ) -> Option<(EntityId, [f64; 2])> {
+        let ray = if ortho {
+            screen_to_ray_ortho(rig, px, py, w as f32, h.max(1) as f32)?
+        } else {
+            screen_to_ray_persp(rig, px, py, w as f32, h.max(1) as f32)?
         };
-        // CAPI-20 重试环：命中点被裁=该件排除，继续向后找（剖开可见者必可拾）。
-        // 最坏收敛=候选数轮（每轮至少排除一件），命中图深度量级，ponytail 可接受。
         let mut skip: Vec<EntityId> = Vec::new();
         loop {
             let cands: Vec<MeshCandidate> = self
                 .items
                 .iter()
                 .filter(|it| {
-                    !self.hidden.contains(&enc_entity(it.entity)) // CAPI-13 pick 域
-                        && !skip.contains(&it.entity)
+                    !self.hidden.contains(&enc_entity(it.entity)) && !skip.contains(&it.entity)
                 })
                 .map(|it| MeshCandidate {
                     entity: it.entity,
@@ -662,7 +743,7 @@ impl Engine {
                     continue;
                 }
             }
-            return Some(hit.entity);
+            return Some((hit.entity, [hit.point.x, hit.point.y]));
         }
     }
 
@@ -701,11 +782,17 @@ impl Engine {
             near: self.rig.near,
             far: self.rig.far,
         };
+        self.fly_rig(to, dur_ms);
+        Ok(())
+    }
+
+    /// 推进器落位核（fly_to/navigate_click 共路；域检由调用方完成）。
+    fn fly_rig(&mut self, to: CameraRig, dur_ms: u64) {
         if dur_ms == 0 {
             self.rig = to;
-            self.zoom = self.rig.zoom;
+            self.zoom = to.zoom;
             self.fly = None;
-            return Ok(());
+            return;
         }
         self.fly = Some(Fly {
             from: self.rig,
@@ -713,7 +800,6 @@ impl Engine {
             start_ms: now_ms(),
             dur_s: dur_ms as f64 / 1000.0,
         });
-        Ok(())
     }
 
     /// CAPI-24 语义源：不在飞=done（idle/done 合并单主值域）。
@@ -762,6 +848,91 @@ impl Engine {
                 .ok_or("set_clips: degenerate plane (zero normal / non-finite)")?,
         );
         Ok(())
+    }
+
+    /// CAPI-25：开/关小地图（比例表 0..1，fw/fh>0，zoom>0；域拒零副作用；None=清空旧路）。
+    // W3 接 visiaengine_set_map 三口后即活（先行暂死注记）。
+    #[allow(dead_code)]
+    pub fn set_map(&mut self, rect: Option<(f32, f32, f32, f32)>, zoom: f64) -> Result<(), String> {
+        let Some((fx, fy, fw, fh)) = rect else {
+            self.map = None;
+            return Ok(());
+        };
+        let ok = [fx, fy, fw, fh].iter().all(|v| v.is_finite())
+            && (0.0..=1.0).contains(&fx)
+            && (0.0..=1.0).contains(&fy)
+            && fw > 0.0
+            && fh > 0.0
+            && fx + fw <= 1.0 + 1e-6
+            && fy + fh <= 1.0 + 1e-6
+            && zoom.is_finite()
+            && zoom > 0.0;
+        if !ok {
+            return Err("set_map: frac/zoom domain".into());
+        }
+        self.map = Some(MapView {
+            fx,
+            fy,
+            fw,
+            fh,
+            zoom,
+        });
+        Ok(())
+    }
+
+    /// 当前小地图像素 rect（比例表 resize 自动跟的求值点）。
+    #[must_use]
+    pub fn map_rect(&self) -> Option<ViewportRect> {
+        self.map
+            .map(|m| ViewportRect::from_frac(m.fx, m.fy, m.fw, m.fh, self.w, self.h))
+    }
+
+    /// 小地图顶视 rig（跟随主 target；pitch≈86° 近正视，up+Y 与视向近正交免退化）。
+    #[must_use]
+    fn map_rig(&self) -> Option<CameraRig> {
+        let m = self.map?;
+        let [tx, ty, _] = self.rig.target;
+        Some(CameraRig::orbit(
+            [tx, ty, 0.0],
+            0.0,
+            1.5,
+            m.zoom * 2.0,
+            m.zoom,
+            std::f64::consts::FRAC_PI_3,
+            0.1,
+            m.zoom * 20.0,
+        ))
+    }
+
+    /// CAPI-26：小地图点击导航（两阶段：实体命中优先→地面 z=0 兜底；主 rig 保角保距换 target）。
+    #[allow(dead_code)]
+    pub fn navigate_click(&mut self, px: f32, py: f32, dur_ms: u64) -> Result<(), String> {
+        let rect = self.map_rect().ok_or("navigate_click: map not set")?;
+        let (lx, ly) = rect
+            .local(px.max(0.0) as u32, py.max(0.0) as u32)
+            .ok_or("navigate_click: outside map rect")?;
+        let mrig = self.map_rig().ok_or("navigate_click: no map")?;
+        let ray = screen_to_ray_ortho(&mrig, lx, ly, rect.width as f32, rect.height.max(1) as f32)
+            .ok_or("navigate_click: ray degenerate")?;
+        let (tx, ty) = if let Some(hit) =
+            self.pick_geo(&mrig, true, lx, ly, rect.width, rect.height)
+        {
+            (hit.1[0], hit.1[1])
+        } else {
+            let g = ray_ground_intersect(ray).ok_or("navigate_click: no ground under cursor")?;
+            (g.x, g.y)
+        };
+        let mut to = self.rig;
+        to.target = [tx, ty, 0.0];
+        self.fly_rig(to, dur_ms);
+        Ok(())
+    }
+
+    /// CAPI-27：主相机位姿读回（宿主 HUD/到达断言）。
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn camera_pose(&self) -> CameraRig {
+        self.rig
     }
 
     /// CAPI-21：装载/替换标注字体（bytes=TTF/OTF 全式；解析失败=Err 不动现存字体）。
@@ -1041,6 +1212,7 @@ impl Engine {
             hidden: Vec::new(),
             clip: None,
             fly: None,
+            map: None,
             font: None,
             glyphs: visiaengine_io_text::GlyphCache::new(),
             frame_cache: None,
@@ -1355,6 +1527,136 @@ mod mut_spec_tests {
         let _ = e.render();
         let d = (e.rig.target[0] - mid[0]).abs();
         assert!(d < 0.5, "改道首帧连续（跳距 {d}）");
+    }
+
+    // spec: CAPI-25
+    #[test]
+    fn map_set_render_routing_and_domains() {
+        let mut e = Engine::new_headless(200, 100).expect("adapter");
+        let (pos, _nrm, idx) = quad();
+        let big: Vec<[f32; 3]> = pos
+            .iter()
+            .map(|p| [p[0] * 20.0, p[1] * 20.0, 0.0])
+            .collect();
+        e.add_mesh(&big, None, &idx, [0.1, 0.6, 0.2, 1.0], [0.0; 3])
+            .expect("ground"); // 首件位形可=0（CAPI-01 合法分工，成败看 rc——此坑第三见记账）
+        // 域拒三连（fx+fw>1 / zoom 非正 / 脏 NaN）
+        assert!(
+            e.set_map(Some((0.7, 0.0, 0.4, 0.4)), 40.0).is_err(),
+            "越 1 界须拒"
+        );
+        assert!(
+            e.set_map(Some((0.7, 0.0, 0.25, 0.25)), 0.0).is_err(),
+            "zoom 域"
+        );
+        assert!(
+            e.set_map(Some((f32::NAN, 0.0, 0.2, 0.2)), 30.0).is_err(),
+            "frac 域"
+        );
+        assert!(e.map_rect().is_none(), "拒后零残留");
+        // navigate 无图=拒（无暗改道）
+        assert!(e.navigate_click(150.0, 50.0, 500).is_err());
+        // 开图（右 1/4 竖幅）+ 渲染：map 区与主区皆有内容（非底色像素）
+        e.set_map(Some((0.72, 0.02, 0.26, 0.96)), 30.0)
+            .expect("map on");
+        e.render().expect("render dual");
+        let img = e.frame_cache.clone().expect("cache");
+        let bg = |i: usize| img[i * 4] < 30 && img[i * 4 + 1] < 40 && img[i * 4 + 2] < 60;
+        let nonbg = |x: u32, y: u32| !bg((y * 200 + x) as usize);
+        let cnt = |x0: u32, x1: u32| -> u32 {
+            (10..90)
+                .flat_map(|y| (x0..x1).filter(move |x| nonbg(*x, y)))
+                .count() as u32
+        };
+        let (main_c, map_c) = (cnt(10, 130), cnt(150, 195));
+        println!("PROBE map main={main_c} map={map_c}");
+        assert!(main_c > 200, "主视地面缺席 {main_c}");
+        assert!(map_c > 200, "小图顶视地面缺席 {map_c}");
+        // 路由：小图区按下=消费且位姿不变；主区拖动=yaw 变
+        let yaw0 = e.camera_pose().yaw;
+        assert_eq!(
+            e.apply_input(2, 180.0, 50.0, 0.0),
+            Some(true),
+            "小图按下消费"
+        );
+        let _ = e.apply_input(1, 190.0, 50.0, 0.0);
+        assert!((e.camera_pose().yaw - yaw0).abs() < 1e-12, "小图拖 no-op");
+        let _ = e.apply_input(2, 60.0, 50.0, 0.0);
+        let _ = e.apply_input(1, 90.0, 50.0, 0.0);
+        assert!((e.camera_pose().yaw - yaw0).abs() > 1e-6, "主区拖生效");
+        // 小图 pick 命中地面实体（顶视中心=主 target 附近）
+        let hit = e.pick(180.0, 50.0);
+        assert!(hit.is_some(), "小图内 pick 须命中");
+        // 关图回旧路（canary 构造位）+ rect 消失
+        e.set_map(None, 0.0).expect("clear");
+        assert!(e.map_rect().is_none());
+        e.render().expect("render legacy again");
+    }
+
+    // spec: CAPI-27
+    #[test]
+    fn camera_pose_readback_is_single_source_of_truth() {
+        let mut e = Engine::new_headless(160, 120).expect("adapter");
+        let p0 = e.camera_pose();
+        // idle 读=稳态；瞬移后读=新值（宿主 HUD 断言面）
+        assert!(e.fly_state_done());
+        assert!((e.camera_pose().target[0] - p0.target[0]).abs() < 1e-12);
+        let tgt = [3.0, 4.0, 0.0];
+        e.fly_to(tgt, p0.yaw, p0.pitch, p0.dist, p0.zoom, p0.fov_y, 0)
+            .expect("tp");
+        let p1 = e.camera_pose();
+        assert_eq!(
+            [p1.target[0], p1.target[1]],
+            [3.0, 4.0],
+            "读回=落位 [CAPI-27]"
+        );
+        assert!((p1.dist - p0.dist).abs() < 1e-12, "保距");
+    }
+
+    // spec: CAPI-26
+    #[test]
+    fn navigate_click_flies_to_ground_target() {
+        let mut e = Engine::new_headless(200, 100).expect("adapter");
+        let (pos, _nrm, idx) = quad();
+        let big: Vec<[f32; 3]> = pos
+            .iter()
+            .map(|p| [p[0] * 20.0, p[1] * 20.0, 0.0])
+            .collect();
+        e.add_mesh(&big, None, &idx, [0.1, 0.6, 0.2, 1.0], [0.0; 3])
+            .expect("ground");
+        e.set_map(Some((0.5, 0.0, 0.5, 1.0)), 40.0).expect("map");
+        let t0 = e.camera_pose();
+        // 小图左上 1/4 处点击 = 世界 (target + (−0.25·2·zoom_x, +0.25·2·zoom_y))
+        // rect=(100,0,100,100)；local 点击 (25,75)→NDC(−0.5,+0.5)→Δworld(−40, +20·aspect…以 ortho 定义)
+        e.navigate_click(125.0, 75.0, 0).expect("nav teleport");
+        let t1 = e.camera_pose();
+        assert!(
+            (t1.target[0] - t0.target[0]).abs() > 1.0,
+            "target 必移动 got {t1:?}"
+        );
+        assert!((t1.target[2]).abs() < 1e-9, "落位 z=0");
+        assert!(
+            (t1.dist - t0.dist).abs() < 1e-12 && (t1.yaw - t0.yaw).abs() < 1e-12,
+            "保距保角 [裁决 e]"
+        );
+        // 区外点击=拒且零改
+        let t2 = e.camera_pose();
+        assert!(
+            e.navigate_click(50.0, 50.0, 0).is_err(),
+            "主视区点击走此口须拒"
+        );
+        let t3 = e.camera_pose();
+        assert!((t3.target[0] - t2.target[0]).abs() < 1e-12);
+        // 带时长的飞：done 收敛 + 位姿=目标
+        e.navigate_click(175.0, 25.0, 1).expect("nav fly dur=1ms");
+        assert!(!e.fly_state_done() || e.camera_pose().target != t3.target);
+        let mut guard = 0;
+        while !e.fly_state_done() && guard < 200 {
+            let _ = e.render();
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            guard += 1;
+        }
+        assert!(e.fly_state_done(), "飞行必到达");
     }
 
     // spec: CAPI-13
