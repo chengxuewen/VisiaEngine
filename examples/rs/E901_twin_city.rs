@@ -5,17 +5,20 @@
 
 use std::sync::Arc;
 
+use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
 use visiaengine_render::BackendError;
 use visiaengine_render::{
-    Camera, CameraRig, DrawCommand, Frame, Instance, InstanceDesc, MaterialDesc, MeshDesc,
-    PointTableDesc, RenderBackend, ShadowSetup, StrokeTableDesc, TableId, Viewport,
+    Camera, CameraRig, ClipSetup, DrawCommand, Frame, Instance, InstanceDesc, LabelMark,
+    LabelTableDesc, MaterialDesc, MeshDesc, PointTableDesc, RenderBackend, ShadowSetup,
+    StrokeTableDesc, TableId, Viewport,
 };
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
 
 const W: u32 = 640;
@@ -317,7 +320,9 @@ fn headless_run() {
         n
     );
     println!("T3 人检：打开上述 PNG 核 ①楼宇阴影落在光反侧 ②底图描边/圆点无 z-fight ③半影软边");
-    println!("T3 人检（交互窗形）：不带 --frames 重跑=常驻窗，左键拖轨道/滚轮远近/关窗退出");
+    println!(
+        "T3 人检（交互窗形）：无参=常驻窗——C 开剖切（影随刀塌）[/] 刀高 ±1m L 标签开关 拖=轨道 滚轮=远近"
+    );
 }
 
 // ── 交互路（人工检验面：MeshCore 直渲 surface，同场景同阴影——E501 同制）───────
@@ -331,6 +336,10 @@ struct App {
     origin: [f64; 3],
     commands: Vec<DrawCommand>,
     frames_left: Option<u32>,
+    /// 交互收口带（D17-h）：C=剖切开关 [/]=刀高 ±1m，L=标签显隐，Esc=退出
+    label_cmds: Vec<DrawCommand>,
+    show_labels: bool,
+    clip_h: Option<f32>,
 }
 
 impl ApplicationHandler for App {
@@ -385,6 +394,48 @@ impl ApplicationHandler for App {
         let (geo_cmds, origin) = geo_layer(&mut core);
         commands.extend(geo_cmds);
         ground_city(&mut core, origin, &mut commands);
+        // 三塔屋顶标注（表+atlas 构造；基础命令不含标签——redraw 帧按 L 开关拼接）。
+        // 字体缺失=整段静默降级（demo 容灾，非错误路径）。
+        let label_cmds = FontFace::from_bytes(
+            &std::fs::read(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../resources/data/DejaVuSans.ttf"
+            ))
+            .expect("DejaVu fixture"),
+        )
+        .ok()
+        .and_then(|face| {
+            let mut cache = GlyphCache::new();
+            let city = city();
+            let mut marks = Vec::new();
+            for (tag, idx) in [("Tower-A", 3usize), ("Tower-B", 66), ("Tower-C", 189)] {
+                let ins = &city[idx];
+                let (quads, pen) = layout(tag, &face, &mut cache, 18.0);
+                marks.extend(quads.iter().map(|q| {
+                    LabelMark::new(
+                        [ins.offset[0], ins.offset[1], ins.height + 1.2],
+                        [1.0, 1.0, 1.0, 1.0],
+                        [q.uv0[0], q.uv0[1], q.uv1[0], q.uv1[1]],
+                        [
+                            q.size_px[0],
+                            q.size_px[1],
+                            q.top_left_px[0] - pen / 2.0,
+                            q.top_left_px[1],
+                        ],
+                    )
+                }));
+            }
+            let table = core.create_labels(&LabelTableDesc { data: &marks }).ok()?;
+            core.set_glyph_atlas(cache.pixels(), GLYPH_ATLAS_PX, GLYPH_ATLAS_PX)
+                .ok()?;
+            Some(vec![DrawCommand::DrawLabels {
+                table,
+                origin,
+                transform: ID64,
+            }])
+        });
+        self.show_labels = label_cmds.is_some();
+        self.label_cmds = label_cmds.unwrap_or_default();
         self.origin = origin;
         self.commands = commands;
         self.core = Some(core);
@@ -397,6 +448,7 @@ impl ApplicationHandler for App {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::KeyboardInput { event, .. } => self.handle_key(event_loop, &event),
             WindowEvent::Resized(size) => {
                 if let (Some(core), Some(surface), Some(config)) =
                     (&mut self.core, &self.surface, &mut self.config)
@@ -447,6 +499,14 @@ impl ApplicationHandler for App {
                     event_loop.exit();
                     return;
                 };
+                let mut cmds = self.commands.clone();
+                if self.show_labels {
+                    cmds.extend(self.label_cmds.iter().cloned());
+                }
+                let clip = self.clip_h.and_then(|h| {
+                    // 世界面 z≤h 保留（n=(0,0,-1), d=h）：楼体逐层削显+影随刀塌
+                    ClipSetup::new(&[[0.0, 0.0, -1.0, f64::from(h)]])
+                });
                 let frame = Frame {
                     viewport: Viewport::new(config.width, config.height, 1.0),
                     camera: Camera::perspective(self.rig.fov_y as f32, aspect, 1.0, 200.0),
@@ -455,8 +515,8 @@ impl ApplicationHandler for App {
                     proj,
                     px_world_scale: 0.14, // 参考深度不变（E501 同制：窗 resize 不重标线宽）
                     shadow: Some(shadow_setup(self.origin, config.width, config.height)),
-                    clip: None,
-                    commands: self.commands.clone(),
+                    clip,
+                    commands: cmds,
                 };
                 match surface.get_current_texture() {
                     wgpu::CurrentSurfaceTexture::Success(tex)
@@ -498,6 +558,55 @@ impl ApplicationHandler for App {
 }
 
 impl App {
+    fn set_title(&self) {
+        if let Some(w) = &self.window {
+            w.set_title(&format!(
+                "E901 孪生城 · C={} [/]={:.1}m · L={} · 拖=轨道 滚轮=远近 Esc=退出",
+                if self.clip_h.is_some() { "ON" } else { "OFF" },
+                self.clip_h.unwrap_or(0.0),
+                if self.show_labels { "ON" } else { "OFF" },
+            ));
+        }
+    }
+
+    fn handle_key(&mut self, event_loop: &ActiveEventLoop, key: &KeyEvent) {
+        if key.state != ElementState::Pressed {
+            return;
+        }
+        match &key.logical_key {
+            Key::Character(s) if s.eq_ignore_ascii_case("c") => {
+                self.clip_h = if self.clip_h.is_some() {
+                    None
+                } else {
+                    Some(6.0)
+                };
+                self.set_title();
+                self.request_redraw();
+            }
+            Key::Character(s) if s.eq_ignore_ascii_case("l") => {
+                self.show_labels = !self.show_labels;
+                self.set_title();
+                self.request_redraw();
+            }
+            Key::Character(s) if s == "[" || s == "-" => {
+                if let Some(h) = self.clip_h {
+                    self.clip_h = Some((h - 1.0).max(0.5));
+                    self.set_title();
+                    self.request_redraw();
+                }
+            }
+            Key::Character(s) if s == "]" || s == "+" => {
+                if let Some(h) = self.clip_h {
+                    self.clip_h = Some((h + 1.0).min(15.0));
+                    self.set_title();
+                    self.request_redraw();
+                }
+            }
+            Key::Named(NamedKey::Escape) => event_loop.exit(),
+            _ => {}
+        }
+    }
+
     fn request_redraw(&self) {
         if let Some(w) = &self.window {
             w.request_redraw();
@@ -541,6 +650,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         origin: [0.0; 3],
         commands: Vec::new(),
         frames_left: None,
+        label_cmds: Vec::new(),
+        show_labels: true,
+        clip_h: None,
     };
     event_loop.run_app(&mut app)?;
     Ok(())
