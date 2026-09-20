@@ -1,6 +1,6 @@
 # VisiaEngine 约定与约束
 
-> 本文件仅属 VisiaEngine。C2-C8、C10-C13、C15+ 为保留空号（C1/C9/C14 承自前项目通用方法论，编号保留以防既有文件交叉引用悬空）；新增约定取最小空号。前项目完整约定见 `.refinfo` 归档。
+> This file is VisiaEngine-only. C2-C8 and C10-C14 are reserved slots (C1/C9 inherited from the predecessor project's general methodology, kept to avoid dangling cross-references; C15/C16/C17 active). New conventions take the smallest free slot. Full predecessor archive: `.refinfo` (read-only).
 
 ## C1: 架构决策对比格式
 
@@ -48,3 +48,17 @@
 ## C16: 决策呈交格式＝人话＋示意＋目录＋逐项
 
 **约束**: 凡需用户裁决的方案/缺陷/影响分析，按四件套呈交：①说人话根因（先给「一句话版本」）；②示意图（数据/流程/时线 ASCII，能画就画）；③受影响**目录结构/文件清单**逐项（含落点行位）；④多议题时逐项过（一卡一裁决），禁一次性大列表。术语堆叠版会被打回（本会话「说人话」×6 实锤）。推荐理由复述用 C1 四栏（优缺点/来源/影响/推荐）。
+
+## C17: English-only for all persisted artifacts (2026-09-20 user ruling)
+
+**Constraint**: Every artifact written to the repository MUST be in English — code comments (`//`, `///`, `/* */`, `#`), SDD contract clauses, `docs/`, `.agents/memorys/`, `.agents/rules/`, `.agents/skills/`, AGENTS.md, README, commit messages, example/demo source, config comments. The ONLY exception: live AI↔user chat replies (Chinese allowed when the user writes Chinese).
+
+**Scope**: Prospective only (user chose A). The ~7,300 pre-existing Chinese lines (measured 2026-09-20) stay as-is; translate opportunistically when touching a file, no dedicated migration wave.
+
+**Why**: repo is public-facing SDK distribution; mixed-language corpus is a liability for external contributors and for grep/CI gates that anchor on comment text.
+
+**Check command**:
+```bash
+# new/changed .rs comments must be ASCII (run on staged diff; 0 matches expected)
+git diff --cached -U0 -- '*.rs' | grep -P '^\+.*[\x{4e00}-\x{9fff}]' || echo OK
+```
