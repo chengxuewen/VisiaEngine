@@ -8,10 +8,10 @@
 
 一个开源、轻量、可嵌入的空间可视化**引擎内核**（非游戏引擎）：
 
-- **同一场景树**内鸟瞰地图（2D）、倾斜视角（2.5D）、沉浸 3D 无级切换，图层/实体/标注交互语义一致
-- **空间数据一等公民**：矢量瓦片、GeoJSON、WMS/WMTS、主流坐标投影；glTF/点云/BIM 轻量化展示；ODR/OSC 经官方仿真插件支持
+- 多维度统一视口：鸟瞰地图（2D）、倾斜视角（2.5D）、沉浸 3D 无级切换（当前为扁平实体表，场景树 = Alpha 档候选），图层/实体/标注交互语义一致
+- **空间数据一等公民**：GeoJSON、主流坐标投影（已内置）；矢量瓦片 MVT、WMS/WMTS（在交付，见白皮书 3.2 路线）；glTF/点云/BIM 轻量化展示；ODR/OSC 经官方仿真插件支持
 - **Rust 内核 + wgpu 渲染**：内存安全、无 GC；一等 Vulkan / Metal / DX12 / WebGPU，GL 3.3+ / GLES 3.0+ / WebGL2 降级档
-- **SDK 形态**：经 C API 嵌入 Qt / Flutter / C# (WPF/Unity) / Web，不绑架宿主主循环；启动体积目标 ≤10 MB
+- **SDK 形态**：经 C API 嵌入 Qt / Flutter / C# (WPF/Unity) / Web，不绑架宿主主循环；启动体积（native cdylib strip 后）实测 7.25 MB ≤ 10 MB（证据：docs/reference/evidence/2026-09-24-native-size.md）
 
 ## 架构（一句话）
 

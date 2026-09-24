@@ -9,7 +9,7 @@
 2. **C ABI 是唯一稳定边界**：wgpu/bevy 级类型止步于 `visiaengine-render-wgpu`，永不泄漏到 trait 之外（D4 否决 Bevy 的第一主因即此）。
 3. **单一语义源，后端只增不分叉**（Unity 三管线互斥学费）：任何后端不得引入新的场景/材质语义。
 4. **主循环归属宿主**：引擎只被 pump，不自建事件循环（rerun spawn/connect 模型为参照，Flutter embedder 为 ABI 纪律范本）。
-5. **兼容 = tier 参数化，非编译期分叉**：能力运行时查询（§图⑥）。
+5. **兼容 = tier 参数化，非编译期分叉**：能力运行时查询（§图⑥）——capability_query: drawn as design goal, not yet implemented (Alpha tier).
 6. **copyleft 依赖（PROJ/GEOS/OSG 系/LGPL 件）一律 feature-gate 到扩展层**，核心包静态链零污染。
 
 ## ① 全景分层
@@ -136,7 +136,7 @@ StyleSpec(声明式, 可 diff): type(fill|line|symbol|heatmap|model|volume)
 ```
 cargo ──▶ visiaengine-capi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h(手写人审，I0)
       ──▶ wasm: visiaengine-wasm 独立 crate（CAPI-09 双面镜像）已落地；npm 打包=Alpha
-打包: vcpkg/NuGet/pub 镜像；体积预算核心 .so ≤6MB，总量标 ≤10MB（MVP 实测复核）
+打包: vcpkg/NuGet/pub 镜像；体积预算核心 .so ≤6MB，总量标 ≤10MB —— 实测复核已销账（2026-09-24）：native cdylib strip 后 7.25 MB，达标（docs/reference/evidence/2026-09-24-native-size.md）
 CI 矩阵: 全量测试跑 T1；T2 在 LLVMPipe/Mesa 软渲 + Android 模拟器抽查；WebGL2 浏览器
 pin 纪律: wgpu 季度破坏 → 主版本 pin + 每季度升级窗口（全 tier re-verify）
 ```
