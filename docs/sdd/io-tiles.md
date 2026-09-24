@@ -16,3 +16,12 @@
 
 ## GEO-27: MVT 要素 → 本地几何映射
 `GeoTile::from_layers(id, layers)`：tile-local 整数坐标（extent 单位，y-down）→ 3857 米世界系：scale=tile_size/extent、**y 翻转**（MVT y-down→3857 y-up：px_y=0=瓦片北缘=max_y）；`GeoTile.origin`=bbox 西南角 [min_x,min_y,0]（f64，D7 锚）；类型映射 POINT(1)→Point/MultiPoint、LINESTRING(2)→Line、POLYGON(3)→Poly（**Phase 0 环=独立 Poly，不辨洞**——绕序跨生产者不可靠，ponytail 注记=升级位）。attrs 七型→String 归一（样式消费面）。`GeoTile::shifted()`：D7 重基视图（world−origin=小值 local，顶点永不烘世界大数——geo crate GeoKind::shifted 同制）。E206 消费链=decode→map→tessellate 同构（Poly fan/StrokeSeg/PointMark 三渲染路）。
+
+## IO-13: 视口瓦片枚举（TileSet::visible）
+`TileSet::visible(bbox3857, z)→Vec<TileId>`：**半开覆盖**语义——瓦片开区间面积与 bbox 相交即入选；max 边恰落在瓦片边界=零面积接触不拉入下一片（boundary snap 双侧：f 距整数相对 eps=|f|·1e-12 内即视为该整数——2^z 量级 f64 ulp 实测 4e-14，绝对 eps 失效教训在册）。行主序（y 外 x 内）确定序。无环绕：x/y 出 [0,2^z) 直接剪除（wrap=调用方策略）。
+
+## IO-14: ensure 幂等装载 + 会计
+`TileSet::ensure(ids)→EnsureStats{loaded,cached}`：缓存未命中才走 source.load；二次同 ids=全命中（loaded=0）。首错中止（typed Source/Decode 穿透）。`decoded(id)`=through-cache 解码（decoded_cache 二级；命中不重解）。
+
+## IO-15: HTTP 瓦片源（native）
+`HttpSource::new(root)`：URL 模板 `{root}/{z}/{x}/{y}.mvt`；native=ureq(rustls) 同步 GET（裁决 a：小/同步/合线程-free 姿态）；HTTP 4xx/5xx=SourceError::NotFound（带码）、传输错=Io。**wasm=typed stub**（fetch 宿主驱动，getrandom/js 特征冲突的 target-gate 修在案）。测试=进程内 std::net TCP 服务器供 fixture 字节（**CI 零外网**，PIT-7 纪律；活网测=#[ignore] 显式）。

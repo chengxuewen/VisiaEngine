@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 9 // major 1 · minor 9（CAPI-25..27 小地图三口=MAJOR 内追加；>>16==1 不变）
+    (1 << 16) | 10 // major 1 · minor 10（CAPI-28/29 瓦片两口=MAJOR 内追加；>>16==1 不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1433,6 +1433,68 @@ pub extern "C" fn visiaengine_get_camera(ve: u64, out: *mut VeCameraPose) -> i32
                 }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn visiaengine_load_mvt_dir(
+    ve: u64,
+    path: *const std::os::raw::c_char,
+    z: u32,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if path.is_null() || z > 30 {
+                        return VE_ERR_ARG;
+                    }
+                    let path = match unsafe { std::ffi::CStr::from_ptr(path) }.to_str() {
+                        Ok(p) => p,
+                        Err(_) => return VE_ERR_ARG,
+                    };
+                    match with_engine(i, |e| e.load_mvt_dir(path, z as u8)) {
+                        Ok(n) => n as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_set_tile_view(
+    ve: u64,
+    min_x: f64,
+    min_y: f64,
+    max_x: f64,
+    max_y: f64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    match with_engine(i, |e| e.set_tile_view(min_x, min_y, max_x, max_y)) {
+                        Ok(visible) => visible as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
             }
         },
         VE_ERR_PANIC

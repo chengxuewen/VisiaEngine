@@ -164,6 +164,14 @@ int32_t  visiaengine_navigate_click(uint64_t ve, float px, float py, uint64_t du
    out 由宿主预置 struct_size=sizeof(VeCameraPose)（先检后写）；NULL=拒。 */
 int32_t  visiaengine_get_camera(uint64_t ve, VeCameraPose *out);
 
+/* CAPI-28：挂载 MVT 瓦片目录（FileSource 树 {root}/{z}/{x}/{y}.mvt；z∈[0,30]）。
+   返回=挂载瓦片数（>0 成功）；0/负=错误（目录不存在/无瓦片/z 域外），错误串走 TLS。 */
+int32_t  visiaengine_load_mvt_dir(uint64_t ve, const char *path, uint32_t z);
+/* CAPI-29：喂视口 bbox（EPSG:3857 米，min<max 有限）→ 调度器 visible→ensure。
+   返回=可见瓦片数；负=拒（未挂载/域外）。可见集变化时重建批几何（下次 render 生效）。 */
+int32_t  visiaengine_set_tile_view(uint64_t ve, double min_x, double min_y,
+                                   double max_x, double max_y);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

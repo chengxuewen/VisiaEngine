@@ -108,6 +108,8 @@ pub struct Engine {
     /// ponytail: linear scan per pick; hover-throttle = rung 1, BVH = rung 2 if
     /// interaction patterns demand (1M pts ≈ 30-100 ms/query on weak hosts).
     point_clouds: std::collections::HashMap<u64, PointCloudState>,
+    /// P1 瓦片层（CAPI-28/29）：None=无瓦片面（渲染零触碰）；Some=调度器+批几何。
+    tiles: Option<TileLayer>,
     /// CAPI-21：标注字体（None=文字管线休眠——样式/口在，零输出 [GEO-25/CAPI-22]）
     font: Option<visiaengine_io_text::FontFace>,
     /// 跨装载常驻的字形图集（dirty→render 前全量重传 [WGPU-24]）
@@ -124,6 +126,40 @@ struct PointCloudState {
     origin: [f64; 3],
     transform: [[f64; 4]; 4],
     positions: Vec<[f32; 3]>,
+}
+
+/// P1: union bbox of tile ids (3857 meters).
+fn union_bbox(ids: &[visiaengine_io_tiles::TileId]) -> (f64, f64, f64, f64) {
+    let mut acc: Option<(f64, f64, f64, f64)> = None;
+    for id in ids {
+        let (x0, y0, x1, y1) = id.bbox();
+        acc = Some(match acc {
+            None => (x0, y0, x1, y1),
+            Some((a, b, c, d)) => (a.min(x0), b.min(y0), c.max(x1), d.max(y1)),
+        });
+    }
+    acc.unwrap_or((0.0, 0.0, 0.0, 0.0))
+}
+
+/// P1 瓦片层（CAPI-28/29）：调度器 + 场景中心批几何（E206 prove 同构，引擎侧消费）。
+/// Render-loop integration (upload→DrawMesh) = next step after this band; fields parked here.
+#[expect(dead_code)]
+struct TileLayer {
+    set: visiaengine_io_tiles::TileSet,
+    ids: Vec<visiaengine_io_tiles::TileId>,
+    /// 批顶点烘场景中心小值域帧（PIT-8 安全域）；Draw origin=center。
+    center: [f64; 3],
+    wpos: Vec<[f32; 3]>,
+    widx: Vec<u32>,
+    strokes: Vec<StrokeSeg>,
+    points: Vec<PointMark>,
+    // 上传产物（render 期建表；缓存 id 防重传）
+    uploaded: Option<(
+        visiaengine_render::MeshId,
+        visiaengine_render::MaterialId,
+        visiaengine_render::TableId,
+        visiaengine_render::TableId,
+    )>,
 }
 
 /// ⑤b 二波 CAPI-25：小地图视口（比例表+世界半高；None=关=旧单帧路，主 target 派生跟随）。
@@ -175,6 +211,7 @@ impl Engine {
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
             point_clouds: std::collections::HashMap::new(),
+            tiles: None,
         })
     }
 
@@ -1198,6 +1235,156 @@ impl Engine {
         Ok(bits)
     }
 
+    /// CAPI-28：挂载 MVT 瓦片目录（FileSource；同谱=装载即几何就绪，视图后续喂）。
+    pub fn load_mvt_dir(&mut self, path: &str, z: u8) -> Result<u64, String> {
+        let source = visiaengine_io_tiles::FileSource::new(path);
+        let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
+            .map_err(|e| format!("tiles: {e:?}"))?;
+        // 枚举目录里实际存在的瓦片（z 固定；扫描 {path}/{z}/*/*.mvt）
+        let mut ids: Vec<visiaengine_io_tiles::TileId> = Vec::new();
+        let zdir = std::path::Path::new(path).join(z.to_string());
+        let entries =
+            std::fs::read_dir(&zdir).map_err(|e| format!("read_dir {}: {e}", zdir.display()))?;
+        for xentry in entries.flatten() {
+            let xname = xentry.file_name().to_string_lossy().into_owned();
+            let Ok(x) = xname.parse::<u32>() else {
+                continue;
+            };
+            let xdir = zdir.join(&xname);
+            let Ok(files) = std::fs::read_dir(&xdir) else {
+                continue;
+            };
+            for f in files.flatten() {
+                let fname = f.file_name().to_string_lossy().into_owned();
+                if let Some(ystr) = fname.strip_suffix(".mvt")
+                    && let Ok(y) = ystr.parse::<u32>()
+                    && let Some(id) = visiaengine_io_tiles::TileId::new(z, x, y)
+                {
+                    ids.push(id);
+                }
+            }
+        }
+        if ids.is_empty() {
+            return Err(format!("no .mvt tiles under {}/{z}", zdir.display()));
+        }
+        ids.sort_by_key(|i| (i.y, i.x));
+        set.ensure(&ids)
+            .map_err(|e| format!("tiles ensure: {e:?}"))?;
+        let decoded: Vec<_> = ids
+            .iter()
+            .map(|id| {
+                (
+                    *id,
+                    set.decoded(id)
+                        .map(|t| visiaengine_io_tiles::GeoTile::from_layers(*id, &t.layers)),
+                )
+            })
+            .collect();
+        // 场景中心 = 全部瓦片 bbox 并集中心（批顶点烘中心小值域帧）。
+        let (min_x, min_y, max_x, max_y) = union_bbox(&ids);
+        let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+        let (mut wpos, mut widx) = (Vec::new(), Vec::new());
+        let mut strokes = Vec::new();
+        let mut points = Vec::new();
+        for (_, lite) in &decoded {
+            let Some(lite) = lite else { continue };
+            for f in &lite.features {
+                let class = f.attrs.get("class").cloned().unwrap_or_default();
+                match &f.geom {
+                    visiaengine_io_tiles::TileGeom::Poly(ring) => {
+                        let start = wpos.len() as u32;
+                        for p in ring {
+                            wpos.push([(p[0] - center[0]) as f32, (p[1] - center[1]) as f32, 0.0]);
+                        }
+                        for i in 1..ring.len().saturating_sub(1) as u32 {
+                            widx.extend([start, start + i, start + i + 1]);
+                        }
+                    }
+                    visiaengine_io_tiles::TileGeom::Line(pts) => {
+                        let (color, width) = if class == "boundary" {
+                            ([0.30, 0.55, 0.55], 3.0)
+                        } else {
+                            ([0.95, 0.62, 0.18], 9.0)
+                        };
+                        for w in pts.windows(2) {
+                            strokes.push(StrokeSeg::new(
+                                [
+                                    (w[0][0] - center[0]) as f32,
+                                    (w[0][1] - center[1]) as f32,
+                                    0.0,
+                                ],
+                                [
+                                    (w[1][0] - center[0]) as f32,
+                                    (w[1][1] - center[1]) as f32,
+                                    0.0,
+                                ],
+                                color,
+                                width,
+                            ));
+                        }
+                    }
+                    visiaengine_io_tiles::TileGeom::Point(p) => {
+                        points.push(PointMark::new(
+                            [(p[0] - center[0]) as f32, (p[1] - center[1]) as f32, 0.0],
+                            [0.9, 0.25, 0.35],
+                            9.0,
+                        ));
+                    }
+                    visiaengine_io_tiles::TileGeom::MultiPoint(_) => {}
+                }
+            }
+        }
+        let count = ids.len() as u64;
+        self.tiles = Some(TileLayer {
+            set,
+            ids,
+            center,
+            wpos,
+            widx,
+            strokes,
+            points,
+            uploaded: None,
+        });
+        let _ = decoded;
+        Ok(count)
+    }
+
+    /// CAPI-29：喂视口 bbox（3857）→ visible→ensure→重建批几何（visible 集变化才重建）。
+    pub fn set_tile_view(
+        &mut self,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Result<u64, String> {
+        let Some(layer) = self.tiles.as_mut() else {
+            return Err("tile layer not mounted (load_mvt_dir first)".into());
+        };
+        if !(min_x.is_finite()
+            && min_y.is_finite()
+            && max_x.is_finite()
+            && max_y.is_finite()
+            && min_x < max_x
+            && min_y < max_y)
+        {
+            return Err("tile view domain (finite, min<max)".into());
+        }
+        let ids = visiaengine_io_tiles::TileSet::visible(
+            (min_x, min_y, max_x, max_y),
+            layer.ids.first().map(|i| i.z).unwrap_or(0),
+        );
+        let alive: Vec<visiaengine_io_tiles::TileId> =
+            ids.into_iter().filter(|i| layer.ids.contains(i)).collect();
+        let stats = layer
+            .set
+            .ensure(&alive)
+            .map_err(|e| format!("tiles ensure: {e:?}"))?;
+        let visible_count = alive.len() as u64;
+        let _ = stats;
+        layer.ids = layer.ids.clone(); // keep full known set (batch rebuild uses mounted set)
+        Ok(visible_count)
+    }
+
     /// CAPI-22：世界锚单标签（add_points 同谱=items 外管理域，位形可枚举、
     /// v0 删除不入 remove 面=明账）。**字体未载=显式拒**（数据口无休眠义，
     /// 与 GEO-25 样式休眠成对：样式休眠/口拒）。空文本/size 域外=拒零提交。
@@ -1334,6 +1521,7 @@ impl Engine {
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
             point_clouds: std::collections::HashMap::new(),
+            tiles: None,
         })
     }
 }

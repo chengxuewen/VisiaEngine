@@ -376,3 +376,16 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - **E206 用户三连实测修**（`3f3fccd`/`3690a34`/`9eceb18`）：①无参即退=C15 双模违约（窗桩）→E204 骨架真窗+Xvfb 存活探针；②拖拽滚轮无效=Redraw 每帧硬编码 tile_rig 重建+rig 非字段 →持久化 rig+orbit_delta/zoom；③单瓦片太简→**3×3 邻域**（每瓦片变化水斑/交错道路/边框描线=缝可见/中心 POI；顶点烘场景中心小值域 f32 单一世界帧）；滚轮根因=**正交缩放唯一定义 half-width 而 rig.zoom 从未被消费**（look_at 默认 zoom=1.0+渲染硬编码 tile_w 双叠加）
 - 基线：**259 passed · spec-trace 158↔158 · GATE-ABI 33/33（零 ABI 变变守住）· GATE-DOCS 六检 ✓ 32 卡 · ctest 24（机器实报）· 10 crate · 零新依赖 · ci 十段 rc=0 · 工作区 clean**
 - 待办：push（领先 11 笔）· Phase 1 瓦片带（C API+HTTP，白皮书日期承诺 2026-Q4）· 画廊 T3 人验
+
+## ⑤ Phase-1 瓦片流带基线（2026-09-24，计划 tile-streaming-phase1.md P1-S1–S4 全落）
+
+- 口面：CAPI-28 load_mvt_dir（FileSource 扫描 z 层；域 z≤30；返回=挂载瓦片数）+ CAPI-29 set_tile_view（3857 bbox 喂调度器；返=可见数；未挂载=拒）；30→**35 入口 minor=10 (0x0001000A)**；三面镜像全带（头 2 原型/hpp 薄转发/wasm loadMvtDir+setTileView+d.ts 名册/mirror abi 钉 0x…000A）
+- 引擎态：TileLayer 结构（set:TileSet + ids + center/wpos/widx/strokes/points + uploaded:Option，render-loop 集成=后带，`#[expect(dead_code)]` 注记）；load_mvt_dir 扫描+ensure+decoded→GeoTile 批建；set_tile_view 仅 ensure 不重建（批=挂载时一次性）
+- io-tiles 新件：`scheduler.rs` TileSet{visible 半开枚举+boundary snap/ensure 幂等装载+会计/decoded through-cache 二级}（IO-13/14）；HttpSource::new(root) ureq 实装（IO-15，target-gated：wasm=typed stub，getrandom/js 冲突 root-cause 修）；`tests/tile_set.rs` 6 门；`tests/http_source.rs` 3+1 ignored；source.rs stub 测试升格为 new()+域断言
+- 依赖：ureq 3.4.2 (rustls, default-features=false) → webpki-roots (CDLA-Permissive-2.0) → **deny.toml += CDLA-Permissive-2.0**
+- E206：load_tile 退役（dead code）+ FileSource/decode_tile 导入清理；load_viewport 经 scheduler 驱动（IO-13/14 消费面）
+- gate-abi.sh：33→35 期望数更新；web-mirror.mjs：abiVersion 0x0001000A + 名册 +2 桥
+- whitepaper：MVT Phase 1 兑现（从「在交付项」改「已交付」+WMS/WMTS 单独注记）；README 163 条/35 入口/32 卡同步
+- 教训入档：PIT-28（pen px vs anchor 世界坐标，三口 grep 律）· **PIT-31**（ffi_spec 域测试 cwd=crate 目录，相对路径陷阱）· **PIT-32**（ureq 全量依赖把 getrandom 拖进 wasm 目标——target-gate 修，wasm HttpSource=typed stub）
+- 基线：**270 passed · spec-trace 163↔163 · GATE-ABI 35/35 · GATE-DOCS ✓ E 31 件 · ci 十段 rc=0 · web MIRROR 3/3 · 9 crate · ureq 1 new-dep**
+- 余账：push（含本带 P1-S1..4 全笔）· render-loop 集成 TileLayer（E206 prove 形态入引擎主循环）· HTTP 源 C API 二波（CAPI-30 set_tile_source_http）· CJK 字体 S2 余账 · LAS 票据制候令

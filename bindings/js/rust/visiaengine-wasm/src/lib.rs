@@ -210,6 +210,29 @@ impl VisiaEngine {
         }
     }
 
+    // ── P1 瓦片镜像（CAPI-28/29 薄叶）──
+    /// CAPI-28 挂载 MVT 瓦片目录（wasm=路径语义受沙箱限；本地测试用）。
+    /// 返回=挂载瓦片数；负=拒。
+    #[wasm_bindgen(js_name = loadMvtDir)]
+    pub fn load_mvt_dir(&mut self, path: &str, z: u32) -> i32 {
+        match u8::try_from(z) {
+            Ok(z) => match self.inner.load_mvt_dir(path, z) {
+                Ok(n) => n as i32,
+                Err(_) => -1,
+            },
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-29 视口 bbox（3857 米）→ 调度器 visible→ensure。返回=可见数；负=拒。
+    #[wasm_bindgen(js_name = setTileView)]
+    pub fn set_tile_view(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> i32 {
+        match self.inner.set_tile_view(min_x, min_y, max_x, max_y) {
+            Ok(n) => n as i32,
+            Err(_) => -1,
+        }
+    }
+
     /// CAPI-26 点击导航：顶视拾实体优先→地面兜底；主 rig 保角保距换 target；dur_ms=0 瞬移。
     #[wasm_bindgen(js_name = navigateClick)]
     pub fn navigate_click(&mut self, px: f32, py: f32, dur_ms: u32) -> i32 {

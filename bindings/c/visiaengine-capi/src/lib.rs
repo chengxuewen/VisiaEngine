@@ -36,6 +36,7 @@ pub use ffi::{VeCameraPose, visiaengine_fly_state, visiaengine_fly_to};
 pub use ffi::{VeClipPlane, visiaengine_get_clips, visiaengine_set_clips}; // CAPI-20
 pub use ffi::{VeLabelSpec, visiaengine_add_label, visiaengine_load_font}; // CAPI-21/22
 pub use ffi::{VeMapView, visiaengine_get_camera, visiaengine_navigate_click, visiaengine_set_map}; // CAPI-25..27
+pub use ffi::{visiaengine_load_mvt_dir, visiaengine_set_tile_view}; // CAPI-28/29 瓦片两口
 
 #[doc(hidden)]
 pub mod test_util {

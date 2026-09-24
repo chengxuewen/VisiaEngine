@@ -59,6 +59,11 @@ public:
 
     // ── ⑤b 二波小地图（CAPI-25..27 薄转发；VeMapView=头 POD 直用，cfg=nullptr=关图）──
     int32_t set_map(const VeMapView *cfg) { return visiaengine_set_map(h_, cfg); }
+    /* CAPI-28/29：瓦片层（MVT 目录挂载 + 视口 bbox 喂给调度器）。薄转发。 */
+    int32_t load_mvt_dir(const char *path, uint32_t z) { return visiaengine_load_mvt_dir(h_, path, z); }
+    int32_t set_tile_view(double min_x, double min_y, double max_x, double max_y) {
+        return visiaengine_set_tile_view(h_, min_x, min_y, max_x, max_y);
+    }
     int32_t navigate_click(float px, float py, std::uint64_t dur_ms) {
         return visiaengine_navigate_click(h_, px, py, dur_ms);
     }

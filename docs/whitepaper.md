@@ -50,7 +50,7 @@ VisiaEngine 不追求游戏级的光影特效，而是专注于**清晰、精准
 - 所有图层、实体、标注在多维度间保持一致的交互逻辑。
 
 ### 3.2 一流的空间数据能力
-- **地图与 GIS**：内置 GeoJSON 与主流坐标投影支持；矢量瓦片（MVT）与 WMS/WMTS 为在交付项（tile-streaming band：Phase 0 = Rust-native foundation，2026-Q4；Phase 1 = C API + HTTP 源，2026-Q4——见路线图）。
+- **地图与 GIS**：内置 GeoJSON 与主流坐标投影支持；矢量瓦片（MVT）支持已交付（Phase 0 = Rust-native 解码/调度；Phase 1 = C API 两口 load_mvt_dir/set_tile_view + HTTP 源 [ureq]，本带兑现；WMS/WMTS 栅格 imagery 见路线图）。
 - **自动驾驶与仿真**：通过官方仿真插件支持 **OpenDRIVE (ODR)** 与 **OpenSCENARIO (OSC)**，自动生成道路和交通场景（Beta 提供，见路线图）。
 - **模型与 BIM**：高效加载 glTF、点云等标准格式，支持建筑信息模型的高保真轻量化展示。
 

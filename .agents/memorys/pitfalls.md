@@ -214,3 +214,17 @@
 - **解法**: 窗例出生带真窗+真交互（E204 骨架照搬 ~150 行）；交互相机=TileApp 持久化 rig 字段（Redraw 消费 self.rig，禁每帧重建）；演示内容按"可演示"标准（3×3 邻域+瓦片缝描线）非"可运行"标准（单瓦片）。
 - **验证**: Xvfb 存活探针（timeout 22s 击杀=常驻）+ 人验拖拽/滚轮实际生效。
 - **禁止**: 窗例无参路 println 后 Ok(());Redraw 路径内 new 硬编码 rig 覆盖交互态;把交互承诺写进注释当已交付。
+
+## PIT-31: ffi_spec 集成测试 cwd=crate 目录（2026-09-24）
+- **症状**: capi 新口 load_mvt_dir 集成测试返回 -1（VE_ERR_ARG），期望 9；同测试本地 `cargo test -p visiaengine-capi --test ffi_spec` 也红。
+- **根因**: cargo 集成测试（tests/ 目录）执行时 CWD=`bindings/c/visiaengine-capi/`（crate 根），相对路径 `resources/data/tiles` 解析到 `bindings/c/visiaengine-capi/resources/data/tiles`（不存在）。FileSource 路径参数是运行时字符串，非编译期宏。
+- **解法**: 测试内路径统一用 `env!("CARGO_MANIFEST_DIR")` 上溯仓库根：`let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR")); while !p.join("Cargo.lock").exists() { p.pop(); }`（ffi_spec.rs 内已有此模式可照抄）。
+- **验证**: `cargo test -p visiaengine-capi --test ffi_spec` 19/19 passed。
+- **禁止**: 测试内用相对路径 `resources/...` 指向仓库根 fixture（cwd 不确定）。
+
+## PIT-32: ureq 全量依赖把 getrandom 拖进 wasm32 目标（2026-09-24）
+- **症状**: 给 io-tiles 加 `ureq`（native-only HTTP 源）后，wasm32-unknown-unknown 目标编译失败：`the wasm*-unknown-unknown targets are not supported by getrandom, you may need to enable the "js" feature`——wasm 面本不该有 ureq，但 Cargo.toml 无条件依赖 = wasm 也编译它。
+- **根因**: ureq → rustls → ring → getrandom。getrandom 0.2/0.3 wasm32-unknown-unknown 需显式 `js` feature；rustls 树里没加，io-tiles wasm 消费者也没加 → 编译期 compile_error! 宏触发。
+- **解法**: `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]` 把 ureq 隔离到 native 段；wasm 侧给 `HttpSource` 加 typed stub（`load()` 返回 `Err(Unsupported)`）。wasm 真实 HTTP 需宿主 JS fetch + bytes 注入口（Phase 2 wasm demo 带）。
+- **验证**: `pixi run web-check rc=0`（MIRROR 3/3）。
+- **禁止**: 向 wasm 可见 crate 直接添加含 getrandom/ring/rustls 的无 target-gate 依赖。

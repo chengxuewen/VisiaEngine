@@ -10,9 +10,10 @@ use visiaengine::{
     visiaengine_destroy, visiaengine_entity_at, visiaengine_entity_count,
     visiaengine_entity_set_visible, visiaengine_entity_visible, visiaengine_fly_state,
     visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips, visiaengine_last_error,
-    visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_pcl, visiaengine_navigate_click,
-    visiaengine_on_input, visiaengine_pick, visiaengine_readback, visiaengine_remove_entity,
-    visiaengine_render, visiaengine_set_clips, visiaengine_set_map, visiaengine_viewport,
+    visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_mvt_dir, visiaengine_load_pcl,
+    visiaengine_navigate_click, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
+    visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips, visiaengine_set_map,
+    visiaengine_set_tile_view, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -279,11 +280,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_0009,
+        0x0001_000A,
         "major 1 · minor 6（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_0009, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_000A, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -299,7 +300,7 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        33,
+        35,
         "extern 入口计数（cfg-gated 行首式；24→26=CAPI-20 剖面双口）"
     );
     assert_eq!(
@@ -988,4 +989,57 @@ fn map_nav_pose_ports_domain_matrix() {
     );
     assert_eq!(visiaengine_render(ve), VE_OK, "关后旧单帧路通");
     assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-28
+#[test]
+fn load_mvt_dir_domain_and_mount() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // NULL path
+    assert_eq!(visiaengine_load_mvt_dir(ve, std::ptr::null(), 10), -1);
+    // z domain
+    let root = {
+        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        while !p.join("Cargo.lock").exists() {
+            assert!(p.pop());
+        }
+        p.join("resources/data/tiles")
+    };
+    let cpath = std::ffi::CString::new(root.to_str().unwrap()).unwrap();
+    assert_eq!(visiaengine_load_mvt_dir(ve, cpath.as_ptr(), 31), -1);
+    // nonexistent dir → error (0 or negative; engine maps to ARG)
+    let bad = std::ffi::CString::new("/nonexistent/tiles").unwrap();
+    let rc = visiaengine_load_mvt_dir(ve, bad.as_ptr(), 10);
+    assert!(rc <= 0, "nonexistent dir must not succeed");
+    // happy path: bundled fixture = 9 tiles
+    let rc = visiaengine_load_mvt_dir(ve, cpath.as_ptr(), 10);
+    assert_eq!(rc, 9, "3×3 fixture");
+}
+
+// spec: CAPI-29
+#[test]
+fn set_tile_view_domain_and_visibility() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // not mounted → reject
+    let rc = visiaengine_set_tile_view(ve, -2.0e7, 1.9e7, -1.9e7, 2.0e7);
+    assert!(rc < 0, "unmounted view must reject");
+    // mount then feed (absolute repo-root path; test cwd = crate dir)
+    let root = {
+        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        while !p.join("Cargo.lock").exists() {
+            assert!(p.pop());
+        }
+        p.join("resources/data/tiles")
+    };
+    let cpath = std::ffi::CString::new(root.to_str().unwrap()).unwrap();
+    assert_eq!(visiaengine_load_mvt_dir(ve, cpath.as_ptr(), 10), 9);
+    // domain: min>=max reject
+    assert!(visiaengine_set_tile_view(ve, 2.0e7, 1.9e7, -2.0e7, 2.0e7) < 0);
+    // non-finite reject
+    assert!(visiaengine_set_tile_view(ve, f64::NAN, 1.9e7, -1.9e7, 2.0e7) < 0);
+    // full 3×3 bbox = 9 visible
+    let rc = visiaengine_set_tile_view(ve, -2.004e7, 1.995e7, -1.995e7, 2.004e7);
+    assert_eq!(rc, 9, "full neighborhood visible");
 }

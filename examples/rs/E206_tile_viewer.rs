@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use visiaengine_io_tiles::{FileSource, GeoTile, TileGeom, TileId, TileSource, decode_tile};
+use visiaengine_io_tiles::{FileSource, GeoTile, TileGeom, TileId};
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, PointMark, PointTableDesc, RenderBackend,
     StrokeSeg, StrokeTableDesc, Viewport,
@@ -36,22 +36,28 @@ fn ident() -> [[f64; 4]; 4] {
     ]
 }
 
-/// 装载+解码+映射一条龙（FileSource→bytes→MvtTile→GeoTile）。
-fn load_tile(root: &str, id: TileId) -> Result<GeoTile, String> {
-    let src = FileSource::new(root);
-    let bytes = src.load(id.z, id.x, id.y).map_err(|e| e.to_string())?;
-    let decoded = decode_tile(&bytes).map_err(|e| e.to_string())?;
-    Ok(GeoTile::from_layers(id, &decoded.layers))
-}
-
-/// 3×3 邻域装载（z10，x=0..2 y=0..2——捆绑 fixture 目录树）。
-fn load_neighborhood(root: &str) -> Result<Vec<GeoTile>, String> {
+/// 视口驱动装载（Phase 1 D1）：TileSet::visible 枚举 3×3 bbox → ensure → 解码。
+/// 硬编码 3×3 循环退役——瓦片集合现在是调度器从 bbox 推导的（IO-13/14 消费面）。
+fn load_viewport(root: &str) -> Result<Vec<GeoTile>, String> {
+    let mut set = visiaengine_io_tiles::TileSet::new(Box::new(FileSource::new(root)))
+        .map_err(|e| e.to_string())?;
+    // bbox = 九瓦片并集（北西角 tile(0,0) 的 max 角 → 南东角 tile(2,2) 的 min 角）。
+    let nw = TileId::new(10, 0, 0).ok_or("tile id")?;
+    let se = TileId::new(10, 2, 2).ok_or("tile id")?;
+    let (min_x, _, _, max_y) = nw.bbox();
+    let (_, min_y, max_x, _) = se.bbox();
+    let ids = visiaengine_io_tiles::TileSet::visible((min_x, min_y, max_x, max_y), 10);
+    let stats = set.ensure(&ids).map_err(|e| e.to_string())?;
+    println!(
+        "scheduler: visible={} loaded={} cached={}",
+        ids.len(),
+        stats.loaded,
+        stats.cached
+    );
     let mut out = Vec::new();
-    for dx in 0..3u32 {
-        for dy in 0..3u32 {
-            let id = TileId::new(10, dx, dy).ok_or("tile id")?;
-            out.push(load_tile(root, id).map_err(|e| format!("tile {dx},{dy}: {e}"))?);
-        }
+    for id in &ids {
+        let decoded = set.decoded(id).ok_or("decode-through-cache")?;
+        out.push(GeoTile::from_layers(*id, &decoded.layers));
     }
     Ok(out)
 }
@@ -246,7 +252,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../resources/data/tiles");
-    let tiles = load_neighborhood(root)?;
+    let tiles = load_viewport(root)?;
     println!("loaded {} tiles", tiles.len());
 
     if frames.is_some() {

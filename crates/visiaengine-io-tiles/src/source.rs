@@ -26,7 +26,7 @@ pub enum SourceError {
 /// frames; a thread pool would be YAGNI for file sources). The trait is the
 /// seam where an async HTTP implementation lands in Phase 1 without touching
 /// the scheduler.
-pub trait TileSource {
+pub trait TileSource: Send {
     fn load(&self, z: u8, x: u32, y: u32) -> Result<Vec<u8>, SourceError>;
 }
 
@@ -59,15 +59,62 @@ impl TileSource for FileSource {
     }
 }
 
-/// HTTP placeholder — Phase 1. Constructible but every load fails with a typed
-/// error (no silent dead-ends; the scheduler can probe capability).
+/// HTTP tile source (Phase 1): URL template `{root}/{z}/{x}/{y}.mvt`.
+/// Native = ureq (sync, rustls). wasm = typed stub (wasm fetch is host-driven:
+/// the JS side fetches bytes and feeds the engine through add-; Phase 1 wasm
+/// surfacing ships with the demo band).
+#[cfg(not(target_arch = "wasm32"))]
+pub struct HttpSource {
+    root: String,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl HttpSource {
+    #[must_use]
+    pub fn new(root: impl Into<String>) -> Self {
+        Self { root: root.into() }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl TileSource for HttpSource {
+    fn load(&self, z: u8, x: u32, y: u32) -> Result<Vec<u8>, SourceError> {
+        let url = format!("{}/{}/{}/{}.mvt", self.root, z, x, y);
+        let mut resp = ureq::get(&url).call().map_err(|e| match e {
+            ureq::Error::StatusCode(code) => SourceError::NotFound(format!("{url} (HTTP {code})")),
+            other => SourceError::Io(format!("{url}: {other}")),
+        })?;
+        let mut buf = Vec::new();
+        {
+            use std::io::Read;
+            resp.body_mut()
+                .as_reader()
+                .read_to_end(&mut buf)
+                .map_err(|e| SourceError::Io(format!("{url}: {e}")))?;
+        }
+        Ok(buf)
+    }
+}
+
+/// wasm: typed stub (fetch is host-driven; bytes enter via FileSource-like
+/// in-memory source from JS glue).
+#[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct HttpSource;
 
+#[cfg(target_arch = "wasm32")]
+impl HttpSource {
+    #[must_use]
+    pub fn new(_root: impl Into<String>) -> Self {
+        Self
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
 impl TileSource for HttpSource {
     fn load(&self, _z: u8, _x: u32, _y: u32) -> Result<Vec<u8>, SourceError> {
         Err(SourceError::Unsupported(
-            "HTTP tile fetching lands in Phase 1",
+            "wasm tile fetch = host-driven (Phase 1 wasm demo)",
         ))
     }
 }
@@ -151,9 +198,11 @@ mod source_tests {
 
     // spec: IO-12
     #[test]
-    fn http_source_is_typed_stub() {
-        let err = HttpSource.load(0, 0, 0).unwrap_err();
-        assert!(matches!(err, SourceError::Unsupported(_)));
+    fn http_source_rejects_before_mount() {
+        // Phase 1: real source; unconfigured (empty root) load still types an error
+        let src = HttpSource::new("");
+        let err = src.load(0, 0, 0).unwrap_err();
+        assert!(matches!(err, SourceError::NotFound(_) | SourceError::Io(_)));
     }
 
     // spec: IO-12

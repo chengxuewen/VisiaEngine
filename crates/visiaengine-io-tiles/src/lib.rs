@@ -7,10 +7,12 @@
 
 pub mod geometry;
 pub mod mvt;
+pub mod scheduler;
 pub mod source;
 pub mod tiles;
 
 pub use geometry::{GeoTile, TileFeature, TileGeom};
 pub use mvt::{MvtError, MvtFeature, MvtLayer, MvtTile, MvtValue, decode_tile};
+pub use scheduler::{EnsureStats, TileSet, TilesError};
 pub use source::{FileSource, HttpSource, LruCache, SourceError, TileSource};
 pub use tiles::{TileId, WORLD_EXTENT};

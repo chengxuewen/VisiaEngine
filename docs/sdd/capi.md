@@ -76,3 +76,9 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-27: 主相机位姿读回（⑤b 二波）
 `visiaengine_get_camera(ve, VeCameraPose *out)`：主 rig 全量读出（复用 VeCameraPose 结构，方向=out 参数——与 fly_to 的 in 职分离清晰 [C15 复核：一次调用一职]）；NULL/struct_size 门=-1。**到达断言/宿主 HUD 面**：fly 完成后 out==目标位姿逐位（端点精确 REND-16 谱）；idle 读当前稳态。wasm `getCameraPose()→Float64Array[6]`（target3+yaw/pitch/dist）。
+
+## CAPI-28: 瓦片目录挂载（load_mvt_dir，P1）
+`visiaengine_load_mvt_dir(ve, path, z) -> i32`：挂载 FileSource 瓦片树 `{path}/{z}/{x}/{y}.mvt`（扫描 z 层实际存在瓦片）。返回=挂载瓦片数（>0）；0=目录内无瓦片；负=VE_ERR_ARG（path NULL/非 UTF-8/z>30）或 STATE。引擎态=tiles:Option<TileLayer>（None=渲染零触碰=旧路逐位）；批几何=场景中心小值域 f32 帧（PIT-8 域纪律）。
+
+## CAPI-29: 视口喂给（set_tile_view，P1）
+`visiaengine_set_tile_view(ve, min_x,min_y,max_x,max_y) -> i32`：3857 米 bbox 喂调度器（IO-13 枚举+IO-14 ensure）。返回=可见瓦片数；负=拒（未挂载/非有限/min≥max）。可见集为挂载集子集（不存在的瓦片跳过不报错=Partial 覆盖语义）。批重建=渲染期上传缓存（uploaded:Option 防重传）。
