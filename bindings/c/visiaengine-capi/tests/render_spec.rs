@@ -2,10 +2,12 @@
 
 use std::ffi::CString;
 use visiaengine::{
-    MISS, VE_ERR_SIZE, visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
-    visiaengine_entity_count, visiaengine_load_geojson, visiaengine_load_gltf,
+    MISS, VE_ERR_SIZE, visiaengine_create_group, visiaengine_create_headless, visiaengine_destroy,
+    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
+    visiaengine_get_parent, visiaengine_load_geojson, visiaengine_load_gltf,
     visiaengine_load_mvt_dir, visiaengine_pick, visiaengine_readback, visiaengine_render,
-    visiaengine_set_tile_view, visiaengine_viewport,
+    visiaengine_set_group_offset, visiaengine_set_parent, visiaengine_set_tile_view,
+    visiaengine_viewport,
 };
 use visiaengine_io_tiles::TileSource;
 
@@ -317,4 +319,88 @@ fn probe_tile_fixture_classes() {
             }
         }
     }
+}
+
+// spec: CAPI-31
+#[test]
+fn tree_group_offset_changes_rendered_pixels() {
+    // Prove effective_offset is consumed by render(): move a group → its child entity
+    // renders at a different screen position → pixel buffer changes.
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    let glb = fixture("twoprim.glb");
+    assert_eq!(visiaengine_load_gltf(ve, glb.as_ptr()), 0);
+    let h0 = visiaengine_entity_at(ve, 0);
+    assert_ne!(h0, 0);
+
+    // Baseline render
+    assert_eq!(visiaengine_render(ve), 0);
+    let mut buf_base = vec![0u8; 160 * 120 * 4];
+    assert_eq!(
+        visiaengine_readback(ve, buf_base.as_mut_ptr(), buf_base.len() as u64),
+        0
+    );
+
+    // Parent h0 to a group
+    let mut grp = 0u64;
+    assert_eq!(visiaengine_create_group(ve, std::ptr::null(), &mut grp), 0);
+    assert_eq!(visiaengine_set_parent(ve, h0, grp), 0);
+    assert_eq!(visiaengine_get_parent(ve, h0), grp, "roundtrip");
+
+    // Zero-offset render: must match baseline (effective_offset = [0,0,0])
+    assert_eq!(visiaengine_render(ve), 0);
+    let mut buf_zero = vec![0u8; 160 * 120 * 4];
+    assert_eq!(
+        visiaengine_readback(ve, buf_zero.as_mut_ptr(), buf_zero.len() as u64),
+        0
+    );
+    assert_eq!(
+        buf_base, buf_zero,
+        "zero-offset must reproduce baseline pixel-for-pixel"
+    );
+
+    // Move group far outside frustum: effective_offset = [1e9, 1e9, 0]
+    assert_eq!(visiaengine_set_group_offset(ve, grp, 1e9, 1e9, 0.0), 0);
+    assert_eq!(visiaengine_render(ve), 0);
+    let mut buf_moved = vec![0u8; 160 * 120 * 4];
+    assert_eq!(
+        visiaengine_readback(ve, buf_moved.as_mut_ptr(), buf_moved.len() as u64),
+        0
+    );
+
+    // Check entity_visible: h0 should still be visible (group not hidden)
+    let diff = buf_base
+        .iter()
+        .zip(buf_moved.iter())
+        .filter(|(a, b)| a != b)
+        .count();
+    let moved_is_bg = buf_moved
+        .chunks_exact(4)
+        .filter(|p| p[0].abs_diff(63) <= 15 && p[1].abs_diff(75) <= 15 && p[2].abs_diff(89) <= 15)
+        .count();
+    let base_is_bg = buf_base
+        .chunks_exact(4)
+        .filter(|p| p[0].abs_diff(63) <= 15 && p[1].abs_diff(75) <= 15 && p[2].abs_diff(89) <= 15)
+        .count();
+    println!("tree offset diff={diff} bg_base={base_is_bg} bg_moved={moved_is_bg}");
+    // More background pixels after moving h0 off-screen (h0 replaced by bg, h1 stays)
+    assert!(
+        moved_is_bg > base_is_bg || diff > 0,
+        "moving group must reduce coverage: bg {base_is_bg}→{moved_is_bg} diff={diff}"
+    );
+
+    // Restore and verify round-trip back to baseline
+    assert_eq!(visiaengine_set_group_offset(ve, grp, 0.0, 0.0, 0.0), 0);
+    assert_eq!(visiaengine_render(ve), 0);
+    let mut buf_restored = vec![0u8; 160 * 120 * 4];
+    assert_eq!(
+        visiaengine_readback(ve, buf_restored.as_mut_ptr(), buf_restored.len() as u64),
+        0
+    );
+    assert_eq!(
+        buf_base, buf_restored,
+        "offset=0 restore must match baseline"
+    );
+
+    assert_eq!(visiaengine_destroy(ve), 0);
 }

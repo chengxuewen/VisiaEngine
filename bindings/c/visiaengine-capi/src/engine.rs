@@ -1184,10 +1184,10 @@ impl Engine {
     }
 
     pub fn set_visible(&mut self, entity: u64, visible: bool) -> Result<(), String> {
-        // B2: domain extended to point-cloud entities (REND-38 needs hidden filtering
-        // for clouds; CAPI-13 semantic "render/pick filtered, enum domain unchanged").
+        // B2 + S2: domain = items | point_clouds | scene-alive (group nodes, S3 tree entities).
         if !self.items.iter().any(|i| enc_entity(i.entity) == entity)
             && !self.point_clouds.contains_key(&entity)
+            && !self.scene.is_alive(dec_entity(entity))
         {
             return Err(format!("unknown entity bits {entity:#018x}"));
         }
@@ -1201,7 +1201,7 @@ impl Engine {
     /// CAPI-14: 显隐查询（未知位形=None，与 setter 同域）。
     #[must_use]
     pub fn is_visible(&self, entity: u64) -> Option<bool> {
-        if !self.items.iter().any(|i| enc_entity(i.entity) == entity) {
+        if !self.scene.is_alive(dec_entity(entity)) {
             return None;
         }
         Some(!self.is_hidden(dec_entity(entity)))

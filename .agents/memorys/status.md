@@ -389,3 +389,12 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 教训入档：PIT-28（pen px vs anchor 世界坐标，三口 grep 律）· **PIT-31**（ffi_spec 域测试 cwd=crate 目录，相对路径陷阱）· **PIT-32**（ureq 全量依赖把 getrandom 拖进 wasm 目标——target-gate 修，wasm HttpSource=typed stub）
 - 基线：**270 passed · spec-trace 163↔163 · GATE-ABI 35/35 · GATE-DOCS ✓ E 31 件 · ci 十段 rc=0 · web MIRROR 3/3 · 9 crate · ureq 1 new-dep**
 - 余账：push（含本带 P1-S1..4 全笔）· render-loop 集成 TileLayer（E206 prove 形态入引擎主循环）· HTTP 源 C API 二波（CAPI-30 set_tile_source_http）· CJK 字体 S2 余账 · LAS 票据制候令
+
+## ⑥ 场景树带基线（2026-09-24，计划 scene-tree-band.md S1-S4）
+
+- 口面：CAPI-30 create_group（out_entity 谱）+ CAPI-31 set_parent（0=root，环/深度≤16 检测）+ CAPI-32 get_parent + CAPI-33 set_group_offset（finite 门）+ CAPI-34 get_group_offset；35→**40 入口 minor=11 (0x0001000B)**；三面镜像全带（头 5 原型/hpp 5 薄转发/wasm 5 桥+d.ts 名册/mirror abi 钉 0x…000B）
+- 引擎态：Slot 新增 parent:Option<EntityId>+offset:[f64;3]（core scene.rs，Component::Group 纯标记变体，slot_of 零成本）；Engine::new_scene（预占 slot0gen0→handle 永非零）；is_hidden（沿祖先链 walk，树感知显隐）；render 循环 origin=it.origin+scene.effective_offset(entity)（CORE-21 累加 O≤16）
+- **设计决策**：旋转/缩放继承=触发制（YAGNI：主流 GIS 引擎=仅显隐+平移）；despawn group→子实体自动摘回根（不级联删除）
+- 教训：PIT-31（ffi_spec 测试 cwd=crate 目录，相对路径陷阱）**第二见**（load_mvt_dir + set_group_offset 域测试均触发）· **PIT-33**（场景树 handle=0 语义冲突：slot0gen0 合法 vs parent=0=root 哨兵；修法=new_scene 预占 slot 0 + set_parent parent==0 特判）
+- 基线：**287 passed · spec-trace 173↔173 · GATE-ABI 40/40 · GATE-DOCS ✓ E 31 · ctest 33 条 · ci 9/10（audit=PIT-7 第 11 见 TLS 持久故障非瞬抖）· web MIRROR ✓ · 9 crate**
+- 余账：push（领先含本带 S1/S2/S3 三笔+⑤ P1 五笔=约 11 笔）· 旋转继承=有需求再开 · 场景树名字查询（node_names 存 engine.rs，无 C 查询口）· CJK 字体 S2 余账 · LAS 票据制
