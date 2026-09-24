@@ -50,3 +50,26 @@ despawn 腾出的槽位由后续 spawn 复用：`slot` 相同、`generation` 严
 
 ## CORE-16: 色彩空间换算口（sRGB↔线性）
 `srgb_to_linear/linear_to_srgb([f32;4]) -> [f32;4]`（IEC 61966-2-1 分段精确式：阈值 0.04045、线性段 /12.92、幂段 ((c+0.055)/1.055)^2.4；端点 0/1 逐位精确、alpha 恒直通）。契约分工：宿主/CSS 惯例值=sRGB 编码，引擎光照域=线性；本口管标量半边，纹理/帧目标由 Srgb 格式硬件半边（render-wgpu）。往返 ≤2e-7、256 级单调。
+
+## CORE-17: 组节点创建（spawn_group）
+`Scene::spawn_group() → EntityId`：分配新槽位并写入 `Component::Group`。组实体无网格、不参与渲染/拾取，仅作为树容器承载 offset 继承与显隐聚合。`alive_ids()` 返回的列表中组实体与普通实体同列（消费方按 `Component::Group` 过滤）。
+
+## CORE-18: 父子关系设置（set_parent）
+`Scene::set_parent(child, parent: Option<EntityId>) → Result<(), CoreError>`：
+- parent=Some(g) 要求 g 携带 `Component::Group`（非 Group=MissingComponent 拒绝，零部分写）；
+- **环检测**：从 g 向上走祖先链，若遇到 child=拒绝（NotFound）；链长 > MAX_TREE_DEPTH(=16)=拒绝（防死循环）；
+- parent=None=摘离至根（Slot.parent 归 None，保留 child 自身 offset）；
+- child 已死亡=NotFound；child 存活但无组件=合法（纯容器可挂任何实体，包括子 Group）。
+**despawn 语义**：删除 g 后，其直接子实体 parent 自动重置 None（摘到根，不级联删除）。
+
+## CORE-19: 父查询（get_parent）
+`Scene::get_parent(id) → Result<Option<EntityId>, CoreError>`：id 死亡=NotFound；存活=Some(parent) 或 None（根）。
+
+## CORE-20: 组偏移读写（group_offset / set_group_offset）
+`Scene::set_group_offset(g, offset: [f64; 3]) → Result<(), CoreError>`：g 必须携带 Component::Group（否则 MissingComponent 拒绝）；offset 为世界米平移量，不触发子实体脏标记（渲染期实时累加，见 CORE-21）。
+`Scene::group_offset(g) → Result<[f64; 3], CoreError>`：读 g 自身偏移（非累加）。
+
+## CORE-21: 有效偏移累加（effective_offset）
+`Scene::effective_offset(id) → [f64; 3]`：沿 parent 链从 id 累加各级 `Slot.offset`，至根（parent=None）或 MAX_TREE_DEPTH 截断。O(depth ≤16)。死链中间段跳过（slot_of 失败=break，不报错——容许宿主并发修改边缘）。
+消费方（render 循环 / pick / is_hidden）用 `draw_origin = it.origin + scene.effective_offset(it.entity)` 代替 `it.origin`。
+`Scene::is_descendant_of(d, a) → bool`：d 或 d 的某祖先 = a（d==a 返回 true，自反性）。
