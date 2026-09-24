@@ -240,6 +240,8 @@ struct TileApp {
     config: Option<wgpu::SurfaceConfiguration>,
     window: Option<Arc<Window>>,
     dragging: Option<(f64, f64)>,
+    /// 交互相机（拖拽=orbit 绕瓦片中心，滚轮=zoom+dist）。渲染消费本字段。
+    rig: CameraRig,
     gt: GeoTile,
     mesh: Option<visiaengine_render::MeshId>,
     mat: Option<visiaengine_render::MaterialId>,
@@ -447,14 +449,29 @@ impl ApplicationHandler for TileApp {
                 self.dragging = matches!(state, ElementState::Pressed).then_some((-1.0, -1.0));
             }
             WindowEvent::CursorMoved { position, .. } => {
-                if let Some((lx, _ly)) = self.dragging {
-                    let _x = position.x; // 轨道=绕瓦片中心（origin 锚定）；交互相机=Phase 1 巡览
-                    self.dragging = Some((position.x, position.y));
-                    let _ = lx;
+                if let Some((lx, ly)) = self.dragging {
+                    let (x, y) = (position.x, position.y);
+                    if lx >= 0.0 {
+                        // 轨道绕瓦片中心（D7 origin 锚定）。
+                        self.rig.orbit_delta((x - lx) * 0.006, (y - ly) * 0.006);
+                        if let Some(w) = &self.window {
+                            w.request_redraw();
+                        }
+                    }
+                    self.dragging = Some((x, y));
                 }
             }
-            WindowEvent::MouseWheel { .. } => {
-                // 缩放面同上：Phase 0 静态帧（瓦片内容不随交互重建——避免逐帧重上传）。
+            WindowEvent::MouseWheel { delta, .. } => {
+                let d = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => -f64::from(y) * 40.0,
+                    winit::event::MouseScrollDelta::PixelDelta(p) => -p.y,
+                };
+                let f = 1.0 - d * 0.0012;
+                self.rig.zoom = (self.rig.zoom * f).clamp(2.0, 200_000.0);
+                self.rig.dist = (self.rig.dist * f).clamp(10.0, 2_000_000.0);
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
             }
             WindowEvent::RedrawRequested => {
                 let (Some(core), Some(surface), Some(config)) =
@@ -469,10 +486,10 @@ impl ApplicationHandler for TileApp {
                     event_loop.exit();
                     return;
                 };
-                let rig = tile_rig(&self.gt);
+                let rig = self.rig;
                 let tile_w = (self.gt.id.bbox().2 - self.gt.id.bbox().0) as f32;
-                let near = (f64::from(tile_w) * 0.01) as f32;
-                let far = (f64::from(tile_w) * 30.0) as f32;
+                let near = (self.rig.dist * 0.01) as f32;
+                let far = (self.rig.dist * 30.0) as f32;
                 let Some(proj) = rig.ortho_frame(
                     f64::from(tile_w) as f32,
                     config.width.max(1) as f32,
@@ -551,12 +568,14 @@ impl ApplicationHandler for TileApp {
 fn run_window(gt: GeoTile) -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
+    let rig = tile_rig(&gt);
     let mut app = TileApp {
         core: None,
         surface: None,
         config: None,
         window: None,
         dragging: None,
+        rig,
         gt,
         mesh: None,
         mat: None,
