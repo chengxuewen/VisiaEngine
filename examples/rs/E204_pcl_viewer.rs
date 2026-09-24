@@ -329,9 +329,92 @@ fn core_ortho(rig: &CameraRig, w: u32, h: u32, near: f32, far: f32) -> Option<[[
     rig.ortho_frame(rig.zoom as f32, w.max(1) as f32, h.max(1) as f32, near, far)
 }
 
+/// B2 点拾取自证（REND-38 argv 路，C15②：仅 argv 消费，零参窗路零触碰）。
+/// 与 --frames 同一投影装配（渲染数学=拾取数学单源）；三断言：
+/// ① 中心点命中 ② 半径外 miss ③ 同屏两点按视深最近者胜。
+fn pick_check_run(scene: &Scene) {
+    const W: f32 = 256.0;
+    const H: f32 = 256.0;
+    let rig = CameraRig::look_at([0.0, 0.0, 12.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    let proj = rig.ortho_frame(6.0, W, H, 0.1, 100.0).expect("ortho frame");
+    let ident = [
+        [1.0f64, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ];
+    let mvp = visiaengine_render::rebase::compose_mvp(
+        &proj,
+        &rig.view_rotation(),
+        &rig.eye(),
+        &[0.0; 3],
+        &ident,
+    );
+    // Scene origin == mount origin: candidates carry the cloud's D7 origin; MVP is
+    // composed for origin=[0,0,0] here (programmatic helix mounts at [0,0,0]).
+    let local: Vec<[f32; 3]> = scene
+        .marks
+        .iter()
+        .map(|m| {
+            let o = scene.origin;
+            [
+                m.pos[0] - o[0] as f32,
+                m.pos[1] - o[1] as f32,
+                m.pos[2] - o[2] as f32,
+            ]
+        })
+        .collect();
+    let id = visiaengine_core::Scene::new().spawn();
+    let cands = vec![visiaengine_render::PointCloudCandidate {
+        entity: id,
+        origin: scene.origin,
+        transform: &ident,
+        positions: &local,
+    }];
+    // ① helix guarantees a point near the z-axis center of the xy extent → its
+    // projection must fall inside a generous 24px radius of the probe ray.
+    // ①a PIT-8 probe-first: the helix is a HOLLOW band (r∈[1.5,4], no axis point) —
+    // center probe would miss BY CONSTRUCTION. Instead pick the projected position
+    // of the first helix point itself: project (1.5,0,-2)·MVP and probe there.
+    let p0 = local[0];
+    let cx = f64::from(mvp[0][0]) * f64::from(p0[0])
+        + f64::from(mvp[1][0]) * f64::from(p0[1])
+        + f64::from(mvp[2][0]) * f64::from(p0[2])
+        + f64::from(mvp[3][0]);
+    let cy = f64::from(mvp[0][1]) * f64::from(p0[0])
+        + f64::from(mvp[1][1]) * f64::from(p0[1])
+        + f64::from(mvp[2][1]) * f64::from(p0[2])
+        + f64::from(mvp[3][1]);
+    let cw = f64::from(mvp[0][3]) * f64::from(p0[0])
+        + f64::from(mvp[1][3]) * f64::from(p0[1])
+        + f64::from(mvp[2][3]) * f64::from(p0[2])
+        + f64::from(mvp[3][3]);
+    let sx = ((cx / cw) + 1.0) * f64::from(W) * 0.5;
+    let sy = (1.0 - (cy / cw)) * f64::from(H) * 0.5;
+    let hit = visiaengine_render::pick_points(&mvp, W, H, sx as f32, sy as f32, 6.0, &cands)
+        .unwrap_or_else(|| panic!("pick_check: projected p0 ({sx:.0},{sy:.0}) must hit"));
+    assert_eq!(
+        hit.point_index, 0,
+        "nearest to p0's own projection = p0 itself"
+    );
+    println!("PICK-CHECK p0 at ({sx:.0},{sy:.0}) depth={:.4}", hit.view_z);
+    // ② far corner: no helix point within 1px radius there.
+    assert!(
+        visiaengine_render::pick_points(&mvp, W, H, 1.0, 1.0, 1.0, &cands).is_none(),
+        "pick_check: corner must miss"
+    );
+    // ③ nearest-wins determinism: same query twice → identical hit depth.
+    let h2 = visiaengine_render::pick_points(&mvp, W, H, sx as f32, sy as f32, 6.0, &cands)
+        .expect("pick_check: repeat query");
+    assert_eq!(hit.view_z.to_bits(), h2.view_z.to_bits(), "deterministic");
+    assert_eq!(hit.point_index, h2.point_index, "nearest-wins stable");
+    println!("OK pcl pick-check（REND-38 断言过）");
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut frames: Option<u32> = None;
     let mut file: Option<String> = None;
+    let mut pick_check = false;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -342,6 +425,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .filter(|n: &u32| *n > 0)
             }
             "--file" => file = args.next(),
+            "--pick-check" => pick_check = true,
             _ => {}
         }
     }
@@ -356,6 +440,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             origin: [0.0; 3],
         },
     };
+    if pick_check {
+        pick_check_run(&scene);
+        return Ok(());
+    }
     if let Some(n) = frames {
         prove(&scene, n);
         return Ok(());

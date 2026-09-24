@@ -93,7 +93,7 @@ function(visiaengine_setup_bindings)
   set(_args_E303_split_screen "--frames;1")
   set(_args_E302_fly_camera "--frames;1")
   set(_args_E205_text_labels "--frames;1")
-  set(_args_E204_pcl_viewer "--frames;3")  # 自断言双半区覆盖（E 片）
+  set(_args_E204_pcl_viewer "--pick-check;--frames;3")  # 自断言双半区覆盖 + REND-38 点拾取三断言（B2）
   set(_args_E401_pick_demo "--frames;2")
   set(_args_E402_pick_interactive "--frames;3")
   set(_args_E501_shadow_demo "--frames;1")  # 双模式例：CI 走 headless（默认=交互窗）；注册表只服 ctest

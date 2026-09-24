@@ -115,3 +115,9 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-37: 导航数学两件（⑤b 二波）
 `ray_ground_intersect(Ray)→Option<Vec3>`：地面平面 z=0 求交（**导航语义非拾取**——实体命中走 ray-triangle REND-21/22 域）；域内拒三形=`d.z≥−1e-9`（水平/上向/近水平 t 爆炸护栏）∧ `t≤0`（背向/地下出发）∧ 非有限。`ViewportRect::from_frac(fx,fy,fw,fh,S,H)`：比例表→像素 rect（set_map 宿主语言=比例、resize 自动跟的几何底座）；策略钉=边 round、右/下缘 min(surface 界)、尺寸下限保 1（scissor max(1) 合流）、frac 脏值 clamp 域不 panic。**共边无缝律**：邻片 `x+width==next.x`（round 半跨一致构造）——E816/canary 依赖。
+
+## REND-38: 点云屏幕空间拾取（B2）
+`pick_points(mvp,w,h,px,py,r_px,cands)→Option<PointHit>`：屏幕空间最近点谓词——留存位置经渲染同源 MVP（`compose_mvp` D7 链，**局部点直投**=origin−eye 平移已在矩阵内，谓词侧零二次叠加）投影至屏幕像素域，`r_px` 半径内最近者按视深（NDC z，RH [0,1] 域 PIT-5 同款）竞争；越深域（背后/far 外）与 `cw≤0` 不参选。命中返回 `(entity, screen_d2, view_z, point_index)`——point_index 供调用方 clip 逐点 `keeps` 过滤（与 mesh 路逐点语义同谱，非整云粗筛）。**mesh 优先**：引擎 pick 路 mesh 未中才进点云（REND-39 canary 构造保证）。半径默认 6px（REND-30 `radius_px` 同屏幕像素域）。留存面：引擎侧每点云实体保留 `positions`（marks 原本 GPU 表收编即弃）；`set_visible` 域扩展到点云实体（CAPI-13「render/pick 过滤」语义补全）。ponytail 注记：线性扫描；hover 节流=升级位 1，BVH=升级位 2。
+
+## REND-39: 拾取域扩展零回归（B2）
+点拾取落地后 mesh 拾取行为**逐字节不变**（mesh 优先序 + 点云只在 mesh 全 miss 后兜底）——既有 pick 测试族（E401/E402/golden_pick_window_mirror）即永装 canary；`PointHit` 为独立类型零触 `PickHit`。点云 `set_visible(false)` 后 render/pick 双面消失、`is_visible` 读回一致（CAPI-13 域扩展注记）。

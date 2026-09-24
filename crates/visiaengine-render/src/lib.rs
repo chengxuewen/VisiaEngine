@@ -20,4 +20,6 @@ pub use contract::{
     PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc, TableId,
     TextureDesc, TextureId, Viewport, ViewportRect, clip_to_local,
 };
-pub use picking::{MeshCandidate, PickHit, pick_meshes};
+pub use picking::{
+    MeshCandidate, PickHit, PointCloudCandidate, PointHit, pick_meshes, pick_points,
+};

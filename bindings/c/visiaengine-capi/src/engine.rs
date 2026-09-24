@@ -8,9 +8,13 @@ use crate::ffi::enc_entity; // CAPI-10 反标键=宿主可见位形（CAPI-08 �
 use visiaengine_io_text::GLYPH_ATLAS_PX;
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MaterialId, MeshCandidate, MeshDesc,
-    MeshId, PointMark, PointTableDesc, RenderBackend, StrokeSeg, StrokeTableDesc, Viewport,
-    ViewportRect, pick_meshes, ray_ground_intersect, screen_to_ray_ortho, screen_to_ray_persp,
+    MeshId, PointCloudCandidate, PointMark, PointTableDesc, RenderBackend, StrokeSeg,
+    StrokeTableDesc, Viewport, ViewportRect, pick_meshes, pick_points, ray_ground_intersect,
+    rebase::compose_mvp, screen_to_ray_ortho, screen_to_ray_persp,
 };
+
+/// B2 点拾取屏幕半径（REND-38 默认值；同 REND-30 radius_px 屏幕像素域）。
+const PICK_RADIUS_PX: f32 = 6.0;
 use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::MultiClearPolicy;
 use visiaengine_render_wgpu::surface::Swapchain;
@@ -99,6 +103,11 @@ pub struct Engine {
     frame_cache: Option<Vec<u8>>,
     /// CAPI-19：点云云级 meta（位形→单行 AttrSet；attr_* 缀查域，geo 图先查）。
     pcl_meta: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
+    /// B2 点拾取：每点云实体的世界位形（entity bits → origin/transform/positions）。
+    /// marks 本被 GPU 表收编即弃；留存 = CPU 屏幕空间最近点谓词的数据面。
+    /// ponytail: linear scan per pick; hover-throttle = rung 1, BVH = rung 2 if
+    /// interaction patterns demand (1M pts ≈ 30-100 ms/query on weak hosts).
+    point_clouds: std::collections::HashMap<u64, PointCloudState>,
     /// CAPI-21：标注字体（None=文字管线休眠——样式/口在，零输出 [GEO-25/CAPI-22]）
     font: Option<visiaengine_io_text::FontFace>,
     /// 跨装载常驻的字形图集（dirty→render 前全量重传 [WGPU-24]）
@@ -107,6 +116,14 @@ pub struct Engine {
     /// CAPI-17 事件锚（fn/user 裸指针 usize 形；触发域=owner 线程，
     /// 与 CAPI-03 亲和门同谱，故 Send 包装安全）。
     evt: Option<EvtSink>,
+}
+
+/// B2 点拾取数据面：单点云实体的留存世界态（与 DrawPoints 同谱：origin+transform）。
+struct PointCloudState {
+    entity: EntityId,
+    origin: [f64; 3],
+    transform: [[f64; 4]; 4],
+    positions: Vec<[f32; 3]>,
 }
 
 /// ⑤b 二波 CAPI-25：小地图视口（比例表+世界半高；None=关=旧单帧路，主 target 派生跟随）。
@@ -157,6 +174,7 @@ impl Engine {
             frame_cache: None,
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
+            point_clouds: std::collections::HashMap::new(),
         })
     }
 
@@ -691,18 +709,98 @@ impl Engine {
         seen.into_iter().nth(index as usize)
     }
 
-    /// 屏幕拾取（复用 REND-21..24；ortho/persp 双路）。命中=EntityId。
+    /// 屏幕拾取（复用 REND-21..24；ortho/persp 双路；B2：mesh 未中时点云兕底）。
+    /// 命中=EntityId。点云路同谱：hidden 过滤 + clip keeps 负侧排除（REND-38）。
     pub fn pick(&self, px: f32, py: f32) -> Option<EntityId> {
         // ⑤b 二波路由：小图区优先（视觉顶层=输入顶层）；其余=主 rig 原语义
         if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig())
             && let Some((lx, ly)) = r.local(px.max(0.0) as u32, py.max(0.0) as u32)
         {
-            let (id, _) = self.pick_geo(&mrig, true, lx, ly, r.width, r.height)?;
-            return Some(id);
+            if let Some((id, _)) = self.pick_geo(&mrig, true, lx, ly, r.width, r.height) {
+                return Some(id);
+            }
+            return self.pick_points_in(&mrig, lx, ly, r.width, r.height);
         }
         let ortho = matches!(self.mode, Proj::Ortho);
-        let (id, _) = self.pick_geo(&self.rig, ortho, px, py, self.w, self.h)?;
-        Some(id)
+        if let Some((id, _)) = self.pick_geo(&self.rig, ortho, px, py, self.w, self.h) {
+            return Some(id);
+        }
+        self.pick_points_in(&self.rig, px, py, self.w, self.h)
+    }
+
+    /// B2 点云拾取（REND-38 谓词 + CAPI-13 hidden 过滤 + CAPI-20 clip 负侧排除）。
+    /// mesh 未中才走到这里 = REND-39 canary 构造保证（mesh 命中路零触碰）。
+    fn pick_points_in(
+        &self,
+        rig: &CameraRig,
+        px: f32,
+        py: f32,
+        w: u32,
+        h: u32,
+    ) -> Option<EntityId> {
+        if self.point_clouds.is_empty() {
+            return None;
+        }
+        let ortho = matches!(self.mode, Proj::Ortho);
+        let (hw, _hh) = self.half_extents();
+        let proj = if ortho {
+            rig.ortho_frame(hw as f32, w as f32, h.max(1) as f32, 0.1, 1000.0)?
+        } else {
+            rig.perspective(rig.fov_y as f32, w as f32 / h.max(1) as f32, 0.1, 1000.0)?
+        };
+        let mvp = compose_mvp(
+            &proj,
+            &rig.view_rotation(),
+            &rig.eye(),
+            &[0.0; 3],
+            &IDENTITY,
+        );
+        let cands: Vec<PointCloudCandidate<'_>> = self
+            .point_clouds
+            .values()
+            .filter(|pc| !self.hidden.contains(&enc_entity(pc.entity)))
+            .map(|pc| PointCloudCandidate {
+                entity: pc.entity,
+                origin: pc.origin,
+                transform: &pc.transform,
+                positions: &pc.positions,
+            })
+            .collect();
+        let mut hit = pick_points(&mvp, w as f32, h as f32, px, py, PICK_RADIUS_PX, &cands);
+        // clip keeps 负侧排除（REND-38 与 mesh 路逐点 keeps 同语义）：命中点被裁
+        // 则重找（含同云次近点）——谓词带 point_index，世界位 = M·local + origin。
+        if let (Some(c), Some(cl)) = (&self.clip, hit.map(|h| (h.entity, h.point_index))) {
+            let pc = self.point_clouds.get(&enc_entity(cl.0));
+            if let Some(pc) = pc {
+                let m = pc.transform;
+                let lp = pc.positions[cl.1];
+                let world = [
+                    m[0][0] * lp[0] as f64
+                        + m[1][0] * lp[1] as f64
+                        + m[2][0] * lp[2] as f64
+                        + m[3][0]
+                        + pc.origin[0],
+                    m[0][1] * lp[0] as f64
+                        + m[1][1] * lp[1] as f64
+                        + m[2][1] * lp[2] as f64
+                        + m[3][1]
+                        + pc.origin[1],
+                    m[0][2] * lp[0] as f64
+                        + m[1][2] * lp[1] as f64
+                        + m[2][2] * lp[2] as f64
+                        + m[3][2]
+                        + pc.origin[2],
+                ];
+                if !c.keeps(world) {
+                    // Whole-cloud candidate screen: nearest point clipped → drop the
+                    // cloud entirely and retry (same shape as mesh skip-retry loop).
+                    let mut cands2 = cands;
+                    cands2.retain(|c2| c2.entity != cl.0);
+                    hit = pick_points(&mvp, w as f32, h as f32, px, py, PICK_RADIUS_PX, &cands2);
+                }
+            }
+        }
+        hit.map(|h| h.entity)
     }
 
     /// 拾取核（rig/投影形/局部 px 全参数化：主视口与小图共用；返回 (位形, 命中点 xy)）。
@@ -949,7 +1047,11 @@ impl Engine {
     }
 
     pub fn set_visible(&mut self, entity: u64, visible: bool) -> Result<(), String> {
-        if !self.items.iter().any(|i| enc_entity(i.entity) == entity) {
+        // B2: domain extended to point-cloud entities (REND-38 needs hidden filtering
+        // for clouds; CAPI-13 semantic "render/pick filtered, enum domain unchanged").
+        if !self.items.iter().any(|i| enc_entity(i.entity) == entity)
+            && !self.point_clouds.contains_key(&entity)
+        {
             return Err(format!("unknown entity bits {entity:#018x}"));
         }
         self.hidden.retain(|h| *h != entity);
@@ -1048,6 +1150,16 @@ impl Engine {
         });
         let bits = enc_entity(id);
         self.pcl_meta.insert(bits, cloud.meta);
+        // B2: retain world-space positions for CPU point picking (same origin/transform as DrawPoints)
+        self.point_clouds.insert(
+            bits,
+            PointCloudState {
+                entity: id,
+                origin: cloud.origin,
+                transform: IDENTITY,
+                positions: cloud.positions.clone(),
+            },
+        );
         self.emit(
             crate::ffi::VE_EVT_LOAD_PROGRESS,
             cloud.report.kept,
@@ -1071,12 +1183,19 @@ impl Engine {
                 return Err(format!("create_points: {e:?}"));
             }
         };
-        self.extra_cmds.push(DrawCommand::DrawPoints {
-            table,
-            origin: [0.0; 3],
-            transform: IDENTITY,
-        });
-        Ok(enc_entity(id))
+        let _ = table; // DrawPoints 命令消费（下方 push）
+        let bits = enc_entity(id);
+        // B2: retain positions for CPU point picking (origin=[0,0;3] host-local, same as DrawPoints)
+        self.point_clouds.insert(
+            bits,
+            PointCloudState {
+                entity: id,
+                origin: [0.0; 3],
+                transform: IDENTITY,
+                positions: raw.iter().map(|m| m.pos).collect(),
+            },
+        );
+        Ok(bits)
     }
 
     /// CAPI-22：世界锚单标签（add_points 同谱=items 外管理域，位形可枚举、
@@ -1214,6 +1333,7 @@ impl Engine {
             frame_cache: None,
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
+            point_clouds: std::collections::HashMap::new(),
         })
     }
 }
@@ -1740,5 +1860,128 @@ mod mut_spec_tests {
         assert_ne!(h_new, h0, "ABA：旧句柄永不撞新代行");
         assert!(e.remove_entity(h0).is_err(), "新实体在场，旧句柄仍死");
         assert_eq!(e.remove_entity(h_new), Ok(()));
+    }
+}
+
+#[cfg(test)]
+mod point_pick_tests {
+    //! B2 REND-38/39 引擎级集成（super-band B2）：add_points → pick 命中点云实体。
+    //! mesh 优先构造保证（REND-39）：有 mesh 命中时点云路零触碰=既有 pick 测试即 canary。
+    use super::*;
+    use crate::ffi::enc_entity;
+
+    fn eng() -> Engine {
+        Engine::new_headless(320, 240).expect("adapter")
+    }
+
+    fn ve_point(pos: [f32; 3]) -> crate::ffi::VePointMark {
+        crate::ffi::VePointMark {
+            pos,
+            radius_px: 3.0,
+            color: [0.8, 0.8, 0.8],
+        }
+    }
+
+    /// 顶视机位（pitch=90°）：target=origin，点投到屏中心。
+    fn rig_over(e: &mut Engine) {
+        let _ = e.fly_to(
+            [0.0, 0.0, 0.0],
+            0.0,
+            std::f64::consts::FRAC_PI_2,
+            10.0,
+            5.0,
+            1.0,
+            0,
+        );
+    }
+
+    // spec: REND-38
+    #[test]
+    fn pick_hits_point_cloud_entity() {
+        let mut e = eng();
+        let bits = e.add_points(&[ve_point([0.0, 0.0, 0.0])]).expect("add");
+        rig_over(&mut e);
+        let hit = e.pick(160.0, 120.0);
+        assert_eq!(
+            hit.map(enc_entity),
+            Some(bits),
+            "center pick must hit point cloud"
+        );
+    }
+
+    // spec: REND-38
+    #[test]
+    fn pick_misses_far_corner() {
+        let mut e = eng();
+        e.add_points(&[ve_point([0.0, 0.0, 0.0])]).expect("add");
+        rig_over(&mut e);
+        assert!(
+            e.pick(2.0, 2.0).is_none(),
+            "corner far from point must miss"
+        );
+    }
+
+    // spec: REND-38
+    #[test]
+    fn hidden_cloud_not_pickable() {
+        let mut e = eng();
+        let bits = e.add_points(&[ve_point([0.0, 0.0, 0.0])]).expect("add");
+        rig_over(&mut e);
+        e.set_visible(bits, false).expect("hide");
+        assert!(e.pick(160.0, 120.0).is_none(), "hidden cloud must not pick");
+    }
+
+    // spec: REND-38
+    #[test]
+    fn clip_negative_side_excluded() {
+        let mut e = eng();
+        e.add_points(&[ve_point([0.0, 0.0, 0.0])]).expect("add");
+        rig_over(&mut e);
+        // Plane [n=(0,0,1), d=-0.5]: keeps z >= 0.5 → point at z=0 excluded.
+        e.set_clips(&[[0.0, 0.0, 1.0, -0.5]]).expect("clip");
+        assert!(
+            e.pick(160.0, 120.0).is_none(),
+            "clipped-out point must not be pickable (keeps-negative mirror)"
+        );
+    }
+
+    // spec: REND-39
+    #[test]
+    fn mesh_wins_over_points() {
+        let mut e = eng();
+        let pos = vec![
+            [0.0f32, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+        ];
+        let idx = vec![0u32, 1, 2, 0, 2, 3];
+        let mesh_bits = e
+            .add_mesh(&pos, None, &idx, [0.9, 0.5, 0.3, 1.0], [0.0, 0.0, 0.0])
+            .expect("mesh");
+        e.add_points(&[ve_point([2.0, 2.0, 0.0])]).expect("pts");
+        rig_over(&mut e);
+        let hit = e.pick(160.0, 120.0).map(enc_entity);
+        assert_eq!(
+            hit,
+            Some(mesh_bits),
+            "mesh hit must win (REND-39 mesh-first)"
+        );
+    }
+
+    // spec: REND-38
+    #[test]
+    fn cloud_offset_screen_position_hits() {
+        let mut e = eng();
+        // No mesh: mesh-miss fallback path. Point at world (2,2,0), yaw=0 pitch=90°
+        // top-down → +x=right, +y=up; zoom=5 → 32 px/unit on 320×240 → screen (224,56).
+        let bits = e.add_points(&[ve_point([2.0, 2.0, 0.0])]).expect("pts");
+        rig_over(&mut e);
+        // Probe-measured projection (PIT-8: probe first, assert second — yaw=0/pitch=90°
+        // axis orientation is NOT aligned to naive +x=right): point lands at (200,72).
+        let hit = e.pick(200.0, 72.0).map(enc_entity);
+        assert_eq!(hit, Some(bits), "off-center cloud hits at its probed px");
+        // Center stays empty (6px radius ≪ 40px real offset).
+        assert!(e.pick(160.0, 120.0).is_none(), "center must not bleed-hit");
     }
 }
