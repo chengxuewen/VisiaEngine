@@ -140,7 +140,11 @@ def card(name, topic, lang, src, thumb, run):
         media = f'<img loading="lazy" src="{thumb}" alt="{name}">'
     else:
         media = f'<div class="nothumb"><span>window example</span><small>run locally to see it live</small></div>'
-    return f'''<a class="card" href="#" title="{run}">
+    # Link target: source file, relative from build/gallery/ up to the repo root.
+    # Static-site semantic (MapLibre-gallery style): card -> source; running stays
+    # a local act (title tooltip carries the command; run guide in the header).
+    href = "../../" + src
+    return f'''<a class="card" href="{href}" title="{run}">
   {media}
   <div class="meta">
     <span class="enum">{enum}</span>
