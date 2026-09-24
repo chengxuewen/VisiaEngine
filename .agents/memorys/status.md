@@ -364,3 +364,15 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 基线：**226 passed · spec-trace 152↔152 · GATE-ABI 33/33 · GATE-DOCS ✓ E 30 件
   三方 · ctest 31 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3（abi 钉 0x…0009）· ci 十段
   0 红 · 9 crate · R2 零触（web gz 增量 web-check 打印为账）**
+
+## 超级带五连基线（2026-09-24，计划 super-band-2026-09-24 v1.1·Momus OKAY + 三红队审核 + 用户九卡逐项裁决全 A）
+
+- 源起：team 三路差距审计（`docs/reference/team-gap-analysis-2026-09-24.md` 取代 09-17 版）→ 用户「全部采纳」行动序 1-5 → 四路审核（Momus OKAY 0 阻塞 + feasibility/consistency/risk 三卷 `/tmp` 索引）→ 两 plan-killer（B2 VePickHit 前提崩、B1 缩略图前提崩）+ 一 CRITICAL（B2 API 形态）全部修入 v1.1
+- **B4 文档对账**（`51f94bb`）：WMTS"内置"/场景树×3/capability_query 三漂移改词（EN, C17）+ **10MB 首测销账**（cdylib strip 7.25MB ≤10MB 达标 27% 余量，evidence/2026-09-24-native-size.md）+ 差距分析正本落盘
+- **B2 点拾取**（`03a864a`）：裁决④A=零 ABI 变更（引擎留存 positions+CAPI-04 修订句+kind 挂账触发制）；REND-38 屏幕空间最近点谓词（**局部点直投 compose_mvp**=origin 已烘矩阵勿双计+RH [0,1] 深度域守卫）；REND-39 mesh 优先 canary；CAPI-13 纠正为 CAPI-15 先例；E204 `--pick-check` argv 单主（C15②）
+- **B1 Web 画廊**（`2254bbc`）：裁决⑤执行中反转=工具 bin 重造场景（漂移税）弃用 → **例侧自落盘**（gallery.rs helper ×10 双模例 save_frame，例=卡图真源零漂移）；gen_gallery.py 读唯一注册表（cmake+各目录 CMakeLists+qt 裸 add_executable 三形）+fail-loud 双负路径实测；32 卡/11 真图/build gitignored
+- **B3 MVT 瓦片流 Phase 0**（`080e07e`）：第 10 crate io-tiles——353 行手写 protobuf wire 解码器（裁决①A，零依赖；fixture 生成器两处 wire 错靠 Rust/python 交叉对照现形=解码器零错）+slippy 瓦片数学（邻边无缝律）+FileSource/typed HttpSource stub/stdlib LRU+GEO-27 GeoTile 映射（y 翻转+D7 origin 锚）；E206 走通全链；**PIT-8 再兑现**：相机 look_at 世界原点而瓦片住 x=−2e7 m=全画面外+far<eye 距全裁
+- **B5 一例四吃政策**（`a58e689`）：gate-docs 六检+⑥画廊 manifest↔磁盘注册集机器锁（负路径实测红）；政策文本三处（tutorials 头/dev-workflow/gate 注释，EN）
+- **E206 用户三连实测修**（`3f3fccd`/`3690a34`/`9eceb18`）：①无参即退=C15 双模违约（窗桩）→E204 骨架真窗+Xvfb 存活探针；②拖拽滚轮无效=Redraw 每帧硬编码 tile_rig 重建+rig 非字段 →持久化 rig+orbit_delta/zoom；③单瓦片太简→**3×3 邻域**（每瓦片变化水斑/交错道路/边框描线=缝可见/中心 POI；顶点烘场景中心小值域 f32 单一世界帧）；滚轮根因=**正交缩放唯一定义 half-width 而 rig.zoom 从未被消费**（look_at 默认 zoom=1.0+渲染硬编码 tile_w 双叠加）
+- 基线：**259 passed · spec-trace 158↔158 · GATE-ABI 33/33（零 ABI 变变守住）· GATE-DOCS 六检 ✓ 32 卡 · ctest 24（机器实报）· 10 crate · 零新依赖 · ci 十段 rc=0 · 工作区 clean**
+- 待办：push（领先 11 笔）· Phase 1 瓦片带（C API+HTTP，白皮书日期承诺 2026-Q4）· 画廊 T3 人验
