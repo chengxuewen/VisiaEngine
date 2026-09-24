@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gate-docs（批 5 T3 / [E3D:D1·D3]）：文档零漂移四检——
+# gate-docs（批 5 T3 / [E3D:D1·D3]；B5 扩六检）——文档零漂移：
 #  ① E 三方一致：example 文件名 = 头注释 E### = docs/tutorials.md（预留空号=仅索引行）；
 #  ② README 条款数 == spec-trace 实报数（文档只写可校验的数）；
 #  ③ visiaengine.h 原型名集 == Rust extern "C" fn 名集（符号数由 gate-abi 的 nm 守）；
@@ -51,7 +51,19 @@ if [ -f CMakeLists.txt ]; then
     fi
 fi
 
+# ⑥ gallery manifest lock (B5 "one artifact, four consumers": source+prose+test+card —
+# registries are the single accounting point; gallery is DERIVED, never hand-edited)
+# manifest 由 `pixi run gallery` 产出（build/ 内，gitignored）；缺席=红（提醒先跑生成器）。
+GM=build/gallery/manifest.txt
+if [ ! -f "$GM" ]; then
+    echo "GATE-DOCS ✗ ⑥画廊 manifest 缺席（先跑 pixi run gallery）"; fail=1
+else
+    gm_names=$(grep -oE '^E[0-9]{3}' "$GM" | sort -u)
+    reg_names=$(for d in examples/rs examples/c examples/cpp examples/qt; do ls "$d" 2>/dev/null; done | grep -oE '^E[0-9]{3}' | sort -u)
+    [ "$gm_names" = "$reg_names" ] || { echo "GATE-DOCS ✗ ⑥画廊 manifest ≠ 磁盘注册集:"; diff <(echo "$reg_names") <(echo "$gm_names"); fail=1; }
+fi
+
 if [ "$fail" = 0 ]; then
-    echo "GATE-DOCS ✓（E $(echo "$files" | wc -l) 件三方 / README=${rn}↔spec=${sn} / 头签名 $(echo "$hs" | wc -l) 名 / 链接存活）"
+    echo "GATE-DOCS ✓（E $(echo "$files" | wc -l) 件三方 / README=${rn}↔spec=${sn} / 头签名 $(echo "$hs" | wc -l) 名 / 链接存活 / 画廊 $(grep -c '^E[0-9]' "$GM" 2>/dev/null || echo 0) 卡）"
 fi
 exit $fail

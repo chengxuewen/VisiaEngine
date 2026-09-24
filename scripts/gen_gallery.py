@@ -72,6 +72,10 @@ def parse_native():
         for line in f.read_text(encoding="utf-8").splitlines():
             for m in re.finditer(r"visiaengine_add_example\((\w+)", line):
                 out.append({"name": m.group(1), "lang": lang})
+            # qt dir uses a bare add_executable(E703_...) (R10: name=source=target)
+            if lang == "qt":
+                for m in re.finditer(r"add_executable\((E\d+\w*)\s", line):
+                    out.append({"name": m.group(1), "lang": lang})
     return out
 
 def parse_tutorials():
