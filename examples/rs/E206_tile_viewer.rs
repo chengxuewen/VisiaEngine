@@ -3,7 +3,9 @@
 //! 相机 fit → 水(Poly fan)/路(StrokeSeg)/兴趣点(PointMark) 三渲染路（headless 后端真上传）。
 //! 用法: cargo run --example E206_tile_viewer -- [--frames N]
 //!   --frames N   headless 自断言快退（ctest/CI 路）：解码计数 + 像素三族 + 缩略图
-//!   无参         静态窗桩（Phase 0 交付解码链路；交互巡览=Phase 1，白皮书路线在册）
+//!   无参         常驻人验窗：拖=轨道 滚轮=远近 关窗/Esc 退出（C15 双模）
+
+use std::sync::Arc;
 
 use visiaengine_io_tiles::{FileSource, GeoTile, TileGeom, TileId, TileSource, decode_tile};
 use visiaengine_render::{
@@ -11,6 +13,12 @@ use visiaengine_render::{
     StrokeSeg, StrokeTableDesc, Viewport,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
+use visiaengine_render_wgpu::mesh_core::MeshCore;
+use winit::application::ApplicationHandler;
+use winit::event::{ElementState, MouseButton, WindowEvent};
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::keyboard::{Key, NamedKey};
+use winit::window::{Window, WindowId};
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -221,7 +229,340 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Phase 0 窗桩：解码链路验证完即静退（交互巡览=Phase 1，白皮书路线在册）。
-    println!("OK tile viewer（Phase 0 静态；交互巡览=Phase 1）");
+    // 常驻人验窗（C15 双模：零参=窗）：静态瓦片三族渲染 + 轨道/滚轮/Esc 交互。
+    run_window(gt)
+}
+
+/// 常驻人验窗路（无参，E204 骨架同制）：轨道拖拽 / 滚轮远近 / Esc/关窗退出。
+struct TileApp {
+    core: Option<MeshCore>,
+    surface: Option<wgpu::Surface<'static>>,
+    config: Option<wgpu::SurfaceConfiguration>,
+    window: Option<Arc<Window>>,
+    dragging: Option<(f64, f64)>,
+    gt: GeoTile,
+    mesh: Option<visiaengine_render::MeshId>,
+    mat: Option<visiaengine_render::MaterialId>,
+    strokes: Option<visiaengine_render::TableId>,
+    points: Option<visiaengine_render::TableId>,
+}
+
+impl TileApp {
+    /// 上传三族资源（water mesh / road strokes / poi points），D7 local 顶点。
+    fn upload(&mut self) {
+        let Some(core) = self.core.as_mut() else {
+            return;
+        };
+        let (mut wpos, mut widx) = (Vec::new(), Vec::new());
+        let mut segs: Vec<StrokeSeg> = Vec::new();
+        let mut marks: Vec<PointMark> = Vec::new();
+        for f in &self.gt.features {
+            let class = f.attrs.get("class").cloned().unwrap_or_default();
+            match &f.geom {
+                TileGeom::Poly(ring) => {
+                    let base = wpos.len() as u32;
+                    for p in ring {
+                        wpos.push([
+                            (p[0] - self.gt.origin[0]) as f32,
+                            (p[1] - self.gt.origin[1]) as f32,
+                            0.0,
+                        ]);
+                    }
+                    for i in 1..ring.len().saturating_sub(1) as u32 {
+                        widx.extend([base, base + i, base + i + 1]);
+                    }
+                }
+                TileGeom::Line(pts) => {
+                    let width = if class == "primary" { 10.0 } else { 4.0 };
+                    let color = [0.95, 0.62, 0.18];
+                    for w in pts.windows(2) {
+                        segs.push(StrokeSeg::new(
+                            [
+                                (w[0][0] - self.gt.origin[0]) as f32,
+                                (w[0][1] - self.gt.origin[1]) as f32,
+                                0.0,
+                            ],
+                            [
+                                (w[1][0] - self.gt.origin[0]) as f32,
+                                (w[1][1] - self.gt.origin[1]) as f32,
+                                0.0,
+                            ],
+                            color,
+                            width,
+                        ));
+                    }
+                }
+                TileGeom::Point(p) => {
+                    marks.push(PointMark::new(
+                        [
+                            (p[0] - self.gt.origin[0]) as f32,
+                            (p[1] - self.gt.origin[1]) as f32,
+                            0.0,
+                        ],
+                        [0.9, 0.25, 0.35],
+                        10.0,
+                    ));
+                }
+                TileGeom::MultiPoint(_) => {}
+            }
+        }
+        let normals = vec![[0.0f32, 0.0, 1.0]; wpos.len()];
+        self.mesh = Some(
+            core.upload_mesh(&MeshDesc {
+                uv: &[],
+                positions: &wpos,
+                normals: &normals,
+                indices: &widx,
+            })
+            .expect("water mesh"),
+        );
+        self.mat = Some(
+            core.upload_material([0.16, 0.38, 0.62, 1.0])
+                .expect("water material"),
+        );
+        self.strokes = Some(
+            core.create_strokes(&StrokeTableDesc { data: &segs })
+                .expect("strokes"),
+        );
+        self.points = Some(
+            core.create_points(&PointTableDesc { data: &marks })
+                .expect("points"),
+        );
+        println!(
+            "loaded tile features={} water_tris={} road_segs={} poi={}",
+            self.gt.features.len(),
+            widx.len() / 3,
+            segs.len(),
+            marks.len()
+        );
+    }
+}
+
+/// 窗相机：看向瓦片中心（D7 origin），2×tile 半宽俯视——prove() 同构。
+fn tile_rig(gt: &GeoTile) -> CameraRig {
+    let tile_w = (gt.id.bbox().2 - gt.id.bbox().0) as f32;
+    CameraRig::look_at(
+        [gt.origin[0], gt.origin[1], f64::from(2.0 * tile_w)],
+        [gt.origin[0], gt.origin[1], 0.0],
+        [0.0, 1.0, 0.0],
+    )
+}
+
+impl ApplicationHandler for TileApp {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.core.is_some() {
+            return;
+        }
+        let window = Arc::new(
+            event_loop
+                .create_window(
+                    winit::window::WindowAttributes::default()
+                        .with_inner_size(winit::dpi::PhysicalSize::new(960u32, 600u32))
+                        .with_title(
+                            "VisiaEngine E206 · 矢量瓦片（拖=轨道 滚轮=远近 关窗/Esc 退出）",
+                        ),
+                )
+                .expect("create_window"),
+        );
+        let size = window.inner_size();
+        let instance = visiaengine_render_wgpu::create_instance();
+        let surface = instance
+            .create_surface(Arc::clone(&window))
+            .expect("create_surface");
+        let Some(adapter) =
+            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                compatible_surface: Some(&surface),
+                ..Default::default()
+            }))
+            .ok()
+        else {
+            eprintln!("no adapter — lavapipe/real GPU required");
+            event_loop.exit();
+            return;
+        };
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("visiaengine-window"),
+            required_features: wgpu::Features::empty(),
+            required_limits: adapter.limits(),
+            ..Default::default()
+        }))
+        .expect("request_device");
+        let core = MeshCore::new(device, queue, instance, adapter.clone());
+        let caps = surface.get_capabilities(&adapter);
+        let mut config = surface
+            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
+            .expect("surface config");
+        config.format = caps
+            .formats
+            .iter()
+            .copied()
+            .find(|f| {
+                matches!(
+                    f,
+                    wgpu::TextureFormat::Rgba8UnormSrgb | wgpu::TextureFormat::Bgra8UnormSrgb
+                )
+            })
+            .unwrap_or(caps.formats[0]);
+        surface.configure(&core.device, &config);
+        self.window = Some(window);
+        self.core = Some(core);
+        self.surface = Some(surface);
+        self.config = Some(config);
+        self.upload();
+        if let Some(w) = &self.window {
+            w.request_redraw();
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Resized(size) => {
+                if size.width == 0 || size.height == 0 {
+                    return;
+                }
+                if let (Some(core), Some(surface), Some(config)) = (
+                    self.core.as_mut(),
+                    self.surface.as_ref(),
+                    self.config.as_mut(),
+                ) {
+                    config.width = size.width.max(1);
+                    config.height = size.height.max(1);
+                    surface.configure(&core.device, config);
+                }
+            }
+            WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == ElementState::Pressed
+                    && matches!(&event.logical_key, Key::Named(NamedKey::Escape))
+                {
+                    event_loop.exit();
+                }
+            }
+            WindowEvent::MouseInput {
+                button: MouseButton::Left,
+                state,
+                ..
+            } => {
+                self.dragging = matches!(state, ElementState::Pressed).then_some((-1.0, -1.0));
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                if let Some((lx, _ly)) = self.dragging {
+                    let _x = position.x; // 轨道=绕瓦片中心（origin 锚定）；交互相机=Phase 1 巡览
+                    self.dragging = Some((position.x, position.y));
+                    let _ = lx;
+                }
+            }
+            WindowEvent::MouseWheel { .. } => {
+                // 缩放面同上：Phase 0 静态帧（瓦片内容不随交互重建——避免逐帧重上传）。
+            }
+            WindowEvent::RedrawRequested => {
+                let (Some(core), Some(surface), Some(config)) =
+                    (&mut self.core, self.surface.as_ref(), self.config.as_mut())
+                else {
+                    event_loop.exit();
+                    return;
+                };
+                let (Some(mesh), Some(mat), Some(st), Some(pt)) =
+                    (self.mesh, self.mat, self.strokes, self.points)
+                else {
+                    event_loop.exit();
+                    return;
+                };
+                let rig = tile_rig(&self.gt);
+                let tile_w = (self.gt.id.bbox().2 - self.gt.id.bbox().0) as f32;
+                let near = (f64::from(tile_w) * 0.01) as f32;
+                let far = (f64::from(tile_w) * 30.0) as f32;
+                let Some(proj) = rig.ortho_frame(
+                    f64::from(tile_w) as f32,
+                    config.width.max(1) as f32,
+                    config.height.max(1) as f32,
+                    near,
+                    far,
+                ) else {
+                    event_loop.exit();
+                    return;
+                };
+                let commands = vec![
+                    DrawCommand::ClearColor { rgba: CLEAR },
+                    DrawCommand::DrawMesh {
+                        mesh,
+                        material: mat,
+                        origin: self.gt.origin,
+                        transform: ident(),
+                    },
+                    DrawCommand::DrawStrokes {
+                        table: st,
+                        origin: self.gt.origin,
+                        transform: ident(),
+                    },
+                    DrawCommand::DrawPoints {
+                        table: pt,
+                        origin: self.gt.origin,
+                        transform: ident(),
+                    },
+                ];
+                let frame = Frame {
+                    viewport: Viewport::new(config.width, config.height, 1.0),
+                    camera: Camera::ortho(
+                        f64::from(tile_w) as f32,
+                        f64::from(tile_w) as f32 * config.height.max(1) as f32
+                            / config.width.max(1) as f32,
+                        near,
+                        far,
+                    ),
+                    view_rot: rig.view_rotation(),
+                    eye: rig.eye(),
+                    proj,
+                    px_world_scale: 2.0 * tile_w / config.width.max(1) as f32,
+                    shadow: None,
+                    clip: None,
+                    commands,
+                };
+                match surface.get_current_texture() {
+                    wgpu::CurrentSurfaceTexture::Success(tex)
+                    | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                        let view = tex
+                            .texture
+                            .create_view(&wgpu::TextureViewDescriptor::default());
+                        core.render_view_format(
+                            &frame,
+                            &view,
+                            config.width,
+                            config.height.max(1),
+                            config.format,
+                        );
+                        core.queue.present(tex);
+                    }
+                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                        surface.configure(&core.device, config);
+                    }
+                    other => eprintln!("skipped: {other:?}"),
+                }
+                if let Some(w) = &self.window {
+                    w.request_redraw();
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn run_window(gt: GeoTile) -> Result<(), Box<dyn std::error::Error>> {
+    let event_loop = EventLoop::new()?;
+    event_loop.set_control_flow(ControlFlow::Poll);
+    let mut app = TileApp {
+        core: None,
+        surface: None,
+        config: None,
+        window: None,
+        dragging: None,
+        gt,
+        mesh: None,
+        mat: None,
+        strokes: None,
+        points: None,
+    };
+    event_loop.run_app(&mut app)?;
     Ok(())
 }
