@@ -61,6 +61,22 @@ public:
     int32_t set_map(const VeMapView *cfg) { return visiaengine_set_map(h_, cfg); }
     /* CAPI-28/29：瓦片层（MVT 目录挂载 + 视口 bbox 喂给调度器）。薄转发。 */
     int32_t load_mvt_dir(const char *path, uint32_t z) { return visiaengine_load_mvt_dir(h_, path, z); }
+    /* CAPI-30..34: 场景树薄转发。 */
+    uint64_t create_group(const char *name = nullptr) {
+        uint64_t out = 0;
+        return visiaengine_create_group(h_, name, &out) == 0 ? out : 0;
+    }
+    int32_t set_parent(uint64_t child, uint64_t parent) {
+        return visiaengine_set_parent(h_, child, parent);
+    }
+    uint64_t get_parent(uint64_t entity) { return visiaengine_get_parent(h_, entity); }
+    int32_t set_group_offset(uint64_t group, double dx, double dy, double dz) {
+        return visiaengine_set_group_offset(h_, group, dx, dy, dz);
+    }
+    int32_t get_group_offset(uint64_t group, double out[3]) {
+        return visiaengine_get_group_offset(h_, group, out);
+    }
+
     int32_t set_tile_view(double min_x, double min_y, double max_x, double max_y) {
         return visiaengine_set_tile_view(h_, min_x, min_y, max_x, max_y);
     }

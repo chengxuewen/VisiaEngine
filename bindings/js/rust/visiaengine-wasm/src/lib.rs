@@ -233,6 +233,59 @@ impl VisiaEngine {
         }
     }
 
+    // ── 场景树镜像（CAPI-30..34 薄叶）──
+    /// CAPI-30: 创建组节点（返回 handle；0=err）。name=NULL 用空字符串代替。
+    #[wasm_bindgen(js_name = createGroup)]
+    pub fn create_group(&mut self, name: &str) -> u64 {
+        match self
+            .inner
+            .create_group(if name.is_empty() { None } else { Some(name) })
+        {
+            Ok(bits) => bits,
+            Err(_) => 0,
+        }
+    }
+
+    /// CAPI-31: 重设父节点。parent=0 摘回根。0=成功，-1=拒。
+    #[wasm_bindgen(js_name = setParent)]
+    pub fn set_parent(&mut self, child: u64, parent: u64) -> i32 {
+        match self.inner.set_parent(child, parent) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-32: 查父节点（0=根/err）。
+    #[wasm_bindgen(js_name = getParent)]
+    pub fn get_parent(&self, entity: u64) -> u64 {
+        self.inner.get_parent(entity).unwrap_or(0)
+    }
+
+    /// CAPI-33: 设组偏移。0=成功，-1=拒。
+    #[wasm_bindgen(js_name = setGroupOffset)]
+    pub fn set_group_offset(&mut self, group: u64, dx: f64, dy: f64, dz: f64) -> i32 {
+        match self.inner.set_group_offset(group, dx, dy, dz) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-34: 读组偏移（返回 [dx,dy,dz]；失败返回 null）。
+    #[wasm_bindgen(js_name = getGroupOffset)]
+    pub fn get_group_offset(&self, group: u64) -> Option<wasm_bindgen::JsValue> {
+        match self.inner.get_group_offset(group) {
+            Ok(o) => Some(
+                js_sys::Array::of3(
+                    &js_sys::Number::from(o[0]),
+                    &js_sys::Number::from(o[1]),
+                    &js_sys::Number::from(o[2]),
+                )
+                .into(),
+            ),
+            Err(_) => None,
+        }
+    }
+
     /// CAPI-26 点击导航：顶视拾实体优先→地面兜底；主 rig 保角保距换 target；dur_ms=0 瞬移。
     #[wasm_bindgen(js_name = navigateClick)]
     pub fn navigate_click(&mut self, px: f32, py: f32, dur_ms: u32) -> i32 {

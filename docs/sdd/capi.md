@@ -82,3 +82,18 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-29: 视口喂给（set_tile_view，P1）
 `visiaengine_set_tile_view(ve, min_x,min_y,max_x,max_y) -> i32`：3857 米 bbox 喂调度器（IO-13 枚举+IO-14 ensure）。返回=可见瓦片数；负=拒（未挂载/非有限/min≥max）。可见集为挂载集子集（不存在的瓦片跳过不报错=Partial 覆盖语义）。批重建=渲染期上传缓存（uploaded:Option 防重传）。
+
+## CAPI-30: 组节点创建（create_group，场景树 S2）
+`visiaengine_create_group(ve, name: *const c_char) -> u64`：分配 `Component::Group` 实体（CORE-17）。name=NULL=匿名；非 NULL 须有效 UTF-8，否则 panic 哨兵 0。返回值>0=实体句柄（CAPI-01 编码，slot<<32|gen）；0=panic。句柄参与 CAPI-31/32 父子图，不参与渲染（无 DrawItem）。
+
+## CAPI-31: 重设父节点（set_parent）
+`visiaengine_set_parent(ve, child: u64, parent: u64) -> i32`：child=0→VE_ERR_ARG；parent=0→摘离至根（CORE-18）。parent≠0 时 parent 必须是 Group 实体（CORE-17 类型检查）；环检测：从 parent 向上走链至根，遇 child→拒绝（VE_ERR_ARG）；链长 >16→拒绝（防死循环）。成功=0。child 已存在组件不受影响（Transform 实体可以挂 Group 下）。
+
+## CAPI-32: 查询父节点（get_parent）
+`visiaengine_get_parent(ve, entity: u64) -> u64`：返回 parent 句柄（0=根/无父/entity=0/err）。成功时与 set_parent 写入值一致（往返契约）。
+
+## CAPI-33: 设组平移（set_group_offset）
+`visiaengine_set_group_offset(ve, group: u64, dx, dy, dz: f64) -> i32`：group=0→VE_ERR_ARG；group 必须是 Component::Group 实体（CORE-20）；dx/dy/dz 有限（非 NaN/Inf）。设置后 render/pick 累加该偏移至子实体 origin（CORE-21 effective_offset）。成功=0。
+
+## CAPI-34: 读组平移（get_group_offset）
+`visiaengine_get_group_offset(ve, group: u64, out: *mut f64) -> i32`：out=NULL→VE_ERR_ARG；group 非 Group 或已死亡→VE_ERR_ARG。成功时 out[0..3]=[dx,dy,dz]（读自身偏移，非累加）。成功=0。

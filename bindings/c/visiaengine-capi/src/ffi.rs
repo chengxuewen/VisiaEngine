@@ -161,7 +161,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 10 // major 1 · minor 10（CAPI-28/29 瓦片两口=MAJOR 内追加；>>16==1 不变）
+    (1 << 16) | 11 // major 1 · minor 10（CAPI-28/29 瓦片两口=MAJOR 内追加；>>16==1 不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1487,6 +1487,153 @@ pub extern "C" fn visiaengine_set_tile_view(
                 Gate::Live(i) => {
                     match with_engine(i, |e| e.set_tile_view(min_x, min_y, max_x, max_y)) {
                         Ok(visible) => visible as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+// ── Scene tree (CAPI-30..34) ────────────────────────────────────────────────
+
+/// CAPI-30: Create a group node. `name` may be NULL (anonymous).
+/// out_entity: written on VE_OK; caller must pre-allocate 8 bytes.
+/// Returns VE_OK (0) or neg error code. out_entity=0 is a legal slot0gen0 group.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn visiaengine_create_group(
+    ve: u64,
+    name: *const std::os::raw::c_char,
+    out_entity: *mut u64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if out_entity.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    let n = if name.is_null() {
+                        None
+                    } else {
+                        match unsafe { std::ffi::CStr::from_ptr(name) }.to_str() {
+                            Ok(s) => Some(s),
+                            Err(_) => {
+                                set_err("name not valid UTF-8".into());
+                                return VE_ERR_ARG;
+                            }
+                        }
+                    };
+                    match with_engine(i, |e| e.create_group(n)) {
+                        Ok(bits) => {
+                            unsafe {
+                                *out_entity = bits;
+                            }
+                            VE_OK
+                        }
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-31: Reparent. parent=0 = detach to root. 0=ok; neg=err.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_set_parent(ve: u64, child: u64, parent: u64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => match with_engine(i, |e| e.set_parent(child, parent)) {
+                    Ok(()) => 0,
+                    Err(msg) => {
+                        set_err(msg);
+                        VE_ERR_ARG
+                    }
+                },
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-32: Get parent handle. 0=root/no parent/err.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_get_parent(ve: u64, entity: u64) -> u64 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => with_engine(i, |e| e.get_parent(entity)).unwrap_or(0),
+                _ => 0,
+            }
+        },
+        0u64
+    )
+}
+
+/// CAPI-33: Set group offset (world metres, f64×3). 0=ok; neg=err.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_set_group_offset(
+    ve: u64,
+    group: u64,
+    dx: f64,
+    dy: f64,
+    dz: f64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => match with_engine(i, |e| e.set_group_offset(group, dx, dy, dz)) {
+                    Ok(()) => 0,
+                    Err(msg) => {
+                        set_err(msg);
+                        VE_ERR_ARG
+                    }
+                },
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-34: Read group own offset. out=write [dx,dy,dz]. 0=ok; neg=err.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn visiaengine_get_group_offset(ve: u64, group: u64, out: *mut f64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if out.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| e.get_group_offset(group)) {
+                        Ok(o) => {
+                            // SAFETY: out not null; caller guarantees ≥3×f64 capacity
+                            unsafe {
+                                *out = o[0];
+                                *out.add(1) = o[1];
+                                *out.add(2) = o[2];
+                            }
+                            0
+                        }
                         Err(msg) => {
                             set_err(msg);
                             VE_ERR_ARG

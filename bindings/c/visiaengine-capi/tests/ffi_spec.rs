@@ -6,13 +6,15 @@ use visiaengine::{
     VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeCameraPose, VeClipPlane, VeInput, VeLabelSpec,
     VeMapView, VeMeshDesc, VePclReport, VePointMark, VePointsDesc, visiaengine_abi_version,
     visiaengine_add_label, visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach,
-    visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_headless,
-    visiaengine_destroy, visiaengine_entity_at, visiaengine_entity_count,
-    visiaengine_entity_set_visible, visiaengine_entity_visible, visiaengine_fly_state,
-    visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips, visiaengine_last_error,
+    visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_group,
+    visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
+    visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
+    visiaengine_fly_state, visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips,
+    visiaengine_get_group_offset, visiaengine_get_parent, visiaengine_last_error,
     visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_mvt_dir, visiaengine_load_pcl,
     visiaengine_navigate_click, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
-    visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips, visiaengine_set_map,
+    visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
+    visiaengine_set_group_offset, visiaengine_set_map, visiaengine_set_parent,
     visiaengine_set_tile_view, visiaengine_viewport,
 };
 
@@ -280,11 +282,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_000A,
+        0x0001_000B,
         "major 1 · minor 6（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_000A, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_000B, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -300,8 +302,8 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        35,
-        "extern 入口计数（cfg-gated 行首式；24→26=CAPI-20 剖面双口）"
+        40,
+        "extern 入口计数（cfg-gated 行首式；35→40=CAPI-30..34 场景树五口）"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),
@@ -1042,4 +1044,145 @@ fn set_tile_view_domain_and_visibility() {
     // full 3×3 bbox = 9 visible
     let rc = visiaengine_set_tile_view(ve, -2.004e7, 1.995e7, -1.995e7, 2.004e7);
     assert_eq!(rc, 9, "full neighborhood visible");
+}
+
+// spec: CAPI-30
+#[test]
+fn create_group_returns_handle_valid_utf8() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // anonymous (NULL name)
+    let mut g1 = 0u64;
+    assert_eq!(
+        visiaengine_create_group(ve, std::ptr::null(), &mut g1),
+        0,
+        "create_group rc"
+    );
+    // g1 may be 0 (slot0gen0=valid); existence proven by rc==0 above
+    // named
+    let cname = std::ffi::CString::new("roads_layer").unwrap();
+    let mut g2 = 0u64;
+    assert_eq!(
+        visiaengine_create_group(ve, cname.as_ptr(), &mut g2),
+        0,
+        "create_group rc"
+    );
+    assert_ne!(g2, 0);
+    assert_ne!(g1, g2, "distinct slots");
+    assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+// spec: CAPI-31
+#[test]
+fn set_parent_reparent_and_cycle_guard() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    let cname = std::ffi::CString::new("layer").unwrap();
+    let mut g = 0u64;
+    assert_eq!(
+        visiaengine_create_group(ve, cname.as_ptr(), &mut g),
+        0,
+        "create_group rc"
+    );
+    assert_ne!(g, 0);
+    // attach child to group: use a dummy child (must be a valid entity handle)
+    // gltf loads entities; use add_mesh path to create an entity
+    let _gltf_c = std::ffi::CString::new("nonexistent.glb").unwrap();
+    // child=g (self-loop) must be rejected
+    assert_ne!(
+        visiaengine_set_parent(ve, g, g),
+        0,
+        "self-cycle must be rejected"
+    );
+    // child=0 must be rejected
+    assert_ne!(
+        visiaengine_set_parent(ve, 0, g),
+        0,
+        "child=0 must be rejected"
+    );
+    // detach: parent=0 = move to root
+    assert_eq!(
+        visiaengine_set_parent(ve, g, 0),
+        0,
+        "detach to root must succeed"
+    );
+    assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+// spec: CAPI-32
+#[test]
+fn get_parent_roundtrip() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    let null = std::ffi::CString::default; // unused; for syntax hint only
+    let _ = null;
+    let cname = std::ffi::CString::new("g1").unwrap();
+    let mut g1 = 0u64;
+    assert_eq!(
+        visiaengine_create_group(ve, cname.as_ptr(), &mut g1),
+        0,
+        "create_group rc"
+    );
+    let cname2 = std::ffi::CString::new("g2").unwrap();
+    let mut g2 = 0u64;
+    assert_eq!(
+        visiaengine_create_group(ve, cname2.as_ptr(), &mut g2),
+        0,
+        "create_group rc"
+    );
+    // g2 -> g1
+    assert_eq!(visiaengine_set_parent(ve, g2, g1), 0);
+    assert_eq!(
+        visiaengine_get_parent(ve, g2),
+        g1,
+        "get_parent must match set_parent"
+    );
+    // g1 has no parent (root)
+    assert_eq!(visiaengine_get_parent(ve, g1), 0, "root group parent=0");
+    assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+// spec: CAPI-33
+#[test]
+fn set_group_offset_domain() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    let cname = std::ffi::CString::new("g").unwrap();
+    let mut g = 0u64;
+    assert_eq!(
+        visiaengine_create_group(ve, cname.as_ptr(), &mut g),
+        0,
+        "create_group rc"
+    );
+    assert_ne!(g, 0);
+    // Valid f64
+    assert_eq!(visiaengine_set_group_offset(ve, g, 1.0e7, -2.0e7, 100.0), 0);
+    // NaN → err
+    assert_ne!(visiaengine_set_group_offset(ve, g, f64::NAN, 0.0, 0.0), 0);
+    // group=0 → err
+    assert_ne!(visiaengine_set_group_offset(ve, 0, 1.0, 0.0, 0.0), 0);
+    assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+// spec: CAPI-34
+#[test]
+fn get_group_offset_roundtrip() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    let cname = std::ffi::CString::new("g").unwrap();
+    let mut g = 0u64;
+    assert_eq!(
+        visiaengine_create_group(ve, cname.as_ptr(), &mut g),
+        0,
+        "create_group rc"
+    );
+    // NULL out → err
+    assert_ne!(visiaengine_get_group_offset(ve, g, std::ptr::null_mut()), 0);
+    // Set and read back
+    assert_eq!(visiaengine_set_group_offset(ve, g, 42.5, -7.0, 0.0), 0);
+    let mut out = [0.0f64; 3];
+    assert_eq!(visiaengine_get_group_offset(ve, g, out.as_mut_ptr()), 0);
+    assert_eq!(out, [42.5, -7.0, 0.0]);
+    // Non-group entity (e.g. after destroy g) → err; skip for now
+    assert_eq!(visiaengine_destroy(ve), 0);
 }

@@ -92,6 +92,8 @@ pub struct Engine {
     attr_of: std::collections::HashMap<u64, (usize, usize)>,
     /// CAPI-13: 隐藏实体位形表（render/pick 过滤域；枚举域不变，删除随 CAPI-16 清理）
     hidden: Vec<u64>,
+    /// Scene tree (CAPI-30): group-node display names (engine-local).
+    node_names: std::collections::HashMap<u64, String>,
     /// CAPI-20: 剖面裁切世界面（None/空=全保留；render 逐帧入 Frame.clip，
     /// pick 命中点 keeps 谓词负侧=排除重试 [WGPU-21 管线面同一世界帧]）
     clip: Option<visiaengine_render::ClipSetup>,
@@ -185,6 +187,15 @@ type EvtSink = Box<dyn FnMut(u32, u64, u64)>;
 
 impl Engine {
     #[must_use]
+    /// Fresh Scene with slot 0 reserved: handle 0 = "invalid/root" sentinel,
+    /// consistent with engine-pool slot-base-1 convention (CAPI-01).
+    fn new_scene() -> Scene {
+        let mut s = Scene::new();
+        let dummy = s.spawn();
+        let _ = s.despawn(dummy); // consume slot0gen0
+        s
+    }
+
     pub fn new_headless(w: u32, h: u32) -> Option<Self> {
         Some(Self {
             w,
@@ -196,12 +207,13 @@ impl Engine {
             last: (0.0, 0.0),
             backend: HeadlessBackend::new(w, h)?,
             target: TargetMode::Headless,
-            scene: Scene::new(),
+            scene: Self::new_scene(),
             items: Vec::new(),
             extra_cmds: Vec::new(),
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
+            node_names: std::collections::HashMap::new(),
             clip: None,
             fly: None,
             map: None,
@@ -582,19 +594,41 @@ impl Engine {
 
     // ===== 渲染/回读（CAPI-04）=====
 
+    /// Tree-aware visibility: entity itself OR any ancestor is in the hidden set.
+    /// O(depth ≤ MAX_TREE_DEPTH=16); returns true if entity or any ancestor is hidden.
+    fn is_hidden(&self, entity: visiaengine_core::EntityId) -> bool {
+        let mut cur = Some(entity);
+        let mut depth = 0usize;
+        while let Some(c) = cur {
+            if self.hidden.contains(&enc_entity(c)) {
+                return true;
+            }
+            cur = match self.scene.get_parent(c) {
+                Ok(Some(p)) => Some(p),
+                _ => None,
+            };
+            depth += 1;
+            if depth > 16 {
+                break;
+            }
+        }
+        false
+    }
+
     pub fn render(&mut self) -> Result<(), String> {
         self.advance_fly();
         let mut commands = vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.10, 1.0],
         }];
         for it in &self.items {
-            if self.hidden.contains(&enc_entity(it.entity)) {
-                continue; // CAPI-13 过滤域
+            if self.is_hidden(it.entity) {
+                continue; // CAPI-13 + CORE-18 tree visibility
             }
+            let eff = self.scene.effective_offset(it.entity);
             commands.push(DrawCommand::DrawMesh {
                 mesh: it.mesh,
                 material: it.material,
-                origin: it.origin,
+                origin: add_origin(it.origin, eff),
                 transform: IDENTITY,
             });
         }
@@ -863,7 +897,7 @@ impl Engine {
         let cands: Vec<PointCloudCandidate<'_>> = self
             .point_clouds
             .values()
-            .filter(|pc| !self.hidden.contains(&enc_entity(pc.entity)))
+            .filter(|pc| !self.is_hidden(pc.entity))
             .map(|pc| PointCloudCandidate {
                 entity: pc.entity,
                 origin: pc.origin,
@@ -928,9 +962,7 @@ impl Engine {
             let cands: Vec<MeshCandidate> = self
                 .items
                 .iter()
-                .filter(|it| {
-                    !self.hidden.contains(&enc_entity(it.entity)) && !skip.contains(&it.entity)
-                })
+                .filter(|it| !self.is_hidden(it.entity) && !skip.contains(&it.entity))
                 .map(|it| MeshCandidate {
                     entity: it.entity,
                     positions: &it.positions,
@@ -1172,7 +1204,7 @@ impl Engine {
         if !self.items.iter().any(|i| enc_entity(i.entity) == entity) {
             return None;
         }
-        Some(!self.hidden.contains(&entity))
+        Some(!self.is_hidden(dec_entity(entity)))
     }
 
     /// CAPI-15: 程序化加网格（调用期拷贝；退化零提交，spawn 回滚不外泄槽位）。
@@ -1301,6 +1333,62 @@ impl Engine {
             },
         );
         Ok(bits)
+    }
+
+    // ── Scene tree (CAPI-30..34) ────────────────────────────────────────────
+
+    /// CAPI-30: Create a group node (Component::Group). `name` stored engine-local.
+    pub fn create_group(&mut self, name: Option<&str>) -> Result<u64, String> {
+        let id = self.scene.spawn_group();
+        let bits = enc_entity(id);
+        if let Some(n) = name {
+            self.node_names.insert(bits, n.to_string());
+        }
+        Ok(bits)
+    }
+
+    /// CAPI-31: Reparent. `parent=0` = detach to root.
+    pub fn set_parent(&mut self, child: u64, parent: u64) -> Result<(), String> {
+        let c = dec_entity(child);
+        let p = if parent == 0 {
+            None
+        } else {
+            Some(dec_entity(parent))
+        };
+        self.scene.set_parent(c, p).map_err(|e| e.to_string())
+    }
+
+    /// CAPI-32: Get parent handle (0 = root/no parent).
+    pub fn get_parent(&self, entity: u64) -> Result<u64, String> {
+        let e = dec_entity(entity);
+        Ok(self
+            .scene
+            .get_parent(e)
+            .map_err(|e2| e2.to_string())?
+            .map_or(0, enc_entity))
+    }
+
+    /// CAPI-33: Set group world translation offset (metres). NaN/Inf → reject (zero write).
+    pub fn set_group_offset(
+        &mut self,
+        group: u64,
+        dx: f64,
+        dy: f64,
+        dz: f64,
+    ) -> Result<(), String> {
+        if !(dx.is_finite() && dy.is_finite() && dz.is_finite()) {
+            return Err("offset must be finite".into());
+        }
+        let g = dec_entity(group);
+        self.scene
+            .set_group_offset(g, [dx, dy, dz])
+            .map_err(|e| e.to_string())
+    }
+
+    /// CAPI-34: Read group own offset (not accumulated).
+    pub fn get_group_offset(&self, group: u64) -> Result<[f64; 3], String> {
+        let g = dec_entity(group);
+        self.scene.group_offset(g).map_err(|e| e.to_string())
     }
 
     /// CAPI-28：挂载 MVT 瓦片目录（FileSource；同谱=装载即几何就绪，视图后续喂）。
@@ -1583,12 +1671,13 @@ impl Engine {
             last: (0.0, 0.0),
             backend,
             target: TargetMode::Window(sw),
-            scene: Scene::new(),
+            scene: Self::new_scene(),
             items: Vec::new(),
             extra_cmds: Vec::new(),
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
             hidden: Vec::new(),
+            node_names: std::collections::HashMap::new(),
             clip: None,
             fly: None,
             map: None,
@@ -1601,6 +1690,23 @@ impl Engine {
             tiles: None,
         })
     }
+}
+
+/// Decode a C-API u64 handle back to EntityId (inverse of enc_entity).
+/// All u64 values are valid bit-forms (CAPI-01: slot0gen0=0 is a legal entity);
+/// callers that need a "no entity" sentinel use 0 before entering the scene-tree
+/// path (where 0 = "detach to root" in set_parent / get_parent).
+#[allow(clippy::cast_possible_truncation)]
+const fn dec_entity(bits: u64) -> visiaengine_core::EntityId {
+    visiaengine_core::EntityId::from_raw((bits >> 32) as u32, bits as u32)
+}
+
+const fn add_origin(base: [f64; 3], offset: [f64; 3]) -> [f64; 3] {
+    [
+        base[0] + offset[0],
+        base[1] + offset[1],
+        base[2] + offset[2],
+    ]
 }
 
 const IDENTITY: [[f64; 4]; 4] = [

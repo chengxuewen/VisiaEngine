@@ -22,6 +22,13 @@ impl EntityId {
     pub fn generation(&self) -> u32 {
         self.generation
     }
+
+    /// Reconstruct from raw slot+generation (inverse of slot()/generation()).
+    /// Used by FFI layers that encode EntityId as u64.
+    #[must_use]
+    pub const fn from_raw(slot: u32, generation: u32) -> Self {
+        Self { slot, generation }
+    }
 }
 
 #[derive(Error, Debug, PartialEq)]

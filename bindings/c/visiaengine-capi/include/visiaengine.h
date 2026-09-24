@@ -172,6 +172,19 @@ int32_t  visiaengine_load_mvt_dir(uint64_t ve, const char *path, uint32_t z);
 int32_t  visiaengine_set_tile_view(uint64_t ve, double min_x, double min_y,
                                    double max_x, double max_y);
 
+/* CAPI-30: 创建组节点（场景树容器）。name=NULL=匿名；out_entity 写入 u64 句柄。
+   返回 VE_OK；失败（panic/ve=0/out=NULL/name非UTF-8）= 负错误码。 */
+int32_t  visiaengine_create_group(uint64_t ve, const char *name, uint64_t *out_entity);
+/* CAPI-31: 重设父节点。child 挂到 parent 下；parent=0 = 摘回根。0=成功，负=拒。 */
+int32_t  visiaengine_set_parent(uint64_t ve, uint64_t child, uint64_t parent);
+/* CAPI-32: 查询父节点。返回 parent 句柄（0=根/无父/err）。 */
+uint64_t visiaengine_get_parent(uint64_t ve, uint64_t entity);
+/* CAPI-33: 设组平移（世界米，f64×3）。group 必须是 CAPI-30 创建的组节点。0=成功。 */
+int32_t  visiaengine_set_group_offset(uint64_t ve, uint64_t group,
+                                       double dx, double dy, double dz);
+/* CAPI-34: 读组自身平移（非累加）。out 需预分配 3×f64。0=成功，负=拒。 */
+int32_t  visiaengine_get_group_offset(uint64_t ve, uint64_t group, double *out);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
