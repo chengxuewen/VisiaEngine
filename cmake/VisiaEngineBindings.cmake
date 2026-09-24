@@ -159,9 +159,9 @@ function(visiaengine_setup_bindings)
       COMMENT "Generating example gallery (build/gallery/index.html)"
       VERBATIM)
     add_custom_target(gallery-serve
-      COMMAND ${Python3_EXECUTABLE} -m http.server 8931 --bind 127.0.0.1
+      COMMAND ${Python3_EXECUTABLE} -m http.server 8931 --bind 0.0.0.0
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT "Serving repo root at http://127.0.0.1:8931 (Ctrl-C to stop)"
+      COMMENT "Serving repo root at http://<host>:8931 (LAN-reachable; Ctrl-C to stop)"
       VERBATIM)
     # no FOLDER: the position-mirror rule (FOLDER = on-disk directory) has no
     # tools/ source dir; targets are identified by name (gate: cmake-smoke D14/R9).
