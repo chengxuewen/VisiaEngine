@@ -436,6 +436,7 @@ dependencies = [
  "visiaengine-io-gltf",
  "visiaengine-io-points",
  "visiaengine-io-text",
+ "visiaengine-io-tiles",
  "visiaengine-render",
  "visiaengine-render-wgpu",
  "wgpu",
@@ -2222,6 +2223,14 @@ name = "visiaengine-io-text"
 version = "0.1.0"
 dependencies = [
  "fontdue",
+ "thiserror 2.0.20",
+ "visiaengine-core",
+]
+
+[[package]]
+name = "visiaengine-io-tiles"
+version = "0.1.0"
+dependencies = [
  "thiserror 2.0.20",
  "visiaengine-core",
 ]

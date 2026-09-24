@@ -1,0 +1,12 @@
+[package]
+name = "visiaengine-io-tiles"
+description = "Tile streaming (architecture 7 io-* family): MVT (Mapbox Vector Tile) decode -> local geometry + slippy tile math. Zero network deps (Phase 0: file sources only)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+visiaengine-core.workspace = true
+thiserror.workspace = true

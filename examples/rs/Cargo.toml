@@ -15,6 +15,7 @@ visiaengine-render-wgpu.workspace = true
 visiaengine-io-gltf.workspace = true
 visiaengine-geo.workspace = true
 visiaengine-io-points.workspace = true
+visiaengine-io-tiles.workspace = true
 visiaengine-io-text.workspace = true
 # 三方直用面 = examples/rs/*.rs 顶行+全路径引用实扫（S1 清点：image×1 pollster×4 wgpu×4 winit×4）
 wgpu.workspace = true
@@ -78,3 +79,6 @@ path = "E601_bench_twin.rs"
 [[example]]
 name = "E901_twin_city"
 path = "E901_twin_city.rs"
+[[example]]
+name = "E206_tile_viewer"
+path = "E206_tile_viewer.rs"

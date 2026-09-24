@@ -19,6 +19,7 @@ visiaengine-render-wgpu = { path = "crates/visiaengine-render-wgpu", version = "
 visiaengine-io-text = { path = "crates/visiaengine-io-text", version = "0.1.0" }
 visiaengine-io-gltf = { path = "crates/visiaengine-io-gltf", version = "0.1.0" }
 visiaengine-io-points = { path = "crates/visiaengine-io-points", version = "0.1.0" }
+visiaengine-io-tiles = { path = "crates/visiaengine-io-tiles", version = "0.1.0" }
 visiaengine-geo = { path = "crates/visiaengine-geo", version = "0.1.0" }
 
 # 第三方 pin（计划 §1，2026-09-03 crates.io 实测）

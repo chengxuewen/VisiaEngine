@@ -76,7 +76,7 @@ function(visiaengine_setup_bindings)
   endif()
 
   # ── Rust 族：argv 唯一户口（pixi smoke 只做 `ctest -R` 转发壳，抄写面归零）──
-  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E302_fly_camera E303_split_screen E504_glass_water
+  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E206_tile_viewer E302_fly_camera E303_split_screen E504_glass_water
                 E301_switch_camera E401_pick_demo E402_pick_interactive E501_shadow_demo
                 E502_color_tuning E503_stroke_points E601_bench_twin E901_twin_city)
   set(_disp_E101_clear ON)
@@ -94,6 +94,7 @@ function(visiaengine_setup_bindings)
   set(_args_E302_fly_camera "--frames;1")
   set(_args_E205_text_labels "--frames;1")
   set(_args_E204_pcl_viewer "--pick-check;--frames;3")  # 自断言双半区覆盖 + REND-38 点拾取三断言（B2）
+  set(_args_E206_tile_viewer "--frames;1")  # MVT 解码→渲染三族像素断言（B3）
   set(_args_E401_pick_demo "--frames;2")
   set(_args_E402_pick_interactive "--frames;3")
   set(_args_E501_shadow_demo "--frames;1")  # 双模式例：CI 走 headless（默认=交互窗）；注册表只服 ctest

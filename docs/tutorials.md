@@ -11,6 +11,7 @@
 | E203 | 属性与量测（平面 3857 距离/面积 CLI） | `examples/rs/E203_measure_cli.rs` | GEO-21/22 | `pixi run smoke-measure` |
 | E204 | 数据装载·点云（螺旋自断言双模 + `--file` PLY 装载路 + `--pick-check` 点拾取三断言 B2） | `examples/rs/E204_pcl_viewer.rs` | IO-01..06 / CAPI-18/19 / WGPU-18 / REND-38/39 | `pixi run smoke-pcl-viewer` |
 | E205 | 图注文字·标注双模（io-text 全链活例；无参常驻窗/`--frames` 白墨断言） | `examples/rs/E205_text_labels.rs` | IO-07..09 / REND-33 / WGPU-24/25 | `pixi run smoke-text-labels` |
+| E206 | 数据装载·矢量瓦片（MVT 解码→GeoTile→三族渲染；FileSource 装载捆绑合成瓦片） | `examples/rs/E206_tile_viewer.rs` | IO-10..12 / GEO-27 | `pixi run smoke-tile-viewer` |
 | E301 | 相机与视图（透视↔正交无级切换） | `examples/rs/E301_switch_camera.rs` | REND-10..17 | `pixi run smoke-switch-camera` |
 | E302 | 相机飞行·预设巡览（双模：1/2/3 视角互飞/拖滚中断=飞行 cancel；`--frames` 端点+最短弧+渲染三断言） | `examples/rs/E302_fly_camera.rs` | REND-34 / CAPI-23 | `pixi run smoke-fly-camera` |
 | E303 | 分屏驾驶舱·主透视+顶视小地图（双模：1/2/3 飞行小窗跟随/拖滚接管；`--frames` 分区四断言） | `examples/rs/E303_split_screen.rs` | REND-35 / WGPU-26 | `pixi run smoke-split-screen` |
