@@ -3,9 +3,11 @@
 use std::ffi::CString;
 use visiaengine::{
     MISS, VE_ERR_SIZE, visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
-    visiaengine_entity_count, visiaengine_load_geojson, visiaengine_load_gltf, visiaengine_pick,
-    visiaengine_readback, visiaengine_render, visiaengine_viewport,
+    visiaengine_entity_count, visiaengine_load_geojson, visiaengine_load_gltf,
+    visiaengine_load_mvt_dir, visiaengine_pick, visiaengine_readback, visiaengine_render,
+    visiaengine_set_tile_view, visiaengine_viewport,
 };
+use visiaengine_io_tiles::TileSource;
 
 fn repo_root() -> std::path::PathBuf {
     let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -237,4 +239,82 @@ fn viewport_resize_reconfigures_frame_dims() {
         0
     );
     assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+// spec: CAPI-28
+#[test]
+fn tile_layer_renders_pixel_families_via_capi() {
+    const W: usize = 160;
+    const H: usize = 120;
+    let tile_dir = CString::new(format!("{}/resources/data/tiles", repo_root().display())).unwrap();
+    let ve = visiaengine_create_headless(W as u32, H as u32);
+    assert_ne!(ve, 0);
+    // mount: loads all 3x3 z10 tiles + auto-fits ortho camera to batch center
+    let mounted = visiaengine_load_mvt_dir(ve, tile_dir.as_ptr(), 10);
+    assert_eq!(mounted, 9, "3x3 fixture all mounted");
+    // full-coverage bbox (same tiles, just triggers scheduler visible)
+    let visible = visiaengine_set_tile_view(ve, -2.01e7, 1.995e7, -1.994e7, 2.005e7);
+    assert_eq!(visible, 9, "all 9 tiles in view");
+    assert_eq!(visiaengine_render(ve), 0, "render with tile layer");
+    let mut buf = vec![0u8; W * H * 4];
+    assert_eq!(
+        visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
+        0,
+        "readback after tile render"
+    );
+    // pixel-family counts (same predicates as E206 headless gate, RGBA order)
+    let cnt = |pred: &dyn Fn(u8, u8, u8) -> bool| -> usize {
+        (0..W * H)
+            .filter(|&i| {
+                let (r, g, b) = (buf[i * 4], buf[i * 4 + 1], buf[i * 4 + 2]);
+                pred(r, g, b)
+            })
+            .count()
+    };
+    let blue = cnt(&|r, _g, b| b > 90 && b > r + 20);
+    let orange = cnt(&|r, g, b| r > 150 && g > 80 && b < 90);
+    let teal = cnt(&|r, g, b| r < 110 && g > 60 && b > 60 && g >= r);
+    let red = cnt(&|r, g, b| r > 150 && g < 90 && b < 90);
+    println!("TILE RENDER blue={blue} orange={orange} teal={teal} red={red}");
+    // conservative thresholds: measured −40% at 160×120 viewport
+    // (E206 at 480×360: blue=16451 orange=11198 teal=16451; scaled ~1/9 area)
+    // red=0 expected: POI [0.9,0.25,0.35]→sRGB G≈137, not <90; E206 480×360 catches edge AA only
+    assert!(blue > 1500, "water fill coverage: got {blue}");
+    assert!(orange > 2000, "road strokes visible: got {orange}");
+    assert!(teal > 1000, "boundary seam visible: got {teal}");
+    assert!(red > 800, "POI splats visible: got {red}");
+    assert_eq!(visiaengine_destroy(ve), 0);
+}
+// spec: CAPI-28
+#[test]
+#[ignore = "debug: probe fixture class distribution"]
+fn probe_tile_fixture_classes() {
+    let root = {
+        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        while !p.join("Cargo.lock").exists() {
+            assert!(p.pop());
+        }
+        p.join("resources/data/tiles")
+    };
+    let src = visiaengine_io_tiles::FileSource::new(root);
+    for x in 0..3u32 {
+        for y in 0..3u32 {
+            let bytes = src.load(10, x, y).expect("tile bytes");
+            let tile = visiaengine_io_tiles::decode_tile(&bytes).expect("decode");
+            for layer in &tile.layers {
+                for f in &layer.features {
+                    let tags = f.tags(layer);
+                    let cls = tags.get("class");
+                    println!(
+                        "tile({},{}) layer={} gt={} class={:?}",
+                        x,
+                        y,
+                        layer.name,
+                        f.geom_type(),
+                        cls
+                    );
+                }
+            }
+        }
+    }
 }

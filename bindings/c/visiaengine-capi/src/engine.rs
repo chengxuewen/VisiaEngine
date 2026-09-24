@@ -141,9 +141,9 @@ fn union_bbox(ids: &[visiaengine_io_tiles::TileId]) -> (f64, f64, f64, f64) {
     acc.unwrap_or((0.0, 0.0, 0.0, 0.0))
 }
 
-/// P1 瓦片层（CAPI-28/29）：调度器 + 场景中心批几何（E206 prove 同构，引擎侧消费）。
-/// Render-loop integration (upload→DrawMesh) = next step after this band; fields parked here.
-#[expect(dead_code)]
+/// P1 tile layer (CAPI-28/29): scheduler + scene-center batch geometry.
+/// Render-loop consumes wpos/widx/strokes/points on first frame after mount;
+/// uploaded caches GPU table IDs (invalidate only on re-mount, not on set_tile_view).
 struct TileLayer {
     set: visiaengine_io_tiles::TileSet,
     ids: Vec<visiaengine_io_tiles::TileId>,
@@ -604,6 +604,56 @@ impl Engine {
                 .set_glyph_atlas(self.glyphs.pixels(), g, g)
                 .map_err(|e| format!("atlas: {e}"))?;
         }
+        // P1 tile layer: lazy GPU upload (once) + per-frame draw commands.
+        if let Some(ref mut layer) = self.tiles {
+            if layer.uploaded.is_none() && !layer.wpos.is_empty() {
+                let normals = vec![[0.0f32, 0.0, 1.0]; layer.wpos.len()];
+                let mesh = self
+                    .backend
+                    .create_mesh(&MeshDesc {
+                        uv: &[],
+                        positions: &layer.wpos,
+                        normals: &normals,
+                        indices: &layer.widx,
+                    })
+                    .map_err(|e| format!("tile mesh: {e:?}"))?;
+                let material = self
+                    .backend
+                    .create_material([0.16, 0.38, 0.62, 1.0])
+                    .map_err(|e| format!("tile material: {e:?}"))?;
+                let st = self
+                    .backend
+                    .create_strokes(&StrokeTableDesc {
+                        data: &layer.strokes,
+                    })
+                    .map_err(|e| format!("tile strokes: {e:?}"))?;
+                let pt = self
+                    .backend
+                    .create_points(&PointTableDesc {
+                        data: &layer.points,
+                    })
+                    .map_err(|e| format!("tile points: {e:?}"))?;
+                layer.uploaded = Some((mesh, material, st, pt));
+            }
+            if let Some((mesh, material, st, pt)) = layer.uploaded {
+                commands.push(DrawCommand::DrawMesh {
+                    mesh,
+                    material,
+                    origin: layer.center,
+                    transform: IDENTITY,
+                });
+                commands.push(DrawCommand::DrawStrokes {
+                    table: st,
+                    origin: layer.center,
+                    transform: IDENTITY,
+                });
+                commands.push(DrawCommand::DrawPoints {
+                    table: pt,
+                    origin: layer.center,
+                    transform: IDENTITY,
+                });
+            }
+        }
         commands.append(&mut self.extra_cmds.clone());
         let (hw, hh) = self.half_extents();
         let proj = match self.mode {
@@ -618,7 +668,13 @@ impl Engine {
                 .ok_or("persp degenerate")?,
             Proj::Ortho => self
                 .rig
-                .ortho_frame(hw as f32, self.w as f32, self.h as f32, 0.1, 1000.0)
+                .ortho_frame(
+                    hw as f32,
+                    self.w as f32,
+                    self.h as f32,
+                    0.1,
+                    (hw * 2.0).max(1000.0) as f32,
+                )
                 .ok_or("ortho degenerate")?,
         };
         let camera = match self.mode {
@@ -628,7 +684,7 @@ impl Engine {
                 0.1,
                 1000.0,
             ),
-            Proj::Ortho => Camera::ortho(hw as f32, hh as f32, 0.1, 1000.0),
+            Proj::Ortho => Camera::ortho(hw as f32, hh as f32, 0.1, (hw * 2.0).max(1000.0) as f32),
         };
         let eye = self.rig.eye();
         let frame = Frame {
@@ -651,7 +707,13 @@ impl Engine {
         if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig()) {
             let (rw, rh) = (r.width.max(1), r.height.max(1));
             let proj = mrig
-                .ortho_frame(mrig.zoom as f32, rw as f32, rh as f32, 0.1, 1000.0)
+                .ortho_frame(
+                    mrig.zoom as f32,
+                    rw as f32,
+                    rh as f32,
+                    0.1,
+                    (mrig.zoom * 2.0).max(1000.0) as f32,
+                )
                 .ok_or("map ortho degenerate")?;
             let map_frame = Frame {
                 viewport: Viewport::new(rw, rh, 1.0),
@@ -659,7 +721,7 @@ impl Engine {
                     mrig.zoom as f32,
                     (mrig.zoom * f64::from(rh) / f64::from(rw.max(1))) as f32,
                     0.1,
-                    1000.0,
+                    (mrig.zoom * 2.0).max(1000.0) as f32,
                 ),
                 view_rot: mrig.view_rotation(),
                 eye: mrig.eye(),
@@ -781,7 +843,13 @@ impl Engine {
         let ortho = matches!(self.mode, Proj::Ortho);
         let (hw, _hh) = self.half_extents();
         let proj = if ortho {
-            rig.ortho_frame(hw as f32, w as f32, h.max(1) as f32, 0.1, 1000.0)?
+            rig.ortho_frame(
+                hw as f32,
+                w as f32,
+                h.max(1) as f32,
+                0.1,
+                (hw * 2.0).max(1000.0) as f32,
+            )?
         } else {
             rig.perspective(rig.fov_y as f32, w as f32 / h.max(1) as f32, 0.1, 1000.0)?
         };
@@ -1283,6 +1351,15 @@ impl Engine {
         // 场景中心 = 全部瓦片 bbox 并集中心（批顶点烘中心小值域帧）。
         let (min_x, min_y, max_x, max_y) = union_bbox(&ids);
         let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+        // P1 camera fit (same pattern as mount_geo): ortho top-down at batch center.
+        let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
+        self.mode = Proj::Ortho;
+        self.zoom = radius.max(10.0);
+        self.rig = CameraRig::look_at(
+            [center[0], center[1], radius.max(10.0)],
+            center,
+            [0.0, 1.0, 0.0],
+        );
         let (mut wpos, mut widx) = (Vec::new(), Vec::new());
         let mut strokes = Vec::new();
         let mut points = Vec::new();
