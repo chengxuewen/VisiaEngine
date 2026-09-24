@@ -2,6 +2,9 @@
 //! 双模（族制）：无参=常驻窗（1/2=水 alpha 0.7/0.35 重传材质演示，拖轨道滚轮远近 R 复位）；
 //! `--frames N`=离屏断言（水下棋盘透视/玻璃楼见地/标签恒顶，阈=PIT-8 探针实测）。
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use std::sync::Arc;
 
 use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
@@ -266,6 +269,7 @@ fn headless_run() {
     let img = b
         .render_to_pixels(&frame_of(&home(), cmds, W, H))
         .expect("render");
+    gallery::save_frame(&img, "E504_glass_water");
     let px = |x: u32, y: u32| {
         let i = ((y * W + x) * 4) as usize;
         [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]]

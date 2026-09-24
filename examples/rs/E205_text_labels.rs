@@ -2,6 +2,9 @@
 //! 双模（E901 同制）：无参=常驻窗（Esc/关窗退）；--frames N=离屏断言快退。
 //! 注：DejaVu 无 CJK 字形——中文路=宿主注 CJK 字体同口（演示如实拉丁，明账）。
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, LabelMark, LabelTableDesc, MaterialDesc, MeshDesc,
@@ -169,6 +172,7 @@ fn headless_run(_n: u32) {
     let img = b
         .render_to_pixels(&ortho_frame(cmds, W, H, 30.0))
         .expect("render");
+    gallery::save_frame(&img, "E205_text_labels");
     let white = img
         .rgba
         .as_chunks::<4>()

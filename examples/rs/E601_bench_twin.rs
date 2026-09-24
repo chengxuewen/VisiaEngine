@@ -2,6 +2,9 @@
 //! 用法：`cargo run --release -p visiaengine-render-wgpu --example E601_bench_twin -- [--count N] [--frames N]`
 //! headless 形态（smoke-pick 同族免 xvfb）。**数字=本机 lavapipe 软光栅观测，非 CI 门禁** [6b]。
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use std::time::Instant;
 
 use visiaengine_render::{
@@ -140,6 +143,7 @@ fn main() {
     let mut last = img;
     for _ in 0..frames {
         last = b.render_to_pixels(&frame).expect("frame");
+        gallery::save_frame(&last, "E601_bench_twin");
     }
     let frame_ms = t1.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
 

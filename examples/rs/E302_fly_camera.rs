@@ -2,6 +2,9 @@
 //! 双模（E501/E901 同制）：无参=常驻窗（1/2/3=预设视角 拖/滚轮=cancel+轨道 R=回家 Esc=退）；
 //! `--frames N`=确定性纯函数断言路（墙钟不进 CI 契约）。
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use std::sync::Arc;
 
 use visiaengine_render::{
@@ -231,6 +234,7 @@ fn headless_run() {
     let img = backend
         .render_to_pixels(&frame_of(&mid, cmds, W, H))
         .expect("render");
+    gallery::save_frame(&img, "E302_fly_camera");
     let bright = img
         .rgba
         .as_chunks::<4>()

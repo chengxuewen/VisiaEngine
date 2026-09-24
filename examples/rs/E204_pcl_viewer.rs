@@ -5,6 +5,9 @@
 //!   --file PATH  载入 PLY（ascii/binary_le；装载路验收）
 //!   无参         常驻人验窗：左键拖=轨道 滚轮=远近+恒径 关窗/Esc 退出
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use std::sync::Arc;
 
 use visiaengine_render::{
@@ -103,6 +106,7 @@ fn prove(scene: &Scene, frames: u32) {
     };
     for f in 0..frames.max(1) {
         let img = b.render_to_pixels(&frame).expect("render");
+        gallery::save_frame(&img, "E204_pcl_viewer");
         let nonbg = |y0: u32, y1: u32| -> u32 {
             (y0..y1)
                 .flat_map(|y| (0..W).map(move |x| (y, x)))

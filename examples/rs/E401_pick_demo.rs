@@ -2,6 +2,9 @@
 //! 零窗口依赖 → 本机/CI 直跑）。场景=双箱堆叠，拾取中心=视点近侧件。
 //! 用法：cargo run --example E401_pick_demo -- [--frames N]
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use visiaengine_core::Scene;
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, Viewport,
@@ -158,6 +161,7 @@ fn main() {
     };
     for f in 0..frames {
         let img = backend.render_to_pixels(&frame).expect("render");
+        gallery::save_frame(&img, "E401_pick_demo");
         let i = ((H / 2 * W + W / 2) * 4) as usize;
         println!(
             "FRAME {f} center=({},{},{}) hit_entity_slot={}",

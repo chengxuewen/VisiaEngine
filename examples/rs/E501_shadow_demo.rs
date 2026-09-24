@@ -3,6 +3,9 @@
 //! 无参数 = 交互窗口（左键拖=轨道、滚轮=远近、关窗退出）——cargo-run_E501 人工检验光影效果面。
 //! 用法：`cargo run --example E501_shadow_demo [-- --frames 1]`
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use std::sync::Arc;
 
 use visiaengine_render::{
@@ -152,6 +155,7 @@ fn headless_run() {
         commands: scene_commands(ground, gmat, boxy, bmat, iid),
     };
     let img = b.render_to_pixels(&frame).expect("render");
+    gallery::save_frame(&img, "E501_shadow_demo");
     let mut dark = 0u32;
     let mut groundish = 0u32;
     for p in img.rgba.as_chunks::<4>().0.iter() {

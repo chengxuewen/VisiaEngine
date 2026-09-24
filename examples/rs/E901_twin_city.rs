@@ -3,6 +3,9 @@
 //! 双模（E501 同制）：无参=常驻交互窗（左键拖=轨道 滚轮=远近 关窗退出）；
 //! `--frames N`=离屏单帧+断言+PNG（ctest 注册形/smoke-twin-city）。
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use std::sync::Arc;
 
 use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
@@ -294,6 +297,7 @@ fn headless_run() {
         commands,
     };
     let img = b.render_to_pixels(&frame).expect("render");
+    gallery::save_frame(&img, "E901_twin_city");
 
     // ---- PNG 人检落盘 + 行为自检（城+底图+影斑三族）----
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/twin_city.png");

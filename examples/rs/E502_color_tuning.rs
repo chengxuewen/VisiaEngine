@@ -5,6 +5,9 @@
 //!   无参        = 常驻人验窗（IDE cargo-run_E502 路：四色板肉眼验收色彩链，关窗/Esc 退出）
 //!   --frames N  = headless 自断言快退（ctest 路；逐板字节比对，FAIL 非零退）
 
+#[path = "gallery.rs"]
+mod gallery;
+
 use std::sync::Arc;
 
 use visiaengine_render::{
@@ -97,6 +100,7 @@ fn prove_headless(frames: u32) {
     };
     for _ in 0..frames.max(1) {
         let img = b.render_to_pixels(&frame).expect("render");
+        gallery::save_frame(&img, "E502_color_tuning");
         let mut bad = 0usize;
         for (i, (cr, cg, cb)) in SWATCHES.into_iter().enumerate() {
             // 板心像素：ortho 半宽 2 → px=(0.5 + x/4)·256，板心 -1.5..1.5 → 32/96/160/224

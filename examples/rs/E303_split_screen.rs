@@ -9,6 +9,9 @@ use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Easing, Frame, Instance, InstanceDesc, MaterialDesc, MeshDesc,
     RenderBackend, ShadowSetup, Viewport, ViewportRect,
 };
+#[path = "gallery.rs"]
+mod gallery;
+
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, MultiClearPolicy, unit_box_mesh};
 use winit::application::ApplicationHandler;
@@ -227,6 +230,7 @@ fn headless_run() {
     let img = b
         .render_to_pixels_rects(&passes, MultiClearPolicy::FirstClearRestLoad)
         .expect("render split");
+    gallery::save_frame(&img, "E303_split_screen");
     let (mr, map) = rects(W, H);
     let fam = |r: &ViewportRect, f: fn([u8; 4]) -> bool| -> u32 {
         (r.y..r.y + r.height)
