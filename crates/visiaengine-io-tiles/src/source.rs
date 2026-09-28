@@ -192,6 +192,12 @@ impl LruCache {
         Some(&e.0)
     }
 
+    /// Remove one entry (review fix #3: pump-state eviction keeps the cache
+    /// and the state map in agreement).
+    pub fn remove(&mut self, id: &TileId) {
+        self.entries.remove(id);
+    }
+
     #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()

@@ -734,6 +734,22 @@ impl Engine {
                 if done_now > 0 && layer.uploaded.is_none() {
                     rebuild_tile_batch(layer, done_ids);
                 }
+                // Review fix #3: an LRU-evicted Done tile renders as a hole —
+                // when the state map disagrees with decode availability,
+                // re-arm the evicted tiles (they return to Unloaded and the
+                // pump re-fetches them next frames).
+                let evicted: Vec<visiaengine_io_tiles::TileId> = layer
+                    .ids
+                    .iter()
+                    .filter(|id| {
+                        layer.set.state(id) == visiaengine_io_tiles::TileState::Done
+                            && !layer.set.decoded_cached(id)
+                    })
+                    .copied()
+                    .collect();
+                if !evicted.is_empty() {
+                    layer.set.evict_done(&evicted);
+                }
             }
             if layer.uploaded.is_none() && !layer.wpos.is_empty() {
                 let normals = vec![[0.0f32, 0.0, 1.0]; layer.wpos.len()];
@@ -1667,8 +1683,24 @@ impl Engine {
             // arrival paces through the render-loop pump budget.
             layer.ids = ids.clone();
             // scene center = current view bbox center (bakes a stable
-            // small-value frame for the batch; PIT-8 safe domain)
-            layer.center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+            // small-value frame for the batch; PIT-8 safe domain).
+            // Review fix #4: the batch vertices are baked RELATIVE to center;
+            // moving the center without invalidating the uploaded GPU tables
+            // rendered the whole layer shifted by the center delta. Drop the
+            // upload-cache so the rebuild path re-fires with fresh offsets
+            // (old GPU ids leak until re-mount — id-monotonic REND-07 has no
+            // remove face; one layer's tables = accepted, ledgered).
+            let new_center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+            if layer.center != new_center {
+                layer.center = new_center;
+                layer.uploaded = None;
+                // Vertices baked to the OLD center are stale too; drop them so
+                // the rebuild regenerates the full batch from the Done set.
+                layer.wpos.clear();
+                layer.widx.clear();
+                layer.strokes.clear();
+                layer.points.clear();
+            }
             let started = layer.set.begin(&ids);
             let _ = started;
             return Ok(ids.len() as u64);

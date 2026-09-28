@@ -185,6 +185,20 @@ impl TileSet {
         (done, failed)
     }
 
+    /// IO-16 (N1.4, review fix #3): drop pump state (and cached bytes) for the
+    /// given Done tiles — the LRU can evict bytes behind the state map's back;
+    /// the engine calls this when `decoded()` disagrees with `state()==Done`.
+    /// Evicted tiles return to Unloaded and are re-armable via begin().
+    pub fn evict_done(&mut self, ids: &[TileId]) {
+        for id in ids {
+            if self.pump_state.get(id) == Some(&TileState::Done) {
+                self.cache.remove(id);
+                self.pump_state.remove(id);
+                self.decoded_cache.remove(id);
+            }
+        }
+    }
+
     /// IO-16 (N1.4): pump-lifecycle state of one tile (Unloaded = absent map).
     #[must_use]
     pub fn state(&self, id: &TileId) -> TileState {
@@ -192,6 +206,14 @@ impl TileSet {
             .get(id)
             .copied()
             .unwrap_or(TileState::Unloaded)
+    }
+
+    /// IO-16 (review fix #3): read-only probe — is the decoded form currently
+    /// cached? (No decode on miss; pairs with `state()==Done` to detect LRU
+    /// eviction of a tile the state map still calls Done.)
+    #[must_use]
+    pub fn decoded_cached(&self, id: &TileId) -> bool {
+        self.decoded_cache.contains_key(id)
     }
 
     /// IO-16 (N1.4): last recorded source error for a FailedTemporarily tile.

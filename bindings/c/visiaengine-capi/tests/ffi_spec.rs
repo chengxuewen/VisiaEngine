@@ -286,7 +286,11 @@ fn abi_version_packed_and_never_thread_gated() {
         "major 1 minor 12 (N1.4: +CAPI-35 set_tile_source_http, MAJOR-contained)"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_000C, "exception-set member is not thread-gated");
+    assert_eq!(
+        h.join().unwrap(),
+        0x0001_000C,
+        "exception-set member is not thread-gated"
+    );
 }
 
 // spec: CAPI-02
