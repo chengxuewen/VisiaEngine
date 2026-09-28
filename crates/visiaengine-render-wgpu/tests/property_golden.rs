@@ -11,6 +11,11 @@
 //! (strokes.rs frame_with / shadows.rs scene / clip.rs coefficient form /
 //! multiview.rs pixel ViewportRect) — no new IR, no generator module (YAGNI).
 //! New properties land as +1 fixture entry.
+//!
+//! SPEC-ANCHOR NOTE (review #5): this pilot is deliberately UNANCHORED —
+//! the 10 fixtures lock probe-verified rendering behavior of EXISTING
+//! clauses (WGPU-17/19/26/27/30 families) rather than introducing new
+//! contract surface. If promoted to a named gate, add a clause + anchors.
 
 #![allow(clippy::float_cmp)]
 

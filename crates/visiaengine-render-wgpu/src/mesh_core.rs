@@ -1401,6 +1401,13 @@ impl MeshCore {
         let Some((head_frame, _)) = passes.first() else {
             return;
         };
+        // Review finding #7: EDL is single-view-only this band (WGPU-33
+        // clause); a Some(edl) frame here would be SILENTLY ignored. Make
+        // the misuse loud in debug builds.
+        debug_assert!(
+            passes.iter().all(|(f, _)| f.edl.is_none()),
+            "render_view_rects ignores Frame.edl (multiview + EDL unsupported; WGPU-33)"
+        );
         let clear = head_frame
             .commands
             .iter()

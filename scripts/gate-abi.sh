@@ -28,7 +28,9 @@ MISSING=$(
       entity_visible)     pat='entity_visible';;
       *)                  pat="$m";;
     esac
-    grep -qE "(^|[^a-zA-Z0-9_])${pat}\(" "$HPP" || echo "visiaengine_${m}";
+    # Declaration-form match: a hpp method line starts with spaces + type +
+    # name( — matching `  name(` (indented) kills comment/argument matches.
+    grep -qE "^[[:space:]]*[^/]*\b${pat}\(" "$HPP" || echo "visiaengine_${m}";
   done)
 [ -z "$MISSING" ] || { echo "GATE-ABI ✗ hpp 缺转发: $MISSING"; exit 1; }
 "$CC" -I bindings/c/visiaengine-capi/include examples/c/E701_demo_headless.c \
