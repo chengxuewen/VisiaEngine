@@ -89,3 +89,8 @@ cargo tarpaulin --workspace 2>/dev/null || echo "tarpaulin not installed"
 grep -rn 'out of [1-9]' scripts/smoke-rs.sh        # 转发壳 ≥1 断言在位
 grep -rn 'lum >\|red >\|green >' crates/*/tests/*.rs | wc -l   # 像素门计数（增删随带对账）
 ```
+
+### HashMap 迭代序测试纪律（2026-09-28 N1.4 带实锤）
+涉及 HashMap 驱动的多对象断言（如 pump 逐出顺序）：单测内**不得**对迭代序做可观测断言——本机单跑绿、CI 全量跑翻车（PIT-7 族假红的近亲）。确定性语义（budget=每次 I/O 数）用**脚本化 source 计数**锁（attempts.len()==budget），顺序本身不锁。
+**验证**: 同测试连跑 `for i in 1 2 3 4 5; do cargo test ... ; done` 全绿再提交。
+**阻塞条件**: 修复 HashMap 序型偶发后未 5 连跑。

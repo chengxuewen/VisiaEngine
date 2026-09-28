@@ -228,3 +228,27 @@
 - **解法**: `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]` 把 ureq 隔离到 native 段；wasm 侧给 `HttpSource` 加 typed stub（`load()` 返回 `Err(Unsupported)`）。wasm 真实 HTTP 需宿主 JS fetch + bytes 注入口（Phase 2 wasm demo 带）。
 - **验证**: `pixi run web-check rc=0`（MIRROR 3/3）。
 - **禁止**: 向 wasm 可见 crate 直接添加含 getrandom/ring/rustls 的无 target-gate 依赖。
+
+## PIT-33: 全屏 pass 后 depth 生命周期与 wgpu30 用域法（2026-09-28，EDL 带）
+- **症状**: EDL 后处理需在同一 encoder 内采样主 pass 的 color+depth；直接把 swapchain view 当采样源（无 TEXTURE_BINDING）或同 pass 内"写 color 又采 color"即翻车。
+- **根因**: wgpu 30 用域法：①attachment 与 RESOURCE 在同一 pass 互斥（color 同时作为 write target 与 sample source 非法）；②swapchain 视图不带 TEXTURE_BINDING；③depth 默认 StoreOp::Discard，后 pass 无从读。
+- **解法**: 中间纹理缓存（键=(w,h,format)，resize 重建）承主 pass 输出 + depth 改 Store；EDL pass 独立成 pass（采 color+depth、写最终 view）；OFF 路径整段跳过=逐位零回归。多视口路径本带豁免（条款 WGPU-33 记录）。
+- **验证**: `cargo test -p visiaengine-render-wgpu --test edl`（OFF 复渲逐字节等 + ON 像素差异 + OFF-after-ON 再等）。
+
+## PIT-34: LRU/状态双账本失同步——state() 说谎 Done 而字节已被逐出 (2026-09-28，审修 #3)
+- **症状**: pump() 先 cache.insert 后标 Done；LRU 逐出字节后 state() 仍报 Done → decoded() None → 批重建静默 continue = 永久渲染洞，且 begin() 跳过 Done 永不再武装。
+- **根因**: 双账本（pump_state map + LRU bytes）无一致性维护；Done 是稳定态、无人复查字节还在不在。
+- **解法**: 显式 `evict_done(ids)`（清 state+bytes+decoded 三账）+ 只读探测 `decoded_cached(id)`；消费环（engine render loop）每帧对账 `state()==Done && !decoded_cached()` → evict_done 重武装。单点真相原则：发现双账本即配对账函数。
+- **验证**: `cargo test -p visiaengine-io-tiles --test tile_pump lru_eviction`；引擎侧由批重建路径消费（decoded==None 不得渲染）。
+
+## PIT-35: env 代理在库层也吃 loopback——ureq 跟随 http_proxy 把 127.0.0.1 转 502 (2026-09-28)
+- **症状**: E206 --source 泵 0/9 Done；同 URL curl 直连 200、走 env proxy 502（10.144.0.1:7897）。
+- **根因**: 既有教训只覆盖 curl（edit-safety「curl 必须 --noproxy」）；HTTP 客户端库（ureq 3.x）默认 Proxy::try_from_env 同样中招——修调用方 curl 救不了库。
+- **解法**: **修在源头**：HttpSource::load 内 `uri_host_is_loopback(root)` → proxy=None，否则 try_from_env；5s 全局超时同点设。库层网络代码一律自带 loopback 免代理 + 超时，宿主环境不背锅。
+- **验证**: `cargo run --example E206_tile_viewer -p examples -- --source http://127.0.0.1:8932/data/tiles`（配 python http.server）→ 9/9 Done。
+
+## PIT-36: python 模块级定义顺序——main() 执行时 TEMPLATE 尚未定义 (2026-09-28，画廊带)
+- **症状**: gen_gallery.py 尾部 append 的 DETAIL_PAGE 模板在 `if __name__ == "__main__":` 之后，pixi run gallery 报 NameError。
+- **根因**: 追加式编辑把常量放在了入口守卫后面；模块自上而下执行，main() 调用时 TEMPLATE 未绑定。
+- **解法**: 常量/模板一律置于入口守卫之前；追加编辑后先 `python3 -c "import ast; ast.parse(open(f).read())"` 再跑。
+- **验证**: `python3 -c "import ast; ast.parse(open('scripts/gen_gallery.py').read())" && pixi run gallery`

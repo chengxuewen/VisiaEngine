@@ -398,3 +398,18 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 教训：PIT-31（ffi_spec 测试 cwd=crate 目录，相对路径陷阱）**第二见**（load_mvt_dir + set_group_offset 域测试均触发）· **PIT-33**（场景树 handle=0 语义冲突：slot0gen0 合法 vs parent=0=root 哨兵；修法=new_scene 预占 slot 0 + set_parent parent==0 特判）
 - 基线：**287 passed · spec-trace 173↔173 · GATE-ABI 40/40 · GATE-DOCS ✓ E 31 · ctest 33 条 · ci 9/10（audit=PIT-7 第 11 见 TLS 持久故障非瞬抖）· web MIRROR ✓ · 9 crate**
 - 余账：push（领先含本带 S1/S2/S3 三笔+⑤ P1 五笔=约 11 笔）· 旋转继承=有需求再开 · 场景树名字查询（node_names 存 engine.rs，无 C 查询口）· CJK 字体 S2 余账 · LAS 票据制
+
+## 差距调查→hyperplan→Session N+1 基线（2026-09-28，八笔收官）
+
+- 团队模式：四路调查（.refinfo 六族 + 自查）→ 对抗规划 4 批手 ×3 轮（C1-C10 全签 + 认输台账）→ Momus OKAY → 四卡裁决（1a 瓦片泵 / 2 金标+EDL / 3 morph 做 / 4 不部署+three.js 对标）→ 执行
+- N1.1 `a5d3180`：hpp fly_state 转发 + **hpp⊇头镜像门**（别名表制：destroy→destroy_now、entity_set_visible→set_visible；破坏探针自证）+ CAPI-30→35+ 重记账 + 存量 clippy 清账
+- N1.2 `59c772a`：whitepaper L27/L103 + README L11/L38 精确改词（"平滑/无缝/无级"→交付语义；L22 竞品句保留）
+- N1.4 `47bbe54`：**CAPI-35 set_tile_source_http**（发现式装载）+ io-tiles 4 态泵（begin/pump(budget)/state）+ HttpSource 5s 超时 + loopback 免代理（PIT-35）+ 渲染环 4 片/帧预算 + 三面镜像 abi 0x0001000C + E206 --source 真跑 9/9（4+4+1 分帧）+ rebuild_tile_batch 抽取
+- N1.3 `354a8e7`：**goldens-10 逐属性金标**（好坏对自证形；谓词全探针钉值：opacity 145/207、point 4672/232、clip 上下半、shadow 中带分裂）
+- N1.5 `e55dd2f`：**EDL**（Frame.edl None=逐位零回归；中间纹理 + PIT-33 用域法；ON 2790px + 顶行 331.0→322.9 实测；WGPU-33+REND-40 条款；E204 --edl）
+- N1.6 `ca6dbee`：画廊 three.js 式详情页 ×32（CARD 4=不部署纯本地）
+- 审修 `60a24a3`：#1 详情页全名键（E811_c/_cpp 分页 + 撞号 fail-loud）+ #2 C17 21 行清零
+- N2.0 `cd55fc1`：#3 evict_done+decoded_cached 对账（PIT-34）+ #4 center 移位清 uploaded/批（错位根除）
+- 教训：PIT-33/34/35/36 + edit-safety #21/22/23 + testing.md HashMap 序纪律（本次入册）
+- 基线：**297 passed · spec-trace 177↔177 · ABI 41/41 (0x0001000C) · GATE-DOCS ✓ · ci rc=0 · 领先 8 笔**
+- 余账：push 候令 · N+2=morph 带+实体动画 6a+画廊分类扩充 · 择期=property_golden 补锚/镜像门声明形/多视口 EDL assert/point-radius 下限

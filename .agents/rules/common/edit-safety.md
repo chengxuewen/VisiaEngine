@@ -242,3 +242,18 @@ grep -c "重复模式" <file>    # 期望 1；>1 = edit 重复插入
 **先例**: 点云带 M2，`rustfmt --edition 2024 … Cargo.toml` 误喂，工作区损坏一次。
 **验证**: rustfmt 调用行 `grep -nE 'rustfmt.*\.(toml|md|json|toml)'` 或脚本里 `${f##*.}` 断言==rs。
 **阻塞条件**: 任何 rustfmt 命令的文件参数含非 .rs。
+
+### 21. team_create 内联长 JSON spec 易解析失败——用声明式 config 文件 (2026-09-28)
+**规则**: `team_create` 传长 prompt 的 inline JSON 对象时多次 `requires exactly one of teamName or inline_spec` 假错误（实为载荷解析失败）。**正确路径**：写 `~/.omo/teams/<name>/config.json`（短 prompt，详令走 team_send_message 分发）再 `team_create({ teamName })`。成员详令一律投递后制，不塞 spec。
+**验证**: `python3 -m json.tool ~/.omo/teams/<name>/config.json` 先过 JSON 校验。
+**阻塞条件**: inline spec >10 行仍硬试；spec JSON 未预校验。
+
+### 22. 凭记忆写 IR 构造码 = 幽灵 API 三连——先 grep 真签名再动笔 (2026-09-28)
+**规则**: 未核实 render IR 真实签名就写生成器（PointMark/StrokeSeg color 实为 `[f32;3]` 非数组4、ShadowSetup 字段组 proj/view_rot/eye/light_dir/size/bias、DrawCommand 无 Viewport variant、multiview 走 `render_to_pixels_rects`）→ 编译错 3 轮 + 整文件重写。**动笔前必做**：`grep -n "impl <Type>" crates/**/contract.rs` 拿真签名；构造形态抄既有测试文件（strokes/shadows/clip/multiview 各有验证过的 frame 构造），不新造生成器模块（YAGNI）。
+**验证**: 构造码能一次 `cargo check` 过 = 抄对了；连续 2 次编译错 = 停手去 grep。
+**阻塞条件**: 新写 >30 行 IR 构造而未先读对应类型定义。
+
+### 23. 像素谓词假绿的根：谓词匹配的是"永远在场的串"——阳性自证必须改名探针 (2026-09-28)
+**规则**: gate-abi hpp 镜像门首版 `grep -q "$sym"` 恒绿（C 符号名作为转发调用串永远在 hpp 里）；改成方法名形态后仍有假绿（语义改名对 destroy→destroy_now）。**纪律**：新门禁上线必做**破坏探针**——把被测物改名/破坏后跑门禁必须红，且报文精确指认被破坏物（无连带误报）；恢复后必须绿。方向对了还要验"报文对"。
+**验证**: 手工改名探针一次（本会话实证：fly_state→fly_state_TMP 红且只报 fly_state）。
+**阻塞条件**: 新门禁未跑破坏探针即入库。
