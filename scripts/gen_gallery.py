@@ -138,11 +138,24 @@ def main() -> None:
     for band_key in sorted(cards):
         title, cls = E_BANDS[band_key[0]]
         body = "\n".join(cards[band_key])
-        sections.append(f'<section><h2 class="{cls}">{title}</h2>\n<div class="grid">\n{body}\n</div></section>')
+        sections.append(f'<section id="band-{band_key[0]}xx"><h2 class="{cls}">{title}</h2>\n<div class="grid">\n{body}\n</div></section>')
 
     total = len(all_names)
     thumbd = len(have_thumbs & {n.split('_')[0] and n for n in all_names})
-    html = HTML_HEADER.replace("{{TOTAL}}", str(total)).replace("{{THUMB}}", str(len(have_thumbs))) + "\n".join(sections) + HTML_FOOTER
+    # three.js-style category nav (sticky anchor bar) — only bands with cards
+    def _short(band_key: str) -> str:
+        full = E_BANDS[band_key][0]
+        return full.split(" ", 1)[1] if " " in full else full
+
+    # cards are keyed by the band TITLE (band[0] in the setdefault calls);
+    # recover the numeric key from the title's leading digit.
+    nav_items = " · ".join(
+        f'<a href="#band-{k[0]}xx">{k.split(" ", 1)[1] if " " in k else k}</a>'
+        for k in sorted(cards)
+    )
+    html = (HTML_HEADER.replace("{{TOTAL}}", str(total)).replace("{{THUMB}}", str(len(have_thumbs)))
+            .replace("{{NAV}}", nav_items))
+    html += "\n".join(sections) + HTML_FOOTER
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "index.html").write_text(html, encoding="utf-8")
     (OUT / "manifest.txt").write_text("\n".join(sorted(all_names)) + "\n", encoding="utf-8")
@@ -234,9 +247,13 @@ section h2 { font-size:15px; margin:28px 0 12px; color:var(--dim); text-transfor
 .topic { padding:6px 12px; font-size:13.5px; }
 .card code { display:block; padding:0 12px 12px; font-size:11px; color:var(--dim); }
 footer { text-align:center; color:var(--dim); font-size:12px; padding:24px; }
+nav.cats { position:sticky; top:0; z-index:10; background:rgba(13,18,25,.92); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); padding:10px 24px; max-width:1200px; margin:12px auto 0; font-size:13px; }
+nav.cats a { color:var(--dim); text-decoration:none; margin-right:4px; }
+nav.cats a:hover { color:#3b82f6; }
 </style>
 </head>
 <body>
+<nav class="cats">{{NAV}}</nav>
 <header>
 <h1>VisiaEngine Examples</h1>
 <p>{{TOTAL}} tutorials &middot; {{THUMB}} rendered thumbnails &middot; every example machine-executed in CI with pixel gates</p>
