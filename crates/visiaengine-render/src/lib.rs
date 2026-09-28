@@ -7,6 +7,7 @@
 
 pub mod camera;
 pub mod contract;
+pub mod morph;
 pub mod rebase;
 
 mod picking;
@@ -20,6 +21,7 @@ pub use contract::{
     MeshId, PointMark, PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg,
     StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport, ViewportRect, clip_to_local,
 };
+pub use morph::{morph_ease, morph_proj, morph_px_scale};
 pub use picking::{
     MeshCandidate, PickHit, PointCloudCandidate, PointHit, pick_meshes, pick_points,
 };

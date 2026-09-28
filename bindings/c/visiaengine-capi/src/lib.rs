@@ -7,8 +7,7 @@
 mod engine;
 mod ffi;
 
-#[cfg(target_arch = "wasm32")]
-pub use engine::Engine; // visiaengine-wasm 桥（js 胶水独立 crate）
+pub use engine::{Engine, Proj}; // wasm 桥 + N2.1 rs 测试面（morph 带 2026-09-28 去 cfg：native 侧测试/示例同需）
 #[cfg(target_arch = "wasm32")]
 pub use ffi::enc_entity;
 pub use ffi::{

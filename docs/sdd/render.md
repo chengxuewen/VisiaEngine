@@ -124,3 +124,6 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-40: EdlSetup 契约（N1.5）
 `Frame +{ edl: Option<EdlSetup> }`：`None`=关闭且**逐位零回归**（行为面=WGPU-33：无额外 pass、深度 StoreOp 不变、不建中间资源）。`EdlSetup{strength: f32}`（Copy/Debug/ PartialEq，与 ShadowSetup/ClipSetup 同族）；构造契约 `EdlSetup::new` 拒非有限/≤0（None=显式拒，不截断不吞）。`strength` 语义=边缘暗化乘子（0..∞；管线侧 clamp 0.7 封顶防过暗）；多视口路本带忽略（WGPU-33 挂账注记）。宿主面注记：capi 引擎经 CAPI 带 N1.5 的 `--edl` 档位面（E204 例=0.35 探针定档）。
+
+## REND-41: 投影 morphTime（N2.1）
+`morph_proj(ortho, persp, t)`（render::morph 纯函数）：t=0 逐位等于 ortho 矩阵、t=1 逐位等于 persp 矩阵（端点金丝雀=字节级，`morph_spec::morph_endpoints_bitwise`）；中间值 smoothstep（k=t·t·(3−2t)，REND-34 族）逐元素插值。**投影域单一定律**：view_rot/eye/commands 原样穿透；px_world_scale 两端线性插值（morph_px_scale：ortho 精确 2·hw/W → persp 1.0）。Camera 枚举族 t≤0.5 取 ortho、t>0.5 取 persp（view-block uniform 档位；真插值住 proj 矩阵——枚举/矩阵分职入档）。滑杆语义：Engine::set_morph_time 对 NaN→0、越域 clamp（与 EdlSetup 显式拒**有意分叉**——t 是滑杆、strength 是阈值）。多视口：各 Frame 携各自 mode/morph，互不相干。白皮书 §3.1 "同一视口平滑过渡" 的机器兑现锚=端点逐字节等 + 中途非退化（morph_spec + E304 --frames）。

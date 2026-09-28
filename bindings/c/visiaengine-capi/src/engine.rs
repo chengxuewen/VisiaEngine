@@ -41,10 +41,18 @@ enum TargetMode {
 
 /// 投影模式（geo=ortho fit、gltf=persp，viewport 变更重建）。
 #[derive(Clone, Copy, PartialEq)]
-enum Proj {
+pub enum Proj {
     Persp,
     Ortho,
 }
+
+/// N2.1 (REND-41): morphTime envelope — None = legacy discrete Proj::mode
+/// (every legacy path byte-identical by construction); Some(t) = continuous
+/// projection morph, t=0 → ortho bytes, t=1 → persp bytes (endpoint canaries).
+/// Slider semantics: set_morph_time clamps into [0,1] (diverges from
+/// EdlSetup's reject — t is a slider, strength is a threshold; clause notes).
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct MorphT(f64);
 
 /// CAPI-23 推进器状态：from 起飞快照 / to 目标 / 起止时钟 / 时长。
 struct Fly {
@@ -77,6 +85,8 @@ pub struct Engine {
     pub h: u32,
     rig: CameraRig,
     mode: Proj,
+    /// N2.1 (REND-41): Some(t) = continuous projection morph active.
+    morph: Option<MorphT>,
     zoom: f64,
     down: bool,
     last: (f32, f32),
@@ -276,6 +286,7 @@ impl Engine {
             h,
             rig: CameraRig::look_at([0.0, 0.0, 10.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
             mode: Proj::Persp,
+            morph: None,
             zoom: 1.0,
             down: false,
             last: (0.0, 0.0),
@@ -801,35 +812,69 @@ impl Engine {
         }
         commands.append(&mut self.extra_cmds.clone());
         let (hw, hh) = self.half_extents();
-        let proj = match self.mode {
-            Proj::Persp => self
-                .rig
-                .perspective(
-                    self.rig.fov_y as f32,
-                    self.w as f32 / self.h as f32,
-                    0.1,
-                    1000.0,
-                )
-                .ok_or("persp degenerate")?,
-            Proj::Ortho => self
-                .rig
-                .ortho_frame(
-                    hw as f32,
-                    self.w as f32,
-                    self.h as f32,
-                    0.1,
-                    (hw * 2.0).max(1000.0) as f32,
-                )
-                .ok_or("ortho degenerate")?,
-        };
-        let camera = match self.mode {
-            Proj::Persp => Camera::perspective(
+        // N2.1 (REND-41): projection matrices — discrete mode OR lerped morph.
+        // Morph computes BOTH and interpolates element-wise with smoothstep;
+        // view_rot/eye/commands pass through untouched (projection-only law).
+        let persp = self
+            .rig
+            .perspective(
                 self.rig.fov_y as f32,
                 self.w as f32 / self.h as f32,
                 0.1,
                 1000.0,
-            ),
-            Proj::Ortho => Camera::ortho(hw as f32, hh as f32, 0.1, (hw * 2.0).max(1000.0) as f32),
+            )
+            .ok_or("persp degenerate")?;
+        let ortho = self
+            .rig
+            .ortho_frame(
+                hw as f32,
+                self.w as f32,
+                self.h as f32,
+                0.1,
+                (hw * 2.0).max(1000.0) as f32,
+            )
+            .ok_or("ortho degenerate")?;
+        let (proj, camera, px_world_scale) = match self.morph {
+            Some(MorphT(t)) => {
+                // Shared pure fns (REND-41; render::morph — single source of
+                // truth, example E304 reuses the exact same interpolation).
+                let lerped = visiaengine_render::morph_proj(&ortho, &persp, t);
+                // Camera enum consumers: backend feeds ONE view-block uniform
+                // kind; mid-morph keeps the perspective kind (proj matrix
+                // carries the true interpolation — split documented in clause).
+                let cam = if t <= 0.5 {
+                    Camera::ortho(hw as f32, hh as f32, 0.1, (hw * 2.0).max(1000.0) as f32)
+                } else {
+                    Camera::perspective(
+                        self.rig.fov_y as f32,
+                        self.w as f32 / self.h as f32,
+                        0.1,
+                        1000.0,
+                    )
+                };
+                let ps_ortho = 2.0 * hw as f32 / self.w as f32; // ortho exact scale
+                (lerped, cam, visiaengine_render::morph_px_scale(ps_ortho, t))
+            }
+            None => {
+                let (p, c, ps) = match self.mode {
+                    Proj::Persp => (
+                        persp,
+                        Camera::perspective(
+                            self.rig.fov_y as f32,
+                            self.w as f32 / self.h as f32,
+                            0.1,
+                            1000.0,
+                        ),
+                        1.0,
+                    ),
+                    Proj::Ortho => (
+                        ortho,
+                        Camera::ortho(hw as f32, hh as f32, 0.1, (hw * 2.0).max(1000.0) as f32),
+                        2.0 * hw as f32 / self.w as f32,
+                    ),
+                };
+                (p, c, ps)
+            }
         };
         let eye = self.rig.eye();
         let frame = Frame {
@@ -838,12 +883,9 @@ impl Engine {
             view_rot: self.rig.view_rotation(),
             eye,
             proj,
-            // ortho：世界宽 2·hw 铺 W px → px_world_scale=2·hw/W（REND-29 精确路）
-            px_world_scale: if matches!(self.mode, Proj::Ortho) {
-                2.0 * hw as f32 / self.w as f32
-            } else {
-                1.0
-            },
+            // ortho：世界宽 2·hw 铺 W px → px_world_scale=2·hw/W（REND-29 精确路；
+            // morph 中 = 两端线性插值，REND-41）
+            px_world_scale,
             shadow: None,
             clip: self.clip,
             edl: self.edl,
@@ -1183,6 +1225,38 @@ impl Engine {
 
     /// CAPI-20：世界面系数组 [nx,ny,nz,d]（法向指保留侧，`dot(n,P)+d≥0` 保留，
     /// AND 组合）。n=0=唯一清空形；退化/非有限/超 4 拒（ClipSetup::new 同源门）。
+    /// N2.1 test seam (rs-only): discrete projection switch (morph = None).
+    /// Same shape family as set_morph_time(None) + mode writes; kept public
+    /// for tests/examples that need the discrete reference path.
+    pub fn set_projection(&mut self, mode: Proj) {
+        self.mode = mode;
+        self.morph = None;
+    }
+
+    /// N2.1 test seam (rs-only): full RGBA bytes of the last rendered frame
+    /// (None = nothing rendered yet). Byte-comparison consumer for the
+    /// endpoint canaries.
+    #[must_use]
+    pub fn frame_rgba(&self) -> Option<&[u8]> {
+        self.frame_cache.as_deref()
+    }
+
+    /// N2.1 (REND-41): projection morphTime slider. t=0 → ortho bytes,
+    /// t=1 → persp bytes (endpoint bitwise canaries); mid values lerp the
+    /// projection matrices element-wise (smoothstep easing). Slider
+    /// semantics: NaN/inf clamp to 0/1, out-of-range clamps (diverges from
+    /// EdlSetup's reject — documented in the clause). None value clears the
+    /// morph (returns to discrete Proj::mode).
+    pub fn set_morph_time(&mut self, t: Option<f64>) {
+        self.morph = t.map(|v| {
+            if v.is_nan() {
+                MorphT(0.0)
+            } else {
+                MorphT(v.clamp(0.0, 1.0))
+            }
+        });
+    }
+
     pub fn set_clips(&mut self, planes: &[[f64; 4]]) -> Result<(), String> {
         if planes.len() > visiaengine_render::ClipSetup::MAX_PLANES {
             return Err("set_clips: n>MAX(4)".into());
@@ -1833,6 +1907,7 @@ impl Engine {
             h,
             rig: CameraRig::look_at([0.0, 0.0, 10.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
             mode: Proj::Persp,
+            morph: None,
             zoom: 1.0,
             down: false,
             last: (0.0, 0.0),

@@ -21,6 +21,7 @@
 | E301 | 相机与视图（透视↔正交无级切换） | `examples/rs/E301_switch_camera.rs` | REND-10..17 | `pixi run smoke-switch-camera` |
 | E302 | 相机飞行·预设巡览（双模：1/2/3 视角互飞/拖滚中断=飞行 cancel；`--frames` 端点+最短弧+渲染三断言） | `examples/rs/E302_fly_camera.rs` | REND-34 / CAPI-23 | `pixi run smoke-fly-camera` |
 | E303 | 分屏驾驶舱·主透视+顶视小地图（双模：1/2/3 飞行小窗跟随/拖滚接管；`--frames` 分区四断言） | `examples/rs/E303_split_screen.rs` | REND-35 / WGPU-26 | `pixi run smoke-split-screen` |
+| E304 | 投影 morph·2D↔3D 连续过渡（窗=[/]滑 t 标题回显；`--frames` 端点逐字节+中途非退化） | `examples/rs/E304_projection_morph.rs` | REND-41 | `cargo run --example E304_projection_morph -- --frames 4` |
 | E401 | 交互·拾取高亮（射线→pick→CPU 覆写闭环） | `examples/rs/E401_pick_demo.rs` | REND-21..24 / WGPU-12/13 | `pixi run smoke-pick` |
 | E402 | 交互·hover/多选窗（悬停=橙预览 点选=黄多选 toggle 拖=轨道 R=清空） | `examples/rs/E402_pick_interactive.rs` | REND-21/23 / WGPU-12 | `pixi run smoke-pick-hover` |
 | E501 | 材质与光影（instanced 城 + PCSS 软影；双模式=无参交互窗/`--frames` headless） | `examples/rs/E501_shadow_demo.rs` | REND-31 / WGPU-14..20 | `pixi run smoke-shadow-demo` |
