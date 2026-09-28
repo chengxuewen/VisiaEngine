@@ -25,3 +25,6 @@
 
 ## IO-15: HTTP 瓦片源（native）
 `HttpSource::new(root)`：URL 模板 `{root}/{z}/{x}/{y}.mvt`；native=ureq(rustls) 同步 GET（裁决 a：小/同步/合线程-free 姿态）；HTTP 4xx/5xx=SourceError::NotFound（带码）、传输错=Io。**wasm=typed stub**（fetch 宿主驱动，getrandom/js 特征冲突的 target-gate 修在案）。测试=进程内 std::net TCP 服务器供 fixture 字节（**CI 零外网**，PIT-7 纪律；活网测=#[ignore] 显式）。
+
+## IO-16: 泵式非阻塞装载（TileSet::begin/pump/state，N1.4）
+`begin(ids)→usize`：Unloaded/FailedTemporarily → Loading（纯状态迁移，零 I/O；Done/Loading 跳过，幂等）。`pump(budget)→(done,failed)`：每调用至多 budget 次 source.load（I/O 预算=帧预算守卫的引擎侧实现）；逐片 Ok→Done（入 LRU）/Err→FailedTemporarily（错误记录，**不中止**——与 IO-14 ensure 的首错中止分叉，语义分账）。`state(id)→TileState`：四态（Unloaded/Loading/Done/FailedTemporarily；cesium 7 态裁至 4——FailedTemporarily/Failed 分裂保留，等待态不建模）。重试策略=调用方（begin 再武装）。HttpSource 护栏：5s 全局超时（hung server 不挂宿主）；loopback 免 env 代理（http_proxy 502 127.0.0.1 实测 2026-09-28）。

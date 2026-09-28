@@ -80,8 +80,25 @@ impl HttpSource {
 impl TileSource for HttpSource {
     fn load(&self, z: u8, x: u32, y: u32) -> Result<Vec<u8>, SourceError> {
         let url = format!("{}/{}/{}/{}.mvt", self.root, z, x, y);
-        let mut resp = ureq::get(&url).call().map_err(|e| match e {
+        // N1.4 guard (gap-analysis C4): a hung server must never hang the host.
+        // Timeout covers the whole call (agent-level); typed as Io with the
+        // "timeout" marker in the message. Loopback hosts bypass the proxy env
+        // (http_proxy on dev boxes 502s 127.0.0.1 — measured 2026-09-28);
+        // ureq honors NO_PROXY when set, so scope it per-request instead of
+        // process env.
+        let proxy = if uri_host_is_loopback(&self.root) {
+            None
+        } else {
+            ureq::Proxy::try_from_env()
+        };
+        let agent: ureq::Agent = ureq::Agent::config_builder()
+            .timeout_global(Some(std::time::Duration::from_secs(5)))
+            .proxy(proxy)
+            .build()
+            .into();
+        let mut resp = agent.get(&url).call().map_err(|e| match e {
             ureq::Error::StatusCode(code) => SourceError::NotFound(format!("{url} (HTTP {code})")),
+            ureq::Error::Timeout(_) => SourceError::Io(format!("{url}: timeout (5s global guard)")),
             other => SourceError::Io(format!("{url}: {other}")),
         })?;
         let mut buf = Vec::new();
@@ -94,6 +111,17 @@ impl TileSource for HttpSource {
         }
         Ok(buf)
     }
+}
+
+/// True when the URL template root points at loopback (127.0.0.1/localhost/
+/// [::1]) — those must bypass any ambient proxy (env http_proxy would 502
+/// them; measured on dev boxes 2026-09-28).
+#[cfg(not(target_arch = "wasm32"))]
+fn uri_host_is_loopback(root: &str) -> bool {
+    // Cheap parse: after "scheme://", up to the next '/' or ':'.
+    let rest = root.split("://").nth(1).unwrap_or(root);
+    let host = rest.split(['/', ':']).next().unwrap_or("");
+    matches!(host, "127.0.0.1" | "localhost" | "[::1]")
 }
 
 /// wasm: typed stub (fetch is host-driven; bytes enter via FileSource-like

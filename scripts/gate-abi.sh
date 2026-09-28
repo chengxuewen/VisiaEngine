@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gate-abi（I2 / 计划 v1.4 §6；P1 瓦片两口 33→35）：默认 feature 构建 + nm 白名单==40 + demo 编译运行。
+# gate-abi（I2 / 计划 v1.4 §6；P1 瓦片两口 33→35）：默认 feature 构建 + nm 白名单==41 + demo 编译运行。
 # 工具检索序：PATH → host-spike conda 前缀件（[FFI-R:FC-M1] 裸 nm/cc 无实证）；
 # 两者皆缺=SKIP exit0（条件段 shell 门自写，[v13-LEDG/env-W4]——CI/新克隆不误红）。
 set -uo pipefail
@@ -11,8 +11,8 @@ cargo build -p visiaengine-capi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; 
 SO=target/debug/libvisiaengine.so
 [ -f "$SO" ] || { echo "GATE-ABI ✗ 缺 $SO（[lib] name 检查）"; exit 1; }
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
-echo "ABI-SYMBOLS="$N/40" | SO_SIZE=$(du -h "$SO" | cut -f1)"
-[ "$N" = "40" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
+echo "ABI-SYMBOLS="$N/41" | SO_SIZE=$(du -h "$SO" | cut -f1)"
+[ "$N" = "41" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
 # hpp mirror gate (N1.1, gap-analysis C1): every .so visiaengine_* symbol must have a
 # wrapper method in the hpp. Predicate = short name (prefix stripped) appears as `name(`
 # method form; the raw C symbol alone is NOT enough (it always appears as the call target).

@@ -2,6 +2,7 @@
 //! 风格 [FFI-R:FC-5]：`#[unsafe(no_mangle)] pub extern "C"` 安全签名，
 //! 指针/参数校验在函数体内做（栅栏内），调用点无 unsafe 义务。
 
+use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::panic::AssertUnwindSafe;
 use std::thread::ThreadId;
@@ -161,7 +162,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 11 // major 1 · minor 10（CAPI-28/29 瓦片两口=MAJOR 内追加；>>16==1 不变）
+    (1 << 16) | 12 // major 1 · minor 12（N1.4: +CAPI-35 set_tile_source_http；>>16==1 不变）
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1487,6 +1488,40 @@ pub extern "C" fn visiaengine_set_tile_view(
                 Gate::Live(i) => {
                     match with_engine(i, |e| e.set_tile_view(min_x, min_y, max_x, max_y)) {
                         Ok(visible) => visible as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-35（N1.4）：挂 HTTP 瓦片源（发现式装载——无目录列举，瓦片集由
+/// set_tile_view 视口枚举发现，渲染环逐帧 pump）。url 空串/z>30=域拒。
+/// 返回 0=挂载成功（计数语义与 CAPI-28 分叉已入条款：HTTP 无目录可扫）。
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded before deref (PIT-26); load_mvt_dir precedent
+pub extern "C" fn visiaengine_set_tile_source_http(ve: u64, url: *const c_char, z: u8) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    // N1.4: NULL+0 must not form a slice (PIT-26) — read as CStr first.
+                    let url_str = if url.is_null() {
+                        String::new()
+                    } else {
+                        unsafe { CStr::from_ptr(url) }
+                            .to_string_lossy()
+                            .into_owned()
+                    };
+                    match with_engine(i, |e| e.load_mvt_http(&url_str, z)) {
+                        Ok(_) => 0,
                         Err(msg) => {
                             set_err(msg);
                             VE_ERR_ARG

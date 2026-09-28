@@ -15,7 +15,7 @@ use visiaengine::{
     visiaengine_navigate_click, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
     visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
     visiaengine_set_group_offset, visiaengine_set_map, visiaengine_set_parent,
-    visiaengine_set_tile_view, visiaengine_viewport,
+    visiaengine_set_tile_source_http, visiaengine_set_tile_view, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -282,11 +282,11 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_000B,
-        "major 1 · minor 6（CAPI-19 文件装载=MAJOR 内追加；demo assert >>16==1 的源头）"
+        0x0001_000C,
+        "major 1 · minor 12（N1.4: +CAPI-35 set_tile_source_http=MAJOR 内追加）"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_000B, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_000C, "例外集成员无线程门");
 }
 
 // spec: CAPI-02
@@ -302,8 +302,8 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        40,
-        "extern 入口计数（cfg-gated 行首式；35→40=CAPI-30..34 场景树五口）"
+        41,
+        "extern 入口计数（cfg-gated 行首式；40→41=N1.4 CAPI-35 set_tile_source_http）"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),
@@ -1044,6 +1044,40 @@ fn set_tile_view_domain_and_visibility() {
     // full 3×3 bbox = 9 visible
     let rc = visiaengine_set_tile_view(ve, -2.004e7, 1.995e7, -1.995e7, 2.004e7);
     assert_eq!(rc, 9, "full neighborhood visible");
+}
+
+// spec: CAPI-35 (N1.4)
+#[test]
+fn set_tile_source_http_domain_and_mount() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // ve=0 reject
+    let any = std::ffi::CString::new("http://x").unwrap();
+    assert_eq!(
+        visiaengine_set_tile_source_http(0, any.as_ptr(), 10),
+        VE_ERR_ARG
+    );
+    // NULL url reject (PIT-26: NULL must not form a slice)
+    assert_eq!(
+        visiaengine_set_tile_source_http(ve, std::ptr::null(), 10),
+        VE_ERR_ARG
+    );
+    // empty url reject
+    let empty = std::ffi::CString::new("").unwrap();
+    assert_eq!(
+        visiaengine_set_tile_source_http(ve, empty.as_ptr(), 10),
+        VE_ERR_ARG
+    );
+    // z>30 reject
+    let url = std::ffi::CString::new("http://127.0.0.1:1/t").unwrap();
+    assert_eq!(
+        visiaengine_set_tile_source_http(ve, url.as_ptr(), 31),
+        VE_ERR_ARG
+    );
+    // valid mount returns 0 (count semantics fork documented in the clause)
+    assert_eq!(visiaengine_set_tile_source_http(ve, url.as_ptr(), 10), 0);
+    // double mount is a re-mount (fresh TileSet) — still 0
+    assert_eq!(visiaengine_set_tile_source_http(ve, url.as_ptr(), 10), 0);
 }
 
 // spec: CAPI-30

@@ -241,6 +241,7 @@ fn prove(tiles: &[GeoTile], frames: u32) {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut frames: Option<u32> = None;
+    let mut http_root: Option<String> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         if a == "--frames" {
@@ -248,7 +249,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .next()
                 .and_then(|v| v.parse().ok())
                 .filter(|n: &u32| *n > 0);
+        } else if a == "--source" {
+            // N1.4 (IO-16): HTTP pump demo — `--source <url-root>` runs the
+            // scheduler begin/pump cycle against an HTTP template root
+            // ({root}/{z}/{x}/{y}.mvt). T3 human-check: needs a serving root
+            // (e.g. `python3 -m http.server` over resources/data). The CI
+            // ctest path below stays FileSource.
+            http_root = args.next().filter(|v: &String| !v.is_empty());
         }
+    }
+
+    if let Some(root) = http_root {
+        return run_http_pump_demo(&root);
     }
 
     let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../resources/data/tiles");
@@ -571,4 +583,50 @@ fn run_window(tiles: Vec<GeoTile>) -> Result<(), Box<dyn std::error::Error>> {
     };
     event_loop.run_app(&mut app)?;
     Ok(())
+}
+
+/// N1.4 (IO-16): HTTP scheduler pump demo. Enumerate the same 3×3 z10
+/// neighborhood as FileSource mode, begin() → pump(4) until drained, print
+/// the per-call accounting. Exits non-zero if the root is unreachable
+/// (FailedTemporarily after retries = the documented failure surface).
+fn run_http_pump_demo(root: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use visiaengine_io_tiles::{HttpSource, TileSet, TileState};
+
+    let ids = TileSet::visible(bbox_3x3_demo(), 10);
+    assert_eq!(ids.len(), 9, "3×3 neighborhood");
+    let mut set = TileSet::new(Box::new(HttpSource::new(root)))?;
+    let started = set.begin(&ids);
+    assert_eq!(started, 9, "all Unloaded at start");
+    let url_root = format!("{}/10", root);
+    let _ = url_root;
+    let (mut total_done, mut total_failed) = (0usize, 0usize);
+    for call in 0..20 {
+        let (done, failed) = set.pump(4);
+        total_done += done;
+        total_failed += failed;
+        if done + failed == 0 {
+            break;
+        }
+        println!("pump#{call}: done={done} failed={failed}");
+    }
+    let done_states = ids
+        .iter()
+        .filter(|id| set.state(id) == TileState::Done)
+        .count();
+    println!(
+        "http pump: total_done={total_done} total_failed={total_failed} state_done={done_states}"
+    );
+    assert_eq!(
+        done_states, 9,
+        "fixture tiles must arrive via HTTP pump (server root = {root})"
+    );
+    Ok(())
+}
+
+fn bbox_3x3_demo() -> (f64, f64, f64, f64) {
+    let nw = TileId::new(10, 0, 0).expect("valid");
+    let se = TileId::new(10, 2, 2).expect("valid");
+    let (min_x, _, _, max_y) = nw.bbox();
+    let (_, min_y, max_x, _) = se.bbox();
+    (min_x, min_y, max_x, max_y)
 }

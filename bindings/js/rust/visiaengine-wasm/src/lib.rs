@@ -224,6 +224,19 @@ impl VisiaEngine {
         }
     }
 
+    /// CAPI-35 HTTP 瓦片源（N1.4，发现式装载；wasm 侧 HttpSource=typed stub，
+    /// 实际字节通路=宿主 JS fetch，本口预置域拒形）。0=挂载；负=拒。
+    #[wasm_bindgen(js_name = setTileSourceHttp)]
+    pub fn set_tile_source_http(&mut self, url: &str, z: u32) -> i32 {
+        match u8::try_from(z) {
+            Ok(z) => match self.inner.load_mvt_http(url, z) {
+                Ok(_) => 0,
+                Err(_) => -1,
+            },
+            Err(_) => -1,
+        }
+    }
+
     /// CAPI-29 视口 bbox（3857 米）→ 调度器 visible→ensure。返回=可见数；负=拒。
     #[wasm_bindgen(js_name = setTileView)]
     pub fn set_tile_view(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> i32 {

@@ -40,7 +40,9 @@ pub use ffi::{
     visiaengine_create_group, visiaengine_get_group_offset, visiaengine_get_parent,
     visiaengine_set_group_offset, visiaengine_set_parent,
 };
-pub use ffi::{visiaengine_load_mvt_dir, visiaengine_set_tile_view}; // CAPI-28/29 // CAPI-30..34 scene tree 瓦片两口
+pub use ffi::{
+    visiaengine_load_mvt_dir, visiaengine_set_tile_source_http, visiaengine_set_tile_view,
+}; // CAPI-28/29/35 // CAPI-30..34 scene tree
 
 #[doc(hidden)]
 pub mod test_util {

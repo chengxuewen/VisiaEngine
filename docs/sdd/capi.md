@@ -97,3 +97,6 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-34: 读组平移（get_group_offset）
 `visiaengine_get_group_offset(ve, group: u64, out: *mut f64) -> i32`：out=NULL→VE_ERR_ARG；group 非 Group 或已死亡→VE_ERR_ARG。成功时 out[0..3]=[dx,dy,dz]（读自身偏移，非累加）。成功=0。
+
+## CAPI-35: HTTP 瓦片源挂载（set_tile_source_http，N1.4）
+`visiaengine_set_tile_source_http(ve, url: *const c_char, z: u32) -> i32`：挂 HTTP 瓦片源（URL 模板 `{root}/{z}/{x}/{y}.mvt`）。**发现式装载**（HTTP 无目录列举）：mount 仅建调度器（HttpSource，5s 全局超时 + loopback 免 env 代理），瓦片集由 CAPI-29 视口枚举发现，渲染环逐帧 pump（4 片/帧预算，IO-16）。**计数分叉（有意）**：返回 0=挂载成功（与 CAPI-28 的计数语义分叉——无目录可扫，无计数义）；负=VE_ERR_ARG（url NULL/空/z>30）或 STATE。重复挂载=重置 TileLayer（fresh TileSet）。C15 值域分工：0=成功（本口）/ >0=计数（CAPI-28 专有）——两口同参不同义已对表。

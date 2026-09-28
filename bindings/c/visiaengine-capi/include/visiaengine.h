@@ -172,6 +172,15 @@ int32_t  visiaengine_load_mvt_dir(uint64_t ve, const char *path, uint32_t z);
 int32_t  visiaengine_set_tile_view(uint64_t ve, double min_x, double min_y,
                                    double max_x, double max_y);
 
+/* CAPI-35 (N1.4): mount an HTTP MVT tile source (URL template
+   {root}/{z}/{x}/{y}.mvt). Discovery-driven: HTTP has no directory listing —
+   the tile set is DISCOVERED by set_tile_view viewport enumeration, and the
+   render loop pumps the scheduler (4 tiles/frame budget; 5s per-request
+   timeout guard). Returns 0 = mounted (count semantics intentionally differ
+   from CAPI-28: there is no directory to scan); negative = rejected
+   (ve=0 / url NULL or empty / z>30), error string via TLS. */
+int32_t  visiaengine_set_tile_source_http(uint64_t ve, const char *url, uint32_t z);
+
 /* CAPI-30: 创建组节点（场景树容器）。name=NULL=匿名；out_entity 写入 u64 句柄。
    返回 VE_OK；失败（panic/ve=0/out=NULL/name非UTF-8）= 负错误码。 */
 int32_t  visiaengine_create_group(uint64_t ve, const char *name, uint64_t *out_entity);

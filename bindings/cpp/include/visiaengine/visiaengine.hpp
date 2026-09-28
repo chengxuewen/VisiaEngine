@@ -80,6 +80,10 @@ public:
         return visiaengine_get_group_offset(h_, group, out);
     }
 
+    /* CAPI-35: HTTP tile source (discovery-driven; see header clause). */
+    int32_t set_tile_source_http(const char *url, uint32_t z) {
+        return visiaengine_set_tile_source_http(h_, url, z);
+    }
     int32_t set_tile_view(double min_x, double min_y, double max_x, double max_y) {
         return visiaengine_set_tile_view(h_, min_x, min_y, max_x, max_y);
     }

@@ -13,6 +13,6 @@ pub mod tiles;
 
 pub use geometry::{GeoTile, TileFeature, TileGeom};
 pub use mvt::{MvtError, MvtFeature, MvtLayer, MvtTile, MvtValue, decode_tile};
-pub use scheduler::{EnsureStats, TileSet, TilesError};
+pub use scheduler::{EnsureStats, TileSet, TileState, TilesError};
 pub use source::{FileSource, HttpSource, LruCache, SourceError, TileSource};
 pub use tiles::{TileId, WORLD_EXTENT};

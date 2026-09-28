@@ -27,11 +27,33 @@ pub struct EnsureStats {
     pub cached: usize,
 }
 
+/// Per-tile pump lifecycle (IO-16, band N1.4). Four states, cesium-7 reduced:
+/// `FailedTemporarily` vs a terminal failure split is kept (retry policy stays
+/// the caller's); Unloading/ContentLoaded wait-states are not modeled (sync
+/// pump: a tile is either being loaded this frame or not).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TileState {
+    /// Not requested (also the state of tiles absent from the map).
+    Unloaded,
+    /// begin() issued; awaiting pump budget.
+    Loading,
+    /// Bytes in the LRU cache.
+    Done,
+    /// Last pump attempt failed (source error recorded); begin() re-arms.
+    FailedTemporarily,
+}
+
 /// Viewport-driven tile set: enumerate → ensure → decode.
 pub struct TileSet {
     source: Box<dyn TileSource>,
     cache: LruCache,
     decoded_cache: std::collections::HashMap<TileId, MvtTile>,
+    /// IO-16 (N1.4): per-tile pump state. Done tiles live in the LRU; the
+    /// state map tracks the remaining lifecycle. Absent == Unloaded.
+    pump_state: std::collections::HashMap<TileId, TileState>,
+    /// Last per-tile source error (FailedTemporarily diagnostic; retried tiles
+    /// overwrite it). Kept small: one entry per failed tile.
+    pump_errors: std::collections::HashMap<TileId, String>,
 }
 
 impl TileSet {
@@ -41,6 +63,8 @@ impl TileSet {
             source,
             cache: LruCache::new(64),
             decoded_cache: std::collections::HashMap::new(),
+            pump_state: std::collections::HashMap::new(),
+            pump_errors: std::collections::HashMap::new(),
         })
     }
 
@@ -111,6 +135,69 @@ impl TileSet {
             stats.loaded += 1;
         }
         Ok(stats)
+    }
+
+    /// IO-16 (N1.4): mark `ids` as Loading (state transition only, zero I/O).
+    /// Skips anything not Unloaded/FailedTemporarily (Done/Loading are stable).
+    /// Returns the count of tiles that transitioned.
+    pub fn begin(&mut self, ids: &[TileId]) -> usize {
+        let mut started = 0;
+        for id in ids {
+            match self.pump_state.get(id) {
+                Some(TileState::Done) | Some(TileState::Loading) => {}
+                _ => {
+                    self.pump_state.insert(*id, TileState::Loading);
+                    started += 1;
+                }
+            }
+        }
+        started
+    }
+
+    /// IO-16 (N1.4): load up to `budget` Loading tiles (≤ budget I/O calls this
+    /// call). Per-tile: Ok → Done (+ LRU insert), Err → FailedTemporarily
+    /// (error recorded, pump continues — never aborts, unlike ensure()).
+    /// Returns (done_now, failed_now). No pending Loading tiles → (0, 0).
+    pub fn pump(&mut self, budget: usize) -> (usize, usize) {
+        let pending: Vec<TileId> = self
+            .pump_state
+            .iter()
+            .filter(|(_, st)| **st == TileState::Loading)
+            .map(|(id, _)| *id)
+            .take(budget)
+            .collect();
+        let (mut done, mut failed) = (0usize, 0usize);
+        for id in pending {
+            match self.source.load(id.z, id.x, id.y) {
+                Ok(bytes) => {
+                    self.cache.insert(id, bytes);
+                    self.pump_state.insert(id, TileState::Done);
+                    self.pump_errors.remove(&id);
+                    done += 1;
+                }
+                Err(e) => {
+                    self.pump_state.insert(id, TileState::FailedTemporarily);
+                    self.pump_errors.insert(id, e.to_string());
+                    failed += 1;
+                }
+            }
+        }
+        (done, failed)
+    }
+
+    /// IO-16 (N1.4): pump-lifecycle state of one tile (Unloaded = absent map).
+    #[must_use]
+    pub fn state(&self, id: &TileId) -> TileState {
+        self.pump_state
+            .get(id)
+            .copied()
+            .unwrap_or(TileState::Unloaded)
+    }
+
+    /// IO-16 (N1.4): last recorded source error for a FailedTemporarily tile.
+    #[must_use]
+    pub fn pump_error(&self, id: &TileId) -> Option<&str> {
+        self.pump_errors.get(id).map(String::as_str)
     }
 
     /// Decode-through-cache: returns the decoded tile, decoding on first access.

@@ -143,12 +143,84 @@ fn union_bbox(ids: &[visiaengine_io_tiles::TileId]) -> (f64, f64, f64, f64) {
     acc.unwrap_or((0.0, 0.0, 0.0, 0.0))
 }
 
+/// N1.4 (CAPI-35): rebuild HTTP-layer batch geometry from the Done tile set.
+/// Same per-tile geometry semantics as load_mvt_dir (poly→mesh, line→stroke,
+/// point→point); center baked from the current ids' union bbox (PIT-8 domain).
+fn rebuild_tile_batch(layer: &mut TileLayer, done_ids: Vec<visiaengine_io_tiles::TileId>) {
+    let (min_x, min_y, max_x, max_y) = union_bbox(&done_ids);
+    let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+    let (mut wpos, mut widx) = (Vec::new(), Vec::new());
+    let mut strokes = Vec::new();
+    let mut points = Vec::new();
+    for id in &done_ids {
+        let Some(tile) = layer.set.decoded(id) else {
+            continue;
+        };
+        let lite = visiaengine_io_tiles::GeoTile::from_layers(*id, &tile.layers);
+        for f in &lite.features {
+            let class = f.attrs.get("class").cloned().unwrap_or_default();
+            match &f.geom {
+                visiaengine_io_tiles::TileGeom::Poly(ring) => {
+                    let start = wpos.len() as u32;
+                    for p in ring {
+                        wpos.push([(p[0] - center[0]) as f32, (p[1] - center[1]) as f32, 0.0]);
+                    }
+                    for i in 1..ring.len().saturating_sub(1) as u32 {
+                        widx.extend([start, start + i, start + i + 1]);
+                    }
+                }
+                visiaengine_io_tiles::TileGeom::Line(pts) => {
+                    let (color, width) = if class == "boundary" {
+                        ([0.30, 0.55, 0.55], 3.0)
+                    } else {
+                        ([0.95, 0.62, 0.18], 9.0)
+                    };
+                    for w in pts.windows(2) {
+                        strokes.push(StrokeSeg::new(
+                            [
+                                (w[0][0] - center[0]) as f32,
+                                (w[0][1] - center[1]) as f32,
+                                0.0,
+                            ],
+                            [
+                                (w[1][0] - center[0]) as f32,
+                                (w[1][1] - center[1]) as f32,
+                                0.0,
+                            ],
+                            color,
+                            width,
+                        ));
+                    }
+                }
+                visiaengine_io_tiles::TileGeom::Point(p) => {
+                    points.push(PointMark::new(
+                        [(p[0] - center[0]) as f32, (p[1] - center[1]) as f32, 0.0],
+                        [0.9, 0.25, 0.35],
+                        9.0,
+                    ));
+                }
+                visiaengine_io_tiles::TileGeom::MultiPoint(_) => {}
+            }
+        }
+    }
+    layer.center = center;
+    layer.wpos = wpos;
+    layer.widx = widx;
+    layer.strokes = strokes;
+    layer.points = points;
+}
+
 /// P1 tile layer (CAPI-28/29): scheduler + scene-center batch geometry.
 /// Render-loop consumes wpos/widx/strokes/points on first frame after mount;
 /// uploaded caches GPU table IDs (invalidate only on re-mount, not on set_tile_view).
 struct TileLayer {
     set: visiaengine_io_tiles::TileSet,
     ids: Vec<visiaengine_io_tiles::TileId>,
+    /// N1.4 (CAPI-35): HTTP layer = discovery mode. `ids` stays empty (no dir
+    /// scan exists over HTTP); set_tile_view enumerates freely and the render
+    /// loop pumps the scheduler per frame. FileSource layers keep mount-time
+    /// ids and the alive-filter (behavior unchanged = canary).
+    http: bool,
     /// 批顶点烘场景中心小值域帧（PIT-8 安全域）；Draw origin=center。
     center: [f64; 3],
     wpos: Vec<[f32; 3]>,
@@ -640,6 +712,26 @@ impl Engine {
         }
         // P1 tile layer: lazy GPU upload (once) + per-frame draw commands.
         if let Some(ref mut layer) = self.tiles {
+            // N1.4 (CAPI-35): HTTP layers advance their pump each frame
+            // (budget 4 tiles/frame = frame-budget guard, gap-analysis C4).
+            // FileSource layers are fully Done via mount ensure() → no-op.
+            if layer.http {
+                let (done, failed) = layer.set.pump(4);
+                if done + failed > 0 {
+                    let _ = (done, failed); // accounting only; failures retry via set_tile_view re-arm
+                }
+                // Rebuild batch when the Done set grew (new geometry arrived).
+                let done_ids: Vec<visiaengine_io_tiles::TileId> = layer
+                    .ids
+                    .iter()
+                    .filter(|id| layer.set.state(id) == visiaengine_io_tiles::TileState::Done)
+                    .copied()
+                    .collect();
+                let done_now = done_ids.len();
+                if done_now > 0 && layer.uploaded.is_none() {
+                    rebuild_tile_batch(layer, done_ids);
+                }
+            }
             if layer.uploaded.is_none() && !layer.wpos.is_empty() {
                 let normals = vec![[0.0f32, 0.0, 1.0]; layer.wpos.len()];
                 let mesh = self
@@ -1503,6 +1595,7 @@ impl Engine {
         self.tiles = Some(TileLayer {
             set,
             ids,
+            http: false,
             center,
             wpos,
             widx,
@@ -1512,6 +1605,31 @@ impl Engine {
         });
         let _ = decoded;
         Ok(count)
+    }
+
+    /// CAPI-35：挂 HTTP 瓦片源（N1.4）。HTTP 无目录列举=发现式装载：mount 仅建
+    /// 调度器（HttpSource+5s 超时护栏），瓦片集由 set_tile_view 视口枚举发现，
+    /// 渲染环逐帧 pump（默认 4 片/帧预算）。返回 0=成功挂载（无计数义——与
+    /// CAPI-28 分叉已入条款：HTTP 无目录可扫）。
+    pub fn load_mvt_http(&mut self, root_url: &str, z: u8) -> Result<u64, String> {
+        if root_url.is_empty() || z > 30 {
+            return Err("tile http domain (non-empty url, z<=30)".into());
+        }
+        let source = visiaengine_io_tiles::HttpSource::new(root_url);
+        let set = visiaengine_io_tiles::TileSet::new(Box::new(source))
+            .map_err(|e| format!("tiles: {e:?}"))?;
+        self.tiles = Some(TileLayer {
+            set,
+            ids: Vec::new(),
+            http: true,
+            center: [0.0, 0.0, 0.0],
+            wpos: Vec::new(),
+            widx: Vec::new(),
+            strokes: Vec::new(),
+            points: Vec::new(),
+            uploaded: None,
+        });
+        Ok(0)
     }
 
     /// CAPI-29：喂视口 bbox（3857）→ visible→ensure→重建批几何（visible 集变化才重建）。
@@ -1534,10 +1652,20 @@ impl Engine {
         {
             return Err("tile view domain (finite, min<max)".into());
         }
-        let ids = visiaengine_io_tiles::TileSet::visible(
-            (min_x, min_y, max_x, max_y),
-            layer.ids.first().map(|i| i.z).unwrap_or(0),
-        );
+        let z_of = layer.ids.first().map(|i| i.z).unwrap_or(0);
+        let ids = visiaengine_io_tiles::TileSet::visible((min_x, min_y, max_x, max_y), z_of);
+        if layer.http {
+            // N1.4 discovery mode: any enumerated tile is admissible (no dir
+            // scan happened); arm the pump, report as "visible" — actual byte
+            // arrival paces through the render-loop pump budget.
+            layer.ids = ids.clone();
+            // scene center = current view bbox center (bakes a stable
+            // small-value frame for the batch; PIT-8 safe domain)
+            layer.center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+            let started = layer.set.begin(&ids);
+            let _ = started;
+            return Ok(ids.len() as u64);
+        }
         let alive: Vec<visiaengine_io_tiles::TileId> =
             ids.into_iter().filter(|i| layer.ids.contains(i)).collect();
         let stats = layer
