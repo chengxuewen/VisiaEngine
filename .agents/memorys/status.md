@@ -413,3 +413,14 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 教训：PIT-33/34/35/36 + edit-safety #21/22/23 + testing.md HashMap 序纪律（本次入册）
 - 基线：**297 passed · spec-trace 177↔177 · ABI 41/41 (0x0001000C) · GATE-DOCS ✓ · ci rc=0 · 领先 8 笔**
 - 余账：push 候令 · N+2=morph 带+实体动画 6a+画廊分类扩充 · 择期=property_golden 补锚/镜像门声明形/多视口 EDL assert/point-radius 下限
+
+## Session N+2/N+3 基线（2026-09-28 续，五笔：N2 四带 + 清扫）
+
+- N2.1 `6d65346`：**投影 morph**（M，Momus OKAY + 卡 A 纯 rs）——render::morph 纯函数（端点逐字节律）+ Engine::set_morph_time（滑杆 clamp 语义，与 EdlSetup 拒式有意分叉）+ morph_spec 3 门 + E304 双模例（窗 [/] 滑 t；Xvfb 存活探针）。白皮书 §3.1 兑现，README"切换"→"连续投影 morph"（N1.2 诚实弧闭环）
+- N2.2 `2ca8551`：**实体动画 6a**（S，C5 拆分）——render::anim::anim_origin（端点恒等 + f64 远原点精度）+ anim_spec 4 门 + E305 轨迹重放（24 标记像素门）。例面首跑抓归一化 t 误用=采样器时间域契约现形
+- N2.3 `f10baff`：画廊 sticky 分类导航（three.js 浏览形，9 域锚点条；cards 键=title 的数字恢复教训）
+- N2.4 `8b18937`：**属性热更 CAPI-36..38**（M，44 入口 minor=0x0001000D）——override 层 + override-first 读 + typed-reject（CORE-11/12）+ 三面镜像全带 + attr_diff_spec 2 门（fixture 抄 attr_ffi_spec 先例）。rs-only 计划升格 C 三口=测试可达性裁决（Engine 所有权住句柄表）
+- 清扫 `0d430c4`：审 #5-#8 择期清零（多视口 EDL debug_assert / point-radius 双面带 / golden 无锚声明 / 镜像门声明形谓词三连自证；顶格 [[nodiscard]] 教训=自证样本必取真行）
+- 基线：**306 passed · spec-trace 182↔182 · ABI 44/44 (0x0001000D) · 画廊 34 卡+34 详情页+导航条 · ci rc=0 · 领先 15 笔**
+- 数字孪生三骨：属性热更 ✓ / 动画采样 6a ✓ / 序列化 S3' 挂账（Studio 依赖触发）
+- 待办：push 候令（15 笔）· 触发制队列全空（几何 diff/框选/ODR/LAS/7 态机等票候令）· E304/E305 窗面人验=T3 清单（E304 已入 tutorials 人验表）
