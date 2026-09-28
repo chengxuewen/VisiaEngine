@@ -5,6 +5,7 @@
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
+pub mod anim;
 pub mod camera;
 pub mod contract;
 pub mod morph;
@@ -12,6 +13,7 @@ pub mod rebase;
 
 mod picking;
 
+pub use anim::anim_origin;
 pub use camera::{
     CameraRig, Easing, ray_ground_intersect, screen_to_ray_ortho, screen_to_ray_persp,
 };

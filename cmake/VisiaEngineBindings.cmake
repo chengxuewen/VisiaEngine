@@ -76,7 +76,7 @@ function(visiaengine_setup_bindings)
   endif()
 
   # ── Rust 族：argv 唯一户口（pixi smoke 只做 `ctest -R` 转发壳，抄写面归零）──
-  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E206_tile_viewer E302_fly_camera E303_split_screen E304_projection_morph E504_glass_water
+  set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E206_tile_viewer E302_fly_camera E303_split_screen E304_projection_morph E305_entity_anim E504_glass_water
                 E301_switch_camera E401_pick_demo E402_pick_interactive E501_shadow_demo
                 E502_color_tuning E503_stroke_points E601_bench_twin E901_twin_city)
   set(_disp_E101_clear ON)
@@ -92,6 +92,7 @@ function(visiaengine_setup_bindings)
   set(_args_E504_glass_water "--frames;1")
   set(_args_E303_split_screen "--frames;1")
   set(_args_E304_projection_morph "--frames;4")
+  set(_args_E305_entity_anim "--frames;24")
   set(_args_E302_fly_camera "--frames;1")
   set(_args_E205_text_labels "--frames;1")
   set(_args_E204_pcl_viewer "--pick-check;--frames;3")  # 自断言双半区覆盖 + REND-38 点拾取三断言（B2）

@@ -85,3 +85,7 @@ path = "E206_tile_viewer.rs"
 [[example]]
 name = "E304_projection_morph"
 path = "E304_projection_morph.rs"
+
+[[example]]
+name = "E305_entity_anim"
+path = "E305_entity_anim.rs"

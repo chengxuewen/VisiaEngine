@@ -127,3 +127,6 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-41: 投影 morphTime（N2.1）
 `morph_proj(ortho, persp, t)`（render::morph 纯函数）：t=0 逐位等于 ortho 矩阵、t=1 逐位等于 persp 矩阵（端点金丝雀=字节级，`morph_spec::morph_endpoints_bitwise`）；中间值 smoothstep（k=t·t·(3−2t)，REND-34 族）逐元素插值。**投影域单一定律**：view_rot/eye/commands 原样穿透；px_world_scale 两端线性插值（morph_px_scale：ortho 精确 2·hw/W → persp 1.0）。Camera 枚举族 t≤0.5 取 ortho、t>0.5 取 persp（view-block uniform 档位；真插值住 proj 矩阵——枚举/矩阵分职入档）。滑杆语义：Engine::set_morph_time 对 NaN→0、越域 clamp（与 EdlSetup 显式拒**有意分叉**——t 是滑杆、strength 是阈值）。多视口：各 Frame 携各自 mode/morph，互不相干。白皮书 §3.1 "同一视口平滑过渡" 的机器兑现锚=端点逐字节等 + 中途非退化（morph_spec + E304 --frames）。
+
+## REND-42: 实体动画关键帧采样（N2.2）
+`anim_origin(keyframes, t)`（render::anim 纯函数）：端点恒等律——t≤首键 → 首 origin 原值、t≥末键 → 末 origin 原值（位等，mix_rig/REND-16 惯例）；区间内相邻键线性插值（缓动=宿主时轴编排策略，采样器不揣测）；单键表=常值。f64 全程（D7 远原点精度测试在册）。**零引擎态/零 ABI**（C5 拆分裁决：6a=采样器+demo；实体位置热更 C 口=6b 触发制）。消费形=宿主逐帧采样后走既有 origin 路径（E305 轨迹重放）。
