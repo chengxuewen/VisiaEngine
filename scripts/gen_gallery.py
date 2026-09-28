@@ -131,7 +131,35 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "index.html").write_text(html, encoding="utf-8")
     (OUT / "manifest.txt").write_text("\n".join(sorted(all_names)) + "\n", encoding="utf-8")
-    print(f"gallery: {total} cards ({len(have_thumbs)} thumbnails) -> {OUT/'index.html'}")
+
+    # N1.6: per-example detail pages (three.js examples style) — big media,
+    # topic, run command, source link, back-to-index. Local-only site.
+    meta = {}
+    for r in rs:
+        meta[r["name"]] = ("Rust", f"examples/rs/{r['name']}.rs", "cargo run --example " + r["name"], r["name"] in have_thumbs)
+    for n in native:
+        lang = {"c": "C", "cpp": "C++", "qt": "Qt"}[n["lang"]]
+        meta[n["name"]] = (lang, f"examples/{n['lang']}/{n['name']}", f"ctest -R example_{n['name'].split('_')[0]}", n["name"] in have_thumbs)
+    for name in all_names:
+        enum = name.split("_")[0]
+        lang, src, run, has_thumb = meta[name]
+        lang_cls = {"Rust": "rust", "C": "c", "C++": "cpp", "Qt": "qt"}[lang]
+        media = (f'<img src="assets/{name}.png" alt="{name}">'
+                 if has_thumb else
+                 f'<div class="nothumb"><span>window example</span><small>run locally to see it live</small></div>')
+        page = DETAIL_PAGE
+        page = page.replace("{{ENUM}}", enum)
+        page = page.replace("{{NAME}}", name)
+        page = page.replace("{{TOPIC}}", topics[enum])
+        page = page.replace("{{LANG}}", lang)
+        page = page.replace("{{LANG_CLS}}", lang_cls)
+        page = page.replace("{{MEDIA}}", media)
+        page = page.replace("{{RUN}}", run)
+        page = page.replace("{{SRC}}", "../../" + src)
+        page = page.replace("{{BAND}}", E_BANDS[enum[1]][0])
+        (OUT / f"{enum}.html").write_text(page, encoding="utf-8")
+
+    print(f"gallery: {total} cards ({len(have_thumbs)} thumbnails, {total} detail pages) -> {OUT/'index.html'}")
 
 def card(name, topic, lang, src, thumb, run):
     enum = name.split("_")[0]
@@ -140,10 +168,10 @@ def card(name, topic, lang, src, thumb, run):
         media = f'<img loading="lazy" src="{thumb}" alt="{name}">'
     else:
         media = f'<div class="nothumb"><span>window example</span><small>run locally to see it live</small></div>'
-    # Link target: source file, relative from build/gallery/ up to the repo root.
-    # Static-site semantic (MapLibre-gallery style): card -> source; running stays
-    # a local act (title tooltip carries the command; run guide in the header).
-    href = "../../" + src
+    # N1.6 three.js-style: card -> per-example detail page (big thumb, topic,
+    # run command, source link). index stays the categorized grid; the detail
+    # page is the click-through (generated per example below).
+    href = enum + ".html"
     return f'''<a class="card" href="{href}" title="{run}">
   {media}
   <div class="meta">
@@ -202,6 +230,46 @@ HTML_FOOTER = """
 </body>
 </html>
 """
+
+DETAIL_PAGE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ENUM}} · VisiaEngine gallery</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #101418; color: #dfe6ee; }
+  header { padding: 14px 22px; background: #171d24; display: flex; gap: 14px; align-items: baseline; }
+  header a { color: #7fc06e; text-decoration: none; }
+  h1 { font-size: 20px; margin: 0; }
+  .lang { padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+  .rust { background: #2b4a2f; } .c { background: #4a402b; } .cpp { background: #2b3a4a; } .qt { background: #452b4a; }
+  main { max-width: 1100px; margin: 0 auto; padding: 22px; }
+  .media img, .media .nothumb { width: 100%; max-width: 960px; border-radius: 8px; display: block; }
+  .nothumb { background: #1a222b; border: 1px dashed #33404e; padding: 60px 0; text-align: center; color: #8fa1b3; }
+  .nothumb span { display: block; font-size: 18px; }
+  .topic { font-size: 17px; margin: 14px 0 6px; }
+  .band { color: #8fa1b3; font-size: 13px; margin-bottom: 14px; }
+  .run { background: #171d24; padding: 10px 14px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 14px; }
+  .src { margin-top: 10px; }
+  .src a { color: #7fc06e; }
+</style>
+</head>
+<body>
+<header>
+  <a href="index.html">&larr; gallery</a>
+  <h1>{{ENUM}} <span class="lang {{LANG_CLS}}">{{LANG}}</span></h1>
+</header>
+<main>
+  <div class="media">{{MEDIA}}</div>
+  <div class="topic">{{TOPIC}}</div>
+  <div class="band">{{BAND}}</div>
+  <div class="run">{{RUN}}</div>
+  <div class="src">source: <a href="{{SRC}}">{{SRC}}</a></div>
+</main>
+</body>
+</html>
+"""
+
 
 if __name__ == "__main__":
     main()
