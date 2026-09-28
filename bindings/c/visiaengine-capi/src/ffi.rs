@@ -162,7 +162,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 12 // major 1 minor 12 (N1.4: +CAPI-35 set_tile_source_http; >>16==1 unchanged)
+    (1 << 16) | 13 // major 1 minor 13 (N2.4: +CAPI-36..38 update_entity_props_*; >>16==1 unchanged)
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -671,6 +671,119 @@ pub extern "C" fn visiaengine_attr_bool(
                 }
                 Gate::State => VE_ERR_STATE,
                 Gate::Arg => VE_ERR_ARG,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-36 (N2.4): typed property diff-update — f64 column.
+/// Typed-reject: writing a different type to an existing column (override or
+/// source) returns VE_ERR_ARG with a type-conflict message; a missing column
+/// is created (first write types it). Unknown entity = VE_ERR_ARG.
+/// Zero render-face effect (attributes are host/query data).
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded; attr-face precedent
+pub extern "C" fn visiaengine_update_entity_attr_f64(
+    ve: u64,
+    entity: u64,
+    name: *const c_char,
+    v: f64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if name.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    let name = match unsafe { CStr::from_ptr(name) }.to_str() {
+                        Ok(n) => n,
+                        Err(_) => return VE_ERR_ARG,
+                    };
+                    match with_engine(i, |e| e.update_entity_props_f64(entity, name, v)) {
+                        Ok(()) => 0,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-37 (N2.4): typed property diff-update — str column (UTF-8 required).
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded (load_mvt_dir precedent)
+pub extern "C" fn visiaengine_update_entity_attr_str(
+    ve: u64,
+    entity: u64,
+    name: *const c_char,
+    v: *const c_char,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if name.is_null() || v.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    let name = match unsafe { CStr::from_ptr(name) }.to_str() {
+                        Ok(n) => n,
+                        Err(_) => return VE_ERR_ARG,
+                    };
+                    let val = { unsafe { CStr::from_ptr(v) }.to_string_lossy().into_owned() };
+                    match with_engine(i, |e| e.update_entity_props_str(entity, name, val)) {
+                        Ok(()) => 0,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-38 (N2.4): typed property diff-update — bool column (1/0).
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded; attr-face precedent
+pub extern "C" fn visiaengine_update_entity_attr_bool(
+    ve: u64,
+    entity: u64,
+    name: *const c_char,
+    v: i32,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if name.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    let name = match unsafe { CStr::from_ptr(name) }.to_str() {
+                        Ok(n) => n,
+                        Err(_) => return VE_ERR_ARG,
+                    };
+                    match with_engine(i, |e| e.update_entity_props_bool(entity, name, v != 0)) {
+                        Ok(()) => 0,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
             }
         },
         VE_ERR_PANIC

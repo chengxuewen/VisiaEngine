@@ -282,13 +282,13 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_000C,
-        "major 1 minor 12 (N1.4: +CAPI-35 set_tile_source_http, MAJOR-contained)"
+        0x0001_000D,
+        "major 1 minor 13 (N2.4: +CAPI-36..38 update_entity_attr_*, MAJOR-contained)"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
     assert_eq!(
         h.join().unwrap(),
-        0x0001_000C,
+        0x0001_000D,
         "exception-set member is not thread-gated"
     );
 }
@@ -306,8 +306,8 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        41,
-        "extern entry count (cfg-gated line-head form; 40->41 = N1.4 CAPI-35)"
+        44,
+        "extern entry count (cfg-gated line-head form; 41->44 = N2.4 attr update trio)"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),

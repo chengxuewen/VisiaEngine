@@ -100,6 +100,11 @@ pub struct Engine {
     geo_docs: Vec<visiaengine_geo::GeoDocument>,
     /// CAPI-10: entity（C u64 位形，与 pick 出口同编码；含 gen=ABA 免疫）→ (doc 序号, 行)
     attr_of: std::collections::HashMap<u64, (usize, usize)>,
+    /// N2.4 (CAPI-36): host-driven property diff-update override layer.
+    /// Checked BEFORE geo_docs/pcl_meta in attr_* reads; typed columns
+    /// (first-write-typed per CORE-11/12 — a type-mismatched update is
+    /// rejected, not coerced).
+    attr_overrides: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
     /// CAPI-13: 隐藏实体位形表（render/pick 过滤域；枚举域不变，删除随 CAPI-16 清理）
     hidden: Vec<u64>,
     /// Scene tree (CAPI-30): group-node display names (engine-local).
@@ -297,6 +302,7 @@ impl Engine {
             extra_cmds: Vec::new(),
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
+            attr_overrides: std::collections::HashMap::new(),
             hidden: Vec::new(),
             node_names: std::collections::HashMap::new(),
             clip: None,
@@ -1867,8 +1873,90 @@ impl Engine {
 
     /// CAPI-10: entity 键控三型属性读（位形与 pick 出口同编码）；
     /// 缺失四径（无行/无列/异型/空格）一律 None 非零值。
+    /// N2.4 (CAPI-36 rs-face): property diff-update — typed-reject write.
+    /// `f64/str/bool` select the column type; writing a DIFFERENT type to an
+    /// existing column (override or source) is rejected (CORE-11/12
+    /// first-write-typed), reported as `Err("type-conflict: ...")`. A missing
+    /// column is CREATED (first write types it). Zero effect on the render
+    /// face — attributes are query/host data (read back via attr_*).
+    /// Unknown entity (nothing loaded under it) = reject.
+    pub fn update_entity_props_f64(
+        &mut self,
+        entity: u64,
+        name: &str,
+        v: f64,
+    ) -> Result<(), String> {
+        let row = self.override_row(entity)?;
+        let row_attrs = self.attr_overrides.get_mut(&entity).expect("row seeded");
+        if !row_attrs.set_f64(row, name, v) {
+            // Type conflict against an existing typed column.
+            if let Some(cur) = row_attrs.f64(row, name) {
+                let _ = cur;
+                return Ok(()); // same-type overwrite = the diff update itself
+            }
+            return Err(format!(
+                "type-conflict: column '{name}' holds a different type"
+            ));
+        }
+        Ok(())
+    }
+
+    /// str variant (see update_entity_props_f64).
+    pub fn update_entity_props_str(
+        &mut self,
+        entity: u64,
+        name: &str,
+        v: impl Into<String>,
+    ) -> Result<(), String> {
+        let row = self.override_row(entity)?;
+        let row_attrs = self.attr_overrides.get_mut(&entity).expect("row seeded");
+        if !row_attrs.set_str(row, name, v) {
+            return Err(format!(
+                "type-conflict: column '{name}' holds a different type"
+            ));
+        }
+        Ok(())
+    }
+
+    /// bool variant (see update_entity_props_f64).
+    pub fn update_entity_props_bool(
+        &mut self,
+        entity: u64,
+        name: &str,
+        v: bool,
+    ) -> Result<(), String> {
+        let row = self.override_row(entity)?;
+        let row_attrs = self.attr_overrides.get_mut(&entity).expect("row seeded");
+        if !row_attrs.set_bool(row, name, v) {
+            return Err(format!(
+                "type-conflict: column '{name}' holds a different type"
+            ));
+        }
+        Ok(())
+    }
+
+    /// One row (row 0) per entity in the override store, seeded on first
+    /// update. Unknown entity (nothing loaded under it) = reject.
+    fn override_row(&mut self, entity: u64) -> Result<usize, String> {
+        if !self.attr_of.contains_key(&entity) && !self.pcl_meta.contains_key(&entity) {
+            return Err(format!("update_entity_props: unknown entity {entity}"));
+        }
+        self.attr_overrides.entry(entity).or_insert_with(|| {
+            let mut a = visiaengine_core::AttrSet::new();
+            a.add_row();
+            a
+        });
+        Ok(0)
+    }
+
     #[must_use]
     pub fn attr_f64(&self, entity: u64, name: &str) -> Option<f64> {
+        // N2.4: override layer reads FIRST (diff-update wins over source).
+        if let Some(ov) = self.attr_overrides.get(&entity)
+            && let Some(v) = ov.f64(0, name)
+        {
+            return Some(v);
+        }
         if let Some(&(d, r)) = self.attr_of.get(&entity) {
             return self.geo_docs.get(d)?.attr_f64(r, name);
         }
@@ -1877,6 +1965,13 @@ impl Engine {
 
     #[must_use]
     pub fn attr_str(&self, entity: u64, name: &str) -> Option<&str> {
+        // N2.4: override layer first. Borrow dance: overrides hold String —
+        // fall through to source when the override column misses.
+        if let Some(ov) = self.attr_overrides.get(&entity)
+            && ov.str_value(0, name).is_some()
+        {
+            return ov.str_value(0, name);
+        }
         if let Some(&(d, r)) = self.attr_of.get(&entity) {
             return self.geo_docs.get(d)?.attr_str(r, name);
         }
@@ -1887,6 +1982,12 @@ impl Engine {
 
     #[must_use]
     pub fn attr_bool(&self, entity: u64, name: &str) -> Option<bool> {
+        // N2.4: override layer first.
+        if let Some(ov) = self.attr_overrides.get(&entity)
+            && let Some(v) = ov.bool(0, name)
+        {
+            return Some(v);
+        }
         if let Some(&(d, r)) = self.attr_of.get(&entity) {
             return self.geo_docs.get(d)?.attr_bool(r, name);
         }
@@ -1918,6 +2019,7 @@ impl Engine {
             extra_cmds: Vec::new(),
             geo_docs: Vec::new(),
             attr_of: std::collections::HashMap::new(),
+            attr_overrides: std::collections::HashMap::new(),
             hidden: Vec::new(),
             node_names: std::collections::HashMap::new(),
             clip: None,

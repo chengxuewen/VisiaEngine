@@ -224,6 +224,35 @@ impl VisiaEngine {
         }
     }
 
+    /// CAPI-36..38 typed property diff-update (N2.4). 0=ok; -1=rejected
+    /// (type-conflict / unknown entity / empty name).
+    #[wasm_bindgen(js_name = updateEntityAttrF64)]
+    pub fn update_entity_attr_f64(&mut self, entity: u64, name: &str, v: f64) -> i32 {
+        match self.inner.update_entity_props_f64(entity, name, v) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    #[wasm_bindgen(js_name = updateEntityAttrStr)]
+    pub fn update_entity_attr_str(&mut self, entity: u64, name: &str, v: &str) -> i32 {
+        match self
+            .inner
+            .update_entity_props_str(entity, name, v.to_string())
+        {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    #[wasm_bindgen(js_name = updateEntityAttrBool)]
+    pub fn update_entity_attr_bool(&mut self, entity: u64, name: &str, v: bool) -> i32 {
+        match self.inner.update_entity_props_bool(entity, name, v) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
     /// CAPI-35 HTTP tile source (N1.4, discovery-driven; the wasm-side
     /// HttpSource is a typed stub — real bytes flow through host JS fetch;
     /// this bridge pre-registers the domain-reject shape). 0 = mounted; <0 = rejected.

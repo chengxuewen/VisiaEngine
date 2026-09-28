@@ -80,6 +80,16 @@ public:
         return visiaengine_get_group_offset(h_, group, out);
     }
 
+    /* CAPI-36..38: typed property diff-update (see header clause). */
+    int32_t update_entity_attr_f64(uint64_t entity, const char *name, double v) {
+        return visiaengine_update_entity_attr_f64(h_, entity, name, v);
+    }
+    int32_t update_entity_attr_str(uint64_t entity, const char *name, const char *v) {
+        return visiaengine_update_entity_attr_str(h_, entity, name, v);
+    }
+    int32_t update_entity_attr_bool(uint64_t entity, const char *name, int32_t v) {
+        return visiaengine_update_entity_attr_bool(h_, entity, name, v);
+    }
     /* CAPI-35: HTTP tile source (discovery-driven; see header clause). */
     int32_t set_tile_source_http(const char *url, uint32_t z) {
         return visiaengine_set_tile_source_http(h_, url, z);

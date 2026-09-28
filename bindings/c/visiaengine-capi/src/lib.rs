@@ -41,7 +41,11 @@ pub use ffi::{
 };
 pub use ffi::{
     visiaengine_load_mvt_dir, visiaengine_set_tile_source_http, visiaengine_set_tile_view,
-}; // CAPI-28/29/35 // CAPI-30..34 scene tree
+};
+pub use ffi::{
+    visiaengine_update_entity_attr_bool, visiaengine_update_entity_attr_f64,
+    visiaengine_update_entity_attr_str,
+}; // CAPI-36..38 // CAPI-28/29/35 // CAPI-30..34 scene tree
 
 #[doc(hidden)]
 pub mod test_util {

@@ -172,6 +172,20 @@ int32_t  visiaengine_load_mvt_dir(uint64_t ve, const char *path, uint32_t z);
 int32_t  visiaengine_set_tile_view(uint64_t ve, double min_x, double min_y,
                                    double max_x, double max_y);
 
+/* CAPI-36..38 (N2.4): typed property diff-update — host-driven live-data
+   writes on loaded entities (digital-twin face). Typed columns: f64 / str
+   (UTF-8) / bool (1/0). First write on a name TYPES the column; writing a
+   different type to an existing column = VE_ERR_ARG (type-conflict, zero
+   partial write — CORE-11/12 first-write-typed). Reads via attr_* see the
+   override first (diff wins over source). Unknown entity / NULL name /
+   non-UTF8 = VE_ERR_ARG. Zero render-face effect. */
+int32_t  visiaengine_update_entity_attr_f64(uint64_t ve, uint64_t entity,
+                                            const char *name, double v);
+int32_t  visiaengine_update_entity_attr_str(uint64_t ve, uint64_t entity,
+                                            const char *name, const char *v);
+int32_t  visiaengine_update_entity_attr_bool(uint64_t ve, uint64_t entity,
+                                             const char *name, int32_t v);
+
 /* CAPI-35 (N1.4): mount an HTTP MVT tile source (URL template
    {root}/{z}/{x}/{y}.mvt). Discovery-driven: HTTP has no directory listing —
    the tile set is DISCOVERED by set_tile_view viewport enumeration, and the

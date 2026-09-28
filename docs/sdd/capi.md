@@ -100,3 +100,12 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-35: HTTP 瓦片源挂载（set_tile_source_http，N1.4）
 `visiaengine_set_tile_source_http(ve, url: *const c_char, z: u32) -> i32`：挂 HTTP 瓦片源（URL 模板 `{root}/{z}/{x}/{y}.mvt`）。**发现式装载**（HTTP 无目录列举）：mount 仅建调度器（HttpSource，5s 全局超时 + loopback 免 env 代理），瓦片集由 CAPI-29 视口枚举发现，渲染环逐帧 pump（4 片/帧预算，IO-16）。**计数分叉（有意）**：返回 0=挂载成功（与 CAPI-28 的计数语义分叉——无目录可扫，无计数义）；负=VE_ERR_ARG（url NULL/空/z>30）或 STATE。重复挂载=重置 TileLayer（fresh TileSet）。C15 值域分工：0=成功（本口）/ >0=计数（CAPI-28 专有）——两口同参不同义已对表。
+
+## CAPI-36: 属性热更 f64 列（update_entity_attr_f64，N2.4）
+`visiaengine_update_entity_attr_f64(ve, entity, name, v: f64) -> i32`：typed-reject 热更（见 CAPI-38 共同条款）。
+
+## CAPI-37: 属性热更 str 列（update_entity_attr_str，N2.4）
+`visiaengine_update_entity_attr_str(ve, entity, name, v: *const c_char) -> i32`：同谱，UTF-8 必需；NULL=VE_ERR_ARG。
+
+## CAPI-38: 属性热更 bool 列 + 共同条款（update_entity_attr_bool，N2.4）
+`visiaengine_update_entity_attr_bool(ve, entity, name, v: i32) -> i32`：bool 入参 1/0（i32 非零真）。**三口共同条款**：宿主驱动的属性热更（数字孪生活数据面）。typed-reject：列按首写定型（CORE-11/12）——异型写既有列=VE_ERR_ARG（type-conflict 报文，零部分写）；新列首写定型。override-first 读：attr_* 读先查 override 层再落 geo_docs/pcl_meta 源（diff 赢源数据）。未知实体=VE_ERR_ARG。渲染零触碰（属性=宿主/查询数据）。成功=0。rs 面=Engine::update_entity_props_* 同语义。minor=13 (0x0001000D)。
