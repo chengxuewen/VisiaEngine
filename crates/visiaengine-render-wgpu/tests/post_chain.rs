@@ -232,3 +232,89 @@ fn post_chain_order() {
         .expect("again");
     assert_eq!(again.rgba, outline_first.rgba, "chain not deterministic");
 }
+
+// spec: WGPU-34
+// spec: REND-44
+#[test]
+fn post_tonemap_differs() {
+    let mut b = HeadlessBackend::new(W, H).expect("adapter");
+    let cmds = scene(&mut b);
+    let off = b.render_to_pixels(&frame(&cmds, Vec::new())).expect("off");
+    let reinhard = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::tonemap(0).expect("tonemap")],
+        ))
+        .expect("reinhard");
+    let aces = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::tonemap(1).expect("tonemap")],
+        ))
+        .expect("aces");
+    let d_rein = diff_px(&off, &reinhard);
+    let d_aces = diff_px(&off, &aces);
+    // Probe (lavapipe, 128² city scene, frame 16384 px): off-vs-reinhard=4270
+    // (curve > identity only above ~1.0 input... LDR inputs c<0.5 barely move:
+    // c/(1+c) ≈ c − c², so dark sky/floor pixels stay byte-equal), off-vs-
+    // aces=16384 (filmic toe lifts the WHOLE frame). K floors (PIT-8): −49%.
+    eprintln!("REND-44 tonemap probe: reinhard diff={d_rein} aces diff={d_aces}");
+    assert!(d_rein > 2000, "reinhard must reshape the frame: {d_rein}");
+    assert!(d_aces > 8000, "aces must reshape the frame: {d_aces}");
+    // The two curves must differ from each other (mode selector actually
+    // switches curves — guards a constant-shader regression).
+    let d_modes = diff_px(&reinhard, &aces);
+    eprintln!("REND-44 mode-vs-mode probe: {d_modes}");
+    // Probe: reinhard-vs-aces = 16384 px (full frame — filmic toe vs knee
+    // diverge everywhere above black). Floor 8000.
+    assert!(d_modes > 8000, "reinhard vs aces must differ: {d_modes}");
+    // Determinism: same chain twice = byte-identical.
+    let again = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::tonemap(1).expect("tonemap")],
+        ))
+        .expect("again");
+    assert_eq!(again.rgba, aces.rgba, "tonemap not deterministic");
+}
+
+// spec: WGPU-34
+// spec: REND-44
+#[test]
+fn post_tonemap_bloom_compose() {
+    // Framework economics: bloom AFTER tonemap composes deterministically
+    // (chain order = Vec order, N4 law) and differs from plain tonemap.
+    let mut b = HeadlessBackend::new(W, H).expect("adapter");
+    let cmds = scene(&mut b);
+    let tm = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::tonemap(1).expect("tonemap")],
+        ))
+        .expect("tm");
+    let tm_bloom = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![
+                PostEffect::tonemap(1).expect("tonemap"),
+                PostEffect::bloom(0.8).expect("bloom"),
+            ],
+        ))
+        .expect("tm+bloom");
+    let d = diff_px(&tm, &tm_bloom);
+    // Probe (lavapipe): tonemap-vs-tonemap+bloom = 432 px (bloom halo over
+    // the remapped bright quad — same halo count as the off-chain bloom
+    // probe: bloom threshold catches the same bright set). Floor 100.
+    eprintln!("REND-44 compose probe: {d}");
+    assert!(d > 100, "bloom-after-tonemap must differ: {d}");
+    let again = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![
+                PostEffect::tonemap(1).expect("tonemap"),
+                PostEffect::bloom(0.8).expect("bloom"),
+            ],
+        ))
+        .expect("again");
+    assert_eq!(again.rgba, tm_bloom.rgba, "compose not deterministic");
+}

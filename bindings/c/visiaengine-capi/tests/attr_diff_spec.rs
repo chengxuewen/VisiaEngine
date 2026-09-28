@@ -18,7 +18,14 @@ const GEO: &str = r#"{"type":"FeatureCollection","features":[
 ]}"#;
 
 fn tmp_layer(tag: &str, body: &str) -> CString {
-    let dir = std::env::temp_dir().join(format!("ve-attr-diff-{tag}-{}", std::process::id(),));
+    let dir = std::env::temp_dir().join(format!(
+        "ve-attr-diff-{tag}-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0),
+    ));
     fs::create_dir_all(&dir).unwrap();
     let path = dir.join("layer.geojson");
     fs::write(&path, body).unwrap();

@@ -447,6 +447,10 @@ pub enum PostEffect {
     /// Depth-edge silhouette outline, selection-orange overlay at `strength`
     /// mix ratio; `width` = edge detect radius in texels.
     Outline { width: f32 },
+    /// Global tone-mapping curve (REND-44): `mode` 0 = Reinhard c/(1+c),
+    /// 1 = ACES (Narkowicz filmic approx). Color-only pass (depth bound but
+    /// ignored, shared bgl shape).
+    Tonemap { mode: u32 },
 }
 
 impl PostEffect {
@@ -465,6 +469,16 @@ impl PostEffect {
     pub fn outline(width: f32) -> Option<Self> {
         if width.is_finite() && width > 0.0 {
             Some(Self::Outline { width })
+        } else {
+            None
+        }
+    }
+
+    /// Domain-reject constructor: mode > 1 -> None (0 = Reinhard, 1 = ACES).
+    #[must_use]
+    pub fn tonemap(mode: u32) -> Option<Self> {
+        if mode <= 1 {
+            Some(Self::Tonemap { mode })
         } else {
             None
         }

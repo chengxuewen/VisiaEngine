@@ -440,6 +440,7 @@ dependencies = [
  "visiaengine-core",
  "visiaengine-geo",
  "visiaengine-io-gltf",
+ "visiaengine-io-hdr",
  "visiaengine-io-points",
  "visiaengine-io-text",
  "visiaengine-io-tiles",
@@ -2337,6 +2338,13 @@ dependencies = [
  "proptest",
  "thiserror 2.0.20",
  "visiaengine-core",
+]
+
+[[package]]
+name = "visiaengine-io-hdr"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.20",
 ]
 
 [[package]]

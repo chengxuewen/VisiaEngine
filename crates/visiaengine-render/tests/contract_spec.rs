@@ -651,6 +651,14 @@ fn post_effect_domain_rejects() {
     assert!(PostEffect::outline(0.0).is_none());
     assert!(PostEffect::outline(f32::NEG_INFINITY).is_none());
     assert!(PostEffect::outline(f32::NAN).is_none());
+    // Tonemap (REND-44): mode 0 = Reinhard, 1 = ACES; >1 = explicit reject.
+    assert!(PostEffect::tonemap(0).is_some());
+    assert!(PostEffect::tonemap(1).is_some());
+    assert!(
+        PostEffect::tonemap(2).is_none(),
+        "mode 2 = AgX deferred = reject"
+    );
+    assert!(PostEffect::tonemap(u32::MAX).is_none());
     // Copy/PartialEq family semantics (EdlSetup same-shape law).
     let b = PostEffect::bloom(0.5).expect("domain");
     let c = b;
@@ -660,5 +668,10 @@ fn post_effect_domain_rejects() {
         PostEffect::outline(2.0).expect("domain"),
         PostEffect::bloom(2.0).expect("domain"),
         "variant discrimination"
+    );
+    assert_ne!(
+        PostEffect::tonemap(0).expect("domain"),
+        PostEffect::tonemap(1).expect("domain"),
+        "tonemap mode discrimination"
     );
 }

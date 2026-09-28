@@ -17,6 +17,7 @@ visiaengine-geo.workspace = true
 visiaengine-io-points.workspace = true
 visiaengine-io-tiles.workspace = true
 visiaengine-io-text.workspace = true
+visiaengine-io-hdr.workspace = true
 # 三方直用面 = examples/rs/*.rs 顶行+全路径引用实扫（S1 清点：image×1 pollster×4 wgpu×4 winit×4）
 wgpu.workspace = true
 winit.workspace = true
@@ -101,3 +102,7 @@ path = "E306_map_controls.rs"
 [[example]]
 name = "E506_postprocessing"
 path = "E506_postprocessing.rs"
+
+[[example]]
+name = "E507_hdr_tonemap"
+path = "E507_hdr_tonemap.rs"

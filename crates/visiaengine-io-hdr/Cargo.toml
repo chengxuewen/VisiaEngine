@@ -1,0 +1,11 @@
+[package]
+name = "visiaengine-io-hdr"
+description = "HDRI loader (io-* family): RADIANCE .hdr (RGBE) -> f32 RGB CPU data. Zero render deps, zero new deps beyond thiserror (io-points precedent)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true

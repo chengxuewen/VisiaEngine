@@ -90,8 +90,8 @@ pub struct MeshCore {
     /// array keyed (effect index in chain) — chains longer than 2 are a plan
     /// non-goal this band.
     post_bgl: wgpu::BindGroupLayout,
-    post_shaders: [wgpu::ShaderModule; 2], // [bloom, outline]
-    post_pipelines: [HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>; 2],
+    post_shaders: [wgpu::ShaderModule; 3], // [bloom, outline, tonemap]
+    post_pipelines: [HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>; 3],
     post_stages: [Option<(u32, u32, wgpu::TextureView, wgpu::TextureFormat)>; 2],
 }
 
@@ -598,6 +598,12 @@ impl MeshCore {
                     "../shaders/outline.wgsl"
                 ))),
             }),
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("tonemap-shader"),
+                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(include_str!(
+                    "../shaders/tonemap.wgsl"
+                ))),
+            }),
         ];
         let label_smp = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("atlas-smp"),
@@ -656,7 +662,7 @@ impl MeshCore {
             edl_shader,
             post_bgl,
             post_shaders,
-            post_pipelines: [HashMap::new(), HashMap::new()],
+            post_pipelines: [HashMap::new(), HashMap::new(), HashMap::new()],
             post_stages: [None, None],
         }
     }
@@ -1497,7 +1503,7 @@ impl MeshCore {
     fn run_post_effect_pass(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
-        effect: usize, // 0 = bloom, 1 = outline
+        effect: usize, // 0 = bloom, 1 = outline, 2 = tonemap
         color_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
         out_view: &wgpu::TextureView,
@@ -1626,10 +1632,12 @@ impl MeshCore {
             let (strength, width_px) = match *effect {
                 visiaengine_render::PostEffect::Bloom { strength } => (strength, 0.0),
                 visiaengine_render::PostEffect::Outline { width } => (width, width),
+                visiaengine_render::PostEffect::Tonemap { .. } => (0.0, 0.0),
             };
             let effect_idx = match effect {
                 visiaengine_render::PostEffect::Bloom { .. } => 0usize,
                 visiaengine_render::PostEffect::Outline { .. } => 1usize,
+                visiaengine_render::PostEffect::Tonemap { .. } => 2usize,
             };
             let params: [f32; 4] = match effect {
                 visiaengine_render::PostEffect::Bloom { .. } => {
@@ -1641,6 +1649,7 @@ impl MeshCore {
                     strength,
                     width_px.round().max(1.0),
                 ],
+                visiaengine_render::PostEffect::Tonemap { mode } => [*mode as f32, 0.0, 0.0, 0.0],
             };
             self.run_post_effect_pass(
                 encoder,

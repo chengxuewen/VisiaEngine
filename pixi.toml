@@ -109,3 +109,4 @@ verify = "rustc --version && cargo --version && rustfmt --version && clippy-driv
 smoke-morph = "bash scripts/smoke-rs.sh E304_projection_morph"
 smoke-box-select = "bash scripts/smoke-rs.sh E403_box_select"
 smoke-post = "bash scripts/smoke-rs.sh E506_postprocessing"   # L2: post chain bloom/outline pixel asserts (WGPU-34)
+smoke-hdr = "bash scripts/smoke-rs.sh E507_hdr_tonemap"   # L2: tonemap + hdr fixture pixel asserts (REND-44/IO-17)
