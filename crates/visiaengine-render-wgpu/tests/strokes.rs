@@ -30,6 +30,7 @@ fn frame_with(commands: Vec<DrawCommand>) -> Frame {
         px_world_scale: PX_SCALE,
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     }
 }
@@ -342,6 +343,7 @@ fn golden_zoom_width_invariant() {
             px_world_scale: 2.0 * zoom as f32 / 256.0,
             shadow: None,
             clip: None,
+            edl: None,
             commands,
         };
         let img = b.render_to_pixels(&frame).unwrap();

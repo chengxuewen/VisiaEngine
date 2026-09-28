@@ -157,6 +157,7 @@ fn main() {
         px_world_scale: 1.0,
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     };
     for f in 0..frames {

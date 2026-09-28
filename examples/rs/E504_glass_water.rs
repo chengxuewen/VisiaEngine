@@ -251,6 +251,7 @@ fn frame_of(rig: &CameraRig, cmds: Vec<DrawCommand>, w: u32, h: u32) -> Frame {
         px_world_scale: 0.14,
         shadow: Some(shadow()),
         clip: None,
+        edl: None,
         commands: cmds,
     }
 }

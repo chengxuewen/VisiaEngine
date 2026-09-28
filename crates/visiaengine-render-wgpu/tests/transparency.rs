@@ -48,6 +48,7 @@ fn top_frame(commands: Vec<DrawCommand>) -> Frame {
         px_world_scale: 0.625,
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     }
 }

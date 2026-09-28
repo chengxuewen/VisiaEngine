@@ -75,6 +75,15 @@ pub struct MeshCore {
     layout_shadow_inst: wgpu::PipelineLayout,
     bgl_shadow: wgpu::BindGroupLayout,
     bgl_shadow_inst: wgpu::BindGroupLayout,
+    /// WGPU-33: EDL post-pass state (built always, cheap; color intermediate is
+    /// size+format cached). edl_color = intermediate color view (main pass
+    /// writes it when EDL is on, EDL pass samples it); edl_bgl = 4 bindings
+    /// (color tex / depth tex / sampler / params UBO texel_w,texel_h,strength,0).
+    edl_color: Option<(u32, u32, wgpu::TextureView, wgpu::TextureFormat)>,
+    edl_bgl: wgpu::BindGroupLayout,
+    edl_pipeline: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    edl_smp: wgpu::Sampler,
+    edl_shader: wgpu::ShaderModule,
 }
 
 /// 材质 GPU 态：32B uniform 块 + 可选纹理 view（textured 变体键源）。
@@ -499,6 +508,64 @@ impl MeshCore {
             );
         }
         let _ = dummy;
+        // WGPU-33: EDL post-pass statics — bgl (4 bindings), nearest clamp sampler,
+        // shader module. Pipeline is per-format lazy (edl_pipeline map); params UBO
+        // and intermediate color target are built on first EDL-on frame (cache fields).
+        let edl_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("edl-shader"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(include_str!(
+                "../shaders/edl.wgsl"
+            ))),
+        });
+        let edl_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("edl-bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        let edl_smp = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("edl-smp"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
         let label_smp = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("atlas-smp"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -549,6 +616,11 @@ impl MeshCore {
             layout_shadow_inst,
             bgl_shadow,
             bgl_shadow_inst,
+            edl_color: None,
+            edl_bgl,
+            edl_pipeline: HashMap::new(),
+            edl_smp,
+            edl_shader,
         }
     }
 
@@ -1054,7 +1126,7 @@ impl MeshCore {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -1108,11 +1180,29 @@ impl MeshCore {
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        // WGPU-33: EDL ON = main pass renders into an internal intermediate color
+        // texture (TEXTURE_BINDING-capable), then the EDL fullscreen pass samples
+        // intermediate+depth and writes the final view. OFF (None) = legacy direct
+        // path untouched (byte-identical; no extra pass, no resource churn).
+        // Intermediate (not same-view sampling) because swapchain views lack
+        // TEXTURE_BINDING — and wgpu forbids sampling a color attachment of the
+        // same encoder section anyway. Surface format must match the pipeline
+        // family used for the main pass (per-format pipeline cache covers it).
+        let edl_on = frame.edl.is_some();
+        let main_view: wgpu::TextureView;
+        let edl_color_view: Option<wgpu::TextureView> = if edl_on {
+            let cv = self.ensure_edl_color(width.max(1), height.max(1), color_format);
+            main_view = cv.clone();
+            Some(cv)
+        } else {
+            main_view = view.clone();
+            None
+        };
         self.run_shadow_caster(&mut encoder, frame, color_format, &sh_view);
         self.run_main_pass(
             &mut encoder,
             frame,
-            view,
+            &main_view,
             &depth_view,
             color_format,
             &sh_params,
@@ -1124,10 +1214,174 @@ impl MeshCore {
                 a: f64::from(cl[3]),
             }),
             wgpu::LoadOp::Clear(1.0),
-            wgpu::StoreOp::Discard,
+            if edl_on {
+                wgpu::StoreOp::Store // EDL pass consumes depth next
+            } else {
+                wgpu::StoreOp::Discard // OFF = legacy bytes (WGPU-33 zero-regression)
+            },
             None,
         );
+        if let (Some(cv), Some(setup)) = (edl_color_view, frame.edl) {
+            self.run_edl_pass(
+                &mut encoder,
+                &cv,
+                &depth_view,
+                view,
+                width.max(1),
+                height.max(1),
+                setup.strength,
+                color_format,
+            );
+        }
         self.queue.submit(std::iter::once(encoder.finish()));
+    }
+
+    /// WGPU-33: size+format-cached intermediate color target (RENDER_ATTACHMENT |
+    /// TEXTURE_BINDING). Rebuilt only on size/format change.
+    fn ensure_edl_color(
+        &mut self,
+        width: u32,
+        height: u32,
+        color_format: wgpu::TextureFormat,
+    ) -> wgpu::TextureView {
+        if matches!(
+            &self.edl_color,
+            Some((w, h, _, f)) if *w == width && *h == height && *f == color_format
+        ) {
+            let Some((_, _, v, _)) = &self.edl_color else {
+                unreachable!("matched above");
+            };
+            return v.clone();
+        }
+        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("edl-color"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: color_format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        self.edl_color = Some((width, height, view.clone(), color_format));
+        view
+    }
+
+    /// WGPU-33: fullscreen EDL pass — samples intermediate color + main depth,
+    /// writes the final view. Depth Load (stored by main pass) + Discard (last
+    /// consumer). One draw(0..4) = fullscreen triangle strip per edl.wgsl vs_main.
+    #[allow(clippy::too_many_arguments)]
+    fn run_edl_pass(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        color_view: &wgpu::TextureView,
+        depth_view: &wgpu::TextureView,
+        out_view: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+        strength: f32,
+        color_format: wgpu::TextureFormat,
+    ) {
+        let pipeline = self.edl_pipeline.entry(color_format).or_insert_with(|| {
+            let layout = self
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("edl-pl"),
+                    bind_group_layouts: &[Some(&self.edl_bgl)],
+                    immediate_size: 0,
+                });
+            self.device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("edl-pipeline"),
+                    layout: Some(&layout),
+                    vertex: wgpu::VertexState {
+                        module: &self.edl_shader,
+                        entry_point: Some("vs_main"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleStrip,
+                        ..Default::default()
+                    },
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &self.edl_shader,
+                        entry_point: Some("fs_main"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: color_format,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: None,
+                })
+        });
+        // params UBO (16B): (texel_w, texel_h, strength, 0). Rebuilt per frame —
+        // ponytail: per-frame 64B alloc, switch to write_buffer + cached buf when
+        // EDL frames hit a profiled hotspot.
+        let params = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("edl-params"),
+                contents: bytemuck::cast_slice(&[
+                    1.0f32 / width as f32,
+                    1.0 / height as f32,
+                    strength,
+                    0.0,
+                ]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("edl-bg"),
+            layout: &self.edl_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(color_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(depth_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.edl_smp),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: params.as_entire_binding(),
+                },
+            ],
+        });
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("edl-pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: out_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            // wgpu 30 usage-scope rule: a depth texture sampled (RESOURCE) cannot
+            // simultaneously be a depth-stencil attachment in the same pass —
+            // the EDL fragment reads depth via textureLoad only, so the pass
+            // drops the depth attachment entirely (main pass already Stored it).
+            ..Default::default()
+        });
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, &bg, &[]);
+        pass.draw(0..4, 0..1);
     }
 
     /// ⑤b 多视口分屏（WGPU-26）：单 surface/单全幅 depth 上 N 个 scissor 圈地区域，

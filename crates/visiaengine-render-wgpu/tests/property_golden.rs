@@ -68,6 +68,7 @@ fn frame_with(
         px_world_scale: 0.16,
         shadow,
         clip,
+        edl: None,
         commands,
     }
 }

@@ -97,6 +97,8 @@ pub struct Engine {
     /// CAPI-20: 剖面裁切世界面（None/空=全保留；render 逐帧入 Frame.clip，
     /// pick 命中点 keeps 谓词负侧=排除重试 [WGPU-21 管线面同一世界帧]）
     clip: Option<visiaengine_render::ClipSetup>,
+    /// CAPI band N1.5: EDL opt-in switch (None=off, byte-identical legacy path).
+    edl: Option<visiaengine_render::EdlSetup>,
     /// CAPI-23：飞行推进器（墙钟住 engine——render crate 零 std::time 的分层定案；
     /// None=idle/done 合并态）
     fly: Option<Fly>,
@@ -287,6 +289,7 @@ impl Engine {
             hidden: Vec::new(),
             node_names: std::collections::HashMap::new(),
             clip: None,
+            edl: None,
             fly: None,
             map: None,
             font: None,
@@ -827,6 +830,7 @@ impl Engine {
             },
             shadow: None,
             clip: self.clip,
+            edl: self.edl,
             commands,
         };
         // ⑤b 二波：map=Some ⇒ 主全幅+小图角窗两投；None ⇒ 旧单帧路（canary 构造保真）
@@ -855,6 +859,7 @@ impl Engine {
                 px_world_scale: (2.0 * mrig.zoom / f64::from(rw)) as f32,
                 shadow: None,
                 clip: self.clip,
+                edl: self.edl,
                 commands: frame.commands.clone(),
             };
             let passes = [(frame, ViewportRect::full(self.w, self.h)), (map_frame, r)];
@@ -1807,6 +1812,7 @@ impl Engine {
             hidden: Vec::new(),
             node_names: std::collections::HashMap::new(),
             clip: None,
+            edl: None,
             fly: None,
             map: None,
             font: None,

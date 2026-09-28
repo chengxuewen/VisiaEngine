@@ -3,6 +3,7 @@
 //! 用法: cargo run --example E204_pcl_viewer [选项]
 //!   --frames N   headless 自断言快退（ctest/CI 路）
 //!   --file PATH  载入 PLY（ascii/binary_le；装载路验收）
+//!   --edl        EDL 后处理开启（WGPU-33；None=旧路逐位）
 //!   无参         常驻人验窗：左键拖=轨道 滚轮=远近+恒径 关窗/Esc 退出
 
 #[path = "gallery.rs"]
@@ -72,7 +73,7 @@ struct Scene {
 }
 
 /// headless 自断言路：非背景计数下界 + 上下半区各有覆盖（批量完整性微缩版）。
-fn prove(scene: &Scene, frames: u32) {
+fn prove(scene: &Scene, frames: u32, edl: bool) {
     const W: u32 = 256;
     const H: u32 = 256;
     let Some(mut b) = HeadlessBackend::new(W, H) else {
@@ -102,6 +103,11 @@ fn prove(scene: &Scene, frames: u32) {
         px_world_scale: 2.0 * 6.0 / W as f32,
         shadow: None,
         clip: None,
+        edl: if edl {
+            Some(visiaengine_render::EdlSetup::new(0.35).expect("edl domain"))
+        } else {
+            None
+        },
         commands,
     };
     for f in 0..frames.max(1) {
@@ -140,6 +146,8 @@ struct App {
     dragging: Option<(f64, f64)>,
     scene: Scene,
     table: Option<u64>,
+    /// WGPU-33: EDL opt-in (--edl); None = legacy byte-identical path.
+    edl_on: bool,
 }
 
 impl ApplicationHandler for App {
@@ -297,6 +305,9 @@ impl ApplicationHandler for App {
                     px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
                     shadow: None,
                     clip: None,
+                    edl: self
+                        .edl_on
+                        .then(|| visiaengine_render::EdlSetup::new(0.35).expect("edl domain")),
                     commands,
                 };
                 match surface.get_current_texture() {
@@ -419,6 +430,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut frames: Option<u32> = None;
     let mut file: Option<String> = None;
     let mut pick_check = false;
+    let mut edl = false;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
@@ -430,6 +442,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             "--file" => file = args.next(),
             "--pick-check" => pick_check = true,
+            "--edl" => edl = true,
             _ => {}
         }
     }
@@ -449,7 +462,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     if let Some(n) = frames {
-        prove(&scene, n);
+        prove(&scene, n, edl);
         return Ok(());
     }
     let event_loop = EventLoop::new()?;
@@ -463,6 +476,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         dragging: None,
         scene,
         table: None,
+        edl_on: edl,
     };
     event_loop.run_app(&mut app)?;
     Ok(())

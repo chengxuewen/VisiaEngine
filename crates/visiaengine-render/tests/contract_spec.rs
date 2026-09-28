@@ -85,6 +85,7 @@ fn stub_impl_without_wgpu() {
         px_world_scale: 1.0,
         shadow: None,
         clip: None,
+        edl: None,
         commands: vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.1, 1.0],
         }],
@@ -222,6 +223,7 @@ fn frame_view_proj_fields_roundtrip() {
         px_world_scale: 1.0,
         shadow: None,
         clip: None,
+        edl: None,
         commands: vec![],
     };
     assert_eq!(f.view_rot, IDENTITY4);
@@ -241,6 +243,7 @@ fn frame_camera_split_roundtrip() {
         px_world_scale: 1.0,
         shadow: None,
         clip: None,
+        edl: None,
         commands: vec![],
     };
     assert_eq!(f.eye, [1.5e7, -2.5, 3.25]);
@@ -382,6 +385,7 @@ fn frame_carries_px_world_scale() {
         px_world_scale: 0.25, // 1px ≙ 0.25 世界单位（宿主给，GPU 乘子）
         shadow: None,
         clip: None,
+        edl: None,
         commands: vec![],
     };
     assert_eq!(f.px_world_scale, 0.25);
@@ -468,6 +472,7 @@ fn shadow_setup_is_frame_option_and_none_default_regression_key() {
         px_world_scale: 1.0,
         shadow: Some(setup),
         clip: None,
+        edl: None,
         commands: vec![],
     };
     assert!(f.shadow.is_some());

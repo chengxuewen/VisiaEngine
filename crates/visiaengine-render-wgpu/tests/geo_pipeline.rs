@@ -93,6 +93,7 @@ fn golden_geo_fill_hit() {
         px_world_scale: 1.0,
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -195,6 +196,7 @@ fn golden_scalar_ramp_pixels() {
         px_world_scale: 1.0,
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -286,6 +288,7 @@ fn golden_geo_window_fit() {
             px_world_scale: 2.0 * rig.zoom as f32 / W as f32,
             shadow: None,
             clip: None,
+            edl: None,
             commands: commands.clone(),
         };
         be.render_to_pixels(&frame).expect("render")

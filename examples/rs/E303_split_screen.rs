@@ -179,6 +179,7 @@ fn main_frames(
         px_world_scale: 0.12,
         shadow: Some(shadow_setup(mrect.width, mrect.height)),
         clip: None,
+        edl: None,
         commands: cmds.to_vec(),
     };
     let f_map = Frame {
@@ -197,6 +198,7 @@ fn main_frames(
         px_world_scale: 52.0 / map.width as f32,
         shadow: f_main.shadow,
         clip: None,
+        edl: None,
         commands: cmds.to_vec(),
     };
     vec![(f_main, mrect), (f_map, map)]

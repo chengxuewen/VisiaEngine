@@ -15,10 +15,10 @@ pub use camera::{
     CameraRig, Easing, ray_ground_intersect, screen_to_ray_ortho, screen_to_ray_persp,
 };
 pub use contract::{
-    BackendError, Camera, Capability, ClipSetup, DrawCommand, Frame, Instance, InstanceDesc,
-    InstanceId, LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark,
-    PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc, TableId,
-    TextureDesc, TextureId, Viewport, ViewportRect, clip_to_local,
+    BackendError, Camera, Capability, ClipSetup, DrawCommand, EdlSetup, Frame, Instance,
+    InstanceDesc, InstanceId, LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc,
+    MeshId, PointMark, PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg,
+    StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport, ViewportRect, clip_to_local,
 };
 pub use picking::{
     MeshCandidate, PickHit, PointCloudCandidate, PointHit, pick_meshes, pick_points,

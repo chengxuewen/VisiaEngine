@@ -50,6 +50,7 @@ fn top_frame(commands: Vec<DrawCommand>, clip: Option<ClipSetup>) -> Frame {
         px_world_scale: 0.3,
         shadow: None,
         clip,
+        edl: None,
         commands,
     }
 }
@@ -196,6 +197,7 @@ fn stroke_and_point_families_clipped() {
             px_world_scale: 0.3,
             shadow: None,
             clip,
+            edl: None,
             commands: vec![
                 DrawCommand::ClearColor {
                     rgba: [0.0, 0.0, 0.0, 1.0],
@@ -316,6 +318,7 @@ fn shadow_caster_respects_clip() {
         px_world_scale: 0.12,
         shadow: Some(shadow),
         clip,
+        edl: None,
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0.35, 0.55, 0.85, 1.0],

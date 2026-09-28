@@ -51,6 +51,7 @@ fn ortho_frame(commands: Vec<DrawCommand>, rect: &ViewportRect, z: f64) -> Frame
         px_world_scale: 2.0 * z as f32 / rect.width as f32,
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     }
 }
@@ -370,6 +371,7 @@ fn caster_once_both_views_have_shadow() {
             px_world_scale: 0.12,
             shadow: Some(sh),
             clip: None,
+            edl: None,
             commands: cmds(),
         }
     };

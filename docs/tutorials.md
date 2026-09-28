@@ -15,7 +15,7 @@
 | E201 | 数据装载·glTF（装配+轨道相机；4 连招首件） | `examples/rs/E201_load_gltf.rs` | GLTF-01..11 / WGPU-14 | `pixi run smoke-load-gltf` |
 | E202 | 数据装载·GeoJSON（解析/投影/细分/样式合流） | `examples/rs/E202_geo_viewer.rs` | GEO-01..24 / D7 | `pixi run smoke-geo-viewer` |
 | E203 | 属性与量测（平面 3857 距离/面积 CLI） | `examples/rs/E203_measure_cli.rs` | GEO-21/22 | `pixi run smoke-measure` |
-| E204 | 数据装载·点云（螺旋自断言双模 + `--file` PLY 装载路 + `--pick-check` 点拾取三断言 B2） | `examples/rs/E204_pcl_viewer.rs` | IO-01..06 / CAPI-18/19 / WGPU-18 / REND-38/39 | `pixi run smoke-pcl-viewer` |
+| E204 | 数据装载·点云（螺旋自断言双模 + `--file` PLY 装载路 + `--pick-check` 点拾取三断言 B2 + `--edl` EDL 描边 WGPU-33） | `examples/rs/E204_pcl_viewer.rs` | IO-01..06 / CAPI-18/19 / WGPU-18 / REND-38/39 | `pixi run smoke-pcl-viewer` |
 | E205 | 图注文字·标注双模（io-text 全链活例；无参常驻窗/`--frames` 白墨断言） | `examples/rs/E205_text_labels.rs` | IO-07..09 / REND-33 / WGPU-24/25 | `pixi run smoke-text-labels` |
 | E206 | 数据装载·矢量瓦片（MVT 解码→GeoTile→三族渲染；FileSource 装载捆绑合成瓦片；`--source URL`=HTTP 泵式装载活证） | `examples/rs/E206_tile_viewer.rs` | IO-10..12/16 / GEO-27 | `pixi run smoke-tile-viewer` |
 | E301 | 相机与视图（透视↔正交无级切换） | `examples/rs/E301_switch_camera.rs` | REND-10..17 | `pixi run smoke-switch-camera` |

@@ -114,6 +114,7 @@ fn e201_framed_scene_renders_red_and_green() {
         px_world_scale: 1.0,
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     };
     let img = b.render_to_pixels(&frame).expect("render");

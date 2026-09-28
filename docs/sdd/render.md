@@ -121,3 +121,6 @@ origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域
 
 ## REND-39: 拾取域扩展零回归（B2）
 点拾取落地后 mesh 拾取行为**逐字节不变**（mesh 优先序 + 点云只在 mesh 全 miss 后兜底）——既有 pick 测试族（E401/E402/golden_pick_window_mirror）即永装 canary；`PointHit` 为独立类型零触 `PickHit`。点云 `set_visible(false)` 后 render/pick 双面消失、`is_visible` 读回一致（CAPI-13 域扩展注记）。
+
+## REND-40: EdlSetup 契约（N1.5）
+`Frame +{ edl: Option<EdlSetup> }`：`None`=关闭且**逐位零回归**（行为面=WGPU-33：无额外 pass、深度 StoreOp 不变、不建中间资源）。`EdlSetup{strength: f32}`（Copy/Debug/ PartialEq，与 ShadowSetup/ClipSetup 同族）；构造契约 `EdlSetup::new` 拒非有限/≤0（None=显式拒，不截断不吞）。`strength` 语义=边缘暗化乘子（0..∞；管线侧 clamp 0.7 封顶防过暗）；多视口路本带忽略（WGPU-33 挂账注记）。宿主面注记：capi 引擎经 CAPI 带 N1.5 的 `--edl` 档位面（E204 例=0.35 探针定档）。

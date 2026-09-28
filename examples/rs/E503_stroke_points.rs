@@ -243,6 +243,7 @@ impl ApplicationHandler for App {
                     px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
                     shadow: None,
                     clip: None,
+                    edl: None,
                     commands,
                 };
                 match surface.get_current_texture() {

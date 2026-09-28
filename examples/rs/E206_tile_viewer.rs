@@ -194,6 +194,7 @@ fn prove(tiles: &[GeoTile], frames: u32) {
         px_world_scale: 2.0 * tile_w * 1.6 / W as f32,
         shadow: None,
         clip: None,
+        edl: None,
         commands: vec![
             DrawCommand::ClearColor { rgba: CLEAR },
             DrawCommand::DrawMesh {
@@ -528,6 +529,7 @@ impl ApplicationHandler for TileApp {
                     px_world_scale: 2.0 * hw / config.width.max(1) as f32,
                     shadow: None,
                     clip: None,
+                    edl: None,
                     commands,
                 };
                 match surface.get_current_texture() {

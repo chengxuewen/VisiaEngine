@@ -151,6 +151,7 @@ fn ortho_frame(commands: Vec<DrawCommand>, w: u32, h: u32, zoom: f32) -> Frame {
         px_world_scale: 2.0 * zoom / w as f32, // REND-29 精确路：标签恒 px
         shadow: None,
         clip: None,
+        edl: None,
         commands,
     }
 }

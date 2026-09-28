@@ -78,6 +78,7 @@ fn frame(zoom: f32, commands: Vec<DrawCommand>, clip: Option<ClipSetup>) -> Fram
         px_world_scale: px_scale,
         shadow: None,
         clip,
+        edl: None,
         commands,
     }
 }
