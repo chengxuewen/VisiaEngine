@@ -31,6 +31,7 @@ fn frame_with(commands: Vec<DrawCommand>) -> Frame {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     }
 }
@@ -344,6 +345,7 @@ fn golden_zoom_width_invariant() {
             shadow: None,
             clip: None,
             edl: None,
+            post: Vec::new(),
             commands,
         };
         let img = b.render_to_pixels(&frame).unwrap();

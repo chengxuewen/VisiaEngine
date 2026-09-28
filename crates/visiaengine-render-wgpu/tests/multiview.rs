@@ -52,6 +52,7 @@ fn ortho_frame(commands: Vec<DrawCommand>, rect: &ViewportRect, z: f64) -> Frame
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     }
 }
@@ -372,6 +373,7 @@ fn caster_once_both_views_have_shadow() {
             shadow: Some(sh),
             clip: None,
             edl: None,
+            post: Vec::new(),
             commands: cmds(),
         }
     };

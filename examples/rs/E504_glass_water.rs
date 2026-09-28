@@ -252,6 +252,7 @@ fn frame_of(rig: &CameraRig, cmds: Vec<DrawCommand>, w: u32, h: u32) -> Frame {
         shadow: Some(shadow()),
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: cmds,
     }
 }

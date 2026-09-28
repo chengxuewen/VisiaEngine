@@ -130,6 +130,7 @@ fn map_frame(cmds: &[DrawCommand], rig: &CameraRig, w: u32, h: u32) -> Frame {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: cmds.to_vec(),
     }
 }

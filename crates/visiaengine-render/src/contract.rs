@@ -408,6 +408,8 @@ pub struct Frame {
     pub clip: Option<ClipSetup>,
     /// Eye-dome lighting post-pass (WGPU-33): None = off with byte-identical legacy path (whole pass skipped).
     pub edl: Option<EdlSetup>,
+    /// General post-effect chain (WGPU-34): effects compose in Vec order; empty = legacy path (byte-identical).
+    pub post: Vec<PostEffect>,
     pub commands: Vec<DrawCommand>,
 }
 
@@ -427,6 +429,42 @@ impl EdlSetup {
     pub fn new(strength: f32) -> Option<Self> {
         if strength.is_finite() && strength > 0.0 {
             Some(Self { strength })
+        } else {
+            None
+        }
+    }
+}
+
+/// General post-processing effect (WGPU-34 / REND-43). Effects compose in
+/// `Frame.post` order — each fullscreen pass reads the previous output. Empty
+/// vec = byte-identical legacy path (no intermediates, depth Discard).
+/// Constructor contract mirrors `EdlSetup::new`: domain-reject via Option.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PostEffect {
+    /// Bright-pass 9-tap blur + additive composite. `strength` scales the
+    /// bloom contribution; fixed threshold via `bloom` constructor.
+    Bloom { strength: f32 },
+    /// Depth-edge silhouette outline, selection-orange overlay at `strength`
+    /// mix ratio; `width` = edge detect radius in texels.
+    Outline { width: f32 },
+}
+
+impl PostEffect {
+    /// Domain-reject constructor: non-finite / <=0 -> None (explicit reject, no clamp).
+    #[must_use]
+    pub fn bloom(strength: f32) -> Option<Self> {
+        if strength.is_finite() && strength > 0.0 {
+            Some(Self::Bloom { strength })
+        } else {
+            None
+        }
+    }
+
+    /// Domain-reject constructor: non-finite / <=0 -> None (explicit reject, no clamp).
+    #[must_use]
+    pub fn outline(width: f32) -> Option<Self> {
+        if width.is_finite() && width > 0.0 {
+            Some(Self::Outline { width })
         } else {
             None
         }

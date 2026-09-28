@@ -97,3 +97,7 @@ path = "E403_box_select.rs"
 [[example]]
 name = "E306_map_controls"
 path = "E306_map_controls.rs"
+
+[[example]]
+name = "E506_postprocessing"
+path = "E506_postprocessing.rs"

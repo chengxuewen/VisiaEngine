@@ -49,6 +49,7 @@ fn top_frame(commands: Vec<DrawCommand>) -> Frame {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     }
 }

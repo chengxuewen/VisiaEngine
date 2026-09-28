@@ -295,6 +295,7 @@ fn headless_run() {
         shadow: Some(shadow_setup(origin, W, H)),
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     let img = b.render_to_pixels(&frame).expect("render");
@@ -522,6 +523,7 @@ impl ApplicationHandler for App {
                     shadow: Some(shadow_setup(self.origin, config.width, config.height)),
                     clip,
                     edl: None,
+                    post: Vec::new(),
                     commands: cmds,
                 };
                 match surface.get_current_texture() {

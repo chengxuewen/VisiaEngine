@@ -194,6 +194,7 @@ fn frame(cmds: Vec<DrawCommand>, w: u32, h: u32) -> Frame {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: cmds,
     }
 }

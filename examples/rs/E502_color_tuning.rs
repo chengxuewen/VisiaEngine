@@ -97,6 +97,7 @@ fn prove_headless(frames: u32) {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     for _ in 0..frames.max(1) {
@@ -275,6 +276,7 @@ impl ApplicationHandler for App {
                     shadow: None,
                     clip: None,
                     edl: None,
+                    post: Vec::new(),
                     commands: self.commands.clone(),
                 };
                 match surface.get_current_texture() {

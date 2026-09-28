@@ -180,6 +180,7 @@ fn main_frames(
         shadow: Some(shadow_setup(mrect.width, mrect.height)),
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: cmds.to_vec(),
     };
     let f_map = Frame {
@@ -199,6 +200,7 @@ fn main_frames(
         shadow: f_main.shadow,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: cmds.to_vec(),
     };
     vec![(f_main, mrect), (f_map, map)]

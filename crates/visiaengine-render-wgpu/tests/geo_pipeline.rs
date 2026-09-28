@@ -94,6 +94,7 @@ fn golden_geo_fill_hit() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -197,6 +198,7 @@ fn golden_scalar_ramp_pixels() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -289,6 +291,7 @@ fn golden_geo_window_fit() {
             shadow: None,
             clip: None,
             edl: None,
+            post: Vec::new(),
             commands: commands.clone(),
         };
         be.render_to_pixels(&frame).expect("render")

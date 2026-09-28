@@ -3,7 +3,7 @@
 use visiaengine_render::{
     BackendError, Camera, CameraRig, Capability, DrawCommand, Frame, Instance, InstanceDesc,
     LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc, MeshId, PointMark,
-    PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc,
+    PointTableDesc, PostEffect, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg, StrokeTableDesc,
     TextureDesc, Viewport, ViewportRect,
 };
 
@@ -86,6 +86,7 @@ fn stub_impl_without_wgpu() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: vec![DrawCommand::ClearColor {
             rgba: [0.05, 0.07, 0.1, 1.0],
         }],
@@ -224,6 +225,7 @@ fn frame_view_proj_fields_roundtrip() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: vec![],
     };
     assert_eq!(f.view_rot, IDENTITY4);
@@ -244,6 +246,7 @@ fn frame_camera_split_roundtrip() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: vec![],
     };
     assert_eq!(f.eye, [1.5e7, -2.5, 3.25]);
@@ -386,6 +389,7 @@ fn frame_carries_px_world_scale() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: vec![],
     };
     assert_eq!(f.px_world_scale, 0.25);
@@ -473,6 +477,7 @@ fn shadow_setup_is_frame_option_and_none_default_regression_key() {
         shadow: Some(setup),
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: vec![],
     };
     assert!(f.shadow.is_some());
@@ -631,4 +636,29 @@ fn viewport_rect_routing_minimals() {
     let f = ViewportRect::full(96, 64);
     assert_eq!((f.x, f.y, f.width, f.height), (0, 0, 96, 64));
     assert!(f.contains(95, 63) && !f.contains(96, 63));
+}
+
+// spec: REND-43
+#[test]
+fn post_effect_domain_rejects() {
+    // Constructor contract = EdlSetup::new same-shape explicit reject.
+    assert!(PostEffect::bloom(0.8).is_some());
+    assert!(PostEffect::bloom(0.0).is_none(), "0 = explicit reject");
+    assert!(PostEffect::bloom(-1.0).is_none());
+    assert!(PostEffect::bloom(f32::NAN).is_none());
+    assert!(PostEffect::bloom(f32::INFINITY).is_none());
+    assert!(PostEffect::outline(2.0).is_some());
+    assert!(PostEffect::outline(0.0).is_none());
+    assert!(PostEffect::outline(f32::NEG_INFINITY).is_none());
+    assert!(PostEffect::outline(f32::NAN).is_none());
+    // Copy/PartialEq family semantics (EdlSetup same-shape law).
+    let b = PostEffect::bloom(0.5).expect("domain");
+    let c = b;
+    assert_eq!(b, c);
+    assert_ne!(b, PostEffect::bloom(0.6).expect("domain"));
+    assert_ne!(
+        PostEffect::outline(2.0).expect("domain"),
+        PostEffect::bloom(2.0).expect("domain"),
+        "variant discrimination"
+    );
 }

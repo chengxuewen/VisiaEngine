@@ -128,6 +128,7 @@ fn selected_entity_renders_highlight_overlay() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
@@ -197,6 +198,7 @@ fn occlusion_independent_of_draw_order() {
             shadow: None,
             clip: None,
             edl: None,
+            post: Vec::new(),
             commands,
         };
         let img = backend.render_to_pixels(&frame).expect("render");
@@ -287,6 +289,7 @@ fn golden_pick_window_mirror() {
             shadow: None,
             clip: None,
             edl: None,
+            post: Vec::new(),
             commands,
         };
         be.render_to_pixels(&frame).expect("render")

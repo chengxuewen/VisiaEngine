@@ -41,6 +41,7 @@ fn frame_with(commands: Vec<DrawCommand>, edl: Option<EdlSetup>) -> Frame {
         shadow: None,
         clip: None,
         edl,
+        post: Vec::new(),
         commands,
     }
 }

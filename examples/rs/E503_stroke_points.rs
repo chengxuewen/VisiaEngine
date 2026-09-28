@@ -244,6 +244,7 @@ impl ApplicationHandler for App {
                     shadow: None,
                     clip: None,
                     edl: None,
+                    post: Vec::new(),
                     commands,
                 };
                 match surface.get_current_texture() {

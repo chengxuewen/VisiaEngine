@@ -56,6 +56,7 @@ fn quad_and_frame(tex_mat: u64) -> (QuadMesh, Scene) {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: vec![
             DrawCommand::ClearColor {
                 rgba: [0., 0., 0., 1.],
@@ -297,6 +298,7 @@ fn flat_pipeline_zero_regression_marker() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     let img = b.render_to_pixels(&frame).expect("render flat");

@@ -895,6 +895,7 @@ impl Engine {
             shadow: None,
             clip: self.clip,
             edl: self.edl,
+            post: Vec::new(),
             commands,
         };
         // ⑤b 二波：map=Some ⇒ 主全幅+小图角窗两投；None ⇒ 旧单帧路（canary 构造保真）
@@ -924,6 +925,7 @@ impl Engine {
                 shadow: None,
                 clip: self.clip,
                 edl: self.edl,
+                post: Vec::new(),
                 commands: frame.commands.clone(),
             };
             let passes = [(frame, ViewportRect::full(self.w, self.h)), (map_frame, r)];

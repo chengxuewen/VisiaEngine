@@ -108,3 +108,4 @@ bench = "bash scripts/bench.sh"   # [6b] 制品链（release 双例；本机 lav
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"
 smoke-morph = "bash scripts/smoke-rs.sh E304_projection_morph"
 smoke-box-select = "bash scripts/smoke-rs.sh E403_box_select"
+smoke-post = "bash scripts/smoke-rs.sh E506_postprocessing"   # L2: post chain bloom/outline pixel asserts (WGPU-34)

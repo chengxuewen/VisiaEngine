@@ -108,6 +108,7 @@ fn prove(scene: &Scene, frames: u32, edl: bool) {
         } else {
             None
         },
+        post: Vec::new(),
         commands,
     };
     for f in 0..frames.max(1) {
@@ -308,6 +309,7 @@ impl ApplicationHandler for App {
                     edl: self
                         .edl_on
                         .then(|| visiaengine_render::EdlSetup::new(0.35).expect("edl domain")),
+                    post: Vec::new(),
                     commands,
                 };
                 match surface.get_current_texture() {

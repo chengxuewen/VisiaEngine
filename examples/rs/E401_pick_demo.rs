@@ -158,6 +158,7 @@ fn main() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     for f in 0..frames {

@@ -20,8 +20,9 @@ pub use camera::{
 pub use contract::{
     BackendError, Camera, Capability, ClipSetup, DrawCommand, EdlSetup, Frame, Instance,
     InstanceDesc, InstanceId, LabelMark, LabelTableDesc, MaterialDesc, MaterialId, MeshDesc,
-    MeshId, PointMark, PointTableDesc, RenderBackend, ShadowBias, ShadowSetup, StrokeSeg,
-    StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport, ViewportRect, clip_to_local,
+    MeshId, PointMark, PointTableDesc, PostEffect, RenderBackend, ShadowBias, ShadowSetup,
+    StrokeSeg, StrokeTableDesc, TableId, TextureDesc, TextureId, Viewport, ViewportRect,
+    clip_to_local,
 };
 pub use morph::{morph_ease, morph_proj, morph_px_scale};
 pub use picking::{

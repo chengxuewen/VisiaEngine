@@ -79,6 +79,7 @@ fn frame(zoom: f32, commands: Vec<DrawCommand>, clip: Option<ClipSetup>) -> Fram
         shadow: None,
         clip,
         edl: None,
+        post: Vec::new(),
         commands,
     }
 }

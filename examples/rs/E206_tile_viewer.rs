@@ -195,6 +195,7 @@ fn prove(tiles: &[GeoTile], frames: u32) {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands: vec![
             DrawCommand::ClearColor { rgba: CLEAR },
             DrawCommand::DrawMesh {
@@ -530,6 +531,7 @@ impl ApplicationHandler for TileApp {
                     shadow: None,
                     clip: None,
                     edl: None,
+                    post: Vec::new(),
                     commands,
                 };
                 match surface.get_current_texture() {

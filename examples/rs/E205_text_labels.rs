@@ -152,6 +152,7 @@ fn ortho_frame(commands: Vec<DrawCommand>, w: u32, h: u32, zoom: f32) -> Frame {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     }
 }

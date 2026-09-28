@@ -74,6 +74,7 @@ fn frame_with(
         shadow,
         clip,
         edl: None,
+        post: Vec::new(),
         commands,
     }
 }

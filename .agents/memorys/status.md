@@ -425,3 +425,12 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 数字孪生三骨：属性热更 ✓ / 动画采样 6a ✓ / 序列化 S3' 挂账（Studio 依赖触发）
 - 待办：触发制队列全空（几何 diff/框选/ODR/LAS/7 态机等票候令）
 - **T3 人验（2026-09-28 用户实测）**：E304 `[/]` 滑投影 morph ✓ · E305 常驻窗 drone 循环重放 ✓（窗面缺口由用户抓出后补齐=eab5530）——两条销账，数字孪生演示面双验通过
+
+## N4 后处理框架带基线（2026-09-28，计划 n4-post-framework-band.md v1.0·Momus OKAY）
+- IR：REND-43 PostEffect{Bloom{strength},Outline{width}} + Frame.post Vec（空=逐位零回归旧路）+ bloom/outline 构造器域拒 Option（EdlSetup::new 同谱）；**46 处 Frame 构造点 sweep**（python 缩进感知插入 + contract.rs 手编）；contract_spec +域拒门
+- 管线：WGPU-34 stage 链编排——ensure_stage_color 固定 2 槽（尺寸+格式缓存）+ per-(effect,format) 懒建管线 + bgl=EDL 4 绑定形共享（fullscreen_entries 提取共享描述符）；深度 Store 单旗 `edl_on||post_on`；**效果 i 写 stage[i+1]、末效果写最终 view、stage[0]=链输入永不作写目标**（首版写 stage[i] 撞 wgpu usage-scope RESOURCE+COLOR_TARGET 同 pass 冲突=validation error 抓出）
+- 着色器：bloom.wgsl 9-tap luma 阈值加性（THRESHOLD=0.25 线性解码域探针定档——sRGB 编码 138/px≈线性 0.25）；outline.wgsl 深度梯度比（WGPU-33 rel 同族阈 0.08）+selection 橙；vs_main 三形同谱（fullscreen triangle strip from vertex_index）
+- 例/门：E506_postprocessing 双模（1/2/3 键+标题回显；--frames off 确定性+bloom/outline 像素断言 probe=1289/1509px 阈 600/700）+ 四方消费全带（cmake 注册表 disp 缺省 headless/tutorials 行/画廊 37 卡/smoke-post）；post_chain.rs 四门（off 逐位/bloom 432/outline 678/链序 1038·1640 全探针在注）
+- **web-check 抓真雷**：engine.rs wasm-专属 new_canvas 构造器被 sweep 脚本误插 post 字段（native check 不可达=cfg 门后面）——CI 后必跑 web-check 的活证据（R2 gz=539641B 记账）
+- 基线：**311 passed（+5）· spec-trace 184↔184 · GATE-ABI 44/44 · GATE-DOCS ✓ E 36 件三方+37 卡 · ctest 37 条 · CMAKE-SMOKE ✓（Xvfb display ✓）· ci 十段 rc=0 · 9 crate**
+- 余账：push 候令 · SSAO/DOF/SSR=框架后触发制 · 多视口 post（EDL 同款挂账）· >2 效果链=非目标

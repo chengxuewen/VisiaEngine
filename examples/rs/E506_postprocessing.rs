@@ -1,12 +1,10 @@
-//! E304 Projection Morph — 2D↔3D continuous projection morphTime (N2.1).
+//! E506 Postprocessing — bloom/outline post chain live demo (WGPU-34/REND-43).
 //!
-//! Dual-mode (E303 same shape): MeshCore direct + render::morph pure fns —
-//! the SAME interpolation Engine::set_morph_time uses (single source of
-//! truth: render::morph, REND-41).
-//! - No-arg = resident window: `[` / `]` slide t (0=ortho map, 1=persp 3D),
-//!   title echoes t, Esc closes.
-//! - `--frames N` = offscreen assert path: matrix endpoints exact; mid
-//!   frames distinct + non-degenerate.
+//! Dual-mode (E304 same shape): MeshCore direct + HeadlessBackend assert.
+//! - No-arg = resident window: `1` bloom toggle, `2` outline toggle, `3` both
+//!   off; title echoes state, Esc closes.
+//! - `--frames N` = offscreen assert path: off vs bloom and off vs outline
+//!   pixel diffs exceed probe-pinned K; off state deterministic (canary).
 
 use std::sync::Arc;
 
@@ -15,12 +13,12 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
-use visiaengine_render::morph::{morph_proj, morph_px_scale};
 use visiaengine_render::{
-    Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, RenderBackend, Viewport,
+    Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, PostEffect, RenderBackend,
+    Viewport,
 };
+use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::mesh_core::MeshCore;
-use visiaengine_render_wgpu::{HeadlessBackend, MultiClearPolicy};
 
 const W: u32 = 320;
 const H: u32 = 240;
@@ -31,8 +29,9 @@ const T4: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// Upload seam (E303's Up trait shape): one scene builder serving both
-/// HeadlessBackend (assert path) and MeshCore (window path).
+/// Upload seam (E304's Up trait shape): one scene builder serving both
+/// HeadlessBackend (assert path) and MeshCore (window path). Ground + two
+/// towers; one bright-lit tower face feeds bloom, silhouettes feed outline.
 trait Up {
     fn m(&mut self, d: &MeshDesc<'_>) -> u64;
     fn t(&mut self, d: &MaterialDesc) -> u64;
@@ -60,7 +59,6 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
     let mut commands = vec![DrawCommand::ClearColor {
         rgba: [0.05, 0.07, 0.10, 1.0],
     }];
-    // Ground.
     let ground = [
         [-6.0f32, -6.0, 0.0],
         [6.0, -6.0, 0.0],
@@ -85,9 +83,9 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         origin: [0.0; 3],
         transform: T4,
     });
-    // Two towers (8-vert boxes, 10 tris: top + 4 sides).
+    // Two towers; the first is BRIGHT (bloom fodder: luma above threshold).
     for (x, y, h, color) in [
-        (-1.5f32, -1.5f32, 2.0f32, [0.25, 0.45, 0.80, 1.0]),
+        (-1.5f32, -1.5f32, 2.0f32, [0.95, 0.90, 0.75, 1.0]),
         (2.0, 1.5, 3.2, [0.30, 0.65, 0.35, 1.0]),
     ] {
         let (x0, y0, x1, y1) = (x - 1.0, y - 1.0, x + 1.0, y + 1.0);
@@ -127,96 +125,85 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
     commands
 }
 
-/// Frame at morph time t (0 = ortho, 1 = perspective). Both projections from
-/// the SAME rig — only the projection matrices lerp (REND-41 law).
-fn morph_frame(cmds: &[DrawCommand], t: f64, w: u32, h: u32, hw: f64) -> Frame {
+fn frame(cmds: &[DrawCommand], post: Vec<PostEffect>, w: u32, h: u32) -> Frame {
     let rig = CameraRig::look_at([0.0, -14.0, 9.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-    let persp = rig
+    let proj = rig
         .perspective(rig.fov_y as f32, w as f32 / h as f32, 0.1, 1000.0)
         .expect("persp");
-    let ortho = rig
-        .ortho_frame(
-            hw as f32,
-            w as f32,
-            h as f32,
-            0.1,
-            (hw * 2.0).max(1000.0) as f32,
-        )
-        .expect("ortho");
-    let camera = if t <= 0.5 {
-        Camera::ortho(
-            hw as f32,
-            hw as f32 * h as f32 / w as f32,
-            0.1,
-            (hw * 2.0).max(1000.0) as f32,
-        )
-    } else {
-        Camera::perspective(rig.fov_y as f32, w as f32 / h as f32, 0.1, 1000.0)
-    };
     Frame {
         viewport: Viewport::new(w, h, 1.0),
-        camera,
+        camera: Camera::perspective(rig.fov_y as f32, w as f32 / h as f32, 0.1, 1000.0),
         view_rot: rig.view_rotation(),
         eye: rig.eye(),
-        proj: morph_proj(&ortho, &persp, t),
-        px_world_scale: morph_px_scale(2.0 * hw as f32 / w as f32, t),
+        proj,
+        px_world_scale: 1.0,
         shadow: None,
         clip: None,
         edl: None,
-        post: Vec::new(),
+        post,
         commands: cmds.to_vec(),
     }
 }
 
+fn diff_px(
+    a: &visiaengine_render_wgpu::OffscreenFrame,
+    b: &visiaengine_render_wgpu::OffscreenFrame,
+) -> u32 {
+    a.rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.rgba.as_chunks::<4>().0)
+        .filter(|(x, y)| x[..3] != y[..3])
+        .count() as u32
+}
+
 // ── headless assert path ─────────────────────────────────────────────────────
 fn prove(frames: u32) {
+    let _ = frames; // single pass per state; N kept for argv symmetry
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let cmds = scene(&mut b);
 
-    let ortho = b
-        .render_to_pixels(&morph_frame(&cmds, 0.0, W, H, 8.0))
+    let off_a = b.render_to_pixels(&frame(&cmds, Vec::new(), W, H)).unwrap();
+    let off_b = b.render_to_pixels(&frame(&cmds, Vec::new(), W, H)).unwrap();
+    assert_eq!(off_a.rgba, off_b.rgba, "off state must be deterministic");
+
+    let bloom = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::bloom(0.8).expect("bloom")],
+            W,
+            H,
+        ))
         .unwrap();
-    let persp = b
-        .render_to_pixels(&morph_frame(&cmds, 1.0, W, H, 8.0))
+    let outline = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::outline(2.0).expect("outline")],
+            W,
+            H,
+        ))
         .unwrap();
 
-    // Matrix-level endpoint law (exact, scene-independent).
-    let rig = CameraRig::look_at([0.0, -14.0, 9.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-    let p = rig.perspective(0.9, 1.0, 0.1, 1000.0).unwrap();
-    let o = rig.ortho_frame(8.0, 100.0, 100.0, 0.1, 1000.0).unwrap();
-    assert_eq!(morph_proj(&o, &p, 0.0), o, "morph_proj t=0 == ortho exact");
-    assert_eq!(morph_proj(&o, &p, 1.0), p, "morph_proj t=1 == persp exact");
-
-    // Mid frames: distinct from both endpoints, non-degenerate.
-    let mut distinct = 0;
-    for i in 0..frames.min(4) {
-        let t = 0.2 + 0.2 * f64::from(i);
-        let mid = b
-            .render_to_pixels(&morph_frame(&cmds, t, W, H, 8.0))
-            .unwrap();
-        let lit: u32 = mid
-            .rgba
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .filter(|px| u32::from(px[0]) + u32::from(px[1]) + u32::from(px[2]) > 40)
-            .count() as u32;
-        assert!(lit > 500, "mid t={t} renders the scene (lit={lit})");
-        assert_ne!(mid.rgba, ortho.rgba, "mid differs from ortho");
-        assert_ne!(mid.rgba, persp.rgba, "mid differs from persp");
-        distinct += 1;
-    }
-    println!("E304 OK: matrix endpoints exact; {distinct} mid frames distinct + non-degenerate");
+    // Probe (lavapipe, 320×240 city scene): off-vs-bloom=1289 px,
+    // off-vs-outline=1509 px. K floors conservative (PIT-8): −50%.
+    let db = diff_px(&off_a, &bloom);
+    let dc = diff_px(&off_a, &outline);
+    println!("E506 probe: bloom diff={db} outline diff={dc}");
+    assert!(db > 600, "bloom must differ from off: {db}");
+    assert!(dc > 700, "outline must differ from off: {dc}");
+    println!("E506 OK: off deterministic; bloom/outline pixel-verified");
 }
 
-// ── resident window path (E303 winit shape) ──────────────────────────────────
+// ── resident window path (E304 winit shape) ──────────────────────────────────
 struct App {
     window: Option<Arc<Window>>,
     core: Option<MeshCore>,
     surface: Option<wgpu::Surface<'static>>,
     config: Option<wgpu::SurfaceConfiguration>,
     commands: Vec<DrawCommand>,
-    t: f64,
+    bloom: bool,
+    outline: bool,
     ready: bool,
 }
 
@@ -230,7 +217,7 @@ impl ApplicationHandler for App {
                 .create_window(
                     winit::window::WindowAttributes::default()
                         .with_inner_size(winit::dpi::PhysicalSize::new(640u32, 480u32))
-                        .with_title("E304 morph t=0.00 · [ / ] slide · Esc exit"),
+                        .with_title("E506 post off · 1=bloom 2=outline 3=off · Esc exit"),
                 )
                 .expect("window"),
         );
@@ -251,7 +238,7 @@ impl ApplicationHandler for App {
             return;
         };
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e304"),
+            label: Some("visiaengine-e506"),
             required_features: wgpu::Features::empty(),
             required_limits: adapter.limits(),
             ..Default::default()
@@ -284,12 +271,17 @@ impl ApplicationHandler for App {
                     winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Escape) => {
                         event_loop.exit();
                     }
-                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::BracketLeft) => {
-                        self.t = (self.t - 0.1).max(0.0);
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit1) => {
+                        self.bloom = !self.bloom;
                         self.redraw();
                     }
-                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::BracketRight) => {
-                        self.t = (self.t + 0.1).min(1.0);
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit2) => {
+                        self.outline = !self.outline;
+                        self.redraw();
+                    }
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit3) => {
+                        self.bloom = false;
+                        self.outline = false;
                         self.redraw();
                     }
                     _ => {}
@@ -314,22 +306,21 @@ impl App {
         };
         let size = window.inner_size();
         let (w, h) = (size.width.max(1), size.height.max(1));
-        let frame = morph_frame(&self.commands, self.t, w, h, 8.0);
-        let full = visiaengine_render::ViewportRect::new(0, 0, w, h);
+        let mut post = Vec::new();
+        if self.bloom {
+            post.push(PostEffect::bloom(0.8).expect("bloom"));
+        }
+        if self.outline {
+            post.push(PostEffect::outline(2.0).expect("outline"));
+        }
+        let frame = frame(&self.commands, post, w, h);
         match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(tex)
             | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
                 let view = tex
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
-                core.render_view_rects(
-                    &[(frame, full)],
-                    &view,
-                    w,
-                    h,
-                    config.format,
-                    MultiClearPolicy::FirstClearRestLoad,
-                );
+                core.render_view_format(&frame, &view, w, h, config.format);
                 core.queue.present(tex);
             }
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
@@ -337,7 +328,14 @@ impl App {
             }
             other => eprintln!("skip {other:?}"),
         }
-        window.set_title(format!("E304 morph t={:.2} · [ / ] slide · Esc exit", self.t).as_str());
+        let state = match (self.bloom, self.outline) {
+            (false, false) => "off",
+            (true, false) => "bloom",
+            (false, true) => "outline",
+            (true, true) => "bloom+outline",
+        };
+        window
+            .set_title(format!("E506 post {state} · 1=bloom 2=outline 3=off · Esc exit").as_str());
     }
 }
 
@@ -363,7 +361,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 surface: None,
                 config: None,
                 commands: Vec::new(),
-                t: 0.0,
+                bloom: false,
+                outline: false,
                 ready: false,
             };
             el.run_app(&mut app)?;

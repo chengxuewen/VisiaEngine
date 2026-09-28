@@ -115,6 +115,7 @@ fn e201_framed_scene_renders_red_and_green() {
         shadow: None,
         clip: None,
         edl: None,
+        post: Vec::new(),
         commands,
     };
     let img = b.render_to_pixels(&frame).expect("render");
