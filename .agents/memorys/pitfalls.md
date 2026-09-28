@@ -252,3 +252,15 @@
 - **根因**: 追加式编辑把常量放在了入口守卫后面；模块自上而下执行，main() 调用时 TEMPLATE 未绑定。
 - **解法**: 常量/模板一律置于入口守卫之前；追加编辑后先 `python3 -c "import ast; ast.parse(open(f).read())"` 再跑。
 - **验证**: `python3 -c "import ast; ast.parse(open('scripts/gen_gallery.py').read())" && pixi run gallery`
+
+## PIT-37: 例子重构丢 origin——静态表重构时逐 marker 数据静默归零 (2026-09-28，E305 窗面带)
+- **症状**: E305 窗面重构（build 表 + group 分离）后 cyan 像素门 2 vs 阈 20——轨迹 24 枚标记全画在原点。
+- **根因**: build() 里 `let _o = anim_origin(...)` 算了 origin 但存表时只存 (mesh,material) 二元组，group() 统一 origin:[0;3]——数据在"算了"与"用了"之间断链。
+- **解法**: 表结构带数据（`Vec<((id,id), origin)>`），group() 逐项消费；**像素门当场拦截**（这正是门禁存在的意义——第 N 次兑现）。
+- **验证**: `cargo run --example E305_entity_anim -p examples -- --frames 24`（cyan>20 断言）。
+
+## PIT-38: winit match 臂内 if = collapsible_match clippy 拒式——用 match guard (2026-09-28)
+- **症状**: 窗例 Esc 处理 `WindowEvent::KeyboardInput{..} => { if pressed && key==Esc {exit} }` 触发 clippy collapsible_match 三连红。
+- **根因**: match 臂内首行 if 合并形态=match guard（`arm if cond =>`），clippy 1.98 按可读性建议直接红。
+- **解法**: 抄 guard 形（`KeyboardInput{..} if state==Pressed && key==Escape => exit`）+ 保留 `_ => {}` 全匹配臂。附带：winit 例**每次新建必带 imports 清单**（ApplicationHandler/WindowEvent/EventLoop/Window/WindowId——E304/E305 两次各漏一次浪费两轮）。
+- **验证**: `cargo clippy --example <name> -p examples --all-targets -- -D warnings`。
