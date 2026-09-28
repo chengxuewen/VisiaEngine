@@ -89,3 +89,11 @@ path = "E304_projection_morph.rs"
 [[example]]
 name = "E305_entity_anim"
 path = "E305_entity_anim.rs"
+
+[[example]]
+name = "E403_box_select"
+path = "E403_box_select.rs"
+
+[[example]]
+name = "E306_map_controls"
+path = "E306_map_controls.rs"

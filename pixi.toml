@@ -107,3 +107,4 @@ gallery-serve = { cmd = "python3 -m http.server 8931 --bind 0.0.0.0", cwd = "." 
 bench = "bash scripts/bench.sh"   # [6b] 制品链（release 双例；本机 lavapipe 观测档，非门禁）
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"
 smoke-morph = "bash scripts/smoke-rs.sh E304_projection_morph"
+smoke-box-select = "bash scripts/smoke-rs.sh E403_box_select"
