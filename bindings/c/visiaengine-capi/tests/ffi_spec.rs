@@ -283,10 +283,10 @@ fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
         0x0001_000C,
-        "major 1 · minor 12（N1.4: +CAPI-35 set_tile_source_http=MAJOR 内追加）"
+        "major 1 minor 12 (N1.4: +CAPI-35 set_tile_source_http, MAJOR-contained)"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
-    assert_eq!(h.join().unwrap(), 0x0001_000C, "例外集成员无线程门");
+    assert_eq!(h.join().unwrap(), 0x0001_000C, "exception-set member is not thread-gated");
 }
 
 // spec: CAPI-02
@@ -303,7 +303,7 @@ fn symbol_surface_grep_gate() {
             )
             .count(),
         41,
-        "extern 入口计数（cfg-gated 行首式；40→41=N1.4 CAPI-35 set_tile_source_http）"
+        "extern entry count (cfg-gated line-head form; 40->41 = N1.4 CAPI-35)"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),

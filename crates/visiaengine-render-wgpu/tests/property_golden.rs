@@ -2,8 +2,8 @@
 //!
 //! One style property per fixture (MapLibre pattern, C6 pilot sizing): a
 //! minimal scene renders with ONE property varied; the predicate asserts the
-//! property's observable pixel effect. Self-test discipline (testing.md 双保
-//! 险): every predicate must DISTINGUISH good from a sabotaged variant — the
+//! property's observable pixel effect. Self-test discipline (testing.md
+//! dual-insurance rule): every predicate must DISTINGUISH good from a sabotaged variant — the
 //! test renders both and asserts accept/reject, making each fixture a real
 //! regression gate rather than a tautology.
 //!

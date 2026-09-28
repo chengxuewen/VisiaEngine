@@ -162,7 +162,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 12 // major 1 · minor 12（N1.4: +CAPI-35 set_tile_source_http；>>16==1 不变）
+    (1 << 16) | 12 // major 1 minor 12 (N1.4: +CAPI-35 set_tile_source_http; >>16==1 unchanged)
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1502,9 +1502,11 @@ pub extern "C" fn visiaengine_set_tile_view(
     )
 }
 
-/// CAPI-35（N1.4）：挂 HTTP 瓦片源（发现式装载——无目录列举，瓦片集由
-/// set_tile_view 视口枚举发现，渲染环逐帧 pump）。url 空串/z>30=域拒。
-/// 返回 0=挂载成功（计数语义与 CAPI-28 分叉已入条款：HTTP 无目录可扫）。
+/// CAPI-35 (N1.4): mount an HTTP tile source (discovery-driven — no
+/// directory listing; the tile set is discovered by set_tile_view viewport
+/// enumeration and pumped per render frame). empty url / z>30 = reject.
+/// Returns 0 = mounted (count-semantics fork vs CAPI-28 documented in the
+/// clause: HTTP has no directory to scan).
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded before deref (PIT-26); load_mvt_dir precedent
 pub extern "C" fn visiaengine_set_tile_source_http(ve: u64, url: *const c_char, z: u8) -> i32 {

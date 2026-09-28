@@ -406,21 +406,23 @@ pub struct Frame {
     pub shadow: Option<ShadowSetup>,
     /// 剖面裁切（REND-32）：None/`EMPTY`=全保留且**逐位零回归**（后端 count=0 恒绑早退）。
     pub clip: Option<ClipSetup>,
-    /// Eye-dome lighting 后处理（WGPU-33）：None=关闭且**逐位零回归**（后端整 pass 跳过）。
+    /// Eye-dome lighting post-pass (WGPU-33): None = off with byte-identical legacy path (whole pass skipped).
     pub edl: Option<EdlSetup>,
     pub commands: Vec<DrawCommand>,
 }
 
-/// Eye-dome lighting 配置（WGPU-33）。**语义**：点云剪影可读性后处理——全屏一遍，
-/// 深度梯度边缘像素按 `strength` 加深（clamp 0.7 封顶）。构造契约：`new` 拒非有限/
-/// 非正强度（None=显式拒）。多视口（render_view_rects）本带忽略此位。
+/// Eye-dome lighting configuration (WGPU-33). Semantics: point-cloud
+/// silhouette-legibility post-pass — one fullscreen pass, depth-gradient edge
+/// pixels darkened by `strength` (clamped at 0.7). Constructor contract:
+/// `new` rejects non-finite / non-positive strength (None = explicit reject).
+/// Multiview (render_view_rects) ignores this field for now.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EdlSetup {
     pub strength: f32,
 }
 
 impl EdlSetup {
-    /// 域拒构造：非有限/≤0 → None（显式拒，不截断不吞）。
+    /// Domain-reject constructor: non-finite / <=0 -> None (explicit reject, no clamp).
     #[must_use]
     pub fn new(strength: f32) -> Option<Self> {
         if strength.is_finite() && strength > 0.0 {

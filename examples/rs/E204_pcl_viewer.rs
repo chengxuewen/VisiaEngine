@@ -3,7 +3,7 @@
 //! 用法: cargo run --example E204_pcl_viewer [选项]
 //!   --frames N   headless 自断言快退（ctest/CI 路）
 //!   --file PATH  载入 PLY（ascii/binary_le；装载路验收）
-//!   --edl        EDL 后处理开启（WGPU-33；None=旧路逐位）
+//!   --edl        enable the EDL post-pass (WGPU-33; None = legacy bit-identical path)
 //!   无参         常驻人验窗：左键拖=轨道 滚轮=远近+恒径 关窗/Esc 退出
 
 #[path = "gallery.rs"]

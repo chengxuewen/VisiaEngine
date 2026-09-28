@@ -94,6 +94,21 @@ def main() -> None:
 
     # cross-check: every E-number in registries must have a tutorials row
     all_names = [r["name"] for r in rs] + [n["name"] for n in native]
+    # Review fix (#1): duplicate E-numbers are legal ONLY with a language
+    # suffix in the name (E811_entity_hide_c / E811_entity_hide_cpp). Bare
+    # duplicates would collide cards and detail pages — fail loud.
+    seen_enums = {}
+    for name in all_names:
+        enum = name.split("_")[0]
+        if enum in seen_enums and seen_enums[enum] != name:
+            # different names sharing an E-number: require disambiguating
+            # suffixes (names must differ beyond the enum — they do, or this
+            # loop would not see two entries) AND both must carry a language
+            # marker so card labels stay distinguishable.
+            for other in (seen_enums[enum], name):
+                if "_" not in other[len(enum) + 1:]:
+                    fail(f"duplicate E-number {enum}: {seen_enums[enum]} vs {name} (add language suffix)")
+        seen_enums[enum] = name
     for name in all_names:
         enum = name.split("_")[0]
         if enum not in topics:
@@ -157,7 +172,10 @@ def main() -> None:
         page = page.replace("{{RUN}}", run)
         page = page.replace("{{SRC}}", "../../" + src)
         page = page.replace("{{BAND}}", E_BANDS[enum[1]][0])
-        (OUT / f"{enum}.html").write_text(page, encoding="utf-8")
+        # Review fix (#1): full-name keying (E811_c / E811_entity_hide_cpp are
+        # distinct pages); also detect enum reuse across DIFFERENT names so a
+        # future registry addition fails loud instead of shadowing a sibling.
+        (OUT / f"{name}.html").write_text(page, encoding="utf-8")
 
     print(f"gallery: {total} cards ({len(have_thumbs)} thumbnails, {total} detail pages) -> {OUT/'index.html'}")
 
@@ -171,7 +189,9 @@ def card(name, topic, lang, src, thumb, run):
     # N1.6 three.js-style: card -> per-example detail page (big thumb, topic,
     # run command, source link). index stays the categorized grid; the detail
     # page is the click-through (generated per example below).
-    href = enum + ".html"
+    # Review fix (#1): key pages by FULL name — E811 has C and C++ variants;
+    # enum-keying silently shadowed the C page.
+    href = name + ".html"
     return f'''<a class="card" href="{href}" title="{run}">
   {media}
   <div class="meta">

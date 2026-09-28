@@ -1612,10 +1612,12 @@ impl Engine {
         Ok(count)
     }
 
-    /// CAPI-35：挂 HTTP 瓦片源（N1.4）。HTTP 无目录列举=发现式装载：mount 仅建
-    /// 调度器（HttpSource+5s 超时护栏），瓦片集由 set_tile_view 视口枚举发现，
-    /// 渲染环逐帧 pump（默认 4 片/帧预算）。返回 0=成功挂载（无计数义——与
-    /// CAPI-28 分叉已入条款：HTTP 无目录可扫）。
+    /// CAPI-35: mount an HTTP tile source (N1.4). HTTP has no directory
+    /// listing = discovery-driven mounting: the mount only builds the
+    /// scheduler (HttpSource + 5s timeout guard); the tile set is discovered
+    /// by set_tile_view viewport enumeration, pumped per render frame
+    /// (default 4 tiles/frame budget). Returns 0 = mounted (no count
+    /// semantics — forked from CAPI-28 in the clause: nothing to scan).
     pub fn load_mvt_http(&mut self, root_url: &str, z: u8) -> Result<u64, String> {
         if root_url.is_empty() || z > 30 {
             return Err("tile http domain (non-empty url, z<=30)".into());

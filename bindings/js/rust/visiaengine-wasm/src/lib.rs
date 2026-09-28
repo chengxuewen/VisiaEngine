@@ -224,8 +224,9 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-35 HTTP 瓦片源（N1.4，发现式装载；wasm 侧 HttpSource=typed stub，
-    /// 实际字节通路=宿主 JS fetch，本口预置域拒形）。0=挂载；负=拒。
+    /// CAPI-35 HTTP tile source (N1.4, discovery-driven; the wasm-side
+    /// HttpSource is a typed stub — real bytes flow through host JS fetch;
+    /// this bridge pre-registers the domain-reject shape). 0 = mounted; <0 = rejected.
     #[wasm_bindgen(js_name = setTileSourceHttp)]
     pub fn set_tile_source_http(&mut self, url: &str, z: u32) -> i32 {
         match u8::try_from(z) {
