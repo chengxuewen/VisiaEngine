@@ -3,11 +3,10 @@
 use std::ffi::CString;
 use visiaengine::{
     MISS, VE_ERR_SIZE, visiaengine_create_group, visiaengine_create_headless, visiaengine_destroy,
-    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
-    visiaengine_get_parent, visiaengine_load_geojson, visiaengine_load_gltf,
-    visiaengine_load_mvt_dir, visiaengine_pick, visiaengine_readback, visiaengine_render,
-    visiaengine_set_group_offset, visiaengine_set_parent, visiaengine_set_tile_view,
-    visiaengine_viewport,
+    visiaengine_entity_at, visiaengine_entity_count, visiaengine_get_parent,
+    visiaengine_load_geojson, visiaengine_load_gltf, visiaengine_load_mvt_dir, visiaengine_pick,
+    visiaengine_readback, visiaengine_render, visiaengine_set_group_offset, visiaengine_set_parent,
+    visiaengine_set_tile_view, visiaengine_viewport,
 };
 use visiaengine_io_tiles::TileSource;
 
@@ -375,11 +374,15 @@ fn tree_group_offset_changes_rendered_pixels() {
         .filter(|(a, b)| a != b)
         .count();
     let moved_is_bg = buf_moved
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0].abs_diff(63) <= 15 && p[1].abs_diff(75) <= 15 && p[2].abs_diff(89) <= 15)
         .count();
     let base_is_bg = buf_base
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0].abs_diff(63) <= 15 && p[1].abs_diff(75) <= 15 && p[2].abs_diff(89) <= 15)
         .count();
     println!("tree offset diff={diff} bg_base={base_is_bg} bg_moved={moved_is_bg}");

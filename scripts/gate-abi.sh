@@ -13,6 +13,24 @@ SO=target/debug/libvisiaengine.so
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
 echo "ABI-SYMBOLS="$N/40" | SO_SIZE=$(du -h "$SO" | cut -f1)"
 [ "$N" = "40" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
+# hpp mirror gate (N1.1, gap-analysis C1): every .so visiaengine_* symbol must have a
+# wrapper method in the hpp. Predicate = short name (prefix stripped) appears as `name(`
+# method form; the raw C symbol alone is NOT enough (it always appears as the call target).
+# Known semantic renames live in an explicit alias list (RAII destroy, B1 renames) —
+# anything absent verbatim AND not aliased = gate red.
+# Self-test: rename the fly_state method -> gate goes red (verified 2026-09-28).
+HPP=bindings/cpp/include/visiaengine/visiaengine.hpp
+MISSING=$(
+  "$NM" -D "$SO" | awk '/ T visiaengine_/{print $3}' | sed 's/^visiaengine_//' | sort -u | while read -r m; do
+    case "$m" in
+      destroy)            pat='destroy_now';;
+      entity_set_visible) pat='set_visible';;
+      entity_visible)     pat='entity_visible';;
+      *)                  pat="$m";;
+    esac
+    grep -qE "(^|[^a-zA-Z0-9_])${pat}\(" "$HPP" || echo "visiaengine_${m}";
+  done)
+[ -z "$MISSING" ] || { echo "GATE-ABI ✗ hpp 缺转发: $MISSING"; exit 1; }
 "$CC" -I bindings/c/visiaengine-capi/include examples/c/E701_demo_headless.c \
       -L target/debug -lvisiaengine -o target/demo_headless || { echo "GATE-ABI ✗ demo 编译"; exit 1; }
 LD_LIBRARY_PATH=$PWD/target/debug ./target/demo_headless resources/data/twoprim.glb \

@@ -388,7 +388,7 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - whitepaper：MVT Phase 1 兑现（从「在交付项」改「已交付」+WMS/WMTS 单独注记）；README 163 条/35 入口/32 卡同步
 - 教训入档：PIT-28（pen px vs anchor 世界坐标，三口 grep 律）· **PIT-31**（ffi_spec 域测试 cwd=crate 目录，相对路径陷阱）· **PIT-32**（ureq 全量依赖把 getrandom 拖进 wasm 目标——target-gate 修，wasm HttpSource=typed stub）
 - 基线：**270 passed · spec-trace 163↔163 · GATE-ABI 35/35 · GATE-DOCS ✓ E 31 件 · ci 十段 rc=0 · web MIRROR 3/3 · 9 crate · ureq 1 new-dep**
-- 余账：push（含本带 P1-S1..4 全笔）· render-loop 集成 TileLayer（E206 prove 形态入引擎主循环）· HTTP 源 C API 二波（CAPI-30 set_tile_source_http）· CJK 字体 S2 余账 · LAS 票据制候令
+- 余账：push（含本带 P1-S1..4 全笔）· render-loop 集成 TileLayer（E206 prove 形态入引擎主循环）· HTTP 源 C API（**CAPI-35+** set_tile_source_http；CAPI-30..34 已被场景树带占用，2026-09-28 重记账）· CJK 字体 S2 余账 · LAS 票据制候令
 
 ## ⑥ 场景树带基线（2026-09-24，计划 scene-tree-band.md S1-S4）
 

@@ -56,6 +56,9 @@ public:
     int32_t fly_to(const VeCameraPose &pose, std::uint64_t dur_ms) {
         return visiaengine_fly_to(h_, &pose, dur_ms);
     }
+    int32_t fly_state(double *out_t01) {
+        return visiaengine_fly_state(h_, out_t01);
+    }
 
     // ── ⑤b 二波小地图（CAPI-25..27 薄转发；VeMapView=头 POD 直用，cfg=nullptr=关图）──
     int32_t set_map(const VeMapView *cfg) { return visiaengine_set_map(h_, cfg); }
