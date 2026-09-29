@@ -451,6 +451,11 @@ pub enum PostEffect {
     /// 1 = ACES (Narkowicz filmic approx). Color-only pass (depth bound but
     /// ignored, shared bgl shape).
     Tonemap { mode: u32 },
+    /// Depth-only screen-space ambient occlusion (WGPU-36): 16-tap disc of
+    /// `radius` texels; occluded taps darken the pixel by `intensity`.
+    /// v1 honesty: depth-only (no normal buffer) — creases/near-contact
+    /// regions darken; HBAO/normal-buffer upgrade = ticket.
+    Ssao { radius: f32, intensity: f32 },
 }
 
 impl PostEffect {
@@ -479,6 +484,17 @@ impl PostEffect {
     pub fn tonemap(mode: u32) -> Option<Self> {
         if mode <= 1 {
             Some(Self::Tonemap { mode })
+        } else {
+            None
+        }
+    }
+
+    /// Domain-reject constructor: non-finite / <=0 radius, or intensity
+    /// outside 0.0..=4.0 -> None (explicit reject, no clamp).
+    #[must_use]
+    pub fn ssao(radius: f32, intensity: f32) -> Option<Self> {
+        if radius.is_finite() && radius > 0.0 && (0.0..=4.0).contains(&intensity) {
+            Some(Self::Ssao { radius, intensity })
         } else {
             None
         }

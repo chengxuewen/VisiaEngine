@@ -661,6 +661,19 @@ fn post_effect_domain_rejects() {
         "mode 2 = AgX deferred = reject"
     );
     assert!(PostEffect::tonemap(u32::MAX).is_none());
+    // SSAO (WGPU-36): radius > 0 finite; intensity clamps outside 0.0..=4.0.
+    assert!(PostEffect::ssao(4.0, 1.5).is_some());
+    assert!(PostEffect::ssao(4.0, 0.0).is_some());
+    assert!(PostEffect::ssao(4.0, 4.0).is_some());
+    assert!(
+        PostEffect::ssao(0.0, 1.5).is_none(),
+        "radius 0 = explicit reject"
+    );
+    assert!(PostEffect::ssao(-1.0, 1.5).is_none());
+    assert!(PostEffect::ssao(f32::NAN, 1.5).is_none());
+    assert!(PostEffect::ssao(4.0, -0.1).is_none());
+    assert!(PostEffect::ssao(4.0, 4.1).is_none());
+    assert!(PostEffect::ssao(4.0, f32::NAN).is_none());
     // Copy/PartialEq family semantics (EdlSetup same-shape law).
     let b = PostEffect::bloom(0.5).expect("domain");
     let c = b;
@@ -675,5 +688,10 @@ fn post_effect_domain_rejects() {
         PostEffect::tonemap(0).expect("domain"),
         PostEffect::tonemap(1).expect("domain"),
         "tonemap mode discrimination"
+    );
+    assert_ne!(
+        PostEffect::ssao(4.0, 1.0).expect("domain"),
+        PostEffect::ssao(4.0, 2.0).expect("domain"),
+        "ssao intensity discrimination"
     );
 }

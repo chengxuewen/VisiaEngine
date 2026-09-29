@@ -111,3 +111,4 @@ smoke-box-select = "bash scripts/smoke-rs.sh E403_box_select"
 smoke-post = "bash scripts/smoke-rs.sh E506_postprocessing"   # L2: post chain bloom/outline pixel asserts (WGPU-34)
 smoke-hdr = "bash scripts/smoke-rs.sh E507_hdr_tonemap"   # L2: tonemap + hdr fixture pixel asserts (REND-44/IO-17)
 smoke-pbr = "bash scripts/smoke-rs.sh E508_pbr_materials"   # L2: GGX metallic/dielectric + roughness ladder asserts (WGPU-35/REND-45)
+smoke-ssao = "bash scripts/smoke-rs.sh E509_ssao"   # L2: SSAO off-vs-on crease-band pixel assert (WGPU-36)

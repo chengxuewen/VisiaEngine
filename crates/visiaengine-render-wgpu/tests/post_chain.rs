@@ -328,3 +328,34 @@ fn post_tonemap_bloom_compose() {
         .expect("again");
     assert_eq!(again.rgba, tm_bloom.rgba, "compose not deterministic");
 }
+
+// spec: WGPU-34
+// spec: WGPU-36
+// spec: REND-43
+#[test]
+fn post_ssao_differs() {
+    let mut b = HeadlessBackend::new(W, H).expect("adapter");
+    let cmds = scene(&mut b);
+    let off = b.render_to_pixels(&frame(&cmds, Vec::new())).expect("off");
+    let on = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::ssao(4.0, 1.5).expect("ssao")],
+        ))
+        .expect("on");
+    let diff = diff_px(&off, &on);
+    // Probe (lavapipe, 128² city scene, radius 4, intensity 1.5): diff=3862 px
+    // — contact/crease bands at the bright-quad base + quad-face silhouette
+    // band (depth-only AO v1 semantics, clause WGPU-36); open ground and
+    // sky untouched (z-window + background gate). Floor 1000 (−74%, PIT-8).
+    eprintln!("WGPU-36 ssao probe: diff={diff}");
+    assert!(diff > 1000, "ssao produced too few pixel deltas: {diff}");
+    // Determinism: same chain twice = byte-identical (N4 law).
+    let again = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::ssao(4.0, 1.5).expect("ssao")],
+        ))
+        .expect("again");
+    assert_eq!(again.rgba, on.rgba, "ssao not deterministic");
+}
