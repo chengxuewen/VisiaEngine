@@ -434,3 +434,8 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - **web-check 抓真雷**：engine.rs wasm-专属 new_canvas 构造器被 sweep 脚本误插 post 字段（native check 不可达=cfg 门后面）——CI 后必跑 web-check 的活证据（R2 gz=539641B 记账）
 - 基线：**311 passed（+5）· spec-trace 184↔184 · GATE-ABI 44/44 · GATE-DOCS ✓ E 36 件三方+37 卡 · ctest 37 条 · CMAKE-SMOKE ✓（Xvfb display ✓）· ci 十段 rc=0 · 9 crate**
 - 余账：push 候令 · SSAO/DOF/SSR=框架后触发制 · 多视口 post（EDL 同款挂账）· >2 效果链=非目标
+
+## T3 人验补录（2026-09-29，N3-N6 全带交互面）
+- E508 拖拽轨道/滚轮缩放 ✓（rig 硬编码根修=733de61）· 1/2/3 特效键 ✓
+- E507 tonemap/bloom 键 ✓ · E403 框选 ✓ · E306 map controls ✓ · E304 morph（此前已验）✓
+- 结论：N3-N6 五带全部交互面双验通过，无遗留 T3 项
