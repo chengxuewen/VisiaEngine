@@ -347,6 +347,7 @@ impl App {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut frames: Option<u32> = None;
+    let mut t_init = 0.0f64;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         if a == "--frames" {
@@ -354,6 +355,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .next()
                 .and_then(|v| v.parse().ok())
                 .filter(|n: &u32| *n > 0);
+        } else if a == "--t" {
+            // diagnostic: force initial morphTime (0=ortho 1=persp)
+            t_init = args.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
         }
     }
     match frames {
@@ -367,7 +371,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 surface: None,
                 config: None,
                 commands: Vec::new(),
-                t: 0.0,
+                t: t_init,
                 ready: false,
             };
             el.run_app(&mut app)?;

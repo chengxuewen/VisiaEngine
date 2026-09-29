@@ -17,7 +17,8 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
 use visiaengine_render::{
-    Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, RenderBackend, Viewport,
+    Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, PostEffect, RenderBackend,
+    Viewport,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::mesh_core::MeshCore;
@@ -151,7 +152,7 @@ fn scene(up: &mut impl Up) -> (Vec<DrawCommand>, Vec<(u64, u64)>) {
     (commands, slots)
 }
 
-fn frame(cmds: &[DrawCommand], w: u32, h: u32) -> Frame {
+fn frame(cmds: &[DrawCommand], w: u32, h: u32, post: Vec<PostEffect>) -> Frame {
     let rig = CameraRig::look_at([0.0, -13.0, 8.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
     Frame {
         viewport: Viewport::new(w, h, 1.0),
@@ -165,7 +166,7 @@ fn frame(cmds: &[DrawCommand], w: u32, h: u32) -> Frame {
         shadow: None,
         clip: None,
         edl: None,
-        post: Vec::new(),
+        post,
         commands: cmds.to_vec(),
     }
 }
@@ -188,9 +189,9 @@ fn prove(frames: u32) {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let (cmds, _slots) = scene(&mut b);
 
-    let full = b.render_to_pixels(&frame(&cmds, W, H)).unwrap();
+    let full = b.render_to_pixels(&frame(&cmds, W, H, Vec::new())).unwrap();
     // Determinism canary.
-    let full2 = b.render_to_pixels(&frame(&cmds, W, H)).unwrap();
+    let full2 = b.render_to_pixels(&frame(&cmds, W, H, Vec::new())).unwrap();
     assert_eq!(full.rgba, full2.rgba, "grid render must be deterministic");
 
     // Metallic vs dielectric: render single-box scenes (metallic 1.0 vs 0.0,
@@ -207,7 +208,7 @@ fn prove(frames: u32) {
                 transform: T4,
             },
         ];
-        b.render_to_pixels(&frame(&cmds, W, H)).unwrap()
+        b.render_to_pixels(&frame(&cmds, W, H, Vec::new())).unwrap()
     };
     let (pos, idx) = sphere_mesh(12, 20);
     let mesh_id = b
@@ -299,6 +300,8 @@ struct App {
     rig: CameraRig,
     drag: bool,
     last: (f64, f64),
+    bloom_on: bool,
+    outline_on: bool,
     ready: bool,
 }
 
@@ -360,11 +363,27 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::KeyboardInput { event, .. } => {
-                if event.state == winit::event::ElementState::Pressed
-                    && event.physical_key
-                        == winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Escape)
-                {
-                    event_loop.exit();
+                if event.state != winit::event::ElementState::Pressed {
+                    return;
+                }
+                match event.physical_key {
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Escape) => {
+                        event_loop.exit();
+                    }
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit1) => {
+                        self.bloom_on = !self.bloom_on;
+                        self.redraw();
+                    }
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit2) => {
+                        self.outline_on = !self.outline_on;
+                        self.redraw();
+                    }
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit3) => {
+                        self.bloom_on = false;
+                        self.outline_on = false;
+                        self.redraw();
+                    }
+                    _ => {}
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
@@ -436,7 +455,17 @@ impl App {
         };
         let size = window.inner_size();
         let (w, h) = (size.width.max(1), size.height.max(1));
-        let frame = frame(&self.commands, w, h);
+        let post = {
+            let mut p = Vec::new();
+            if self.bloom_on {
+                p.push(PostEffect::Bloom { strength: 0.8 });
+            }
+            if self.outline_on {
+                p.push(PostEffect::Outline { width: 2.0 });
+            }
+            p
+        };
+        let frame = frame(&self.commands, w, h, post);
         match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(tex)
             | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
@@ -445,6 +474,13 @@ impl App {
                     .create_view(&wgpu::TextureViewDescriptor::default());
                 core.render_view_format(&frame, &view, w, h, config.format);
                 core.queue.present(tex);
+                window.set_title(
+                    format!(
+                        "E508 PBR — bloom={} outline={} · 1/2 切换 3=全关 · 拖=轨道 滚轮=远近",
+                        self.bloom_on, self.outline_on
+                    )
+                    .as_str(),
+                );
             }
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 surface.configure(&core.device, config);
@@ -479,6 +515,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands: Vec::new(),
                 rig: CameraRig::look_at([0.0, -13.0, 8.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
                 drag: false,
+                bloom_on: false,
+                outline_on: false,
                 last: (0.0, 0.0),
                 ready: false,
             };
