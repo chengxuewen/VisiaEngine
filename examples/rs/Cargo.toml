@@ -106,3 +106,7 @@ path = "E506_postprocessing.rs"
 [[example]]
 name = "E507_hdr_tonemap"
 path = "E507_hdr_tonemap.rs"
+
+[[example]]
+name = "E508_pbr_materials"
+path = "E508_pbr_materials.rs"

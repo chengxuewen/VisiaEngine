@@ -363,13 +363,14 @@ fn fixtures() -> Vec<Fixture> {
                 b.render_to_pixels(&frame_with(c, None, None)).unwrap()
             }),
             check: |img| {
-                // probe-verified 2026-09-28: shadowed quad face dims into the
-                // mid band (1320 px) vs flat-lit bright (1320 px) — count
-                // split is the discriminator, not absolute darkness.
+                // N6 GGX re-probe (2026-09-29): shadowed quad face dims to
+                // luma≈282 (1320 px) vs unshadowed ≈483 — the old mid/bright
+                // split (500 ceiling) lost the discriminator when the
+                // unshadowed family landed at 483 < 500. New two-sided band:
+                // dim = luma [220,450): shadowed 1320 px in, unshadowed 0.
                 let luma = |p: [u8; 4]| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]);
-                let mid = count(img, |p| luma(p) >= 220 && luma(p) < 500);
-                let bright = count(img, |p| luma(p) >= 500);
-                mid > 1000 && bright < 500
+                let dim = count(img, |p| luma(p) >= 220 && luma(p) < 450);
+                dim > 1000
             },
         },
         // 8. clear-color: teal clear vs red clear

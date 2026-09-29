@@ -100,6 +100,8 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         }));
     }
     let dark = up.mt(&MaterialDesc {
@@ -107,18 +109,24 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     let glass = up.mt(&MaterialDesc {
         base_color: [0.75, 0.88, 0.95, 0.35],
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     let water = up.mt(&MaterialDesc {
         base_color: [0.15, 0.45, 0.85, water_a],
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     // 棋盘 6×6：深浅两色 + 深色块单列（透视检查列）
     let tile = quad(4.0);

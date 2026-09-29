@@ -157,6 +157,8 @@ impl ApplicationHandler for App {
                 repeat: [1.0, 1.0],
                 // mock-up [4ab①]：(1-metallic)*roughness（WGPU-14 Lambert 系数）
                 specular: (1.0 - e.mesh.metallic_factor) * e.mesh.roughness_factor,
+                roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+                metallic: 0.0,
             };
             let Ok(mat) = core.upload_material_desc(&mat) else {
                 continue;

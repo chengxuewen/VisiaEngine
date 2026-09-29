@@ -812,6 +812,9 @@ pub struct VeMeshDesc {
     pub n_indices: u64,
     pub base_color: *const f32, // 4 元组
     pub origin: *const f64,     // 3 元组
+    // N6 (REND-45): GGX PBR values (NOT pointers — struct_size 前瞻门 governs).
+    pub roughness: f32, // GGX perceptual roughness; 0=host-said-nothing → engine default 1.0
+    pub metalness: f32, // metallic factor; 0 = dielectric
 }
 
 /// CAPI-13：owner 线程；严格 visible∈{0,1}；未知位形/越值=-1（VE_ERR_ARG），幂等重复=0。
@@ -914,8 +917,15 @@ pub extern "C" fn visiaengine_add_mesh(
                     };
                     let base_color = unsafe { *(d.base_color as *const [f32; 4]) };
                     let origin = unsafe { *(d.origin as *const [f64; 3]) };
+                    // 0.0 roughness = legacy zero-init hosts said nothing → map to
+                    // the dielectric default 1.0 (0.0 roughness is not a legal
+                    // GGX input a host can set deliberately: use 1e-4 minimum).
+                    let roughness = if d.roughness <= 0.0 { 1.0 } else { d.roughness };
+                    let metalness = d.metalness;
                     match with_engine(i, move |e| {
-                        e.add_mesh(positions, normals, indices, base_color, origin)
+                        e.add_mesh(
+                            positions, normals, indices, base_color, origin, roughness, metalness,
+                        )
                     }) {
                         Ok(h) => {
                             unsafe { *out_entity = h };

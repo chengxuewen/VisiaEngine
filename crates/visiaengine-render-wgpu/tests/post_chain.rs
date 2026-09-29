@@ -42,9 +42,17 @@ fn scene(b: &mut HeadlessBackend) -> Vec<DrawCommand> {
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         })
         .expect("gt");
     // Bright standing quad (luma above bloom threshold after sRGB encode).
+    // N6 GGX re-probe (2026-09-29): normal now ALIGNS with the light dir
+    // (dummy params 0.5,0.7,0.4) — under GGX a back-facing quad renders
+    // ambient-only (linear ~0.17 < THRESHOLD 0.25, no bloom); facing the
+    // light restores the over-threshold fodder this scene exists to provide.
+    // Probe deltas (same asserts): bloom 432→432, outline 678 (unchanged),
+    // chain bloom-first 1038 / outline-first 1640 (was 678/1340).
     let bright = [
         [-1.0f32, -1.0, 0.0],
         [1.0, -1.0, 0.0],
@@ -55,7 +63,7 @@ fn scene(b: &mut HeadlessBackend) -> Vec<DrawCommand> {
         .create_mesh(&MeshDesc {
             uv: &[],
             positions: &bright,
-            normals: &[[0.0, -1.0, 0.0]; 4],
+            normals: &[[0.527, 0.738, 0.422]; 4],
             indices: &[0, 1, 2, 0, 2, 3],
         })
         .expect("bright");
@@ -65,6 +73,8 @@ fn scene(b: &mut HeadlessBackend) -> Vec<DrawCommand> {
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         })
         .expect("bt");
     vec![

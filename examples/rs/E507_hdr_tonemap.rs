@@ -87,6 +87,8 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     commands.push(DrawCommand::DrawMesh {
         mesh: gm,
@@ -113,6 +115,8 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     commands.push(DrawCommand::DrawMesh {
         mesh: bm,
@@ -146,6 +150,8 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     commands.push(DrawCommand::DrawMesh {
         mesh: tm,
@@ -253,7 +259,9 @@ fn prove(frames: u32) {
     let d_compose = diff_px(&aces, &aces_bloom);
     // Probe (lavapipe, 320×240 city scene, 76800 px): off-vs-reinhard=14957,
     // off-vs-aces=76800 (filmic toe moves EVERY pixel), reinhard-vs-aces
-    // =76800. Floors (PIT-8): −40%.
+    // =76800. N6 GGX 后 compose=506（退役的 mock specular 曾把部分建筑面推过 bloom
+    // 阈，真 GGX 的 dielectric 高光更窄 → bloom 源像素减半）；地板随新探针重钉。
+    // Floors (PIT-8): −40%.
     println!(
         "E507 probe: off-vs-reinhard={d_rein} off-vs-aces={d_aces} rein-vs-aces={d_modes} compose={d_compose}"
     );
@@ -261,7 +269,7 @@ fn prove(frames: u32) {
     assert!(d_aces > 45000, "aces must move the whole frame: {d_aces}");
     assert!(d_modes > 45000, "curves must differ: {d_modes}");
     assert!(
-        d_compose > 700,
+        d_compose > 300,
         "bloom after tonemap must compose: {d_compose}"
     );
     println!("E507 OK: off deterministic; reinhard/aces/bloom-compose pixel-verified");

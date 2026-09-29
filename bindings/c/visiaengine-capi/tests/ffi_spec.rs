@@ -332,6 +332,9 @@ fn mesh_desc(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32]) -> VeMeshDesc {
         n_indices: idx.len() as u64,
         base_color: [1.0f32, 1.0, 1.0, 1.0].as_ptr(),
         origin: [0.0f64; 3].as_ptr(),
+        // N6 (REND-45): dielectric default (engine maps <=0 roughness to 1.0)
+        roughness: 0.0,
+        metalness: 0.0,
     }
 }
 

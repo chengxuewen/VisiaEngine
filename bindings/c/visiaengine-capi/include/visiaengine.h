@@ -71,6 +71,10 @@ typedef struct VeMeshDesc {
     uint64_t  n_indices;
     const float    *base_color;  /* 4 元组，sRGB/CSS 惯例值（后端咽喉转线性，CORE-16） */
     const double   *origin;      /* 3 元组（D7 远坐标语义） */
+    /* N6 (REND-45) GGX PBR values — struct_size 前瞻门 governs; legacy zero-init
+       hosts get roughness<=0 mapped to the 1.0 dielectric default engine-side. */
+    float roughness;   /* GGX perceptual roughness (alpha = r*r), <=0 → 1.0 */
+    float metalness;   /* metallic factor, 0 = dielectric */
 } VeMeshDesc;
 int32_t  visiaengine_add_mesh(uint64_t ve, const VeMeshDesc *desc, uint64_t *out_entity);
 /* 删除（CAPI-16）：items/属性/显隐三面清理，槽位代际 +1；旧句柄再入=-1 双销毁同谱。 */

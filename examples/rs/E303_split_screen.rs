@@ -79,6 +79,8 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     cmds.push(DrawCommand::DrawMesh {
         mesh: ground,
@@ -98,6 +100,8 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     let step = 2.2f32;
     let span = step * SIDE as f32 / 2.0;

@@ -91,6 +91,8 @@ fn build(up: &mut impl Up, n_markers: u32) -> Tables {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
 
     let mut markers = Vec::new();
@@ -115,6 +117,8 @@ fn build(up: &mut impl Up, n_markers: u32) -> Tables {
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         });
         markers.push(((m, t2), o));
     }
@@ -138,6 +142,8 @@ fn build(up: &mut impl Up, n_markers: u32) -> Tables {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     Tables {
         ground: (gm, gt),

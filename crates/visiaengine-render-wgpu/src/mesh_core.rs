@@ -198,8 +198,9 @@ impl MeshCore {
                 "../shaders/mesh.wgsl"
             ))),
         });
-        // material block 32B（base_color+repeat+specular+pad，binding2 两 layout 同尺寸
-        // ——flat shader 忽略后部字段=逐像素零回归的构造保证 [Momus-B1]）
+        // material block 48B v2 (WGPU-35/REND-45: base_color+repeat+roughness+
+        // metallic+pad; binding2 both layouts same size — all variants read the
+        // same block = single-truth construction guarantee [Momus-B1 shape])
         let mk_bgl = |label: &'static str, variant: Variant| {
             let mut entries = vec![
                 wgpu::BindGroupLayoutEntry {
@@ -219,7 +220,7 @@ impl MeshCore {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(32),
+                        min_binding_size: wgpu::BufferSize::new(48),
                     },
                     count: None,
                 },
@@ -731,11 +732,15 @@ impl MeshCore {
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         })
     }
 
-    /// 材质描述版（WGPU-14）：32B uniform 块 [base_color, repeat, specular, pad]；
-    /// texture=Some → textured 变体（引用未知纹理=Err，不静默降级）。
+    /// Material description version (WGPU-14 v2 / WGPU-35): 48B uniform block
+    /// [base_color(16), repeat(8), roughness(4), metallic(4), pad(16)];
+    /// texture=Some → textured variant (unknown texture id = Err, no silent
+    /// Flat fallback).
     pub fn upload_material_desc(
         &mut self,
         desc: &MaterialDesc,
@@ -751,8 +756,12 @@ impl MeshCore {
             },
             None => (false, None),
         };
-        // CORE-16 咽喉一：base_color 宿主面=sRGB（CSS 惯例），写出=线性（文档串注同批）
+        // CORE-16 throat one: base_color host face = sRGB (CSS convention),
+        // written = linear (CORE-16); GGX params pass through raw (WGPU-35).
         let lin = srgb_to_linear(desc.base_color);
+        // 48B block v2 (REND-45). WGSL Mat alignment: base_color@0 (vec4,
+        // align 16), repeat@16 (vec2), roughness@24, metallic@28, pad@32..48
+        // — retired mock specular float slot is absorbed into the tail pad.
         let block = [
             lin[0],
             lin[1],
@@ -760,7 +769,11 @@ impl MeshCore {
             lin[3],
             desc.repeat[0],
             desc.repeat[1],
-            desc.specular,
+            desc.roughness,
+            desc.metallic,
+            0.0,
+            0.0,
+            0.0,
             0.0,
         ];
         let buf = self.uniform(bytemuck::cast_slice(&block), "material");

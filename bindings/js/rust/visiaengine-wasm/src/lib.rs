@@ -366,6 +366,8 @@ impl VisiaEngine {
         indices: &[u32],
         base_color: &[f32],
         origin: &[f64],
+        roughness: f32,
+        metalness: f32,
     ) -> u64 {
         if positions.len() % 3 != 0 || base_color.len() != 4 || origin.len() != 3 {
             return 0;
@@ -389,7 +391,12 @@ impl VisiaEngine {
         let col = [base_color[0], base_color[1], base_color[2], base_color[3]];
         let org = [origin[0], origin[1], origin[2]];
         // js 面哨兵=MISS(MAX)：0 是合法位形不可占用（CAPI-01 分工的 web 投影）
-        match self.inner.add_mesh(&pos, nrm.as_deref(), indices, col, org) {
+        // N6: roughness<=0 → 1.0 dielectric default (C-face zero-init hosts same law)
+        let rough = if roughness <= 0.0 { 1.0 } else { roughness };
+        match self
+            .inner
+            .add_mesh(&pos, nrm.as_deref(), indices, col, org, rough, metalness)
+        {
             Ok(h) => h,
             Err(_) => u64::MAX,
         }

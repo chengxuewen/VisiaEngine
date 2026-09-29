@@ -114,12 +114,14 @@ fn setup(size: f32) -> ShadowSetup {
     }
 }
 
-/// 地面灰判定（等通道、20..205 带——排除纯背景/立方面高光）。
+/// 地面灰判定（等通道、20..230 带——排除纯背景/直射立方侧面 255 高光）。
 /// CORE-16 域注：编码曲线抬升暗值——亮面 198/影核 84/半影 105..181（旧域 51 系）。
+/// N6 GGX 重探（2026-09-29）：亮面 198→223（shadow-on 光向 ndl 0.91 全带右移）、
+/// 影核 84 不动——窗口上界 205→230 适配新亮度真值（双侧带保持）。
 fn gray(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> Option<u8> {
     let i = ((y * W + x) * 4) as usize;
     let (r, g, bl) = (img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]);
-    (r == g && g == bl && r > 20 && r < 205).then_some(r)
+    (r == g && g == bl && r > 20 && r < 230).then_some(r)
 }
 
 // spec: WGPU-19

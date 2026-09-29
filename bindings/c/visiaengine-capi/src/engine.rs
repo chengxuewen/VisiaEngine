@@ -440,8 +440,11 @@ impl Engine {
                 base_color: e.mesh.base_color,
                 texture: e.mesh.texture.and_then(|s| tex_ids.get(s).copied()),
                 repeat: [1.0, 1.0],
-                // mock-up [4ab①]：(1-metallic)*roughness 反向强度→Lambert 系数（WGPU-14）
-                specular: (1.0 - e.mesh.metallic_factor) * e.mesh.roughness_factor,
+                // N6 (WGPU-35): glTF factors map straight through — the mock
+                // `(1-metallic)*roughness` Lambert inversion is retired.
+                specular: 0.0,
+                roughness: e.mesh.roughness_factor,
+                metallic: e.mesh.metallic_factor,
             };
             self.upload(
                 id,
@@ -553,6 +556,8 @@ impl Engine {
                             texture: None,
                             repeat: [1.0, 1.0],
                             specular: 0.0,
+                            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+                            metallic: 0.0,
                         };
                         self.upload(id, &p.positions, &p.indices, None, &mat, &[], origin)?;
                     }
@@ -1403,6 +1408,8 @@ impl Engine {
     }
 
     /// CAPI-15: 程序化加网格（调用期拷贝；退化零提交，spawn 回滚不外泄槽位）。
+    // N6: +roughness/metalness pushed it over the 7-arg clippy threshold.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_mesh(
         &mut self,
         positions: &[[f32; 3]],
@@ -1410,6 +1417,8 @@ impl Engine {
         indices: &[u32],
         base_color: [f32; 4],
         origin: [f64; 3],
+        roughness: f32,
+        metalness: f32,
     ) -> Result<u64, String> {
         if positions.is_empty() || indices.is_empty() {
             return Err("add_mesh: empty geometry".into());
@@ -1429,7 +1438,9 @@ impl Engine {
             base_color,
             texture: None,
             repeat: [1.0, 1.0],
-            specular: 0.0, // 存量 Flat 默认（WGPU-14 零回归族）
+            specular: 0.0, // retired mock slot (WGPU-35)
+            roughness,
+            metallic: metalness,
         };
         match self.upload(id, positions, indices, normals, &mat, &[], origin) {
             Ok(()) => Ok(enc_entity(id)),
@@ -2200,6 +2211,8 @@ mod mut_spec_tests {
                 &idx,
                 [1.0, 0.0, 0.0, 1.0],
                 [0.0, 0.0, 0.0],
+                1.0,
+                0.0,
             )
             .expect("front");
         let back = e
@@ -2209,6 +2222,8 @@ mod mut_spec_tests {
                 &idx,
                 [0.0, 1.0, 0.0, 1.0],
                 [0.0, 0.0, 0.0],
+                1.0,
+                0.0,
             )
             .expect("back");
         let hitk = |e: &Engine| e.pick(80.0, 60.0).map(enc_entity);
@@ -2372,7 +2387,7 @@ mod mut_spec_tests {
             .iter()
             .map(|p| [p[0] * 20.0, p[1] * 20.0, 0.0])
             .collect();
-        e.add_mesh(&big, None, &idx, [0.1, 0.6, 0.2, 1.0], [0.0; 3])
+        e.add_mesh(&big, None, &idx, [0.1, 0.6, 0.2, 1.0], [0.0; 3], 1.0, 0.0)
             .expect("ground"); // 首件位形可=0（CAPI-01 合法分工，成败看 rc——此坑第三见记账）
         // 域拒三连（fx+fw>1 / zoom 非正 / 脏 NaN）
         assert!(
@@ -2456,7 +2471,7 @@ mod mut_spec_tests {
             .iter()
             .map(|p| [p[0] * 20.0, p[1] * 20.0, 0.0])
             .collect();
-        e.add_mesh(&big, None, &idx, [0.1, 0.6, 0.2, 1.0], [0.0; 3])
+        e.add_mesh(&big, None, &idx, [0.1, 0.6, 0.2, 1.0], [0.0; 3], 1.0, 0.0)
             .expect("ground");
         e.set_map(Some((0.5, 0.0, 0.5, 1.0)), 40.0).expect("map");
         let t0 = e.camera_pose();
@@ -2542,6 +2557,8 @@ mod mut_spec_tests {
                 &idx,
                 [1.0, 1.0, 1.0, 1.0],
                 [0.0, 0.0, 0.0],
+                1.0,
+                0.0,
             )
             .expect("add ok");
         assert_ne!(h, 0, "0=失败哨兵，成功必给位形");
@@ -2549,13 +2566,24 @@ mod mut_spec_tests {
         assert!(e.render().is_ok(), "加入件即入命令流");
         // 退化三路：索引越界 / 空几何 / normals 长度失配——均无部分提交
         assert!(
-            e.add_mesh(&pos, Some(&nrm), &[0, 9, 2], [1.0; 4], [0.0; 3])
+            e.add_mesh(&pos, Some(&nrm), &[0, 9, 2], [1.0; 4], [0.0; 3], 1.0, 0.0)
                 .is_err()
         );
-        assert!(e.add_mesh(&[], None, &[], [1.0; 4], [0.0; 3]).is_err());
         assert!(
-            e.add_mesh(&pos, Some(&[[0.0, 0.0, 1.0]; 3]), &idx, [1.0; 4], [0.0; 3])
+            e.add_mesh(&[], None, &[], [1.0; 4], [0.0; 3], 1.0, 0.0)
                 .is_err()
+        );
+        assert!(
+            e.add_mesh(
+                &pos,
+                Some(&[[0.0, 0.0, 1.0]; 3]),
+                &idx,
+                [1.0; 4],
+                [0.0; 3],
+                1.0,
+                0.0
+            )
+            .is_err()
         );
         assert_eq!(e.entity_count(), 3, "退化零提交");
         assert!(e.remove_entity(h).is_ok());
@@ -2573,7 +2601,7 @@ mod mut_spec_tests {
         assert_eq!(e.is_visible(h0), None, "已删位形查询同谱拒绝");
         let (pos, nrm, idx) = quad();
         let h_new = e
-            .add_mesh(&pos, Some(&nrm), &idx, [1.0; 4], [0.0; 3])
+            .add_mesh(&pos, Some(&nrm), &idx, [1.0; 4], [0.0; 3], 1.0, 0.0)
             .expect("同槽再_spawn：代际+1 新位形");
         assert_ne!(h_new, h0, "ABA：旧句柄永不撞新代行");
         assert!(e.remove_entity(h0).is_err(), "新实体在场，旧句柄仍死");
@@ -2675,7 +2703,15 @@ mod point_pick_tests {
         ];
         let idx = vec![0u32, 1, 2, 0, 2, 3];
         let mesh_bits = e
-            .add_mesh(&pos, None, &idx, [0.9, 0.5, 0.3, 1.0], [0.0, 0.0, 0.0])
+            .add_mesh(
+                &pos,
+                None,
+                &idx,
+                [0.9, 0.5, 0.3, 1.0],
+                [0.0, 0.0, 0.0],
+                1.0,
+                0.0,
+            )
             .expect("mesh");
         e.add_points(&[ve_point([2.0, 2.0, 0.0])]).expect("pts");
         rig_over(&mut e);

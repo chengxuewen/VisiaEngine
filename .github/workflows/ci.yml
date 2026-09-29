@@ -46,6 +46,7 @@ jobs:
           pixi run smoke-twin-city     # 批5：垂直切片 PNG 出口断言
           xvfb-run -a pixi run smoke-measure   # 纯 CPU（统一挂 xvfb 无害）
           pixi run smoke-hdr                   # N5: tonemap + hdr fixture asserts
+          pixi run smoke-pbr                   # N6: GGX metallic/dielectric + roughness ladder asserts
           # cmake example 族不另列：pixi run ci 第十段 cmake-smoke 内含 ctest -LE display
 
   qt:

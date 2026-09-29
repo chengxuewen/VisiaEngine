@@ -648,14 +648,20 @@ pub fn clip_to_local(plane: [f64; 4], origin: [f64; 3], model: &[[f64; 4]; 4]) -
     ([n_m[0] as f32, n_m[1] as f32, n_m[2] as f32], dl as f32)
 }
 
-/// 材质描述（WGPU-14 管线变体键源；`specular`=mock-up [4ab①]：参与既有 Lambert
-/// 亮度系数（非 GGX 高光项——真 PBR=独立轮，诚实注记 WGPU-14 条款体）。
+/// Material description (WGPU-14 pipeline-variant key source). N6 (REND-45):
+/// GGX PBR fields land; `specular` (mock-up [4ab①]) is RETIRED — kept for IR
+/// compat only, the shader ignores it (WGPU-14/WGPU-35 note).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MaterialDesc {
     pub base_color: [f32; 4],
     pub texture: Option<TextureId>,
     pub repeat: [f32; 2],
+    /// Mock-up Lambert coefficient [4ab①]; retired by GGX (WGPU-35).
     pub specular: f32,
+    /// GGX perceptual roughness: alpha = roughness*roughness (WGPU-35).
+    pub roughness: f32,
+    /// Metallic factor: F0 = mix(vec3(0.04), base.rgb, metallic) (WGPU-35).
+    pub metallic: f32,
 }
 
 /// CPU 侧 RGBA8 纹理借用（io-gltf/geo 产出 → 后端 upload 的中间 IR）。

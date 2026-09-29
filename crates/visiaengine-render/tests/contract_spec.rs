@@ -293,6 +293,8 @@ fn trait_defaults_texture_extension() {
             texture: Some(7),
             repeat: [2.0, 2.0],
             specular: 0.5,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         })
         .unwrap();
     assert_eq!(id, 101);

@@ -33,6 +33,7 @@
 | E504 | 玻璃与水体·透明活例（双模：1/2=水 alpha 重传材质；`--frames` 水膜衰减带+恒顶标签断言，含 a=1.0 对照语义锁） | `examples/rs/E504_glass_water.rs` | REND-36 / WGPU-27/28 | `pixi run smoke-glass-water` |
 | E506 | Post framework: bloom/outline chain (1/2=toggle, 3=all off; `--frames` off-vs-bloom/off-vs-outline pixel asserts + off determinism canary) | `examples/rs/E506_postprocessing.rs` | REND-43 / WGPU-34 | `pixi run smoke-post` |
 | E507 | HDR + tonemap: first N5 consumer (1=off 2=reinhard 3=aces 0=bloom; `--frames` off-vs-reinhard/off-vs-aces/compose pixel asserts + fixture HDR proof; io-hdr RGBE loader IO-17) | `examples/rs/E507_hdr_tonemap.rs` | REND-44 / WGPU-34 / IO-17 | `pixi run smoke-hdr` |
+| E508 | PBR materials: first N6 GGX consumer (drag=orbit wheel=zoom resident window; `--frames` metallic-vs-dielectric diff + roughness ladder peak/spread probe-pinned asserts) | `examples/rs/E508_pbr_materials.rs` | REND-45 / WGPU-35 | `pixi run smoke-pbr` |
 | E601 | 规模与性能（10 万楼块单 draw 压力例） | `examples/rs/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin`（`pixi run bench` 出制品） |
 | E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗双模=无参常驻/`--frames` 快退） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
@@ -76,7 +77,7 @@ ctest / `--frames N` = 自动化短退形态（argv 单源纪律：注册表参�
 
 | 人验形态 | 例 | 无参启动行为 | 看什么 |
 |---|---|---|---|
-| **窗口常驻** | E101 / E201 / E202 / E205 / E301 / E302 / E303 / E304 / E306 / E402 / E403 / E501 / E502 / E503 / E504 / E506 / E507 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链、E304 `[/]` 滑投影 morph（标题回显 t 值），余者标题即操作提示 |
+| **窗口常驻** | E101 / E201 / E202 / E205 / E301 / E302 / E303 / E304 / E306 / E402 / E403 / E501 / E502 / E503 / E504 / E506 / E507 / E508 / E702 / E801 / E901 | 开交互窗、不自动退（Esc/关窗退出） | 肉眼验画面：E502 四色板=色彩链、E304 `[/]` 滑投影 morph（标题回显 t 值），余者标题即操作提示 |
 | **自退自证** | E203 / E305 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E813 / E814 / E815 / E816 | 跑完打印 `OK …` 行退出 | 终端输出即验收面（E305 `--frames N` 密度即轨迹标记数） |
 
 **无头证据例“秒退=设计”**：其产物是终端断言行或 PNG/PPM 落盘，非交互窗；要交互验收走同能力域窗口例

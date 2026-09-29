@@ -155,6 +155,8 @@ macro_rules! upload_scene {
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         });
         cmds.push(DrawCommand::DrawMesh {
             mesh: ground,
@@ -174,6 +176,8 @@ macro_rules! upload_scene {
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         });
         let insts: Vec<Instance> = city()
             .iter()

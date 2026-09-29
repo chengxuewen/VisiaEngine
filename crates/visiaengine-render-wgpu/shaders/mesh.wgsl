@@ -1,8 +1,13 @@
 struct Mat {
     base_color: vec4<f32>,
     repeat: vec2<f32>,
-    specular: f32, // mock-up [4ab①/WGPU-14]：参与 Lambert 亮度系数（非 GGX，真 PBR=独立轮）
-    _pad: f32,
+    // [8] = retired mock specular slot (WGPU-14 note; pad since N6/WGPU-35)
+    roughness: f32, // GGX perceptual roughness (alpha = r*r)
+    metallic: f32,
+    _pad0: f32,
+    _pad1: f32,
+    _pad2: f32,
+    _pad3: f32,
 };
 
 // REND-29 兑现：View 块 128B（mat 64 + right@64 up@80 px_scale@92 eye_local@96，
@@ -104,11 +109,12 @@ fn vs(in: VsIn) -> FsIn {
     let n = normalize(in.normal);
     // LIGHT 常数退役入 UBO [R4]：dummy params 载默认位型 (0.5,0.7,0.4) → 存量逐位不变
     let l = normalize(sp.a.rgb);
-    // mock-up [4ab①/WGPU-14]：specular 参与 Lambert 亮度系数（非 GGX）。
-    // 存量材质 specular=0 → `s + 0.0` 逐位恒等=Flat 零回归不受累。
-    let ndl = max(dot(n, l), 0.0);
-    let shade = 0.35 + 0.65 * ndl + mat.specular * ndl;
-    out.color = mat.base_color.rgb * shade;
+    // GGX PBR (WGPU-35): Cook-Torrance replaces the mock `0.35+0.65*ndl` band.
+    // View vector in the same entity-local frame as eye_local (world eye − origin).
+    let v = normalize(view.eye_local - in.pos);
+    let intensity = length(sp.a.rgb);
+    let shade = ggx_shade(mat.base_color.rgb, n, l, v, mat.roughness, mat.metallic, intensity);
+    out.color = shade;
     out.uv = in.uv * mat.repeat;
     return out;
 }
@@ -116,6 +122,37 @@ fn vs(in: VsIn) -> FsIn {
 /// PCSS 三阶段 [E3D:B3 移植]（WGPU-20）：① blocker 搜索(8 环)→② 相似三角形半影
 /// 估计→③ 16-tap 泊松 PCF。返回可见度 ∈[0,1]；1=全亮。map 边长 1024 与后端
 /// `shadow_frame_res::MAP` 成对耦合（改动必同步两处）。
+/// Cook-Torrance GGX specular (WGPU-35): D/G/F with Smith-Schlick geometry and
+/// Schlick fresnel; F0 = mix(vec3(0.04), base.rgb, metallic). Diffuse =
+/// Lambert with energy split (1-metallic)(1-F). Returns lit linear RGB for a
+/// single directional light; `ambient` = IBL-lite constant radiance term
+/// (WGPU-35: vec3(0.35)*albedo*(1-roughness*0.5), probe-pinned legacy band).
+fn ggx_shade(albedo: vec3<f32>, n: vec3<f32>, l: vec3<f32>, v: vec3<f32>,
+             roughness: f32, metallic: f32, light_intensity: f32) -> vec3<f32> {
+    let alpha = max(roughness * roughness, 1e-4);
+    let ndv = max(dot(n, v), 1e-4);
+    let ndl = max(dot(n, l), 0.0);
+    let h = normalize(v + l);
+    let ndh = max(dot(n, h), 0.0);
+    let vdh = max(dot(v, h), 0.0);
+    // D: GGX/Trowbridge-Reitz
+    let a2 = alpha * alpha;
+    let dnm = ndh * ndh * (a2 - 1.0) + 1.0;
+    let d = a2 / (3.14159265 * dnm * dnm);
+    // G: Smith-Schlick (k = alpha/2)
+    let k = alpha * 0.5;
+    let g1v = ndv / (ndv * (1.0 - k) + k);
+    let g1l = ndl / (ndl * (1.0 - k) + k);
+    let g = g1v * g1l;
+    // F: Schlick fresnel
+    let f0 = mix(vec3(0.04), albedo, metallic);
+    let f = f0 + (1.0 - f0) * pow(clamp(1.0 - vdh, 0.0, 1.0), 5.0);
+    let spec = d * g * f / (4.0 * ndv * max(ndl, 1e-4) + 1e-4);
+    let diffuse = albedo * (1.0 - metallic) * (vec3(1.0) - f) * ndl;
+    let ambient = vec3(0.35) * albedo * (1.0 - roughness * 0.5);
+    return (diffuse + spec) * light_intensity + ambient;
+}
+
 fn shadow_vis(lc: vec4<f32>) -> f32 {
     if (sp.a.w < 0.5 || lc.w <= 0.0) {
         return 1.0;
@@ -202,9 +239,13 @@ fn vs_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
     out.wpos = p;
     let n = normalize(in.normal);
     let l = normalize(sp.a.rgb);
-    let ndl = max(dot(n, l), 0.0);
-    let shade = 0.35 + 0.65 * ndl + mat.specular * ndl;
-    out.color = mat.base_color.rgb * inst.color * shade;
+    // GGX PBR (WGPU-35), instanced variant: instance color folds into albedo
+    // (multiplicative chain preserved from the mock band).
+    let v = normalize(view.eye_local - p);
+    let albedo = mat.base_color.rgb * inst.color;
+    let intensity = length(sp.a.rgb);
+    let shade = ggx_shade(albedo, n, l, v, mat.roughness, mat.metallic, intensity);
+    out.color = shade;
     out.uv = in.uv;
     return out;
 }

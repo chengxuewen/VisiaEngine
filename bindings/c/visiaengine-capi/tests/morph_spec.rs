@@ -26,6 +26,8 @@ fn engine_scene() -> Engine {
             &[0u32, 1, 2, 0, 2, 3],
             color,
             [0.0, 0.0, z],
+            1.0,
+            0.0,
         )
         .expect("quad");
     };

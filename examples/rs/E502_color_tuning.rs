@@ -1,6 +1,9 @@
 //! E502 · 材质与光影·色彩标定 —— sRGB 全链往返「所见即所得」双模例（CORE-16 带 K2）。
 //! 四色板法向∥光向 → shade=1.0 → 读回字节应≈CSS 原值（后端线性化输入 + Srgb 目标
 //! 编码输出，8bit 量化内互逆）。色域错装=本例首现红。
+//! N6（WGPU-35 GGX）：非主色通道多 ~13–14 的 Fresnel 高光地板（dielectric F0=0.04
+//! × 粗糙漫反射散度，非量化误差）——容差 8→20 吸收该地板，中灰板仍是线性域错装判据
+//! （域错装位移 ~60 单位，留 3× 余量）。
 //! 双模式（E501/E801 同制）：
 //!   无参        = 常驻人验窗（IDE cargo-run_E502 路：四色板肉眼验收色彩链，关窗/Esc 退出）
 //!   --frames N  = headless 自断言快退（ctest 路；逐板字节比对，FAIL 非零退）
@@ -109,7 +112,9 @@ fn prove_headless(frames: u32) {
             let px = ((0.5 + (-1.5 + i as f32) / 4.0) * HEADLESS_W as f32) as u32;
             let o = (((HEADLESS_H / 2) * HEADLESS_W + px) * 4) as usize;
             let (r, g, bl) = (img.rgba[o], img.rgba[o + 1], img.rgba[o + 2]);
-            let ok = r.abs_diff(cr) <= 8 && g.abs_diff(cg) <= 8 && bl.abs_diff(cb) <= 8;
+            // 容差 20：吸收 GGX Fresnel 地板（探针：红板 g/b=13、蓝板 r/g=14，非量化噪声）；
+            // 域错装位移 ~60（中灰 128→~188）→ 检测力留 3× 余量。
+            let ok = r.abs_diff(cr) <= 20 && g.abs_diff(cg) <= 20 && bl.abs_diff(cb) <= 20;
             if !ok {
                 bad += 1;
             }

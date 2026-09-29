@@ -232,6 +232,8 @@ fn ground_city<C: Ctor>(c: &mut C, origin: [f64; 3], cmds: &mut Vec<DrawCommand>
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         })
         .expect("box mat");
     let city = city();

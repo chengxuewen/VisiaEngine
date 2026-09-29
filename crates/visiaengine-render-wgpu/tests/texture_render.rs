@@ -109,6 +109,8 @@ fn draw(repeat: [f32; 2]) -> visiaengine_render_wgpu::OffscreenFrame {
             texture: Some(tid),
             repeat,
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         })
         .expect("material");
     let (q, mut sc) = quad_and_frame(mid);
@@ -152,6 +154,8 @@ fn draw_grad(repeat: [f32; 2]) -> visiaengine_render_wgpu::OffscreenFrame {
             texture: Some(tid),
             repeat,
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         })
         .expect("material");
     let (q, mut sc) = quad_and_frame(mid);
@@ -173,14 +177,16 @@ fn draw_grad(repeat: [f32; 2]) -> visiaengine_render_wgpu::OffscreenFrame {
     b.render_to_pixels(&sc.frame).expect("render")
 }
 
-fn draw_flat_mat(specular: f32) -> visiaengine_render_wgpu::OffscreenFrame {
+fn draw_flat_mat_rough(roughness: f32) -> visiaengine_render_wgpu::OffscreenFrame {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let mid = b
         .create_material_desc(&visiaengine_render::MaterialDesc {
             base_color: [1., 1., 1., 1.],
             texture: None,
             repeat: [1., 1.],
-            specular,
+            specular: 0.0, // retired mock slot (WGPU-35)
+            roughness,
+            metallic: 0.0,
         })
         .expect("material");
     let (q, mut sc) = quad_and_frame(mid);
@@ -344,24 +350,36 @@ fn material_unknown_texture_is_err() {
         texture: Some(999),
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     assert!(r.is_err(), "未知纹理引用不得静默降 Flat");
 }
 
 // spec: WGPU-14
+// N6 GGX re-probe (2026-09-29): the mock specular slot is RETIRED by WGPU-35 —
+// `specular` is IR-compat only and the shader ignores it. The old brightness
+// ladder (spec 0.8 > spec 0) is replaced by the GGX contract probe: a flat
+// quad facing the camera shades UNIFORM (directional light + constant n), so
+// the whole-window value IS the signal — roughness reaches the shader through
+// both the lobe-energy term and the IBL-lite ambient (1-r*0.5).
 #[test]
-fn specular_mockup_boosts_lambert() {
-    // mock-up [4ab①]：specular 参与 Lambert 亮度系数（非 GGX）。
-    // 白基色无纹理平面：spec=0.8 的中心区最大值应比 spec=0 亮 ≥15%。
-    let bright = draw_flat_mat(0.8);
-    let plain = draw_flat_mat(0.0);
-    let mx = |img: &visiaengine_render_wgpu::OffscreenFrame| -> u32 {
-        (20..44)
-            .map(|y| (20..44).map(|x| px(img, x, y)[0] as u32).max().unwrap_or(0))
-            .max()
-            .unwrap_or(0)
+fn roughness_ggx_shaping_replaces_mock() {
+    let rough = draw_flat_mat_rough(0.8);
+    let smooth = draw_flat_mat_rough(0.2);
+    let val = |img: &visiaengine_render_wgpu::OffscreenFrame| -> u32 {
+        let mut acc = 0u64;
+        for y in 20..44 {
+            for x in 20..44 {
+                acc += u64::from(px(img, x, y)[0]);
+            }
+        }
+        (acc / (24 * 24)) as u32
     };
-    let (b, p) = (mx(&bright), mx(&plain));
-    assert!(p > 60, "base 亮度 {p}");
-    assert!(b * 100 > p * 115, "mock-up 未生效 {b} vs {p}");
+    let (r, s) = (val(&rough), val(&smooth));
+    // Probe (lavapipe 2026-09-29): smooth 219, rough 204 — smooth is brighter
+    // (tighter GGX lobe keeps more energy on-axis + higher ambient floor).
+    assert!(s > r, "GGX energy law: smooth {s} must exceed rough {r}");
+    assert!((210..=228).contains(&s), "smooth plateau band: {s}");
+    assert!((195..=214).contains(&r), "rough plateau band: {r}");
 }

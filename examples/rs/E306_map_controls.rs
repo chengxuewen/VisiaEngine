@@ -78,6 +78,8 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         texture: None,
         repeat: [1.0, 1.0],
         specular: 0.0,
+        roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+        metallic: 0.0,
     });
     commands.push(DrawCommand::DrawMesh {
         mesh: gm,
@@ -104,6 +106,8 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
             texture: None,
             repeat: [1.0, 1.0],
             specular: 0.0,
+            roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
+            metallic: 0.0,
         });
         commands.push(DrawCommand::DrawMesh {
             mesh: bm,

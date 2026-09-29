@@ -186,15 +186,16 @@ fn textured_glb_mount_renders_checker() {
         0
     );
     // CORE-16 域重钉（实测 56/23px）：sRGB 纹理+LINEAR 滤波下纯格心并入混色带，
-    // 品红族按 **b 双峰**分治（红格带 b<135 / 白格带 b≥135，r=172 恒定域）。
-    // uv 断链=全采 texel(0,0) 红 → 白族恒 0 的 canary 语义原样保持。
+    // 品红族按 **b 双峰**分治。N6 GGX 重探（2026-09-29）：r 恒定域 172→144
+    // （GGX (1-F)·intensity 链 + IBL-lite ambient），阈值 150→135 适配；
+    // b 分界 135→120（144 域下混色带右缘实测）。uv 断链=白族恒 0 canary 原样。
     let (mut reds, mut violets) = (0u32, 0u32);
     for y in 40..80 {
         for x in 50..110 {
             let p = &buf[((y * 160 + x) * 4) as usize..][..4];
-            if p[0] > 150 && p[2] < 135 {
+            if p[0] > 135 && p[2] < 120 {
                 reds += 1;
-            } else if p[0] > 150 && p[2] >= 135 {
+            } else if p[0] > 135 && p[2] >= 120 {
                 violets += 1;
             }
         }

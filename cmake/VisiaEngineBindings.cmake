@@ -78,7 +78,7 @@ function(visiaengine_setup_bindings)
   # ── Rust 族：argv 唯一户口（pixi smoke 只做 `ctest -R` 转发壳，抄写面归零）──
   set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E206_tile_viewer E302_fly_camera E303_split_screen E304_projection_morph E305_entity_anim E403_box_select E306_map_controls E504_glass_water
                 E301_switch_camera E401_pick_demo E402_pick_interactive E501_shadow_demo
-                E502_color_tuning E503_stroke_points E506_postprocessing E507_hdr_tonemap E601_bench_twin
+                E502_color_tuning E503_stroke_points E506_postprocessing E507_hdr_tonemap E508_pbr_materials E601_bench_twin
                 E901_twin_city)
   set(_disp_E101_clear ON)
   set(_disp_E201_load_gltf ON)
@@ -109,6 +109,7 @@ function(visiaengine_setup_bindings)
   set(_args_E503_stroke_points "--frames;3")
   set(_args_E506_postprocessing "--frames;3")  # post-chain pixel asserts (WGPU-34; headless path)
   set(_args_E507_hdr_tonemap "--frames;3")  # tonemap + hdr fixture asserts (REND-44/IO-17; headless path)
+  set(_args_E508_pbr_materials "--frames;3")  # GGX metallic/dielectric + roughness ladder asserts (WGPU-35/REND-45; headless path)
   set(_args_E601_bench_twin "--count;5000;--frames;1")
   set(_args_E901_twin_city "--frames;1")  # 双模例（E501 同制）：CI 走 headless 单帧+PNG 断言；无参=常驻窗
 
