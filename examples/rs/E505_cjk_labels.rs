@@ -281,7 +281,7 @@ impl ApplicationHandler for App {
                 .create_window(
                     WindowAttributes::default()
                         .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("E505 CJK 标注 — 中文全链（Noto Sans SC 子集）· Esc 退出"),
+                        .with_title("E505 CJK 标注（静态演示）— 拖拽视角请用 E901 · Esc 退出"),
                 )
                 .expect("window"),
         );
