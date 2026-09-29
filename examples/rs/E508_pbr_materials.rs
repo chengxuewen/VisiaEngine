@@ -152,8 +152,7 @@ fn scene(up: &mut impl Up) -> (Vec<DrawCommand>, Vec<(u64, u64)>) {
     (commands, slots)
 }
 
-fn frame(cmds: &[DrawCommand], w: u32, h: u32, post: Vec<PostEffect>) -> Frame {
-    let rig = CameraRig::look_at([0.0, -13.0, 8.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+fn frame(cmds: &[DrawCommand], w: u32, h: u32, post: Vec<PostEffect>, rig: &CameraRig) -> Frame {
     Frame {
         viewport: Viewport::new(w, h, 1.0),
         camera: Camera::perspective(rig.fov_y as f32, w as f32 / h as f32, 0.1, 1000.0),
@@ -189,9 +188,14 @@ fn prove(frames: u32) {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let (cmds, _slots) = scene(&mut b);
 
-    let full = b.render_to_pixels(&frame(&cmds, W, H, Vec::new())).unwrap();
+    let rig = CameraRig::look_at([0.0, -13.0, 8.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    let full = b
+        .render_to_pixels(&frame(&cmds, W, H, Vec::new(), &rig))
+        .unwrap();
     // Determinism canary.
-    let full2 = b.render_to_pixels(&frame(&cmds, W, H, Vec::new())).unwrap();
+    let full2 = b
+        .render_to_pixels(&frame(&cmds, W, H, Vec::new(), &rig))
+        .unwrap();
     assert_eq!(full.rgba, full2.rgba, "grid render must be deterministic");
 
     // Metallic vs dielectric: render single-box scenes (metallic 1.0 vs 0.0,
@@ -208,7 +212,8 @@ fn prove(frames: u32) {
                 transform: T4,
             },
         ];
-        b.render_to_pixels(&frame(&cmds, W, H, Vec::new())).unwrap()
+        b.render_to_pixels(&frame(&cmds, W, H, Vec::new(), &rig))
+            .unwrap()
     };
     let (pos, idx) = sphere_mesh(12, 20);
     let mesh_id = b
@@ -440,7 +445,9 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {}
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        self.redraw();
+    }
 }
 
 impl App {
@@ -465,7 +472,7 @@ impl App {
             }
             p
         };
-        let frame = frame(&self.commands, w, h, post);
+        let frame = frame(&self.commands, w, h, post, &self.rig);
         match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(tex)
             | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
@@ -506,7 +513,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(n) => prove(n),
         None => {
             let el = EventLoop::new()?;
-            el.set_control_flow(ControlFlow::Wait);
+            el.set_control_flow(ControlFlow::Poll);
             let mut app = App {
                 window: None,
                 core: None,
