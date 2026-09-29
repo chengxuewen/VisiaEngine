@@ -234,6 +234,43 @@ struct App {
     ready: bool,
 }
 
+impl App {
+    fn redraw(&mut self) {
+        let (Some(core), Some(surface), Some(config)) = (
+            self.core.as_mut(),
+            self.surface.as_ref(),
+            self.config.as_ref(),
+        ) else {
+            return;
+        };
+        let frame = cam_frame(self.commands.clone(), config.width, config.height);
+        match surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(tex)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                let view = tex
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+                core.render_view_rects(
+                    &[(
+                        frame,
+                        visiaengine_render::ViewportRect::new(0, 0, config.width, config.height),
+                    )],
+                    &view,
+                    config.width,
+                    config.height,
+                    config.format,
+                    visiaengine_render_wgpu::MultiClearPolicy::FirstClearRestLoad,
+                );
+                core.queue.present(tex);
+            }
+            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                surface.configure(&core.device, config);
+            }
+            other => eprintln!("skip {other:?}"),
+        }
+    }
+}
+
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.ready {
@@ -295,11 +332,25 @@ impl ApplicationHandler for App {
         self.config = Some(config);
         self.window = Some(window);
         self.ready = true;
+        self.redraw();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Resized(size) => {
+                if size.width == 0 || size.height == 0 {
+                    return;
+                }
+                if let (Some(core), Some(surface), Some(config)) =
+                    (&mut self.core, self.surface.as_ref(), self.config.as_mut())
+                {
+                    config.width = size.width;
+                    config.height = size.height;
+                    surface.configure(&core.device, config);
+                    self.redraw();
+                }
+            }
             WindowEvent::KeyboardInput { event, .. }
                 if event.state == winit::event::ElementState::Pressed
                     && event.physical_key
