@@ -31,6 +31,7 @@
 | E502 | 材质与光影·色彩标定（sRGB 全链往返「所见即所得」活证；四色板 headless） | `examples/rs/E502_color_tuning.rs` | CORE-16 / WGPU-14 | `pixi run smoke-color-tuning`（例内自断言） |
 | E503 | 材质与光影·扩片族独立课（屏幕恒线宽/真圆点·缩放秀） | `examples/rs/E503_stroke_points.rs` | REND-29/30 / WGPU-17/18 | `ctest -L display`（cmake-smoke xvfb 子态） |
 | E504 | 玻璃与水体·透明活例（双模：1/2=水 alpha 重传材质；`--frames` 水膜衰减带+恒顶标签断言，含 a=1.0 对照语义锁） | `examples/rs/E504_glass_water.rs` | REND-36 / WGPU-27/28 | `pixi run smoke-glass-water` |
+| E505 | CJK 中文标注（Noto Sans SC 子集字体·宿主注字体同口；`--frames` 白字形像素门） | `examples/rs/E505_cjk_labels.rs` | IO-07..09 / CAPI-21 | `cargo run --example E505_cjk_labels -- --frames 1` |
 | E506 | Post framework: bloom/outline chain (1/2=toggle, 3=all off; `--frames` off-vs-bloom/off-vs-outline pixel asserts + off determinism canary) | `examples/rs/E506_postprocessing.rs` | REND-43 / WGPU-34 | `pixi run smoke-post` |
 | E507 | HDR + tonemap: first N5 consumer (1=off 2=reinhard 3=aces 0=bloom; `--frames` off-vs-reinhard/off-vs-aces/compose pixel asserts + fixture HDR proof; io-hdr RGBE loader IO-17) | `examples/rs/E507_hdr_tonemap.rs` | REND-44 / WGPU-34 / IO-17 | `pixi run smoke-hdr` |
 | E508 | PBR materials: first N6 GGX consumer (drag=orbit wheel=zoom resident window; `--frames` metallic-vs-dielectric diff + roughness ladder peak/spread probe-pinned asserts) | `examples/rs/E508_pbr_materials.rs` | REND-45 / WGPU-35 | `pixi run smoke-pbr` |

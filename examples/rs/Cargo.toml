@@ -114,3 +114,7 @@ path = "E508_pbr_materials.rs"
 [[example]]
 name = "E509_ssao"
 path = "E509_ssao.rs"
+
+[[example]]
+name = "E505_cjk_labels"
+path = "E505_cjk_labels.rs"
