@@ -114,3 +114,4 @@ smoke-hdr = "bash scripts/smoke-rs.sh E507_hdr_tonemap"   # L2: tonemap + hdr fi
 smoke-pbr = "bash scripts/smoke-rs.sh E508_pbr_materials"   # L2: GGX metallic/dielectric + roughness ladder asserts (WGPU-35/REND-45)
 smoke-ssao = "bash scripts/smoke-rs.sh E509_ssao"   # L2: SSAO off-vs-on crease-band pixel assert (WGPU-36)
 smoke-cjk = "bash scripts/smoke-rs.sh E505_cjk_labels"
+window-probe = { cmd = "bash scripts/window-probe.sh", cwd = "." }   # 窗例第一帧守卫（黑屏三连根治）：window-probe.sh <E###>

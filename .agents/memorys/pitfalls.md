@@ -264,3 +264,15 @@
 - **根因**: match 臂内首行 if 合并形态=match guard（`arm if cond =>`），clippy 1.98 按可读性建议直接红。
 - **解法**: 抄 guard 形（`KeyboardInput{..} if state==Pressed && key==Escape => exit`）+ 保留 `_ => {}` 全匹配臂。附带：winit 例**每次新建必带 imports 清单**（ApplicationHandler/WindowEvent/EventLoop/Window/WindowId——E304/E305 两次各漏一次浪费两轮）。
 - **验证**: `cargo clippy --example <name> -p examples --all-targets -- -D warnings`。
+
+## PIT-39: 窗例"第一帧"无机器守卫——三连黑屏全靠人工（2026-09-29，E305/E508/E505 家族）
+- **症状**: 三个窗例先后黑屏/空壳（E305 无循环、E508 窗面无键、E505 无 redraw），全部 cargo test/ctest/ci 绿，全靠用户人验抓出。
+- **根因**: 机器面（assert 路）与人验面（窗路）生命周期完全不同——窗例的"swapchain 有没有第一帧"无任何 CI 断言；Wait 模式 + resumed 不请求重绘 = 永黑。
+- **解法**: scripts/window-probe.sh（零参跑例→Xvfb 截屏→亮度比断言）+ window-probe-all.sh 批量（20 常驻窗例）+ **先截屏后杀 app**（root 截屏依赖窗口存活——首版顺序反了截到全黑）。自退例 skip（golden 守它们）。
+- **验证**: `bash scripts/window-probe-all.sh`（20 例全 ✓）；破坏探针实测（注释首帧请求→红 rc=1）。
+
+## PIT-40: 注册表 disp/args 必须成对——半边缺失两连（2026-09-28/29）
+- **症状**: E403 漏 _args（display 例零参常驻→ctest 挂死 10 分钟）；E508 漏 _args（headless 例误注册→DISPLAY 死）；两次均 ci/ctest 才现形。
+- **根因**: cmake 注册表 _disp_X ON 与 _args_X "--frames;N" 是一对语义绑定（disp=窗形态 args=自动化形态），单边注册=例面形态错位。
+- **解法**: 新例注册时同 commit 内两行一起写；验证=`ctest -LE display -N | grep <名>` 选中且 `--frames` 在 argv（冒烟跑通即证）。门禁化候选：R9 双向校验扩展 args 检查。
+- **验证**: `grep -A2 "_disp_${NAME}" cmake/VisiaEngineBindings.cmake | grep _args`（成对在场）。
