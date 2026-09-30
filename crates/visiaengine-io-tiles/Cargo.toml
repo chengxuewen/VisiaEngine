@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 visiaengine-core.workspace = true
 thiserror.workspace = true
+image = { workspace = true }
 # native-only: wasm tile fetch is host-driven (js fetch), getrandom/js feature conflicts stay out
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ureq = { version = "3.4.2", default-features = false, features = ["rustls"] }

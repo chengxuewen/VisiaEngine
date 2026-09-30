@@ -97,6 +97,13 @@ public:
     int32_t set_tile_view(double min_x, double min_y, double max_x, double max_y) {
         return visiaengine_set_tile_view(h_, min_x, min_y, max_x, max_y);
     }
+    /* CAPI-39/40 (R band): raster basemap (flat quads — not terrain). */
+    int32_t load_raster_dir(const char *path, uint32_t z) {
+        return visiaengine_load_raster_dir(h_, path, z);
+    }
+    int32_t set_raster_view(double min_x, double min_y, double max_x, double max_y) {
+        return visiaengine_set_raster_view(h_, min_x, min_y, max_x, max_y);
+    }
     int32_t navigate_click(float px, float py, std::uint64_t dur_ms) {
         return visiaengine_navigate_click(h_, px, py, dur_ms);
     }

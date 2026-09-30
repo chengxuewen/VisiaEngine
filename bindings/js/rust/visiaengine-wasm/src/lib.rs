@@ -276,6 +276,28 @@ impl VisiaEngine {
         }
     }
 
+    // ── R 带栅格镜像（CAPI-39/40 薄叶；平铺 quad=非地形）──
+    /// CAPI-39: 挂载 PNG 栅格瓦片目录。返回=挂载数；负=拒。
+    #[wasm_bindgen(js_name = loadRasterDir)]
+    pub fn load_raster_dir(&mut self, path: &str, z: u32) -> i32 {
+        match u8::try_from(z) {
+            Ok(z) => match self.inner.load_raster_dir(path, z) {
+                Ok(n) => n as i32,
+                Err(_) => -1,
+            },
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-40: 栅格层视口 bbox。返回=可见挂载瓦片数；负=拒。
+    #[wasm_bindgen(js_name = setRasterView)]
+    pub fn set_raster_view(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> i32 {
+        match self.inner.set_raster_view(min_x, min_y, max_x, max_y) {
+            Ok(n) => n as i32,
+            Err(_) => -1,
+        }
+    }
+
     // ── 场景树镜像（CAPI-30..34 薄叶）──
     /// CAPI-30: 创建组节点（返回 handle；0=err）。name=NULL 用空字符串代替。
     #[wasm_bindgen(js_name = createGroup)]

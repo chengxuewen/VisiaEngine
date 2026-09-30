@@ -244,6 +244,16 @@ struct TileLayer {
     widx: Vec<u32>,
     strokes: Vec<StrokeSeg>,
     points: Vec<PointMark>,
+    /// R band (CAPI-39): flat ground quads per raster tile (verts relative to
+    /// center, uv 0..1). Empty for MVT layers.
+    raster_quads: Vec<[([f32; 3], [f32; 2]); 4]>,
+    /// R band GPU products (texture + quad mesh + textured material per
+    /// tile), built once on the first render pass after mount.
+    raster_gpu: Vec<(
+        visiaengine_render::TextureId,
+        visiaengine_render::MeshId,
+        visiaengine_render::MaterialId,
+    )>,
     // 上传产物（render 期建表；缓存 id 防重传）
     uploaded: Option<(
         visiaengine_render::MeshId,
@@ -773,6 +783,70 @@ impl Engine {
                     layer.set.evict_done(&evicted);
                 }
             }
+            // R band (CAPI-39): raster layers upload per-tile textures +
+            // textured quad meshes once, then draw per-tile (texture bind is
+            // per-mesh in this engine's MaterialDesc, hence one mesh+material
+            // pair per tile).
+            if !layer.raster_quads.is_empty() && layer.raster_gpu.is_empty() {
+                for (ti, quad) in layer.raster_quads.iter().enumerate() {
+                    let Some(id) = layer.ids.get(ti).copied() else {
+                        continue;
+                    };
+                    let Some(visiaengine_io_tiles::scheduler::TilePayload::Raster {
+                        rgba,
+                        width,
+                        height,
+                    }) = layer.set.decoded_raster(&id)
+                    else {
+                        continue;
+                    };
+                    let (rgba, width, height) = (rgba.clone(), *width, *height);
+                    let tex = self
+                        .backend
+                        .upload_texture(&visiaengine_render::TextureDesc {
+                            rgba: &rgba,
+                            width,
+                            height,
+                        })
+                        .map_err(|e| format!("raster tex: {e:?}"))?;
+                    let mut pos = Vec::with_capacity(4);
+                    let mut uv = Vec::with_capacity(4);
+                    for (p, t) in quad {
+                        pos.push(*p);
+                        uv.push(*t);
+                    }
+                    let normals = vec![[0.0f32, 0.0, 1.0]; 4];
+                    let mesh = self
+                        .backend
+                        .create_mesh(&MeshDesc {
+                            uv: &uv,
+                            positions: &pos,
+                            normals: &normals,
+                            indices: &[0, 1, 2, 0, 2, 3],
+                        })
+                        .map_err(|e| format!("raster quad: {e:?}"))?;
+                    let material = self
+                        .backend
+                        .create_material_desc(&MaterialDesc {
+                            base_color: [1.0, 1.0, 1.0, 1.0],
+                            texture: Some(tex),
+                            repeat: [1.0, 1.0],
+                            specular: 0.0,
+                            roughness: 1.0,
+                            metallic: 0.0,
+                        })
+                        .map_err(|e| format!("raster mat: {e:?}"))?;
+                    layer.raster_gpu.push((tex, mesh, material));
+                }
+            }
+            for (_, mesh, material) in &layer.raster_gpu {
+                commands.push(DrawCommand::DrawMesh {
+                    mesh: *mesh,
+                    material: *material,
+                    origin: layer.center,
+                    transform: IDENTITY,
+                });
+            }
             if layer.uploaded.is_none() && !layer.wpos.is_empty() {
                 let normals = vec![[0.0f32, 0.0, 1.0]; layer.wpos.len()];
                 let mesh = self
@@ -1008,6 +1082,150 @@ impl Engine {
             }
         }
         seen.into_iter().nth(index as usize)
+    }
+
+    /// CAPI-39 (R band): mount a RASTER tile directory (PNG tiles,
+    /// FileSource::raster). Same discovery scan as load_mvt_dir but for
+    /// .png; decodes via the scheduler raster lane; builds one flat ground
+    /// quad per tile at z=0 (world-frame 3857, vertices baked to the batch
+    /// center — PIT-8 safe domain), each textured with its tile image.
+    /// Camera fit mirrors load_mvt_dir (ortho top-down). Returns the tile
+    /// count. claim discipline (N1.2): flat raster basemap — NOT terrain,
+    /// no drape, no LOD.
+    pub fn load_raster_dir(&mut self, path: &str, z: u8) -> Result<u64, String> {
+        let source = visiaengine_io_tiles::FileSource::raster(path);
+        let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
+            .map_err(|e| format!("tiles: {e:?}"))?;
+        let mut ids: Vec<visiaengine_io_tiles::TileId> = Vec::new();
+        let zdir = std::path::Path::new(path).join(z.to_string());
+        let entries =
+            std::fs::read_dir(&zdir).map_err(|e| format!("read_dir {}: {e}", zdir.display()))?;
+        for xentry in entries.flatten() {
+            let xname = xentry.file_name().to_string_lossy().into_owned();
+            let Ok(x) = xname.parse::<u32>() else {
+                continue;
+            };
+            let xdir = zdir.join(&xname);
+            let Ok(files) = std::fs::read_dir(&xdir) else {
+                continue;
+            };
+            for f in files.flatten() {
+                let fname = f.file_name().to_string_lossy().into_owned();
+                if let Some(ystr) = fname.strip_suffix(".png")
+                    && let Ok(y) = ystr.parse::<u32>()
+                    && let Some(id) = visiaengine_io_tiles::TileId::new(z, x, y)
+                {
+                    ids.push(id);
+                }
+            }
+        }
+        if ids.is_empty() {
+            return Err(format!("no .png tiles under {}/{z}", zdir.display()));
+        }
+        ids.sort_by_key(|i| (i.y, i.x));
+        set.ensure(&ids)
+            .map_err(|e| format!("tiles ensure: {e:?}"))?;
+        // Raster batch: per-tile quad (two triangles, uv 0..1), vertices baked
+        // to the union-bbox center. Tile world size from slippy math.
+        let (min_x, min_y, max_x, max_y) = union_bbox(&ids);
+        let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+        let tile_w = visiaengine_io_tiles::WORLD_EXTENT / f64::from(1u32 << z);
+        let mut quads: Vec<[([f32; 3], [f32; 2]); 4]> = Vec::new();
+        for id in &ids {
+            let payload = set.decoded_raster(id);
+            if payload.is_none() {
+                continue;
+            }
+            let (x0, y1) = (
+                -visiaengine_io_tiles::WORLD_EXTENT / 2.0 + f64::from(id.x) * tile_w,
+                visiaengine_io_tiles::WORLD_EXTENT / 2.0 - f64::from(id.y) * tile_w,
+            );
+            let (x1, y0) = (x0 + tile_w, y1 - tile_w);
+            let q = [
+                (
+                    [((x0 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0],
+                    [0.0f32, 0.0],
+                ),
+                (
+                    [((x1 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0],
+                    [1.0, 0.0],
+                ),
+                (
+                    [((x1 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0],
+                    [1.0, 1.0],
+                ),
+                (
+                    [((x0 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0],
+                    [0.0, 1.0],
+                ),
+            ];
+            quads.push(q);
+        }
+        let count = quads.len() as u64;
+        let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
+        self.mode = Proj::Ortho;
+        self.zoom = radius.max(10.0);
+        self.rig = CameraRig::look_at(
+            [center[0], center[1], radius.max(10.0)],
+            center,
+            [0.0, 1.0, 0.0],
+        );
+        // Reuse the TileLayer shell for camera-fit + view bookkeeping; the
+        // raster quads ride the layer's set/ids (their decode lane is raster,
+        // render-loop branch keys on the layer kind below).
+        self.tiles = Some(TileLayer {
+            set,
+            ids,
+            http: false,
+            center,
+            wpos: Vec::new(),
+            widx: Vec::new(),
+            strokes: Vec::new(),
+            points: Vec::new(),
+            raster_quads: quads,
+            raster_gpu: Vec::new(),
+            uploaded: None,
+        });
+        Ok(count)
+    }
+
+    /// CAPI-40 (R band): feed a 3857 bbox to the raster layer's view (same
+    /// enumerate + camera-fit semantics as set_tile_view; raster layer keeps
+    /// mount-time quads — re-view re-centers the camera only, v1 honest scope).
+    pub fn set_raster_view(
+        &mut self,
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Result<u64, String> {
+        let Some(layer) = self.tiles.as_mut() else {
+            return Err("raster layer not mounted (load_raster_dir first)".into());
+        };
+        if !(min_x.is_finite()
+            && min_y.is_finite()
+            && max_x.is_finite()
+            && max_y.is_finite()
+            && min_x < max_x
+            && min_y < max_y)
+        {
+            return Err("raster view domain (finite, min<max)".into());
+        }
+        let z_of = layer.ids.first().map(|i| i.z).unwrap_or(0);
+        let ids = visiaengine_io_tiles::TileSet::visible((min_x, min_y, max_x, max_y), z_of);
+        // Keep only tiles that actually exist in the mounted set (dir scan
+        // = discovery; invisible/unmounted tiles are NOT fabricated).
+        let mounted: std::collections::HashSet<_> = layer.ids.iter().copied().collect();
+        let visible: Vec<_> = ids.into_iter().filter(|i| mounted.contains(i)).collect();
+        let n = visible.len() as u64;
+        // Camera recenters on the requested bbox (v1: quads unchanged).
+        let cx = (min_x + max_x) / 2.0;
+        let cy = (min_y + max_y) / 2.0;
+        let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
+        self.mode = Proj::Ortho;
+        self.zoom = radius.max(10.0);
+        self.rig = CameraRig::look_at([cx, cy, radius.max(10.0)], [cx, cy, 0.0], [0.0, 1.0, 0.0]);
+        Ok(n)
     }
 
     /// 屏幕拾取（复用 REND-21..24；ortho/persp 双路；B2：mesh 未中时点云兕底）。
@@ -1715,6 +1933,8 @@ impl Engine {
             widx,
             strokes,
             points,
+            raster_quads: Vec::new(),
+            raster_gpu: Vec::new(),
             uploaded: None,
         });
         let _ = decoded;
@@ -1743,6 +1963,8 @@ impl Engine {
             widx: Vec::new(),
             strokes: Vec::new(),
             points: Vec::new(),
+            raster_quads: Vec::new(),
+            raster_gpu: Vec::new(),
             uploaded: None,
         });
         Ok(0)

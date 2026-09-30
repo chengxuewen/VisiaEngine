@@ -2368,6 +2368,7 @@ dependencies = [
 name = "visiaengine-io-tiles"
 version = "0.1.0"
 dependencies = [
+ "image",
  "thiserror 2.0.20",
  "ureq",
  "visiaengine-core",

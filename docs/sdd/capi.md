@@ -109,3 +109,8 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-38: 属性热更 bool 列 + 共同条款（update_entity_attr_bool，N2.4）
 `visiaengine_update_entity_attr_bool(ve, entity, name, v: i32) -> i32`：bool 入参 1/0（i32 非零真）。**三口共同条款**：宿主驱动的属性热更（数字孪生活数据面）。typed-reject：列按首写定型（CORE-11/12）——异型写既有列=VE_ERR_ARG（type-conflict 报文，零部分写）；新列首写定型。override-first 读：attr_* 读先查 override 层再落 geo_docs/pcl_meta 源（diff 赢源数据）。未知实体=VE_ERR_ARG。渲染零触碰（属性=宿主/查询数据）。成功=0。rs 面=Engine::update_entity_props_* 同语义。minor=13 (0x0001000D)。
+
+## CAPI-39: load_raster_dir (R band)
+`visiaengine_load_raster_dir(ve, path, z) -> i32`：挂载 PNG 栅格瓦片目录（`FileSource::raster`，`{root}/{z}/{x}/{y}.png`；z∈[0,30] 域）。目录发现扫描与 load_mvt_dir 同谱；调度器光栅 lane（`TilePayload::Raster`）解码 RGBA8；批=每瓦片一张**平铺地面 quad**（z=0，uv 0..1，顶点烘并集 bbox 中心）。相机=ortho 顶视拟合（load_mvt_dir 同形）。返回=挂载瓦片数；0/负=错误（目录不存在/无瓦片/域外），错误串走 TLS。**声明纪律（N1.2）**：flat raster basemap——非地形、无 drape、无 LOD（DEM/披盖=票据制）。GPU 产品（texture+textured-material+quad mesh 每瓦片）首个 render pass 惰性建。
+## CAPI-40: set_raster_view (R band)
+`visiaengine_set_raster_view(ve, min_x, min_y, max_x, max_y) -> i32`：栅格层视口 bbox（3857 米；finite/min<max 域门先于解引用）。返回=该视口内**已挂载**瓦片数（发现式扫描语义：不虚构未挂载瓦片）。v1 诚实域：相机重定心到请求 bbox，quad 集不变（挂载时一次性建批——与 load_mvt_dir 的 ensure 装载语义分叉在条款注记）。未挂载=拒。

@@ -28,3 +28,6 @@
 
 ## IO-16: 泵式非阻塞装载（TileSet::begin/pump/state，N1.4）
 `begin(ids)→usize`：Unloaded/FailedTemporarily → Loading（纯状态迁移，零 I/O；Done/Loading 跳过，幂等）。`pump(budget)→(done,failed)`：每调用至多 budget 次 source.load（I/O 预算=帧预算守卫的引擎侧实现）；逐片 Ok→Done（入 LRU）/Err→FailedTemporarily（错误记录，**不中止**——与 IO-14 ensure 的首错中止分叉，语义分账）。`state(id)→TileState`：四态（Unloaded/Loading/Done/FailedTemporarily；cesium 7 态裁至 4——FailedTemporarily/Failed 分裂保留，等待态不建模）。重试策略=调用方（begin 再武装）。HttpSource 护栏：5s 全局超时（hung server 不挂宿主）；loopback 免 env 代理（http_proxy 502 127.0.0.1 实测 2026-09-28）。
+
+## IO-18: Raster tile payload lane (R band)
+TileSet decoded-cache widens `HashMap<TileId, MvtTile>` → `HashMap<TileId, TilePayload>` (`enum TilePayload { Mvt(MvtTile), Raster{rgba,width,height} }`) — the generic-vs-parallel TileSet fork was the flagged design trap; enum wins on blast radius (pump/LRU/evict machinery stays single-lane). `FileSource::raster(root)` = same discovery tree with `.png` suffix (one type, one trait — the scheduler is format-agnostic: bytes in, decode lane chosen by caller entry). `decoded_raster(id)` = decode-through-cache (image crate, PNG/JPEG → RGBA8); WRONG-LANE reads return None without poisoning the cache (`decoded()` on raster bytes = None, `decoded_raster()` on MVT bytes = None). Sharing the pump/LRU/EVICT lifecycle is structural (no separate accounting to drift).

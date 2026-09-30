@@ -44,10 +44,25 @@ pub enum TileState {
 }
 
 /// Viewport-driven tile set: enumerate → ensure → decode.
+/// Decoded tile payload (R band): vector (MVT) or raster (PNG/JPEG image).
+/// One enum keeps the scheduler/pump/LRU machinery single-lane (generic-vs-
+/// parallel TileSet fork was the flagged design trap; enum wins on blast
+/// radius — cross-attack ruling, gap-closure plan R band).
+#[derive(Debug, Clone)]
+pub enum TilePayload {
+    Mvt(MvtTile),
+    /// RGBA8, row-major, dimensions as given.
+    Raster {
+        rgba: Vec<u8>,
+        width: u32,
+        height: u32,
+    },
+}
+
 pub struct TileSet {
     source: Box<dyn TileSource>,
     cache: LruCache,
-    decoded_cache: std::collections::HashMap<TileId, MvtTile>,
+    decoded_cache: std::collections::HashMap<TileId, TilePayload>,
     /// IO-16 (N1.4): per-tile pump state. Done tiles live in the LRU; the
     /// state map tracks the remaining lifecycle. Absent == Unloaded.
     pump_state: std::collections::HashMap<TileId, TileState>,
@@ -222,15 +237,39 @@ impl TileSet {
         self.pump_errors.get(id).map(String::as_str)
     }
 
-    /// Decode-through-cache: returns the decoded tile, decoding on first access.
+    /// R band: decode a tile as RASTER (PNG/JPEG -> RGBA8). Separate entry
+    /// from `decoded()` because the wire format differs per band kind (the
+    /// scheduler cannot sniff bytes reliably: MVT starts with a proto field
+    /// tag, PNG with magic — but explicit > sniffed for contract clarity).
+    /// Same LRU/pump lifecycle; shares the decoded_cache (enum payload).
+    pub fn decoded_raster(&mut self, id: &TileId) -> Option<&TilePayload> {
+        if !self.decoded_cache.contains_key(id) {
+            let bytes = self.cache.get(id)?;
+            let img = image::load_from_memory(bytes).ok()?;
+            let rgba = img.to_rgba8();
+            let payload = TilePayload::Raster {
+                rgba: rgba.into_raw(),
+                width: img.width(),
+                height: img.height(),
+            };
+            self.decoded_cache.insert(*id, payload);
+        }
+        self.decoded_cache.get(id)
+    }
+
+    /// Decode-through-cache (MVT lane): returns the decoded vector tile,
+    /// decoding on first access. Raster callers use `decoded_raster`.
     pub fn decoded(&mut self, id: &TileId) -> Option<&MvtTile> {
         if !self.decoded_cache.contains_key(id) {
             let bytes = self.cache.get(id)?.to_vec();
             let tile = decode_tile(&bytes)
                 .map_err(|e| TilesError::Decode(e.to_string()))
                 .ok()?;
-            self.decoded_cache.insert(*id, tile);
+            self.decoded_cache.insert(*id, TilePayload::Mvt(tile));
         }
-        self.decoded_cache.get(id)
+        match self.decoded_cache.get(id) {
+            Some(TilePayload::Mvt(t)) => Some(t),
+            _ => None,
+        }
     }
 }

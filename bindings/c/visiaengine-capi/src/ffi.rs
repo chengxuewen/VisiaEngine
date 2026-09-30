@@ -162,7 +162,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 13 // major 1 minor 13 (N2.4: +CAPI-36..38 update_entity_props_*; >>16==1 unchanged)
+    (1 << 16) | 14 // major 1 minor 14 (R band: +CAPI-39/40 raster basemap; >>16==1 unchanged)
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1582,6 +1582,72 @@ pub extern "C" fn visiaengine_load_mvt_dir(
                         Err(_) => return VE_ERR_ARG,
                     };
                     match with_engine(i, |e| e.load_mvt_dir(path, z as u8)) {
+                        Ok(n) => n as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-39 (R band): mount a RASTER tile directory (PNG; flat ground quads,
+/// NOT terrain/drape — N1.2 wording discipline). Returns tile count.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded (load_mvt_dir precedent)
+pub extern "C" fn visiaengine_load_raster_dir(
+    ve: u64,
+    path: *const std::os::raw::c_char,
+    z: u32,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if path.is_null() || z > 30 {
+                        return VE_ERR_ARG;
+                    }
+                    let path = match unsafe { std::ffi::CStr::from_ptr(path) }.to_str() {
+                        Ok(p) => p,
+                        Err(_) => return VE_ERR_ARG,
+                    };
+                    match with_engine(i, |e| e.load_raster_dir(path, z as u8)) {
+                        Ok(n) => n as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-40 (R band): raster view bbox (3857 meters, finite, min<max).
+/// Returns the mounted-tiles-visible count in the requested view.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+pub extern "C" fn visiaengine_set_raster_view(
+    ve: u64,
+    min_x: f64,
+    min_y: f64,
+    max_x: f64,
+    max_y: f64,
+) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    match with_engine(i, |e| e.set_raster_view(min_x, min_y, max_x, max_y)) {
                         Ok(n) => n as i32,
                         Err(msg) => {
                             set_err(msg);

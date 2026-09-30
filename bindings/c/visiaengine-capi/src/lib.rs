@@ -40,7 +40,8 @@ pub use ffi::{
     visiaengine_set_group_offset, visiaengine_set_parent,
 };
 pub use ffi::{
-    visiaengine_load_mvt_dir, visiaengine_set_tile_source_http, visiaengine_set_tile_view,
+    visiaengine_load_mvt_dir, visiaengine_load_raster_dir, visiaengine_set_raster_view,
+    visiaengine_set_tile_source_http, visiaengine_set_tile_view,
 };
 pub use ffi::{
     visiaengine_update_entity_attr_bool, visiaengine_update_entity_attr_f64,

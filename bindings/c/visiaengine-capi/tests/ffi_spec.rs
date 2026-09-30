@@ -12,10 +12,11 @@ use visiaengine::{
     visiaengine_fly_state, visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips,
     visiaengine_get_group_offset, visiaengine_get_parent, visiaengine_last_error,
     visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_mvt_dir, visiaengine_load_pcl,
-    visiaengine_navigate_click, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
-    visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
-    visiaengine_set_group_offset, visiaengine_set_map, visiaengine_set_parent,
-    visiaengine_set_tile_source_http, visiaengine_set_tile_view, visiaengine_viewport,
+    visiaengine_load_raster_dir, visiaengine_navigate_click, visiaengine_on_input,
+    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
+    visiaengine_set_clips, visiaengine_set_group_offset, visiaengine_set_map,
+    visiaengine_set_parent, visiaengine_set_raster_view, visiaengine_set_tile_source_http,
+    visiaengine_set_tile_view, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -282,13 +283,13 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_000D,
-        "major 1 minor 13 (N2.4: +CAPI-36..38 update_entity_attr_*, MAJOR-contained)"
+        0x0001_000E,
+        "major 1 minor 14 (R band: +CAPI-39/40 raster basemap, MAJOR-contained)"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
     assert_eq!(
         h.join().unwrap(),
-        0x0001_000D,
+        0x0001_000E,
         "exception-set member is not thread-gated"
     );
 }
@@ -306,8 +307,8 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        44,
-        "extern entry count (cfg-gated line-head form; 41->44 = N2.4 attr update trio)"
+        46,
+        "extern entry count (cfg-gated line-head form; 44->46 = R raster pair)"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),
@@ -1226,4 +1227,66 @@ fn get_group_offset_roundtrip() {
     assert_eq!(out, [42.5, -7.0, 0.0]);
     // Non-group entity (e.g. after destroy g) → err; skip for now
     assert_eq!(visiaengine_destroy(ve), 0);
+}
+
+// spec: CAPI-39
+#[test]
+fn load_raster_dir_domain_and_mount() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // NULL path
+    assert_eq!(visiaengine_load_raster_dir(ve, std::ptr::null(), 10), -1);
+    // z domain
+    let root = {
+        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        while !p.join("Cargo.lock").exists() {
+            assert!(p.pop());
+        }
+        p.join("resources/data/raster")
+    };
+    let cpath = std::ffi::CString::new(root.to_str().unwrap()).unwrap();
+    assert_eq!(visiaengine_load_raster_dir(ve, cpath.as_ptr(), 31), -1);
+    // nonexistent dir
+    let bad = std::ffi::CString::new("/nonexistent/raster").unwrap();
+    let rc = visiaengine_load_raster_dir(ve, bad.as_ptr(), 10);
+    assert!(rc <= 0, "nonexistent dir must not succeed");
+    // happy path: bundled 2x2 fixture
+    let rc = visiaengine_load_raster_dir(ve, cpath.as_ptr(), 10);
+    assert_eq!(rc, 4, "2×2 raster fixture");
+}
+
+// spec: CAPI-40
+#[test]
+fn set_raster_view_domain_and_visible() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // not mounted → reject
+    let rc = visiaengine_set_raster_view(ve, -2.0e7, 1.9e7, -1.9e7, 2.0e7);
+    assert!(rc < 0, "unmounted raster view must reject");
+    // mount 2×2 fixture then feed the covering view
+    let root = {
+        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        while !p.join("Cargo.lock").exists() {
+            assert!(p.pop());
+        }
+        p.join("resources/data/raster")
+    };
+    let cpath = std::ffi::CString::new(root.to_str().unwrap()).unwrap();
+    assert_eq!(visiaengine_load_raster_dir(ve, cpath.as_ptr(), 10), 4);
+    // z=10 slippy tiles x=850..852, y=388..390 → 3857 bbox covering them.
+    // tile size at z=10 = WORLD/1024 ≈ 39011 m; x=850 start = -20037508 + 850*39011.
+    let world = 20037508.342789244_f64;
+    let tile = world * 2.0 / 1024.0;
+    let min_x = -world + 850.0 * tile;
+    let max_x = -world + 852.0 * tile;
+    let min_y = world - 390.0 * tile;
+    let max_y = world - 388.0 * tile;
+    let rc = visiaengine_set_raster_view(ve, min_x, min_y, max_x, max_y);
+    assert_eq!(rc, 4, "view covering all mounted tiles");
+    // inverted bbox domain reject
+    let rc = visiaengine_set_raster_view(ve, max_x, min_y, min_x, max_y);
+    assert!(rc < 0, "min>max must reject");
+    // disjoint view: visible = 0 (mounted-discovery semantics)
+    let rc = visiaengine_set_raster_view(ve, 1.0e7, 1.0e7, 1.1e7, 1.1e7);
+    assert_eq!(rc, 0, "disjoint view = 0 visible (no fabrication)");
 }

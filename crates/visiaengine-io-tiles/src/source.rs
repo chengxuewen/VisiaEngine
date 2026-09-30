@@ -30,9 +30,13 @@ pub trait TileSource: Send {
     fn load(&self, z: u8, x: u32, y: u32) -> Result<Vec<u8>, SourceError>;
 }
 
-/// Local directory source: `{root}/{z}/{x}/{y}.mvt`.
+/// Local directory source: `{root}/{z}/{x}/{y}.mvt` (default) or
+/// `{root}/{z}/{x}/{y}.png` (R band raster variant — `with_extension`).
+/// One type, one trait: the scheduler machinery is format-agnostic (bytes
+/// in, decode lane chosen by the caller).
 pub struct FileSource {
     root: PathBuf,
+    ext: &'static str,
 }
 
 impl FileSource {
@@ -40,6 +44,16 @@ impl FileSource {
     pub fn new(root: impl AsRef<Path>) -> Self {
         Self {
             root: root.as_ref().to_path_buf(),
+            ext: "mvt",
+        }
+    }
+
+    /// R band: raster tile source ({root}/{z}/{x}/{y}.png).
+    #[must_use]
+    pub fn raster(root: impl AsRef<Path>) -> Self {
+        Self {
+            root: root.as_ref().to_path_buf(),
+            ext: "png",
         }
     }
 }
@@ -50,7 +64,7 @@ impl TileSource for FileSource {
             .root
             .join(z.to_string())
             .join(x.to_string())
-            .join(format!("{y}.mvt"));
+            .join(format!("{y}.{}", self.ext));
         let bytes = std::fs::read(&path).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => SourceError::NotFound(path.display().to_string()),
             _ => SourceError::Io(format!("{}: {e}", path.display())),

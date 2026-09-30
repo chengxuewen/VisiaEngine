@@ -9,7 +9,7 @@
 一个开源、轻量、可嵌入的空间可视化**引擎内核**（非游戏引擎）：
 
 - 多维度统一视口：鸟瞰地图（2D）、倾斜视角（2.5D）、沉浸 3D 自由切换（当前为扁平实体表，场景树 = Alpha 档候选），图层/实体/标注交互语义一致
-- **空间数据一等公民**：GeoJSON、主流坐标投影（已内置）；矢量瓦片 MVT（目录/HTTP 源已交付）；WMS/WMTS（在交付，见白皮书 3.2 路线）；glTF/点云/BIM 轻量化展示；ODR/OSC 经官方仿真插件支持
+- **空间数据一等公民**：GeoJSON、主流坐标投影（已内置）；矢量瓦片 MVT（目录/HTTP 源已交付）；栅格瓦片（PNG 平铺 basemap 已交付）；WMS/WMTS 服务端（在交付，见白皮书 3.2 路线）；glTF/点云/BIM 轻量化展示；ODR/OSC 经官方仿真插件支持
 - **Rust 内核 + wgpu 渲染**：内存安全、无 GC；一等 Vulkan / Metal / DX12 / WebGPU，GL 3.3+ / GLES 3.0+ / WebGL2 降级档
 - **SDK 形态**：经 C API 嵌入 Qt / Flutter / C# (WPF/Unity) / Web，不绑架宿主主循环；启动体积（native cdylib strip 后）实测 7.25 MB ≤ 10 MB（证据：docs/reference/evidence/2026-09-24-native-size.md）
 
@@ -35,7 +35,7 @@
 
 ## 开发状态
 
-**Phase 1 现状（数字以门禁实报为准）**：10 crate workspace（核心 8 + bindings 面 2）、**191 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON/点云(PLY)/矢量瓦片(MVT 目录/HTTP 源挂载+视口调度+泵式装载) 装载 + 材质纹理（GGX PBR，WGPU-35/REND-45）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 半透明双 pass 画家序 + 方向光 PCSS 软影 + 点云 EDL 描边（`--edl`，WGPU-33）+ postprocessing framework (bloom/outline/tonemap/SSAO/depth-haze, WGPU-34/36/38, REND-43/44) + HDRI 装载 (.hdr RGBE, IO-17) + 文字标注（含 CJK 子集字体）+ 剖面裁切 + 主副双投小地图/点击导航 + 2D↔3D 连续投影 morph + 拾取（含点云 REND-38 + 线要素屏幕空间 REND-46）/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**ctest 统一例子清单（40 条，含 SDL3 窗口族 xvfb 子态）+ 三 gate（abi/trace/docs）+ cmake-smoke 三态三锚 + bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。 例子画廊（40 卡，例侧自渲染缩略图）：`pixi run gallery` → `build/gallery/index.html`。**宿主嵌入**：C ABI 44 入口（+场景树五口+HTTP 瓦片源+属性热更三口）（事件推送/点云/剖面/字体标注/飞行/小地图导航，三面镜像 wasm·hpp·头）（人审手写头 + C demo 群真跑）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt 宿主实证 ✅（header-only widget+真窗 smoke 三态）；npm/pip 打包挂 Alpha。
+**Phase 1 现状（数字以门禁实报为准）**：10 crate workspace（核心 8 + bindings 面 2）、**194 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON/点云(PLY)/矢量瓦片(MVT 目录/HTTP 源挂载+视口调度+泵式装载) 装载 + 材质纹理（GGX PBR，WGPU-35/REND-45）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 半透明双 pass 画家序 + 方向光 PCSS 软影 + 点云 EDL 描边（`--edl`，WGPU-33）+ postprocessing framework (bloom/outline/tonemap/SSAO/depth-haze, WGPU-34/36/38, REND-43/44) + HDRI 装载 (.hdr RGBE, IO-17) + 文字标注（含 CJK 子集字体）+ 剖面裁切 + 主副双投小地图/点击导航 + 2D↔3D 连续投影 morph + 拾取（含点云 REND-38 + 线要素屏幕空间 REND-46）/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**ctest 统一例子清单（40 条，含 SDL3 窗口族 xvfb 子态）+ 三 gate（abi/trace/docs）+ cmake-smoke 三态三锚 + bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。 例子画廊（40 卡，例侧自渲染缩略图）：`pixi run gallery` → `build/gallery/index.html`。**宿主嵌入**：C ABI 46 入口（+场景树五口+HTTP/栅格瓦片源+属性热更三口）（事件推送/点云/剖面/字体标注/飞行/小地图导航，三面镜像 wasm·hpp·头）（人审手写头 + C demo 群真跑）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt 宿主实证 ✅（header-only widget+真窗 smoke 三态）；npm/pip 打包挂 Alpha。
 
 ```bash
 ```bash

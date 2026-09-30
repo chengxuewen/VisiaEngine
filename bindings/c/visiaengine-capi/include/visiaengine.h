@@ -176,6 +176,15 @@ int32_t  visiaengine_load_mvt_dir(uint64_t ve, const char *path, uint32_t z);
 int32_t  visiaengine_set_tile_view(uint64_t ve, double min_x, double min_y,
                                    double max_x, double max_y);
 
+/* CAPI-39 (R band): mount a RASTER tile directory ({root}/{z}/{x}/{y}.png;
+   flat ground quads — flat raster basemap, NOT terrain/drape/LOD; N1.2
+   wording discipline). Returns mounted tile count; 0/negative = error.
+   CAPI-40 (R band): feed a viewport bbox (3857 meters) to the raster layer;
+   returns the count of mounted tiles visible in that view. */
+int32_t  visiaengine_load_raster_dir(uint64_t ve, const char *path, uint32_t z);
+int32_t  visiaengine_set_raster_view(uint64_t ve, double min_x, double min_y,
+                                     double max_x, double max_y);
+
 /* CAPI-36..38 (N2.4): typed property diff-update — host-driven live-data
    writes on loaded entities (digital-twin face). Typed columns: f64 / str
    (UTF-8) / bool (1/0). First write on a name TYPES the column; writing a
