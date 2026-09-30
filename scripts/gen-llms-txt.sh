@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# gen-llms-txt.sh — emit llms.txt (LLM-friendly repo map) + rustdoc reference.
+# Generation is a pixi task (docs-gen), NOT a ci segment (cargo doc cost).
+# Output: build/docs (rustdoc, gitignored) + llms.txt at repo root (committed).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+cargo doc --workspace --no-deps --quiet
+CRATES=(
+  "visiaengine-core|Scene/EntityId slab, AttrSet typed columns, camera math, D7 rebase"
+  "visiaengine-render|Backend-agnostic IR: Frame/MeshDesc/StrokeSeg/PointMark/LabelMark/Instance, PostEffect family, pick predicates (REND family), morph/anim sampling"
+  "visiaengine-render-wgpu|wgpu backend: 6-variant pipeline family, shadow/PCSS, post chain (bloom/outline/tonemap/SSAO/haze), EDL, multiview, offscreen readback"
+  "visiaengine-io-gltf|GLB loader: meshes/materials/textures, load report + repair policy"
+  "visiaengine-io-points|PLY point clouds (ascii/bin_le): typed 4-class error report"
+  "visiaengine-io-text|fontdue raster labels: glyph atlas/shelf packing, LTR layout (latin + CJK host-injected fonts)"
+  "visiaengine-io-tiles|MVT vector tiles: hand-written protobuf decode, slippy scheduler (FileSource/HttpSource), pump budget"
+  "visiaengine-io-hdr|.hdr (RGBE) equirect decode for HDRI environment/background"
+  "visiaengine-geo|GeoJSON -> Web Mercator -> tessellation -> style-expansion pipeline (GEO family)"
+  "visiaengine-capi|C ABI surface (44 entries, visiaengine.h): handle fences, input, tiles, scene tree, labels, clip, minimap, events — three-face mirror (header/hpp/wasm)"
+)
+{
+  echo "# VisiaEngine"
+  echo ""
+  echo "> Multi-dimensional (2D/2.5D/3D) spatial visualization engine — Rust core + wgpu renderer, C-API SDK form. Open Core (MIT OR Apache-2.0)."
+  echo ""
+  echo "## Docs"
+  echo ""
+  echo "- [rustdoc reference](build/docs/index.html): generated API documentation (pixi run docs-gen)"
+  echo "- [whitepaper](docs/whitepaper.md): positioning, roadmap, commercial model (single source of truth)"
+  echo "- [architecture](docs/architecture.md): design baseline (crate layering, D4 wgpu ruling)"
+  echo "- [SDD contracts](docs/sdd/): behavior clauses, two-way traceable to tests (scripts/spec-trace.sh)"
+  echo "- [tutorials](docs/tutorials.md): E-numbered example index (filename = header = index lock)"
+  echo ""
+  echo "## Crates"
+  echo ""
+  for row in "${CRATES[@]}"; do
+    name="${row%%|*}"; desc="${row#*|}"
+    echo "- [\`${name}\`](https://docs.rs/${name}): ${desc}"
+  done
+  echo ""
+  echo "## Examples"
+  echo ""
+  echo "41 example cards (E101..E901), three-way locked (files = tutorials = registries),"
+  echo "gallery at build/gallery/index.html (pixi run gallery). See docs/tutorials.md."
+} > llms.txt
+echo "llms.txt written ($(wc -l < llms.txt) lines); rustdoc at build/docs/"
