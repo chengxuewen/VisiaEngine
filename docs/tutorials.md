@@ -36,6 +36,7 @@
 | E507 | HDR + tonemap: first N5 consumer (1=off 2=reinhard 3=aces 0=bloom; `--frames` off-vs-reinhard/off-vs-aces/compose pixel asserts + fixture HDR proof; io-hdr RGBE loader IO-17) | `examples/rs/E507_hdr_tonemap.rs` | REND-44 / WGPU-34 / IO-17 | `pixi run smoke-hdr` |
 | E508 | PBR materials: first N6 GGX consumer (drag=orbit wheel=zoom resident window; `--frames` metallic-vs-dielectric diff + roughness ladder peak/spread probe-pinned asserts) | `examples/rs/E508_pbr_materials.rs` | REND-45 / WGPU-35 | `pixi run smoke-pbr` |
 | E509 | SSAO ambient occlusion: depth-only 16-tap AO (1=toggle 2=int+ 3=int- 0=off; drag=orbit wheel=zoom resident window; `--frames` off-vs-on crease-band pixel assert) | `examples/rs/E509_ssao.rs` | WGPU-36 / REND-43 | `pixi run smoke-ssao` |
+| E510 | 参数曲线·路径流动（CatmullRom 丝带+管护栏 tube/ribbon；`--frames` = 端点律+流密度像素断言） | `examples/rs/E510_route_flow.rs` | REND-47 | `pixi run smoke-curve` |
 | E601 | 规模与性能（10 万楼块单 draw 压力例） | `examples/rs/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin`（`pixi run bench` 出制品） |
 | E701 | 绑定镜像·C headless（嵌入样板+属性读闭环 name/opacity/missing≠0；跑不通=API 未完成 [E3D:D7]） | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | 绑定镜像·C X11（attach 真窗双模=无参常驻/`--frames` 快退） | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |

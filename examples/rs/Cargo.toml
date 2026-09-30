@@ -92,6 +92,10 @@ name = "E305_entity_anim"
 path = "E305_entity_anim.rs"
 
 [[example]]
+name = "E510_route_flow"
+path = "E510_route_flow.rs"
+
+[[example]]
 name = "E403_box_select"
 path = "E403_box_select.rs"
 

@@ -8,6 +8,7 @@
 pub mod anim;
 pub mod camera;
 pub mod contract;
+pub mod curve;
 pub mod morph;
 pub mod rebase;
 
