@@ -29,6 +29,9 @@ struct DrawItem {
     material: MaterialId,
     entity: EntityId,
     origin: [f64; 3],
+    /// V2.2: node-local transform (IDENTITY for legacy loads; glTF mounts
+    /// carry the node-local TRS — parent chain composes at draw time).
+    transform: [[f64; 4]; 4],
     positions: Vec<[f32; 3]>,
     indices: Vec<u32>,
 }
@@ -334,6 +337,7 @@ impl Engine {
     }
 
     #[allow(clippy::too_many_arguments)] // 私有上传汇点（normals 参数化后 +1，拆门面反而碎）
+    #[allow(clippy::too_many_arguments)]
     fn upload(
         &mut self,
         entity: EntityId,
@@ -343,6 +347,7 @@ impl Engine {
         mat: &MaterialDesc,
         uv: &[[f32; 2]],
         origin: [f64; 3],
+        transform: [[f64; 4]; 4],
     ) -> Result<(), String> {
         let flat: Vec<[f32; 3]>;
         let nrm = match normals {
@@ -370,6 +375,7 @@ impl Engine {
             material,
             entity,
             origin,
+            transform,
             positions: positions.to_vec(),
             indices: indices.to_vec(),
         });
@@ -468,6 +474,7 @@ impl Engine {
                 &mat,
                 &e.mesh.uv,
                 [0.0; 3],
+                e.local,
             )?;
         }
         Ok(n)
@@ -573,7 +580,16 @@ impl Engine {
                             roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
                             metallic: 0.0,
                         };
-                        self.upload(id, &p.positions, &p.indices, None, &mat, &[], origin)?;
+                        self.upload(
+                            id,
+                            &p.positions,
+                            &p.indices,
+                            None,
+                            &mat,
+                            &[],
+                            origin,
+                            IDENTITY,
+                        )?;
                     }
                     visiaengine_geo::GeoPart::Strokes(strips) => {
                         let mut segs = Vec::new();
@@ -740,7 +756,7 @@ impl Engine {
                 mesh: it.mesh,
                 material: it.material,
                 origin: add_origin(it.origin, eff),
-                transform: IDENTITY,
+                transform: it.transform,
             });
         }
         if self.glyphs.take_dirty() {
@@ -1232,6 +1248,37 @@ impl Engine {
         Ok(n)
     }
 
+    /// CAPI-42/43 (V2.2): node-local transform write/read on a mounted glTF
+    /// entity. Column-major f64 x16 (GLTF-08 shape, same as GltfEntity.local).
+    /// The parent chain composes at draw time (world = P·local chain walk).
+    /// Finite gate on all 16; unknown entity = Err.
+    pub fn set_node_transform(&mut self, entity: u64, m: [[f64; 4]; 4]) -> Result<(), String> {
+        for row in &m {
+            for v in row {
+                if !v.is_finite() {
+                    return Err("node transform: non-finite element".into());
+                }
+            }
+        }
+        let id = dec_entity(entity);
+        let item = self
+            .items
+            .iter_mut()
+            .find(|it| it.entity == id)
+            .ok_or_else(|| format!("unknown entity {entity:#018x}"))?;
+        item.transform = m;
+        Ok(())
+    }
+
+    pub fn get_node_transform(&self, entity: u64) -> Result<[[f64; 4]; 4], String> {
+        let id = dec_entity(entity);
+        self.items
+            .iter()
+            .find(|it| it.entity == id)
+            .map(|it| it.transform)
+            .ok_or_else(|| format!("unknown entity {entity:#018x}"))
+    }
+
     /// CAPI-41 (I band): decode an .hdr (RGBE equirect) file and install its
     /// SH-9 irradiance projection as the global environment. Replaces the
     /// legacy constant ambient (WGPU-39); demo-grade claim — PMREM/LUT =
@@ -1677,7 +1724,7 @@ impl Engine {
             roughness,
             metallic: metalness,
         };
-        match self.upload(id, positions, indices, normals, &mat, &[], origin) {
+        match self.upload(id, positions, indices, normals, &mat, &[], origin, IDENTITY) {
             Ok(()) => Ok(enc_entity(id)),
             Err(e) => {
                 let _ = self.scene.despawn(id); // 代际 +1：失败位形永不复用撞出

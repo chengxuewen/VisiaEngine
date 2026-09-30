@@ -52,6 +52,12 @@ pub struct GltfEntity {
     pub mesh: GltfMesh,
     /// 世界变换，列主序（平移=m[3]，GLTF-02/08）。
     pub world: [[f64; 4]; 4],
+    /// V2.2: node-LOCAL TRS (GLTF-08 direct, un-multiplied) — the animation
+    /// face writes this per-frame; parent chain composes engine-side.
+    pub local: [[f64; 4]; 4],
+    /// V2.2: parent entity INDEX within the same document (None = scene root);
+    /// rigid hierarchy only (no skinning) — V2.4 scope split.
+    pub parent: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -214,6 +220,7 @@ fn read_mesh<'a>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk<'a>(
     get: GetBuf<'a, '_>,
     node: &gltf::Node<'a>,
@@ -221,9 +228,11 @@ fn walk<'a>(
     out: &mut Vec<GltfEntity>,
     rep: &mut LoadReport,
     tex_slot: &dyn Fn(usize) -> Option<usize>,
+    parent: Option<usize>,
 ) {
     // Transform 合成由 crate 完成（T·R·S 或原样 Matrix），本侧仅 f64 升位+层级乘（GLTF-08 直通）
     let world = mul(parent_world, &mat4_f64(node.transform().matrix()));
+    let first_entity = out.len(); // V2.2: index children will parent to
     if let Some(mesh) = node.mesh() {
         for prim in mesh.primitives() {
             // GLTF-09：模式过滤（曾以假三角混入）+ 空 positions 跳过
@@ -240,11 +249,21 @@ fn walk<'a>(
                 name: node.name().map(String::from),
                 mesh: data,
                 world,
+                local: mat4_f64(node.transform().matrix()),
+                parent: if first_entity == out.len() {
+                    parent
+                } else {
+                    Some(first_entity)
+                },
             });
         }
     }
+    // V2.2 rigid parent chain: children hang off this node's FIRST mesh
+    // entity index captured before the prim loop (multi-prim nodes share the
+    // node transform); child-of-meshless-node = keeps the incoming parent
+    // (grandparent attachment — honest scope note for the loader clause).
     for child in node.children() {
-        walk(get, &child, &world, out, rep, tex_slot);
+        walk(get, &child, &world, out, rep, tex_slot, parent);
     }
 }
 
@@ -308,7 +327,7 @@ pub fn load_gltf_bytes_with_report(bytes: &[u8]) -> Result<(GltfDocument, LoadRe
     ];
     if let Some(scene) = doc.default_scene() {
         for node in scene.nodes() {
-            walk(&get, &node, &root, &mut entities, &mut rep, &tex_slot);
+            walk(&get, &node, &root, &mut entities, &mut rep, &tex_slot, None);
         }
     }
     Ok((GltfDocument { entities, textures }, rep))

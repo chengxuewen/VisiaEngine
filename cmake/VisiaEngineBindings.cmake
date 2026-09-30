@@ -78,7 +78,7 @@ function(visiaengine_setup_bindings)
   # ── Rust 族：argv 唯一户口（pixi smoke 只做 `ctest -R` 转发壳，抄写面归零）──
   set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E206_tile_viewer E302_fly_camera E303_split_screen E304_projection_morph E305_entity_anim E403_box_select E306_map_controls E504_glass_water
                 E301_switch_camera E401_pick_demo E402_pick_interactive E501_shadow_demo
-                E502_color_tuning E503_stroke_points E505_cjk_labels E506_postprocessing E507_hdr_tonemap E508_pbr_materials E509_ssao E510_route_flow E601_bench_twin
+                E502_color_tuning E503_stroke_points E505_cjk_labels E506_postprocessing E507_hdr_tonemap E508_pbr_materials E509_ssao E510_route_flow E511_gate E601_bench_twin
                 E901_twin_city)
   set(_disp_E101_clear ON)
   set(_disp_E201_load_gltf ON)
@@ -96,6 +96,7 @@ function(visiaengine_setup_bindings)
   set(_args_E305_entity_anim "--frames;24")
   set(_disp_E510_route_flow ON)
   set(_args_E510_route_flow "--frames;1")
+  set(_args_E511_gate "--frames;1")
   set(_disp_E403_box_select ON)
   set(_args_E306_map_controls "--frames;1")
   set(_args_E403_box_select "--frames;3")

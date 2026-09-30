@@ -298,6 +298,39 @@ impl VisiaEngine {
         }
     }
 
+    /// CAPI-42: 节点局部变换写入（列主序 16 f64）。0=成功；负=拒。
+    #[wasm_bindgen(js_name = setNodeTransform)]
+    pub fn set_node_transform(&mut self, entity: u64, m: &[f64]) -> i32 {
+        if m.len() != 16 {
+            return -1;
+        }
+        let mut mat = [[0.0f64; 4]; 4];
+        for r in 0..4 {
+            for c in 0..4 {
+                mat[r][c] = m[r * 4 + c];
+            }
+        }
+        match self.inner.set_node_transform(entity, mat) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// CAPI-43: 节点局部变换读回（16 槽输出）。0=成功；负=拒。
+    #[wasm_bindgen(js_name = getNodeTransform)]
+    pub fn get_node_transform(&mut self, entity: u64, out: &mut Vec<f64>) -> i32 {
+        match self.inner.get_node_transform(entity) {
+            Ok(mat) => {
+                out.clear();
+                for row in &mat {
+                    out.extend_from_slice(row);
+                }
+                0
+            }
+            Err(_) => -1,
+        }
+    }
+
     /// CAPI-41: .hdr 环境装载（SH-9 辐照度；demo 级）。0=成功；负=拒。
     #[wasm_bindgen(js_name = loadEnvHdr)]
     pub fn load_env_hdr(&mut self, path: &str) -> i32 {

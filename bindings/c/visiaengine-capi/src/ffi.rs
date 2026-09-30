@@ -162,7 +162,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 15 // major 1 minor 15 (I band: +CAPI-41 load_env_hdr; >>16==1 unchanged)
+    (1 << 16) | 16 // major 1 minor 16 (V2.2: +CAPI-42/43 node transforms; >>16==1 unchanged)
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1583,6 +1583,79 @@ pub extern "C" fn visiaengine_load_mvt_dir(
                     };
                     match with_engine(i, |e| e.load_mvt_dir(path, z as u8)) {
                         Ok(n) => n as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-42 (V2.2): write a node-local transform (column-major f64 x16).
+/// 0 = ok; negative = error (NULL / non-finite / unknown entity).
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded (attr-face precedent)
+pub extern "C" fn visiaengine_set_node_transform(ve: u64, entity: u64, m: *const f64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if m.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    let mut mat = [[0.0f64; 4]; 4];
+                    unsafe {
+                        for (r, row) in mat.iter_mut().enumerate() {
+                            for (c, v) in row.iter_mut().enumerate() {
+                                *v = *m.add(r * 4 + c);
+                            }
+                        }
+                    }
+                    match with_engine(i, |e| e.set_node_transform(entity, mat)) {
+                        Ok(()) => 0,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-43 (V2.2): read back a node-local transform (column-major f64 x16).
+/// 0 = ok; negative = error (NULL / unknown entity).
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded (get_clips precedent)
+pub extern "C" fn visiaengine_get_node_transform(ve: u64, entity: u64, out: *mut f64) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if out.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    match with_engine(i, |e| e.get_node_transform(entity)) {
+                        Ok(mat) => {
+                            unsafe {
+                                for (r, row) in mat.iter().enumerate() {
+                                    for (c, v) in row.iter().enumerate() {
+                                        *out.add(r * 4 + c) = *v;
+                                    }
+                                }
+                            }
+                            0
+                        }
                         Err(msg) => {
                             set_err(msg);
                             VE_ERR_ARG

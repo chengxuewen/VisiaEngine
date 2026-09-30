@@ -117,3 +117,9 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 
 ## CAPI-41: load_env_hdr (I band)
 `visiaengine_load_env_hdr(ve, path) -> i32`：读 .hdr（RGBE equirect）→ `project_sh9`（256×128 分层采样，线性域）→ SH-9 系数安装为全局环境。替换 WGPU-35 legacy 常量 ambient（`env_on` 位后端态；未装载=旧路逐位）。**demo-grade 声明纪律**（R3 让步收窄）：L1+L2 辐照度 + roughness 加权反射 tint——非 PMREM prefilter/BRDF LUT（=独立 L 票，永不与本口捆绑）。负=错误（不可读/非法文件），错误串 TLS。引擎态（Engine.env_sh）跨帧存续；每 pass 推后端（view_block 尾缀段）。
+
+## CAPI-42: set_node_transform (V2.2)
+`visiaengine_set_node_transform(ve, entity, m)` / `visiaengine_get_node_transform(ve, entity, out)`：节点**局部**刚体变换写/读（列主序 f64×16，GLTF-08 同形）。写=引擎态覆写（DrawItem.transform），读=当前值回传（宿主 struct_size 预检形不适用——定长 16 槽，len 域在 wasm 桥侧）。域门：NULL/非有限(16 元素逐一)/未知位形 → 负。父链组合在 draw 期（world=P·local 链行）——本口是**节点局部**语义，非世界矩阵。既有消费回归保证：非 glTF 装载路径 transform 恒 IDENTITY（geo/add_mesh），glTF 装载=节点 local TRS 直通（**存量修复入册**：此前 glTF entity.world 层级矩阵在 mount 期被丢弃——多节点层级从未正确渲染，本带一并根修）。蒙皮/顶点动画=V2.4 域（本口只辖刚体）。
+
+## CAPI-43: get_node_transform (V2.2)
+`visiaengine_get_node_transform(ve, entity, out)`：节点局部变换读回（CAPI-42 的对称读面；16 槽定长输出，NULL 拒）。未知位形=负。与 CAPI-42 共享测试体（ffi_spec node_transform_write_read_domain：write→read 往返 + 非 fiducial 默认恒等 + NULL/域门）。

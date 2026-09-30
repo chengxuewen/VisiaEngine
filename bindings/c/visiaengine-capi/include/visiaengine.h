@@ -190,6 +190,12 @@ int32_t  visiaengine_set_raster_view(uint64_t ve, double min_x, double min_y,
    constant ambient). 0 = ok, negative = error (unreadable/invalid file). */
 int32_t  visiaengine_load_env_hdr(uint64_t ve, const char *path);
 
+/* CAPI-42/43 (V2.2): node-local rigid transform write/read on a mounted glTF
+   entity — column-major f64 x16 (GLTF-08 shape). The parent chain composes
+   at draw time. 0 = ok; negative = error (NULL / non-finite / unknown). */
+int32_t  visiaengine_set_node_transform(uint64_t ve, uint64_t entity, const double *m);
+int32_t  visiaengine_get_node_transform(uint64_t ve, uint64_t entity, double *out);
+
 /* CAPI-36..38 (N2.4): typed property diff-update — host-driven live-data
    writes on loaded entities (digital-twin face). Typed columns: f64 / str
    (UTF-8) / bool (1/0). First write on a name TYPES the column; writing a

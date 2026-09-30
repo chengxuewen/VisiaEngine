@@ -97,6 +97,13 @@ public:
     int32_t set_tile_view(double min_x, double min_y, double max_x, double max_y) {
         return visiaengine_set_tile_view(h_, min_x, min_y, max_x, max_y);
     }
+    /* CAPI-42/43 (V2.2): node-local rigid transform (column-major x16). */
+    int32_t set_node_transform(uint64_t entity, const double *m) {
+        return visiaengine_set_node_transform(h_, entity, m);
+    }
+    int32_t get_node_transform(uint64_t entity, double *out) {
+        return visiaengine_get_node_transform(h_, entity, out);
+    }
     /* CAPI-41 (I band): .hdr environment -> SH-9 irradiance (demo-grade). */
     int32_t load_env_hdr(const char *path) {
         return visiaengine_load_env_hdr(h_, path);

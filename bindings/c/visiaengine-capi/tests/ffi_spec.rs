@@ -10,14 +10,14 @@ use visiaengine::{
     visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
     visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
     visiaengine_fly_state, visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips,
-    visiaengine_get_group_offset, visiaengine_get_parent, visiaengine_last_error,
-    visiaengine_load_env_hdr, visiaengine_load_font, visiaengine_load_gltf,
+    visiaengine_get_group_offset, visiaengine_get_node_transform, visiaengine_get_parent,
+    visiaengine_last_error, visiaengine_load_env_hdr, visiaengine_load_font, visiaengine_load_gltf,
     visiaengine_load_mvt_dir, visiaengine_load_pcl, visiaengine_load_raster_dir,
     visiaengine_navigate_click, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
     visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
-    visiaengine_set_group_offset, visiaengine_set_map, visiaengine_set_parent,
-    visiaengine_set_raster_view, visiaengine_set_tile_source_http, visiaengine_set_tile_view,
-    visiaengine_viewport,
+    visiaengine_set_group_offset, visiaengine_set_map, visiaengine_set_node_transform,
+    visiaengine_set_parent, visiaengine_set_raster_view, visiaengine_set_tile_source_http,
+    visiaengine_set_tile_view, visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -284,13 +284,13 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_000F,
-        "major 1 minor 15 (I band: +CAPI-41 load_env_hdr, MAJOR-contained)"
+        0x0001_0010,
+        "major 1 minor 16 (V2.2: +CAPI-42/43 node transforms, MAJOR-contained)"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
     assert_eq!(
         h.join().unwrap(),
-        0x0001_000F,
+        0x0001_0010,
         "exception-set member is not thread-gated"
     );
 }
@@ -308,8 +308,8 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        47,
-        "extern entry count (cfg-gated line-head form; 46->47 = I env hdr)"
+        49,
+        "extern entry count (cfg-gated line-head form; 47->49 = V2.2 node pair)"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),
@@ -1316,4 +1316,51 @@ fn load_env_hdr_domain_and_install() {
         0,
         "fixture loads"
     );
+}
+
+// spec: CAPI-42
+// spec: CAPI-43
+#[test]
+fn node_transform_write_read_domain() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // mount twoprim fixture (2 entities; shared loader helper pins VE_OK).
+    load_twoprim(ve);
+    let h0 = visiaengine_entity_at(ve, 0);
+    let h1 = visiaengine_entity_at(ve, 1);
+    // NULL gates
+    assert_eq!(visiaengine_set_node_transform(ve, h0, std::ptr::null()), -1);
+    assert_eq!(
+        visiaengine_get_node_transform(ve, h0, std::ptr::null_mut()),
+        -1
+    );
+    // unknown entity form
+    assert_eq!(
+        visiaengine_set_node_transform(ve, u64::MAX, [0.0f64; 16].as_ptr()),
+        -1
+    );
+    // write identity then read back
+    let mut m = [0.0f64; 16];
+    m[0] = 1.0;
+    m[5] = 1.0;
+    m[10] = 1.0;
+    m[15] = 1.0;
+    assert_eq!(visiaengine_set_node_transform(ve, h0, m.as_ptr()), 0);
+    let mut out = [9.5f64; 16];
+    assert_eq!(visiaengine_get_node_transform(ve, h0, out.as_mut_ptr()), 0);
+    assert_eq!(out, m, "round-trip identity");
+    // non-finite reject
+    let mut bad = m;
+    bad[0] = f64::NAN;
+    assert_eq!(visiaengine_set_node_transform(ve, h0, bad.as_ptr()), -1);
+    // entity 2 untouched = default identity
+    let mut out2 = [0.0f64; 16];
+    assert_eq!(visiaengine_get_node_transform(ve, h1, out2.as_mut_ptr()), 0);
+    assert_eq!(
+        out2,
+        [
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
+        ]
+    );
+    let _ = h1;
 }

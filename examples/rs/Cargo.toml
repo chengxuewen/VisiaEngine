@@ -96,6 +96,10 @@ name = "E510_route_flow"
 path = "E510_route_flow.rs"
 
 [[example]]
+name = "E511_gate"
+path = "E511_gate.rs"
+
+[[example]]
 name = "E403_box_select"
 path = "E403_box_select.rs"
 
