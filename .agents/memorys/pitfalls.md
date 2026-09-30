@@ -276,3 +276,24 @@
 - **根因**: cmake 注册表 _disp_X ON 与 _args_X "--frames;N" 是一对语义绑定（disp=窗形态 args=自动化形态），单边注册=例面形态错位。
 - **解法**: 新例注册时同 commit 内两行一起写；验证=`ctest -LE display -N | grep <名>` 选中且 `--frames` 在 argv（冒烟跑通即证）。门禁化候选：R9 双向校验扩展 args 检查。
 - **验证**: `grep -A2 "_disp_${NAME}" cmake/VisiaEngineBindings.cmake | grep _args`（成对在场）。
+
+## PIT-41: 多块 patch 脚本=截断雷区——本轮四连（2026-09-30，io-gltf 清空事故）
+- **症状**: 多 patch python 脚本中途 assert/NameError 死亡时，已写盘内容不一而足（有的块落了有的没落），最恶性一例 io-gltf lib.rs 被清空 0 字节（open(p,'w') 截断时机踩中）。
+- **根因**: 「read→replace→write」与「write 在最后」混用；同一脚本内多个 patch 共享外层 `s` 变量时中途死亡=半新半旧状态不明；`open(p,'w')` 的截断发生在 write 前一瞬但变量链断裂时结果不可预测。
+- **解法**: ① patch 函数体**每次独立 read→write**（无外层共享 s）；② replace 结果先存 `ns` 变量再 write；③ 超过 2 块的改动**拆成多次工具调用**（每调用 1-2 patch）；④ 任何 patch 后立即 `grep` 验证关键字段在场。
+- **验证**: `wc -l` 对比改动前后 + `grep -c` 关键锚在场 + cargo check。
+- **阻塞条件**: 同一脚本 >2 patch 未拆分；patch 后未 grep 验证即继续。
+
+## PIT-42: WGSL uniform 布局三雷——闭包/let-if/array stride（2026-09-30，I 带三连）
+- **症状**: mesh.wgsl 加 env_sh 段三连崩：①`|i: u32| -> ...` 闭包语法 naga 拒（WGSL 无闭包）；②`let x = if cond {...}` 表达式形拒（WGSL let-if 不存在，需 var+语句）；③`array<f32,27>` uniform 校验拒（uniform 地址空间 array stride 必须 16 对齐）。
+- **根因**: Rust 心智直译 WGSL——三者都是 Rust 有而 WGSL 无的形态；stride 规则是 GPU uniform 布局的硬约束（vec3=16B、array<f32,N> 也要 16 对齐）。
+- **解法**: 闭包→模块级 fn；let-if→`var x = ...; if cond { x = ...; }`；数据数组→`array<vec4<f32>,N>`（RGB+pad）或手工 16B 对齐排布。View 块尾缀扩展后总 size 必须 16 倍数。
+- **验证**: 改动后先 `cargo run --example <nearest>` 看 shader parsing/validation 错误（lavapipe 报文行号精确），再谈像素断言。
+- **阻塞条件**: WGSL 新增 uniform 段未验证 16 对齐即绑定 binding size。
+
+## PIT-43: flag 偏移雷=探针职责非 review 职责（2026-09-30，I 带第二连）
+- **症状**: env_on flag 写在 float 92（旧 27-float 布局残迹），vec4 布局后真位=float 100——sh-diff=0 假装生效，review 三人无一发现，探针一次现形。
+- **根因**: CPU/GPU 两端各自演化后偏移表漂移；review 看代码对不出「92 vs 100」这种数值错位。
+- **解法**: CPU/GPU 共享布局段一律在两处注释里**同写字节偏移表**（「flag=float 100=byte 400」双边锚）；布局改动的验证谓词必须包含**端到端值差**（sh-diff>阈值），禁止只测「不崩」。
+- **验证**: 端到端像素差断言在场（E507 env probe 形）。
+- **阻塞条件**: 新增 CPU→GPU 段无端到端值差断言即交付。

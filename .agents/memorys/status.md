@@ -439,3 +439,18 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - E508 拖拽轨道/滚轮缩放 ✓（rig 硬编码根修=733de61）· 1/2/3 特效键 ✓
 - E507 tonemap/bloom 键 ✓ · E403 框选 ✓ · E306 map controls ✓ · E304 morph（此前已验）✓
 - 结论：N3-N6 五带全部交互面双验通过，无遗留 T3 项
+
+## V 系列 gap-closure 基线（2026-09-30，hyperplan→全量补全裁决→Block A/B 执行）
+
+- 源起：hyperplan 对抗 5 员×3 轮（研究底料=three.js 608 例普查 + refinfo 13 项目 + self-audit）→ 全量补全裁决 → 计划 v1.1（`.omo/plans/gap-closure-full-2026-09-30.md`，4 员审核 10 修 4 险）→ 执行
+- 审计双正本：`docs/reference/team-gap-analysis-2026-09-30.md` 时代（34→41 例后复普）+ `docs/gap-closure-roadmap.md`（15 覆盖/3 反超/4 部分/1 独有）
+- **W1**（`9fd64a2`）：REND-46 stroke 屏幕空间拾取谓词（+5 纯数学测；引擎接线诚实挂账——C pick 面 EntityId 与 seg 无 entity 表冲突 CAPI-01，伪装即违纪）
+- **W2**（`e24b308`）：WGPU-38 depth haze——**raw depth 透视压缩雷探针现形**（16m≈0.994），SSAO view_z 米域线性化；三带几何感知双面锁（bg 12114 全雾/near 0 触碰）；E506 键 4
+- **D**（`13035eb`）：四漂移对账（MVT/morph/场景树/Flutter-C#）+ **check-promises lint**（proximity 匹配器；self-test 破探针抓到第一版行级 allowlist 太粗）+ llms.txt/docs-gen；**ci 十段→十一段**
+- **R**（`54f4e26`）：**白皮书 L53 WMS/WMTS 承诺兑现**（栅格面）——IO-18 `TilePayload{Mvt,Raster}` 枚举（反陷阱裁定=单车道泵/LRU 零分叉）+ CAPI-39/40 平铺 basemap（N1.2 纪律：NOT terrain）；五面镜像 abi 0x0001000E
+- **I**（`49c2a95`）：**WGPU-39 SH-9 环境光照**（demo 级声明收窄；View 块 256→416B 尾缀方案零新 binding；PIT-41/42/43 三雷全踩全拆）；CAPI-41；E507 env probe
+- **V2.1**（`88e2e90`）：REND-47 Bezier/CatmullRom+tube/ribbon（+0 ABI 消费带）——**E510 端点律断言首跑抓采样器真 bug**（末 knot 永不落地）；E510 四消费者+常驻窗补壳（`5e34bc0`，C15 第四例新变体=无窗；destroy_points 引擎口前置落地）
+- **V2.2**（`68cc205`）：**CAPI-42/43 节点局部变换 + 存量根修**——glTF entity.world 层级矩阵 mount 期被丢弃（多节点层级从未正确渲染，E201 单层掩盖）；DrawItem.transform 全链贯通+刚性父链；五面镜像 abi 0x00010010（49 入口）；E511 旋转像素证明
+- **V2.3 LAS=条件制未开**（真实 .las fixture 未落库）；**V2.4 蒙皮+morph=L 级候立项**（F1 提级在册，须独立 plan→Momus→批准）
+- 基线：**343 passed · spec-trace 199↔199 · ABI 49/49 (0x00010010) · ci 十一段 · 画廊 43 卡 · 领先 origin 3 笔（gitee 鉴权失败待用户侧刷新）**
+- 教训入册：PIT-41（多块 patch 截断雷，io-gltf 清空事故）/ PIT-42（WGSL uniform 三雷：闭包/let-if/array stride）/ PIT-43（flag 偏移漂移=探针职责）；后台代理五连败复盘（rpm 限流×3+stale-timeout×2，主会话直做 W1 40 分钟 vs 代理 3 轮全灭——小带直做优于派发）
