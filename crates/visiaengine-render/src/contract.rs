@@ -456,6 +456,12 @@ pub enum PostEffect {
     /// v1 honesty: depth-only (no normal buffer) — creases/near-contact
     /// regions darken; HBAO/normal-buffer upgrade = ticket.
     Ssao { radius: f32, intensity: f32 },
+    /// Screen-space depth haze (WGPU-38): blends toward a constant haze
+    /// color by LINEAR view distance in meters (SSAO-family view_z
+    /// linearization; raw depth is useless under perspective — probe-verified).
+    /// Background (depth 1.0 = 1000 m) always takes full haze. Screen-space
+    /// ONLY (post chain); scene-space fog = separate ticket.
+    Haze { far_start: f32, far_full: f32 },
 }
 
 impl PostEffect {
@@ -495,6 +501,23 @@ impl PostEffect {
     pub fn ssao(radius: f32, intensity: f32) -> Option<Self> {
         if radius.is_finite() && radius > 0.0 && (0.0..=4.0).contains(&intensity) {
             Some(Self::Ssao { radius, intensity })
+        } else {
+            None
+        }
+    }
+
+    /// Domain-reject constructor: non-finite / far_start < 0 /
+    /// far_start >= far_full -> None (explicit reject, no clamp).
+    /// far_full is ALLOWED to exceed 1.0 (clamp-to-depth-1 keeps the top
+    /// band below full haze when the author wants a soft ceiling).
+    #[must_use]
+    pub fn haze(far_start: f32, far_full: f32) -> Option<Self> {
+        if far_start.is_finite() && far_full.is_finite() && far_start >= 0.0 && far_start < far_full
+        {
+            Some(Self::Haze {
+                far_start,
+                far_full,
+            })
         } else {
             None
         }

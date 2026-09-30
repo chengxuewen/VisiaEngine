@@ -1,7 +1,8 @@
-//! E506 Postprocessing — bloom/outline post chain live demo (WGPU-34/REND-43).
+//! E506 Postprocessing — bloom/outline/haze post chain live demo (WGPU-34/36/38, REND-43).
 //!
 //! Dual-mode (E304 same shape): MeshCore direct + HeadlessBackend assert.
-//! - No-arg = resident window: `1` bloom toggle, `2` outline toggle, `3` both
+//! - No-arg = resident window: `1` bloom toggle, `2` outline toggle, `3` both,
+//!   `4` haze toggle (WGPU-38 screen-space depth haze)
 //!   off; title echoes state, Esc closes.
 //! - `--frames N` = offscreen assert path: off vs bloom and off vs outline
 //!   pixel diffs exceed probe-pinned K; off state deterministic (canary).
@@ -191,12 +192,66 @@ fn prove(frames: u32) {
 
     // Probe (lavapipe, 320×240 city scene): off-vs-bloom=1289 px,
     // off-vs-outline=1509 px. K floors conservative (PIT-8): −50%.
+    let haze = b
+        .render_to_pixels(&frame(
+            &cmds,
+            vec![PostEffect::haze(40.0, 200.0).expect("haze")],
+            W,
+            H,
+        ))
+        .unwrap();
+
+    // Probe (lavapipe, 320x240 city scene): off-vs-bloom=1289 px,
+    // off-vs-outline=1509 px. K floors conservative (PIT-8): -50%.
+    // Haze is TWO-SIDED (WGPU-38): far region must shift, NEAR region must
+    // stay bitwise identical to off (depth-gating proof, not a global tint).
     let db = diff_px(&off_a, &bloom);
     let dc = diff_px(&off_a, &outline);
-    println!("E506 probe: bloom diff={db} outline diff={dc}");
+    let dh = diff_px(&off_a, &haze);
+    println!("E506 probe: bloom diff={db} outline diff={dc} haze diff={dh}");
     assert!(db > 600, "bloom must differ from off: {db}");
     assert!(dc > 700, "outline must differ from off: {dc}");
-    println!("E506 OK: off deterministic; bloom/outline pixel-verified");
+    assert!(dh > 400, "haze must differ from off in far region: {dh}");
+    // WGPU-38 two-sided law, geometry-aware (probe-taught: rows are NOT a
+    // depth proxy — background pixels live in every row band). Partition by
+    // clear-color: background px (off == clear) MUST take full haze; the
+    // scene's near geometry (<40 m band) must stay untouched — on this city
+    // frame every geometry pixel is inside far_start, so NO geometry pixel
+    // may change at all.
+    let clear: [u8; 3] = [13, 18, 25]; // calibrated canary (WGPU-34 family)
+    let mut bg = (0usize, 0usize); // (hazed, total)
+    let mut geo_touched = 0usize;
+    for (o, x) in off_a
+        .rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(haze.rgba.as_chunks::<4>().0)
+    {
+        if [o[0], o[1], o[2]] == clear {
+            bg.1 += 1;
+            if x[..3] != o[..3] {
+                bg.0 += 1;
+            }
+        } else if x[..3] != o[..3] {
+            geo_touched += 1;
+        }
+    }
+    eprintln!(
+        "E506 haze probe: bg {}/{} hazed; geo touched {geo_touched}",
+        bg.0, bg.1
+    );
+    assert!(
+        bg.1 > 1000 && bg.0 == bg.1,
+        "background must take full haze"
+    );
+    assert_eq!(
+        geo_touched, 0,
+        "all scene geometry is <40 m — near-unchanged law"
+    );
+    println!(
+        "E506 OK: off deterministic; bloom/outline/haze pixel-verified (bg hazed, geo untouched)"
+    );
 }
 
 // ── resident window path (E304 winit shape) ──────────────────────────────────
@@ -208,6 +263,7 @@ struct App {
     commands: Vec<DrawCommand>,
     bloom: bool,
     outline: bool,
+    haze: bool,
     ready: bool,
 }
 
@@ -221,7 +277,7 @@ impl ApplicationHandler for App {
                 .create_window(
                     winit::window::WindowAttributes::default()
                         .with_inner_size(winit::dpi::PhysicalSize::new(640u32, 480u32))
-                        .with_title("E506 post off · 1=bloom 2=outline 3=off · Esc exit"),
+                        .with_title("E506 post off · 1=bloom 2=outline 4=haze 3=off · Esc exit"),
                 )
                 .expect("window"),
         );
@@ -283,6 +339,10 @@ impl ApplicationHandler for App {
                         self.outline = !self.outline;
                         self.redraw();
                     }
+                    winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit4) => {
+                        self.haze = !self.haze;
+                        self.redraw();
+                    }
                     winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Digit3) => {
                         self.bloom = false;
                         self.outline = false;
@@ -317,6 +377,9 @@ impl App {
         if self.outline {
             post.push(PostEffect::outline(2.0).expect("outline"));
         }
+        if self.haze {
+            post.push(PostEffect::haze(40.0, 200.0).expect("haze"));
+        }
         let frame = frame(&self.commands, post, w, h);
         match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(tex)
@@ -332,14 +395,24 @@ impl App {
             }
             other => eprintln!("skip {other:?}"),
         }
-        let state = match (self.bloom, self.outline) {
-            (false, false) => "off",
-            (true, false) => "bloom",
-            (false, true) => "outline",
-            (true, true) => "bloom+outline",
+        let state = match (self.bloom, self.outline, self.haze) {
+            (false, false, false) => "off".to_string(),
+            (true, false, false) => "bloom".to_string(),
+            (false, true, false) => "outline".to_string(),
+            (true, true, false) => "bloom+outline".to_string(),
+            (b, o, true) => {
+                let base = match (b, o) {
+                    (false, false) => "off",
+                    (true, false) => "bloom",
+                    (false, true) => "outline",
+                    _ => "bloom+outline",
+                };
+                format!("{base}+haze")
+            }
         };
-        window
-            .set_title(format!("E506 post {state} · 1=bloom 2=outline 3=off · Esc exit").as_str());
+        window.set_title(
+            format!("E506 post {state} · 1=bloom 2=outline 4=haze 3=off · Esc exit").as_str(),
+        );
     }
 }
 
@@ -367,6 +440,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 commands: Vec::new(),
                 bloom: false,
                 outline: false,
+                haze: false,
                 ready: false,
             };
             el.run_app(&mut app)?;

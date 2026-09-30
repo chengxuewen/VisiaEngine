@@ -90,8 +90,8 @@ pub struct MeshCore {
     /// array keyed (effect index in chain) — chains longer than 2 are a plan
     /// non-goal this band.
     post_bgl: wgpu::BindGroupLayout,
-    post_shaders: [wgpu::ShaderModule; 4], // [bloom, outline, tonemap, ssao]
-    post_pipelines: [HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>; 4],
+    post_shaders: [wgpu::ShaderModule; 5], // [bloom, outline, tonemap, ssao, haze]
+    post_pipelines: [HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>; 5],
     post_stages: [Option<(u32, u32, wgpu::TextureView, wgpu::TextureFormat)>; 2],
 }
 
@@ -611,6 +611,12 @@ impl MeshCore {
                     "../shaders/ssao.wgsl"
                 ))),
             }),
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("haze-shader"),
+                source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(include_str!(
+                    "../shaders/haze.wgsl"
+                ))),
+            }),
         ];
         let label_smp = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("atlas-smp"),
@@ -670,6 +676,7 @@ impl MeshCore {
             post_bgl,
             post_shaders,
             post_pipelines: [
+                HashMap::new(),
                 HashMap::new(),
                 HashMap::new(),
                 HashMap::new(),
@@ -1658,12 +1665,14 @@ impl MeshCore {
                 visiaengine_render::PostEffect::Outline { width } => (width, width),
                 visiaengine_render::PostEffect::Tonemap { .. } => (0.0, 0.0),
                 visiaengine_render::PostEffect::Ssao { .. } => (0.0, 0.0),
+                visiaengine_render::PostEffect::Haze { .. } => (0.0, 0.0),
             };
             let effect_idx = match effect {
                 visiaengine_render::PostEffect::Bloom { .. } => 0usize,
                 visiaengine_render::PostEffect::Outline { .. } => 1usize,
                 visiaengine_render::PostEffect::Tonemap { .. } => 2usize,
                 visiaengine_render::PostEffect::Ssao { .. } => 3usize,
+                visiaengine_render::PostEffect::Haze { .. } => 4usize,
             };
             let params: [f32; 4] = match effect {
                 visiaengine_render::PostEffect::Bloom { .. } => {
@@ -1679,6 +1688,18 @@ impl MeshCore {
                 visiaengine_render::PostEffect::Ssao { radius, intensity } => {
                     // WGPU-36 params packing: (texel_w, texel_h, radius, intensity).
                     [1.0 / width as f32, 1.0 / height as f32, *radius, *intensity]
+                }
+                visiaengine_render::PostEffect::Haze {
+                    far_start,
+                    far_full,
+                } => {
+                    // WGPU-38 params packing: (texel_w, texel_h, far_start, far_full).
+                    [
+                        1.0 / width as f32,
+                        1.0 / height as f32,
+                        *far_start,
+                        *far_full,
+                    ]
                 }
             };
             self.run_post_effect_pass(
