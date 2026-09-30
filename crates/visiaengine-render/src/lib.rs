@@ -26,5 +26,6 @@ pub use contract::{
 };
 pub use morph::{morph_ease, morph_proj, morph_px_scale};
 pub use picking::{
-    MeshCandidate, PickHit, PointCloudCandidate, PointHit, pick_meshes, pick_points,
+    MeshCandidate, PickHit, PointCloudCandidate, PointHit, StrokeCandidate, StrokeHit, pick_meshes,
+    pick_points, pick_strokes,
 };

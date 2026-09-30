@@ -7,6 +7,7 @@
 //! 几何查找闭包注入模式弃用——数据参数化（调用方持 scene↔mesh 关联，
 //! 引擎零新状态；Scene 现无几何组件，关联归宿主/几何组件片）。
 
+use crate::contract::StrokeSeg;
 use visiaengine_core::{EntityId, Ray, Vec3, ray_aabb, ray_triangle};
 
 /// 拾取候选：局部顶点 + 世界矩阵（`DrawMesh.transform` 同型列主序）。
@@ -211,6 +212,121 @@ pub fn pick_points(
                 view_z: depth,
                 point_index: idx,
             });
+        }
+    }
+    best
+}
+
+/// Stroke pick candidate (REND-46): world form matching the tile-layer stroke
+/// path (DrawStrokes consumes world-frame segments; engine bakes `origin + M`
+/// per D7 before upload — the candidate carries the ALREADY-BAKED form).
+pub struct StrokeCandidate<'a> {
+    pub segs: &'a [StrokeSeg],
+}
+
+/// Stroke hit (REND-46): segment index within the candidate, screen distance,
+/// and view depth at the closest endpoint (conservative depth proxy: the
+/// front stroke wins among crossing segments).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StrokeHit {
+    pub seg_index: usize,
+    pub screen_d2: f64,
+    pub view_z: f64,
+}
+
+/// REND-46: screen-space constant-width stroke pick predicate.
+///
+/// Mirrors REND-38 (point pick) with a segment-distance rule: project BOTH
+/// endpoints through `mvp` (compose_mvp D7 chain — world-baked segments, no
+/// extra origin), reject a segment if EITHER endpoint fails the [0,1] RH
+/// depth-domain guard (behind near / beyond far), then take the classic
+/// point-to-segment distance in screen px. Hit requires distance <= half the
+/// segment's `width_px` plus a 2px slop (input-comfort margin, same spirit
+/// as `PICK_RADIUS_PX`); among hits, the smallest view depth wins (endpoint
+/// min = conservative front-stroke rule). Clip filtering is the caller's
+/// policy (WGPU-21), identical to REND-38.
+///
+/// ponytail: linear scan; per-seg O(1) after projection.
+#[must_use]
+pub fn pick_strokes(
+    mvp: &[[f32; 4]; 4],
+    w: f32,
+    h: f32,
+    px: f32,
+    py: f32,
+    cands: &[StrokeCandidate<'_>],
+) -> Option<StrokeHit> {
+    let (hw, hh) = (f64::from(w) * 0.5, f64::from(h) * 0.5);
+    let (sx, sy) = (f64::from(px), f64::from(py));
+    let mut best: Option<StrokeHit> = None;
+    for c in cands {
+        for (si, seg) in c.segs.iter().enumerate() {
+            let mut ends = [None; 2];
+            let mut ok = true;
+            for (ei, p) in [&seg.a, &seg.b].iter().enumerate() {
+                let l = [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])];
+                let cx = f64::from(mvp[0][0]) * l[0]
+                    + f64::from(mvp[1][0]) * l[1]
+                    + f64::from(mvp[2][0]) * l[2]
+                    + f64::from(mvp[3][0]);
+                let cy = f64::from(mvp[0][1]) * l[0]
+                    + f64::from(mvp[1][1]) * l[1]
+                    + f64::from(mvp[2][1]) * l[2]
+                    + f64::from(mvp[3][1]);
+                let cz = f64::from(mvp[0][2]) * l[0]
+                    + f64::from(mvp[1][2]) * l[1]
+                    + f64::from(mvp[2][2]) * l[2]
+                    + f64::from(mvp[3][2]);
+                let cw = f64::from(mvp[0][3]) * l[0]
+                    + f64::from(mvp[1][3]) * l[1]
+                    + f64::from(mvp[2][3]) * l[2]
+                    + f64::from(mvp[3][3]);
+                if cw <= 0.0 || !cw.is_finite() {
+                    ok = false;
+                    break;
+                }
+                let depth = cz / cw;
+                // RH [0,1] (PIT-5): either endpoint out of domain = whole seg
+                // rejected for v1 (partial offscreen clamping = documented
+                // limitation, not silently wrong).
+                if !(0.0..=1.0).contains(&depth) {
+                    ok = false;
+                    break;
+                }
+                let s_x = (cx / cw + 1.0) * hw;
+                let s_y = (1.0 - cy / cw) * hh;
+                ends[ei] = Some((s_x, s_y, depth));
+            }
+            if !ok {
+                continue;
+            }
+            let (Some((ax, ay, az)), Some((bx, by, bz))) = (ends[0], ends[1]) else {
+                continue;
+            };
+            // point-to-segment distance in screen px (classic form)
+            let (vx, vy) = (bx - ax, by - ay);
+            let len2 = vx * vx + vy * vy;
+            let t = if len2 <= f64::EPSILON {
+                0.0
+            } else {
+                (((sx - ax) * vx + (sy - ay) * vy) / len2).clamp(0.0, 1.0)
+            };
+            let (qx, qy) = (ax + t * vx, ay + t * vy);
+            let dx = sx - qx;
+            let dy = sy - qy;
+            let d2 = dx * dx + dy * dy;
+            let half_w = f64::from(seg.width_px) * 0.5 + 2.0; // 2px input slop
+            if d2 > half_w * half_w {
+                continue;
+            }
+            let view_z = az.min(bz);
+            if best.is_none_or(|b| view_z < b.view_z) {
+                best = Some(StrokeHit {
+                    seg_index: si,
+                    screen_d2: d2,
+                    view_z,
+                });
+            }
         }
     }
     best
