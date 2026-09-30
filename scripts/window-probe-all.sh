@@ -9,7 +9,7 @@ for E in E101_clear E201_load_gltf E202_geo_viewer E205_text_labels \
          E301_switch_camera E302_fly_camera E303_split_screen \
          E304_projection_morph E306_map_controls E402_pick_interactive \
          E403_box_select E501_shadow_demo E502_color_tuning \
-         E503_stroke_points E504_glass_water E505_cjk_labels \
+         E503_stroke_points E504_glass_water E505_cjk_labels E510_route_flow \
          E506_postprocessing E507_hdr_tonemap E508_pbr_materials E509_ssao; do
   bash scripts/window-probe.sh "$E" || RC=1
 done

@@ -574,6 +574,10 @@ pub trait RenderBackend {
             reason: "labels unsupported by this backend".into(),
         })
     }
+
+    /// 点表销毁（V2.1 流动 lane 需求；动态表替换的最小销毁面——mesh/strokes
+    /// 静态产品不动，仅 points 供每帧重建）。默认体=无操作（族协议默认形）。
+    fn destroy_points(&mut self, _id: TableId) {}
 }
 
 /// 阴影深度偏置（[0,1] 约定；负值=向光拉离，防自影 acne）。

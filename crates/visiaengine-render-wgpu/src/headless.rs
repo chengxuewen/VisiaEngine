@@ -23,6 +23,12 @@ impl HeadlessBackend {
         self.core.set_env_sh(sh);
     }
 
+    /// V2.1: direct MeshCore access (resource building on the headless
+    /// backend's own device — E510 dual-lane scene builder shares one type).
+    pub fn core_mut(&mut self) -> &mut MeshCore {
+        &mut self.core
+    }
+
     #[must_use]
     pub fn new(width: u32, height: u32) -> Option<Self> {
         let sh = crate::mesh_core::create_shared_device()?;
@@ -235,6 +241,10 @@ impl RenderBackend for HeadlessBackend {
 
     fn create_strokes(&mut self, desc: &StrokeTableDesc<'_>) -> Result<TableId, BackendError> {
         self.core.create_strokes(desc)
+    }
+
+    fn destroy_points(&mut self, id: TableId) {
+        self.core.destroy_points(id);
     }
 
     fn create_points(&mut self, desc: &PointTableDesc<'_>) -> Result<TableId, BackendError> {

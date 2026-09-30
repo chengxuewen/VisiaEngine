@@ -15,12 +15,19 @@
 #[path = "gallery.rs"]
 mod gallery;
 use gallery::save_frame;
-use visiaengine_render::RenderBackend;
-use visiaengine_render::contract::{
-    Camera, DrawCommand, Frame, MaterialDesc, MeshDesc, PointMark, PointTableDesc, Viewport,
+use std::sync::Arc;
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::window::{Window, WindowId};
+
+use visiaengine_render::{
+    Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, PointMark, PointTableDesc,
+    Viewport,
+    curve::{ribbon_xz, sample_catmull_rom, tube},
 };
-use visiaengine_render::curve::{ribbon_xz, sample_catmull_rom, tube};
-use visiaengine_render_wgpu::HeadlessBackend;
+use visiaengine_render_wgpu::mesh_core::MeshCore;
+use visiaengine_render_wgpu::{HeadlessBackend, MultiClearPolicy};
 
 const W: u32 = 480;
 const H: u32 = 320;
@@ -36,7 +43,7 @@ fn route_knots() -> Vec<[f32; 3]> {
     ]
 }
 
-fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32; 3]>) {
+fn scene(b: &mut MeshCore, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32; 3]>) {
     let knots = route_knots();
     let center = sample_catmull_rom(&knots, 24);
     assert_eq!(center.first(), knots.first(), "curve endpoint law (start)");
@@ -50,7 +57,7 @@ fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32;
     // by a shifted knot copy — same curve family, cheaper than true offsets).
     let (rpos, ridx) = ribbon_xz(&center, 4.0);
     let road = b
-        .create_mesh(&MeshDesc {
+        .upload_mesh(&MeshDesc {
             uv: &[],
             positions: &rpos,
             normals: &vec![[0.0, 1.0, 0.0]; rpos.len()],
@@ -58,7 +65,7 @@ fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32;
         })
         .expect("road mesh");
     let road_mat = b
-        .create_material_desc(&MaterialDesc {
+        .upload_material_desc(&MaterialDesc {
             base_color: [0.16, 0.17, 0.19, 1.0],
             texture: None,
             repeat: [1.0, 1.0],
@@ -75,7 +82,7 @@ fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32;
     let c_dn = sample_catmull_rom(shifted_up.as_slice(), 24);
     let (t2p, t2i) = tube(&c_dn, 0.18, 6);
     let rail1 = b
-        .create_mesh(&MeshDesc {
+        .upload_mesh(&MeshDesc {
             uv: &[],
             positions: &t1p,
             normals: &t1p.iter().map(|p| norm_of(*p)).collect::<Vec<_>>(),
@@ -83,7 +90,7 @@ fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32;
         })
         .expect("rail1");
     let rail2 = b
-        .create_mesh(&MeshDesc {
+        .upload_mesh(&MeshDesc {
             uv: &[],
             positions: &t2p,
             normals: &t2p.iter().map(|p| norm_of(*p)).collect::<Vec<_>>(),
@@ -91,7 +98,7 @@ fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32;
         })
         .expect("rail2");
     let rail_mat = b
-        .create_material_desc(&MaterialDesc {
+        .upload_material_desc(&MaterialDesc {
             base_color: [0.95, 0.62, 0.18, 1.0],
             texture: None,
             repeat: [1.0, 1.0],
@@ -101,26 +108,7 @@ fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32;
         })
         .expect("rail mat");
 
-    // Flow markers: N samples along the SAME center polyline (flow = anim
-    // lane consumed per-frame in the window form; here assert the sample set).
-    let marks: Vec<PointMark> = (0..flow_n)
-        .map(|i| {
-            let idx = i * (center.len() - 1) / flow_n.max(1);
-            let mut p = center[idx];
-            p[1] = 0.15; // float above road
-            PointMark::new(p, [1.0, 0.9, 0.2], 6.0)
-        })
-        .collect();
-    assert_eq!(
-        marks.first().expect("first").pos[0],
-        center[0][0] as f32,
-        "flow endpoint law"
-    );
-    let pt_table = b
-        .create_points(&PointTableDesc { data: &marks })
-        .expect("points");
-
-    let cmds = vec![
+    let mut cmds = vec![
         DrawCommand::ClearColor {
             rgba: [0.06, 0.08, 0.11, 1.0],
         },
@@ -142,12 +130,32 @@ fn scene(b: &mut HeadlessBackend, flow_n: usize) -> (Vec<DrawCommand>, Vec<[f32;
             origin: [0.0; 3],
             transform: identity(),
         },
-        DrawCommand::DrawPoints {
+    ];
+    // flow_n = 0 = window lane (markers are the per-frame dynamic table,
+    // not baked here); flow_n > 0 = assert lane (endpoint law applies).
+    if flow_n > 0 {
+        let marks: Vec<PointMark> = (0..flow_n)
+            .map(|i| {
+                let idx = i * (center.len() - 1) / flow_n;
+                let mut p = center[idx];
+                p[1] = 0.15; // float above road
+                PointMark::new(p, [1.0, 0.9, 0.2], 6.0)
+            })
+            .collect();
+        assert_eq!(
+            marks.first().expect("first").pos[0],
+            center[0][0] as f32,
+            "flow endpoint law"
+        );
+        let pt_table = b
+            .create_points(&PointTableDesc { data: &marks })
+            .expect("points");
+        cmds.push(DrawCommand::DrawPoints {
             table: pt_table,
             origin: [0.0; 3],
             transform: identity(),
-        },
-    ];
+        });
+    }
     (cmds, center)
 }
 
@@ -208,7 +216,7 @@ fn diff_px(
 fn prove(frames: u32) {
     let _ = frames;
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
-    let (cmds, _center) = scene(&mut b, 12);
+    let (cmds, _center) = scene(b.core_mut(), 12);
 
     let base = b.render_to_pixels(&frame(&cmds)).expect("render");
     // route spread: the S-curve must put geometry across the frame — sample
@@ -226,7 +234,7 @@ fn prove(frames: u32) {
 
     // Flow density law: denser sampling = strictly more marker pixels than a
     // sparse render (same camera, same geometry, only points differ).
-    let (cmds_sparse, _) = scene(&mut b, 3);
+    let (cmds_sparse, _) = scene(b.core_mut(), 3);
     let sparse = b.render_to_pixels(&frame(&cmds_sparse)).expect("sparse");
     let d = diff_px(&sparse, &base);
     println!("E510 probe: flow-density diff={d}");
@@ -236,12 +244,267 @@ fn prove(frames: u32) {
     println!("E510 OK: curve endpoints exact; ribbon+tube uploaded; flow markers pixel-verified");
 }
 
-fn window_form() {
-    // Window lane: reuse the prove scene with an orbit camera (E305 family
-    // shape; minimal winit shell — full interactivity lives in E306/E901).
-    println!(
-        "E510 window: interactive orbit is E306/E901's lane; this example ships the headless assert path (--frames 1)"
-    );
+/// Window lane state (C15 dual-mode: zero-arg = resident human window).
+struct App {
+    window: Option<Arc<Window>>,
+    core: Option<MeshCore>,
+    surface: Option<wgpu::Surface<'static>>,
+    config: Option<wgpu::SurfaceConfiguration>,
+    // Static GPU products (road + rails), built once in resumed().
+    static_cmds: Vec<DrawCommand>,
+    // Flow lane: sample positions along the route center; the point table is
+    // rebuilt each frame from a advancing phase (wrap at the end).
+    center: Vec<[f32; 3]>,
+    table: Option<visiaengine_render::TableId>,
+    phase: f64,
+    last: Option<std::time::Instant>,
+    // Orbit camera (E508 shape)
+    rig: visiaengine_render::CameraRig,
+    drag: bool,
+    last_pos: (f64, f64),
+    ready: bool,
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.ready {
+            return;
+        }
+        let window = Arc::new(
+            event_loop
+                .create_window(
+                    winit::window::WindowAttributes::default()
+                        .with_inner_size(winit::dpi::PhysicalSize::new(800u32, 560u32))
+                        .with_title("E510 route flow · drag=orbit wheel=zoom · Esc exit"),
+                )
+                .expect("window"),
+        );
+        let size = window.inner_size();
+        let instance = visiaengine_render_wgpu::create_instance();
+        let surface = instance
+            .create_surface(Arc::clone(&window))
+            .expect("surface");
+        let Some(adapter) =
+            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                compatible_surface: Some(&surface),
+                ..Default::default()
+            }))
+            .ok()
+        else {
+            eprintln!("no adapter");
+            event_loop.exit();
+            return;
+        };
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("visiaengine-e510"),
+            required_features: wgpu::Features::empty(),
+            required_limits: adapter.limits(),
+            ..Default::default()
+        }))
+        .expect("device");
+        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
+        let caps = surface.get_capabilities(&adapter);
+        let mut config = surface
+            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
+            .expect("cfg");
+        config.format = caps.formats[0];
+        surface.configure(&core.device, &config);
+        // Static scene (road + rails): reuse the prove-lane builder but with
+        // flow_n = 0 (the point table is the per-frame dynamic part).
+        let (cmds, center) = scene(&mut core, 0);
+        self.static_cmds = cmds;
+        self.center = center;
+        self.core = Some(core);
+        self.surface = Some(surface);
+        self.config = Some(config);
+        self.window = Some(window);
+        self.ready = true;
+        self.last = Some(std::time::Instant::now());
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::KeyboardInput { event, .. }
+                if event.state == winit::event::ElementState::Pressed
+                    && event.physical_key
+                        == winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Escape) =>
+            {
+                event_loop.exit();
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                if button == winit::event::MouseButton::Left {
+                    self.drag = state == winit::event::ElementState::Pressed;
+                }
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                if self.drag {
+                    let dx = position.x - self.last_pos.0;
+                    let dy = position.y - self.last_pos.1;
+                    self.last_pos = (position.x, position.y);
+                    let (eye, target) = (self.rig.eye(), [0.0, 0.0, 0.0]);
+                    let off = [eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]];
+                    let r = (off[0] * off[0] + off[1] * off[1] + off[2] * off[2]).sqrt();
+                    let theta = off[1].atan2(off[0]) + dx * 0.005;
+                    let phi = (off[2] / r).clamp(-1.4, 1.4) - dy * 0.005;
+                    let (ex, ey, ez) = (
+                        target[0] + r * phi.cos() * theta.cos(),
+                        target[1] + r * phi.cos() * theta.sin(),
+                        target[2] + r * phi.sin(),
+                    );
+                    self.rig = CameraRig::look_at([ex, ey, ez.max(0.5)], target, [0.0, 0.0, 1.0]);
+                } else {
+                    self.last_pos = (position.x, position.y);
+                }
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let d = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => f64::from(y) * 1.0,
+                    winit::event::MouseScrollDelta::PixelDelta(p) => p.y * 0.05,
+                };
+                let (eye, target) = (self.rig.eye(), [0.0, 0.0, 0.0]);
+                let off = [eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]];
+                let r = ((off[0] * off[0] + off[1] * off[1] + off[2] * off[2]).sqrt()
+                    * (1.0 - d * 0.1))
+                    .clamp(6.0, 80.0);
+                let len = (off[0] * off[0] + off[1] * off[1] + off[2] * off[2]).sqrt();
+                let k = r / len;
+                self.rig = CameraRig::look_at(
+                    [
+                        target[0] + off[0] * k,
+                        target[1] + off[1] * k,
+                        target[2] + off[2] * k,
+                    ],
+                    target,
+                    [0.0, 0.0, 1.0],
+                );
+            }
+            _ => {}
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        event_loop.set_control_flow(ControlFlow::Poll);
+        // Flow clock: markers advance along the polyline, wrap at the end.
+        let now = std::time::Instant::now();
+        let dt = now.duration_since(self.last.unwrap_or(now)).as_secs_f64();
+        self.last = Some(now);
+        self.phase = (self.phase + dt * 6.0) % self.center.len() as f64;
+
+        let (Some(core), Some(surface), Some(config), Some(window)) = (
+            self.core.as_mut(),
+            self.surface.as_ref(),
+            self.config.as_ref(),
+            self.window.as_ref(),
+        ) else {
+            return;
+        };
+        window.set_title(
+            format!(
+                "E510 route flow · phase={:.1} · drag=orbit wheel=zoom · Esc exit",
+                self.phase
+            )
+            .as_str(),
+        );
+        // rebuild the flow point table at the new phase (12 markers, spaced
+        // 1/12 of the route apart)
+        let n = self.center.len();
+        let marks: Vec<PointMark> = (0..12)
+            .map(|i| {
+                let idx = ((self.phase as usize) + i * n / 12) % n;
+                let mut p = self.center[idx];
+                p[1] = 0.15;
+                PointMark::new(p, [1.0, 0.9, 0.2], 6.0)
+            })
+            .collect();
+        if let Some(old) = self.table.take() {
+            core.destroy_points(old);
+        }
+        let new_table = core.create_points(&PointTableDesc { data: &marks }).ok();
+        let mut cmds = self.static_cmds.clone();
+        if let Some(table) = new_table {
+            cmds.push(DrawCommand::DrawPoints {
+                table,
+                origin: [0.0; 3],
+                transform: identity(),
+            });
+        }
+        self.table = new_table;
+        let frame = {
+            let rig = &self.rig;
+            Frame {
+                viewport: Viewport::new(config.width, config.height, 1.0),
+                camera: Camera::perspective(
+                    rig.fov_y as f32,
+                    config.width as f32 / config.height.max(1) as f32,
+                    0.1,
+                    200.0,
+                ),
+                view_rot: rig.view_rotation(),
+                eye: rig.eye(),
+                proj: rig
+                    .perspective(
+                        rig.fov_y as f32,
+                        config.width as f32 / config.height.max(1) as f32,
+                        0.1,
+                        200.0,
+                    )
+                    .expect("proj"),
+                px_world_scale: 1.0,
+                shadow: None,
+                clip: None,
+                edl: None,
+                post: Vec::new(),
+                commands: cmds,
+            }
+        };
+        match surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(tex)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
+                let view = tex
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+                core.render_view_rects(
+                    &[(
+                        frame,
+                        visiaengine_render::ViewportRect::new(0, 0, config.width, config.height),
+                    )],
+                    &view,
+                    config.width,
+                    config.height,
+                    config.format,
+                    MultiClearPolicy::FirstClearRestLoad,
+                );
+                core.queue.present(tex);
+            }
+            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                surface.configure(&core.device, config);
+            }
+            other => eprintln!("skip {other:?}"),
+        }
+    }
+}
+
+fn window_form() -> Result<(), Box<dyn std::error::Error>> {
+    let el = EventLoop::new()?;
+    el.set_control_flow(ControlFlow::Poll);
+    let mut app = App {
+        window: None,
+        core: None,
+        surface: None,
+        config: None,
+        static_cmds: Vec::new(),
+        center: Vec::new(),
+        table: None,
+        phase: 0.0,
+        last: None,
+        rig: CameraRig::look_at([0.0, -26.0, 18.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
+        drag: false,
+        last_pos: (0.0, 0.0),
+        ready: false,
+    };
+    el.run_app(&mut app)?;
+    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -257,7 +520,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     match frames {
         Some(n) => prove(n),
-        None => window_form(),
+        None => window_form()?,
     }
     Ok(())
 }

@@ -1116,6 +1116,11 @@ impl MeshCore {
         Ok(id)
     }
 
+    /// 点表销毁（V2.1）：GPU buffer + 表项移除；未知 id 静默无操作（幂等）。
+    pub fn destroy_points(&mut self, id: TableId) {
+        self.points_t.remove(&id);
+    }
+
     /// 标签表上传（WGPU-24）：64B/条；空表建期拒（族纪律同 points）。
     /// 色=线性域直传（sRGB 咽喉在生产者 io-text/CAPI 面，非此处——label 表与
     /// point/stroke 表分域：后者 CPU 副本转换，label 由 layout 上游给线性值）。
