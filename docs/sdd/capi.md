@@ -114,3 +114,6 @@ engine 层 `Option<&str>`（借用引擎）；FFI 层 `buf[cap]` 写 NUL 终止�
 `visiaengine_load_raster_dir(ve, path, z) -> i32`：挂载 PNG 栅格瓦片目录（`FileSource::raster`，`{root}/{z}/{x}/{y}.png`；z∈[0,30] 域）。目录发现扫描与 load_mvt_dir 同谱；调度器光栅 lane（`TilePayload::Raster`）解码 RGBA8；批=每瓦片一张**平铺地面 quad**（z=0，uv 0..1，顶点烘并集 bbox 中心）。相机=ortho 顶视拟合（load_mvt_dir 同形）。返回=挂载瓦片数；0/负=错误（目录不存在/无瓦片/域外），错误串走 TLS。**声明纪律（N1.2）**：flat raster basemap——非地形、无 drape、无 LOD（DEM/披盖=票据制）。GPU 产品（texture+textured-material+quad mesh 每瓦片）首个 render pass 惰性建。
 ## CAPI-40: set_raster_view (R band)
 `visiaengine_set_raster_view(ve, min_x, min_y, max_x, max_y) -> i32`：栅格层视口 bbox（3857 米；finite/min<max 域门先于解引用）。返回=该视口内**已挂载**瓦片数（发现式扫描语义：不虚构未挂载瓦片）。v1 诚实域：相机重定心到请求 bbox，quad 集不变（挂载时一次性建批——与 load_mvt_dir 的 ensure 装载语义分叉在条款注记）。未挂载=拒。
+
+## CAPI-41: load_env_hdr (I band)
+`visiaengine_load_env_hdr(ve, path) -> i32`：读 .hdr（RGBE equirect）→ `project_sh9`（256×128 分层采样，线性域）→ SH-9 系数安装为全局环境。替换 WGPU-35 legacy 常量 ambient（`env_on` 位后端态；未装载=旧路逐位）。**demo-grade 声明纪律**（R3 让步收窄）：L1+L2 辐照度 + roughness 加权反射 tint——非 PMREM prefilter/BRDF LUT（=独立 L 票，永不与本口捆绑）。负=错误（不可读/非法文件），错误串 TLS。引擎态（Engine.env_sh）跨帧存续；每 pass 推后端（view_block 尾缀段）。

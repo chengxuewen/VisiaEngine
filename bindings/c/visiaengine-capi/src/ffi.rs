@@ -162,7 +162,7 @@ pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
-    (1 << 16) | 14 // major 1 minor 14 (R band: +CAPI-39/40 raster basemap; >>16==1 unchanged)
+    (1 << 16) | 15 // major 1 minor 15 (I band: +CAPI-41 load_env_hdr; >>16==1 unchanged)
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
@@ -1583,6 +1583,39 @@ pub extern "C" fn visiaengine_load_mvt_dir(
                     };
                     match with_engine(i, |e| e.load_mvt_dir(path, z as u8)) {
                         Ok(n) => n as i32,
+                        Err(msg) => {
+                            set_err(msg);
+                            VE_ERR_ARG
+                        }
+                    }
+                }
+                Gate::Arg => VE_ERR_ARG,
+                Gate::State => VE_ERR_STATE,
+            }
+        },
+        VE_ERR_PANIC
+    )
+}
+
+/// CAPI-41 (I band): load an .hdr environment (RGBE equirect), project to
+/// SH-9 irradiance, install as global env (replaces legacy constant ambient;
+/// demo-grade — PMREM/LUT = separate ticket). 0 = ok, negative = error.
+#[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // NULL-guarded (load_font precedent)
+pub extern "C" fn visiaengine_load_env_hdr(ve: u64, path: *const std::os::raw::c_char) -> i32 {
+    capi_guard!(
+        {
+            match gate(ve) {
+                Gate::Live(i) => {
+                    if path.is_null() {
+                        return VE_ERR_ARG;
+                    }
+                    let path = match unsafe { std::ffi::CStr::from_ptr(path) }.to_str() {
+                        Ok(p) => p,
+                        Err(_) => return VE_ERR_ARG,
+                    };
+                    match with_engine(i, |e| e.load_env_hdr(path)) {
+                        Ok(()) => 0,
                         Err(msg) => {
                             set_err(msg);
                             VE_ERR_ARG

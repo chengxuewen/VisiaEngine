@@ -18,6 +18,11 @@ pub struct HeadlessBackend {
 }
 
 impl HeadlessBackend {
+    /// I band (WGPU-39): forward env SH to the shared MeshCore.
+    pub fn set_env_sh(&mut self, sh: [[f32; 3]; 9]) {
+        self.core.set_env_sh(sh);
+    }
+
     #[must_use]
     pub fn new(width: u32, height: u32) -> Option<Self> {
         let sh = crate::mesh_core::create_shared_device()?;

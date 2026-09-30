@@ -129,6 +129,9 @@ pub struct Engine {
     point_clouds: std::collections::HashMap<u64, PointCloudState>,
     /// P1 瓦片层（CAPI-28/29）：None=无瓦片面（渲染零触碰）；Some=调度器+批几何。
     tiles: Option<TileLayer>,
+    /// I band (CAPI-41): SH-9 environment irradiance (linear RGB), pushed to
+    /// the backend each render pass; None = legacy constant ambient.
+    env_sh: Option<[[f32; 3]; 9]>,
     /// CAPI-21：标注字体（None=文字管线休眠——样式/口在，零输出 [GEO-25/CAPI-22]）
     font: Option<visiaengine_io_text::FontFace>,
     /// 跨装载常驻的字形图集（dirty→render 前全量重传 [WGPU-24]）
@@ -326,6 +329,7 @@ impl Engine {
             pcl_meta: std::collections::HashMap::new(),
             point_clouds: std::collections::HashMap::new(),
             tiles: None,
+            env_sh: None,
         })
     }
 
@@ -1226,6 +1230,19 @@ impl Engine {
         self.zoom = radius.max(10.0);
         self.rig = CameraRig::look_at([cx, cy, radius.max(10.0)], [cx, cy, 0.0], [0.0, 1.0, 0.0]);
         Ok(n)
+    }
+
+    /// CAPI-41 (I band): decode an .hdr (RGBE equirect) file and install its
+    /// SH-9 irradiance projection as the global environment. Replaces the
+    /// legacy constant ambient (WGPU-39); demo-grade claim — PMREM/LUT =
+    /// separate ticket. Returns 0 on success.
+    pub fn load_env_hdr(&mut self, path: &str) -> Result<(), String> {
+        let bytes = std::fs::read(path).map_err(|e| format!("read {path}: {e}"))?;
+        let img = visiaengine_io_hdr::decode_hdr(&bytes).map_err(|e| e.to_string())?;
+        let sh = visiaengine_io_hdr::project_sh9(&img, 256);
+        self.env_sh = Some(sh);
+        self.backend.set_env_sh(sh);
+        Ok(())
     }
 
     /// 屏幕拾取（复用 REND-21..24；ortho/persp 双路；B2：mesh 未中时点云兕底）。
@@ -2268,6 +2285,7 @@ impl Engine {
             pcl_meta: std::collections::HashMap::new(),
             point_clouds: std::collections::HashMap::new(),
             tiles: None,
+            env_sh: None,
         })
     }
 }

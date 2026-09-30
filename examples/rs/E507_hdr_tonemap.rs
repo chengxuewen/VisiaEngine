@@ -273,6 +273,23 @@ fn prove(frames: u32) {
         "bloom after tonemap must compose: {d_compose}"
     );
     println!("E507 OK: off deterministic; reinhard/aces/bloom-compose pixel-verified");
+    // WGPU-39: SH environment — set_env_sh changes geometry shading; the
+    // zero-vector restore must be bitwise identical to the pre-env frames
+    // (legacy-path law). Probe pins after measurement.
+    let sh = visiaengine_io_hdr::project_sh9(&sky, 256);
+    let any_nonzero = sh.iter().any(|c| *c != [0.0; 3]);
+    assert!(any_nonzero, "demo_sky.hdr must project to non-zero SH");
+    b.set_env_sh(sh);
+    let env_on = b.render_to_pixels(&frame(&cmds, Vec::new(), W, H)).unwrap();
+    b.set_env_sh([[0.0; 3]; 9]);
+    let env_off = b.render_to_pixels(&frame(&cmds, Vec::new(), W, H)).unwrap();
+    let d_env = diff_px(&off_a, &env_on);
+    println!("E507 env probe: sh-diff={d_env}");
+    assert!(d_env > 300, "SH env must change geometry shading: {d_env}");
+    assert_eq!(
+        off_a.rgba, env_off.rgba,
+        "zero-SH restore must be bitwise legacy"
+    );
     gallery::save_frame(&aces, "E507_hdr_tonemap");
 }
 

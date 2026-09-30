@@ -11,8 +11,8 @@ cargo build -p visiaengine-capi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; 
 SO=target/debug/libvisiaengine.so
 [ -f "$SO" ] || { echo "GATE-ABI ✗ 缺 $SO（[lib] name 检查）"; exit 1; }
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
-echo "ABI-SYMBOLS="$N/46" | SO_SIZE=$(du -h "$SO" | cut -f1)"
-[ "$N" = "46" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
+echo "ABI-SYMBOLS="$N/47" | SO_SIZE=$(du -h "$SO" | cut -f1)"
+[ "$N" = "47" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
 # hpp mirror gate (N1.1, gap-analysis C1): every .so visiaengine_* symbol must have a
 # wrapper method in the hpp. Predicate = short name (prefix stripped) appears as `name(`
 # method form; the raw C symbol alone is NOT enough (it always appears as the call target).

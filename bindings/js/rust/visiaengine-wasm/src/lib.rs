@@ -298,6 +298,15 @@ impl VisiaEngine {
         }
     }
 
+    /// CAPI-41: .hdr 环境装载（SH-9 辐照度；demo 级）。0=成功；负=拒。
+    #[wasm_bindgen(js_name = loadEnvHdr)]
+    pub fn load_env_hdr(&mut self, path: &str) -> i32 {
+        match self.inner.load_env_hdr(path) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
     // ── 场景树镜像（CAPI-30..34 薄叶）──
     /// CAPI-30: 创建组节点（返回 handle；0=err）。name=NULL 用空字符串代替。
     #[wasm_bindgen(js_name = createGroup)]

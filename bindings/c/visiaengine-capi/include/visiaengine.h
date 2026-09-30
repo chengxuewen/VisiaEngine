@@ -185,6 +185,11 @@ int32_t  visiaengine_load_raster_dir(uint64_t ve, const char *path, uint32_t z);
 int32_t  visiaengine_set_raster_view(uint64_t ve, double min_x, double min_y,
                                      double max_x, double max_y);
 
+/* CAPI-41 (I band): load an .hdr environment (RGBE equirect) and install its
+   SH-9 irradiance as the global env light (demo-grade; replaces the legacy
+   constant ambient). 0 = ok, negative = error (unreadable/invalid file). */
+int32_t  visiaengine_load_env_hdr(uint64_t ve, const char *path);
+
 /* CAPI-36..38 (N2.4): typed property diff-update — host-driven live-data
    writes on loaded entities (digital-twin face). Typed columns: f64 / str
    (UTF-8) / bool (1/0). First write on a name TYPES the column; writing a

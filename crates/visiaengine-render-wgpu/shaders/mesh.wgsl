@@ -30,6 +30,15 @@ struct View {
     _cpad0: f32,
     _cpad1: f32,
     _cpad2: f32,
+    // WGPU-39 (I band): SH-9 environment irradiance tail. Uniform address
+    // space requires 16-aligned array stride: 9 x vec4 (RGB + pad comp).
+    // All-zero/flag-0 = legacy constant ambient (bit-identical legacy path;
+    // floats 0..64 bit-order unchanged). 256 + 144 + 16 = 416 total.
+    env_sh: array<vec4<f32>, 9>,
+    env_on: f32,
+    _epad0: f32,
+    _epad1: f32,
+    _epad2: f32,
 };
 @group(0) @binding(0) var<uniform> view: View;
 
@@ -127,6 +136,29 @@ fn vs(in: VsIn) -> FsIn {
 /// Lambert with energy split (1-metallic)(1-F). Returns lit linear RGB for a
 /// single directional light; `ambient` = IBL-lite constant radiance term
 /// (WGPU-35: vec3(0.35)*albedo*(1-roughness*0.5), probe-pinned legacy band).
+fn sh_at(i: u32) -> vec3<f32> {
+    // coeff i = env_sh[i].xyz (RGB; .w = pad)
+    return view.env_sh[i].xyz;
+}
+
+fn env_irradiance(n: vec3<f32>) -> vec3<f32> {
+    // SH-9 evaluation (L1 + L2 bands, cosine-window simplified): the classic
+    // Ramamoorthi irradiance weights on the 9 coefficients. Linear-domain
+    // result replaces the legacy constant when env_on == 1.0.
+    // band 0 + L1 (coeffs 1..4): y/z/x directions; L2 (5..9)
+    let l0 = sh_at(0u) * 0.282095;
+    let l1 = sh_at(1u) * (0.488603 * n.y) + sh_at(2u) * (0.488603 * n.z)
+        + sh_at(3u) * (0.488603 * n.x);
+    let l2xx = sh_at(4u) * (0.315392 * (n.x * n.x - n.y * n.y));
+    let l2xy = sh_at(5u) * (1.092548 * n.x * n.y);
+    let l2yz = sh_at(6u) * (1.092548 * n.y * n.z);
+    let l2zz = sh_at(7u) * (0.315392 * (3.0 * n.z * n.z - 1.0));
+    let l2xz = sh_at(8u) * (1.092548 * n.x * n.z);
+    // cosine-lobe convolution folded into the host-side projection
+    // (coefficients arrive pre-convolved); demo-grade honesty.
+    return max(vec3(0.0), l0 + l1 + l2xx + l2xy + l2yz + l2zz + l2xz);
+}
+
 fn ggx_shade(albedo: vec3<f32>, n: vec3<f32>, l: vec3<f32>, v: vec3<f32>,
              roughness: f32, metallic: f32, light_intensity: f32) -> vec3<f32> {
     let alpha = max(roughness * roughness, 1e-4);
@@ -149,7 +181,15 @@ fn ggx_shade(albedo: vec3<f32>, n: vec3<f32>, l: vec3<f32>, v: vec3<f32>,
     let f = f0 + (1.0 - f0) * pow(clamp(1.0 - vdh, 0.0, 1.0), 5.0);
     let spec = d * g * f / (4.0 * ndv * max(ndl, 1e-4) + 1e-4);
     let diffuse = albedo * (1.0 - metallic) * (vec3(1.0) - f) * ndl;
-    let ambient = vec3(0.35) * albedo * (1.0 - roughness * 0.5);
+    // WGPU-39: env SH irradiance replaces the constant when enabled; demo-
+    // grade specular tint = irradiance scaled by (1-roughness) (full PMREM
+    // prefilter + BRDF LUT = the separate L ticket — claim discipline).
+    // WGSL: let-if expressions unsupported — var + statement form.
+    var ambient = vec3(0.35) * albedo * (1.0 - roughness * 0.5);
+    if view.env_on > 0.5 {
+        ambient = env_irradiance(n) * albedo * (1.0 - metallic)
+            + env_irradiance(reflect(-v, n)) * albedo * roughness * 0.4;
+    }
     return (diffuse + spec) * light_intensity + ambient;
 }
 

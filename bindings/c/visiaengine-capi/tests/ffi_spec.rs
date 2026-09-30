@@ -11,12 +11,13 @@ use visiaengine::{
     visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
     visiaengine_fly_state, visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips,
     visiaengine_get_group_offset, visiaengine_get_parent, visiaengine_last_error,
-    visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_mvt_dir, visiaengine_load_pcl,
-    visiaengine_load_raster_dir, visiaengine_navigate_click, visiaengine_on_input,
-    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
-    visiaengine_set_clips, visiaengine_set_group_offset, visiaengine_set_map,
-    visiaengine_set_parent, visiaengine_set_raster_view, visiaengine_set_tile_source_http,
-    visiaengine_set_tile_view, visiaengine_viewport,
+    visiaengine_load_env_hdr, visiaengine_load_font, visiaengine_load_gltf,
+    visiaengine_load_mvt_dir, visiaengine_load_pcl, visiaengine_load_raster_dir,
+    visiaengine_navigate_click, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
+    visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
+    visiaengine_set_group_offset, visiaengine_set_map, visiaengine_set_parent,
+    visiaengine_set_raster_view, visiaengine_set_tile_source_http, visiaengine_set_tile_view,
+    visiaengine_viewport,
 };
 
 /// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
@@ -283,13 +284,13 @@ fn last_error_write_policy_success_never_clobbers() {
 fn abi_version_packed_and_never_thread_gated() {
     assert_eq!(
         visiaengine_abi_version(),
-        0x0001_000E,
-        "major 1 minor 14 (R band: +CAPI-39/40 raster basemap, MAJOR-contained)"
+        0x0001_000F,
+        "major 1 minor 15 (I band: +CAPI-41 load_env_hdr, MAJOR-contained)"
     );
     let h = std::thread::spawn(|| visiaengine_abi_version());
     assert_eq!(
         h.join().unwrap(),
-        0x0001_000E,
+        0x0001_000F,
         "exception-set member is not thread-gated"
     );
 }
@@ -307,8 +308,8 @@ fn symbol_surface_grep_gate() {
                 |l| l.starts_with("#[cfg_attr(not(target_arch = \"wasm32\"), unsafe(no_mangle))]")
             )
             .count(),
-        46,
-        "extern entry count (cfg-gated line-head form; 44->46 = R raster pair)"
+        47,
+        "extern entry count (cfg-gated line-head form; 46->47 = I env hdr)"
     );
     assert_eq!(
         src.matches("pub unsafe extern").count(),
@@ -1289,4 +1290,30 @@ fn set_raster_view_domain_and_visible() {
     // disjoint view: visible = 0 (mounted-discovery semantics)
     let rc = visiaengine_set_raster_view(ve, 1.0e7, 1.0e7, 1.1e7, 1.1e7);
     assert_eq!(rc, 0, "disjoint view = 0 visible (no fabrication)");
+}
+
+// spec: CAPI-41
+#[test]
+fn load_env_hdr_domain_and_install() {
+    let ve = visiaengine_create_headless(64, 64);
+    assert_ne!(ve, 0);
+    // NULL path
+    assert_eq!(visiaengine_load_env_hdr(ve, std::ptr::null()), -1);
+    // nonexistent file
+    let bad = std::ffi::CString::new("/nonexistent/env.hdr").unwrap();
+    assert_eq!(visiaengine_load_env_hdr(ve, bad.as_ptr()), -1);
+    // happy path: committed fixture (absolute repo-root path; cwd = crate)
+    let root = {
+        let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        while !p.join("Cargo.lock").exists() {
+            assert!(p.pop());
+        }
+        p.join("resources/data/demo_sky.hdr")
+    };
+    let cpath = std::ffi::CString::new(root.to_str().unwrap()).unwrap();
+    assert_eq!(
+        visiaengine_load_env_hdr(ve, cpath.as_ptr()),
+        0,
+        "fixture loads"
+    );
 }

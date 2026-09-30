@@ -91,6 +91,9 @@ pub struct MeshCore {
     /// non-goal this band.
     post_bgl: wgpu::BindGroupLayout,
     post_shaders: [wgpu::ShaderModule; 5], // [bloom, outline, tonemap, ssao, haze]
+    /// I band (WGPU-39): SH-9 environment irradiance (engine-level state,
+    /// survives across frames; zero vector = legacy constant ambient).
+    env_sh: [[f32; 3]; 9],
     post_pipelines: [HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>; 5],
     post_stages: [Option<(u32, u32, wgpu::TextureView, wgpu::TextureFormat)>; 2],
 }
@@ -210,7 +213,7 @@ impl MeshCore {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         // View 块 256B（WGPU-21 含裁切面段；前 176B 位序不变）
-                        min_binding_size: wgpu::BufferSize::new(256),
+                        min_binding_size: wgpu::BufferSize::new(416),
                     },
                     count: None,
                 },
@@ -373,7 +376,7 @@ impl MeshCore {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: wgpu::BufferSize::new(256),
+                    min_binding_size: wgpu::BufferSize::new(416),
                 },
                 count: None,
             }];
@@ -627,6 +630,7 @@ impl MeshCore {
             ..Default::default()
         });
         Self {
+            env_sh: [[0.0; 3]; 9],
             device,
             queue,
             instance,
@@ -684,6 +688,12 @@ impl MeshCore {
             ],
             post_stages: [None, None],
         }
+    }
+
+    /// I band (WGPU-39): install SH-9 environment irradiance coefficients
+    /// (linear RGB). Zero vector restores the legacy constant-ambient path.
+    pub fn set_env_sh(&mut self, sh: [[f32; 3]; 9]) {
+        self.env_sh = sh;
     }
 
     pub fn uniform(&self, bytes: &[u8], label: &'static str) -> wgpu::Buffer {
@@ -911,7 +921,12 @@ impl MeshCore {
     /// View uniform 块 128B（REND-29 兑现；[f32;32] 与 WGSL struct 同布局）：
     /// mat@0..16 / right@16 / up@20 / px_scale@23 / eye_local@24..27（世界 eye−origin f32）。
     /// right/up=view_rot 行抽取——与 screen_to_ray_* 同一 view_rot 单一事实源。
-    fn view_block(frame: &Frame, origin: &[f64; 3], transform: &[[f64; 4]; 4]) -> [f32; 64] {
+    fn view_block(
+        &self,
+        frame: &Frame,
+        origin: &[f64; 3],
+        transform: &[[f64; 4]; 4],
+    ) -> [f32; 104] {
         let mvp = visiaengine_render::rebase::compose_mvp(
             &frame.proj,
             &frame.view_rot,
@@ -919,7 +934,7 @@ impl MeshCore {
             origin,
             transform,
         );
-        let mut block = [0.0f32; 64];
+        let mut block = [0.0f32; 104];
         block[..16].copy_from_slice(bytemuck::cast_slice(&mvp));
         let r = &frame.view_rot;
         // 列主序 m[col][row]：世界 right=行0=(m00,m10,m20)；up=行1
@@ -956,6 +971,25 @@ impl MeshCore {
             }
             block[60] = cs.count as f32;
         }
+        // I band (WGPU-39): SH-9 environment irradiance coefficients
+        // (27 floats at 64..91; 92..96 pad). All-zero = engine default =
+        // legacy constant-ambient path in the shader (bit-identical: the
+        // shader branches on a baked flag in slot 64... kept simpler: the
+        // zero SH vector evaluates to ambient 0 — the SH path REPLACES the
+        // legacy ambient when env_sh_flag(91) is set, else legacy constant).
+        for (i, c) in self.env_sh.iter().enumerate() {
+            let o = 64 + i * 4;
+            block[o] = c[0];
+            block[o + 1] = c[1];
+            block[o + 2] = c[2];
+            // block[o + 3] stays 0 (vec4 pad component)
+        }
+        // env_on flag lives AFTER the 9xvec4 block: float 100 (byte 400).
+        block[100] = if self.env_sh.iter().any(|c| *c != [0.0; 3]) {
+            1.0
+        } else {
+            0.0
+        };
         block
     }
 
@@ -1838,7 +1872,7 @@ impl MeshCore {
                     _ => continue,
                 };
                 let vblock = self.uniform(
-                    bytemuck::cast_slice(&Self::view_block(frame, &origin, &transform)),
+                    bytemuck::cast_slice(&self.view_block(frame, &origin, &transform)),
                     "view-shadow",
                 );
                 let Some(gm) = self.meshes.get(&mesh) else {
@@ -2084,7 +2118,7 @@ impl MeshCore {
                     transform,
                 } => {
                     let mvp_buf = self.uniform(
-                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        bytemuck::cast_slice(&self.view_block(frame, origin, transform)),
                         "view",
                     );
                     let Some(gi) = self.labels_t.get(table) else {
@@ -2149,7 +2183,7 @@ impl MeshCore {
                     transform,
                 } => {
                     let mvp_buf = self.uniform(
-                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        bytemuck::cast_slice(&self.view_block(frame, origin, transform)),
                         "view",
                     );
                     let Some(gi) = self.points_t.get(table) else {
@@ -2199,7 +2233,7 @@ impl MeshCore {
                     transform,
                 } => {
                     let mvp_buf = self.uniform(
-                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        bytemuck::cast_slice(&self.view_block(frame, origin, transform)),
                         "view",
                     );
                     let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
@@ -2319,7 +2353,7 @@ impl MeshCore {
                     transform,
                 } => {
                     let mvp_buf = self.uniform(
-                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        bytemuck::cast_slice(&self.view_block(frame, origin, transform)),
                         "view",
                     );
                     let (vbuf, ibuf, index_count) = match self.meshes.get(mesh) {
@@ -2396,7 +2430,7 @@ impl MeshCore {
                     transform,
                 } => {
                     let mvp_buf = self.uniform(
-                        bytemuck::cast_slice(&Self::view_block(frame, origin, transform)),
+                        bytemuck::cast_slice(&self.view_block(frame, origin, transform)),
                         "view",
                     );
                     let Some(gi) = self.strokes_t.get(table) else {

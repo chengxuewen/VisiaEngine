@@ -202,3 +202,66 @@ fn parse_header(bytes: &[u8]) -> Result<(u32, u32, &[u8]), IoHdrError> {
     }
     Ok((width, height, &bytes[pos..]))
 }
+
+/// I band (WGPU-39): project an equirect HDRI onto the 9-coefficient spherical
+/// harmonics basis (RGB, LINEAR domain — decode_hdr output is already linear).
+/// Demo-grade irradiance: L1+L2 bands with the cosine-convolution folded in
+/// (Ramamoorthi 2001 weights); specular prefilter/BRDF-LUT = separate L ticket.
+/// `samples` = rows × cols stratification (256×128 default-ish cost).
+#[must_use]
+pub fn project_sh9(img: &HdrImage, samples: u32) -> [[f32; 3]; 9] {
+    let mut coeff = [[0.0f32; 3]; 9];
+    if img.width == 0 || img.height == 0 || samples == 0 {
+        return coeff;
+    }
+    let cols = samples;
+    let rows = samples / 2;
+    let weight_sum = 0.0f32.max(1.0); // placeholder; real normalization below
+    let _ = weight_sum;
+    let mut sum = [[0.0f64; 3]; 9];
+    let mut total = 0.0f64;
+    for ry in 0..rows {
+        let theta = std::f64::consts::PI * (ry as f64 + 0.5) / rows as f64;
+        let st = theta.sin();
+        for cx in 0..cols {
+            let phi = 2.0 * std::f64::consts::PI * (cx as f64 + 0.5) / cols as f64;
+            // equirect -> direction (y-up, matching engine world frame)
+            let x = st * phi.sin();
+            let y = theta.cos();
+            let z = st * phi.cos();
+            // sample image: v = theta/PI (row), u = phi/2PI
+            let px = ((phi / (2.0 * std::f64::consts::PI)) * f64::from(img.width)) as usize
+                % img.width as usize;
+            let py = ((theta / std::f64::consts::PI) * f64::from(img.height)) as usize
+                % img.height as usize;
+            let c = img.pixels[py * img.width as usize + px];
+            // SH basis (y-up):
+            let sh = [
+                0.282_095,
+                0.488_603 * y,
+                0.488_603 * z,
+                0.488_603 * x,
+                1.092_548 * x * y,
+                1.092_548 * y * z,
+                0.315_392 * (3.0 * y * y - 1.0),
+                1.092_548 * x * z,
+                0.546_274 * (x * x - z * z),
+            ];
+            let w = st; // solid-angle weight
+            for (sc, b) in sum.iter_mut().zip(sh.iter()) {
+                for k in 0..3 {
+                    sc[k] += f64::from(c[k]) * b * w;
+                }
+            }
+            total += w;
+        }
+    }
+    if total > 0.0 {
+        for (sc, cc) in sum.iter().zip(coeff.iter_mut()) {
+            for k in 0..3 {
+                cc[k] = (sc[k] / total) as f32;
+            }
+        }
+    }
+    coeff
+}

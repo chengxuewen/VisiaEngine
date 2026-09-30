@@ -97,6 +97,10 @@ public:
     int32_t set_tile_view(double min_x, double min_y, double max_x, double max_y) {
         return visiaengine_set_tile_view(h_, min_x, min_y, max_x, max_y);
     }
+    /* CAPI-41 (I band): .hdr environment -> SH-9 irradiance (demo-grade). */
+    int32_t load_env_hdr(const char *path) {
+        return visiaengine_load_env_hdr(h_, path);
+    }
     /* CAPI-39/40 (R band): raster basemap (flat quads — not terrain). */
     int32_t load_raster_dir(const char *path, uint32_t z) {
         return visiaengine_load_raster_dir(h_, path, z);
