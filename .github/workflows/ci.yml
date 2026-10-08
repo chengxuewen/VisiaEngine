@@ -18,8 +18,11 @@ jobs:
           pixi-version: v0.78.0
           cache: true
 
-      - name: lavapipe(软件 Vulkan, L1) + xvfb(L2 窗口 smoke)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers xvfb
+      - name: lavapipe(软件 Vulkan, L1) + xvfb(L2 窗口 smoke) + x11-apps(xwd)
+        # x11-apps is NOT optional: `xwd` (the capture tool behind window-probe-all.sh
+        # and keys-probe) ships in that system package, not in pixi. Without it both
+        # probes skip themselves and the L2 step reports green while testing nothing.
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers xvfb x11-apps
 
       - run: pixi install --frozen
       - run: pixi run ci
@@ -50,10 +53,10 @@ jobs:
           pixi run smoke-ssao                  # N7: SSAO off-vs-on crease-band asserts
           # Band K: first-frame brightness guard over every resident-window example
           # (self-managed Xvfb; was caller-less since it landed -- wired here).
-          bash scripts/window-probe-all.sh
+          bash scripts/window-probe-all.sh   # xwd 在位=真跑（缺件它会 SKIP exit0）
           # Band K: XTEST key/wheel/drag probe -- fails when a window stays alive
           # but the picture never changes (pixel gates cannot see an unwired handler).
-          pixi run keys-probe   # own private display; no xvfb-run (PIT-22)
+          pixi run keys-probe --strict   # skip-as-red here: a silent skip = a green not earned (PIT-25)
           # cmake example 族不另列：pixi run ci 第十段 cmake-smoke 内含 ctest -LE display
 
   qt:

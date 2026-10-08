@@ -134,7 +134,10 @@ Escape closes all four through the same input path. Break probe recorded: stubbi
 Rules baked into the tool (keep them if you port it): private display, never
 `$DISPLAY` (PIT-22); assertions happen before cleanup; per-case settle/gap so a slow
 clock is not read as "nothing changed"; SKIP exit 0 only for a missing toolchain
-(Xvfb / `/usr/bin/xwd` / cc / `XTest.h`); a live window with no delta is exit 1.
+(Xvfb / xwd / cc / `XTest.h`) -- and `--strict` turns that skip into exit 1, which is
+how ci.yml calls it: `xwd` ships in the SYSTEM package `x11-apps`, not in pixi, so a
+runner that installs only `xvfb` would otherwise skip the whole probe and still print
+green (PIT-25). A live window with no delta is exit 1.
 It stays **out of `pixi run ci`** (same policy as `pack-check`) and is wired into
 `.github/workflows/ci.yml` next to `scripts/window-probe-all.sh`, which had zero
 callers until this band.

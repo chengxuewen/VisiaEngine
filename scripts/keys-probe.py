@@ -20,8 +20,12 @@ Rules baked in from the session that validated this harness:
   * per-case settle/gap: E511's clock moved 0.21% over 1.8s and ~1% over 4s, so the
     animation case gets a 4s gap and a lower floor. Reading a slow clock at 1.8s is
     how you call working code broken.
-  * SKIP (exit 0) only for a missing toolchain (Xvfb / xwd / cc / X11 headers);
-    a live window with no pixel change is exit 1 with the reason.
+  * SKIP (exit 0) is for a missing toolchain only -- and only by default. `--strict`
+    turns a skip into exit 1: xwd comes from the SYSTEM package x11-apps (measured
+    2026-10-08, not from pixi), so a runner that installed only `xvfb` would otherwise
+    skip this entire probe and still report green (PIT-25 family). ci.yml passes
+    --strict for exactly that reason.
+  * a live window with no pixel change is exit 1 with the reason.
 """
 import os
 import re
@@ -35,6 +39,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV = os.path.join(ROOT, ".pixi", "envs", "default")
 EXDIR = os.path.join(ROOT, "target", "debug", "examples")
 WORK = os.path.join(ROOT, "target", "keys-probe")
+XWD = "xwd"  # re-bound in main() to the discovered path (PATH lookup, not /usr/bin)
 INJECTOR = os.path.join(WORK, "xinject")
 SETTLE = 5.0  # first frame + window map
 
@@ -92,7 +97,7 @@ def build_injector(cc, xwd_missing_ok=True):
 
 def xwd(disp, path):
     subprocess.run(
-        ["xwd", "-root", "-display", disp, "-out", path],
+        [XWD, "-root", "-display", disp, "-out", path],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=True,
@@ -187,19 +192,28 @@ def run_case(disp, stem, actions, gap, minpct):
 
 
 def main():
+    argv = sys.argv[1:]
+    strict = "--strict" in argv
+    args = [a for a in argv if a != "--strict"]
+
     xvfb = find_tool(os.path.join(ENV, "bin", "Xvfb"), "Xvfb")
     cc = find_tool("cc", os.path.join(ENV, "bin", "x86_64-conda-linux-gnu-cc"))
-    if not (xvfb and os.path.exists("/usr/bin/xwd") and cc):
-        return skip("need Xvfb + /usr/bin/xwd + a C compiler")
-    if not os.path.exists(os.path.join(ENV, "include", "X11", "extensions", "XTest.h")):
-        return skip("X11/extensions/XTest.h not in the pixi env")
+    xwd = find_tool("xwd", "/usr/bin/xwd")
+    xtest_h = os.path.join(ENV, "include", "X11", "extensions", "XTest.h")
+    missing = [n for n, ok in (("Xvfb", bool(xvfb)), ("cc", bool(cc)), ("xwd", bool(xwd)),
+                               ("XTest.h", os.path.exists(xtest_h))) if not ok]
+    if missing:
+        if strict:
+            print(f"KEYS-PROBE ✗ --strict but missing toolchain: {', '.join(missing)}")
+            return 1
+        return skip(f"missing {', '.join(missing)}")
+    globals()["XWD"] = xwd
     if not build_injector(cc):
         return 1
     if not os.path.isdir(EXDIR):
         print("KEYS-PROBE ✗ no example binaries; run `cargo build --examples`")
         return 1
 
-    args = sys.argv[1:]
     if not args:
         print(__doc__)
         return 2
