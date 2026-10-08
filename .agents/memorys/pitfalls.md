@@ -297,3 +297,23 @@
 - **解法**: CPU/GPU 共享布局段一律在两处注释里**同写字节偏移表**（「flag=float 100=byte 400」双边锚）；布局改动的验证谓词必须包含**端到端值差**（sh-diff>阈值），禁止只测「不崩」。
 - **验证**: 端到端像素差断言在场（E507 env probe 形）。
 - **阻塞条件**: 新增 CPU→GPU 段无端到端值差断言即交付。
+
+## PIT-44: web 通道是 ci 之外的独立面 + 名册脚本读产物不辨新旧（2026-10-08，V2.2 雷两带后才现形）
+- **症状**: `pixi run web-check` 报 `the trait bound Vec<f64>: RefMutFromWasmAbi is not satisfied`，
+  源头是 V2.2 带写的 wasm 桥 `get_node_transform(&mut self, entity, out: &mut Vec<f64>)`。
+  该带当时在基线里写了「WEB MIRROR 3/3」，雷一路活到下一个带才炸。
+- **根因**: 三条叠加。① `pixi.toml` 的 `ci` = 11 段，**不含 web-check**（`web-check` 是独立任务）——
+  任何「WEB ✓」字样都不由 ci 背书。② 宿主通道（`cargo test -p visiaengine-wasm`，target=host）**不编
+  wasm32 代码生成路径**：wasm-bindgen 只在 wasm32 目标要求参数实现 `RefMutFromWasmAbi`，
+  于是签名在宿主绿、在真目标红（PIT-22「验证通道≠用户通道」的编译面变体）。
+  ③ `scripts/web-mirror.mjs` 断言的是 `target/web/` 里的**构建产物**（d.ts 名册/值对表），
+  无新鲜度校验——产物是昨天的，源码编不过照样打印 MIRROR 3/3。
+- **解法**: ① 签名按仓内先例归位（`getCameraPose -> Vec<f64>` 同形）：wasm 无出参通道，
+  C 面「负码 + out 不触」在 wasm 侧映射为**空数组返回**；② 名册脚本加**陈旧护栏**（源目录 max-mtime
+  晚于 d.ts → 红，报文指名目录与补救命令），把「对旧产物报绿」这一类直接堵死；
+  ③ 声明口径：**「WEB ✓」只允许来自同终端 `pixi run web-check` 的输出**（#17 的 web 面投影）。
+- **验证**: 破坏探针实测——`touch bindings/js/rust/visiaengine-wasm/src/lib.rs` 后单跑名册脚本
+  必红（报文=「产物陈旧：…先跑 pixi run web-check」，rc=1）；重跑 web-check 后复绿 MIRROR 3/3。
+  `grep -c "陈旧" scripts/web-mirror.mjs` ≥1。
+- **禁止**: 用宿主 `cargo test -p visiaengine-wasm` 结果指代 wasm32 可用性；
+  未跑 `pixi run web-check` 而在基线/commit message 里写 WEB 字样。

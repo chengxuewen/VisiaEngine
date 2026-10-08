@@ -94,3 +94,21 @@ grep -rn 'lum >\|red >\|green >' crates/*/tests/*.rs | wc -l   # 像素门计数
 涉及 HashMap 驱动的多对象断言（如 pump 逐出顺序）：单测内**不得**对迭代序做可观测断言——本机单跑绿、CI 全量跑翻车（PIT-7 族假红的近亲）。确定性语义（budget=每次 I/O 数）用**脚本化 source 计数**锁（attempts.len()==budget），顺序本身不锁。
 **验证**: 同测试连跑 `for i in 1 2 3 4 5; do cargo test ... ; done` 全绿再提交。
 **阻塞条件**: 修复 HashMap 序型偶发后未 5 连跑。
+
+## Web/wasm 验证通道（PIT-44 入册，2026-10-08）
+
+`pixi run ci`（11 段）**不含** web 面。wasm 相关的三条硬规矩：
+
+1. **声明口径**：任何「WEB ✓ / MIRROR ✓」字样只能来自**同终端** `pixi run web-check`
+   （+ 需要名册时 `node scripts/web-mirror.mjs`）的实际输出。宿主 cargo test 不算。
+2. **编译面不可达性**：`&mut Vec<T>` / `Vec<T>` 出参这类 wasm-bindgen -only 约束，
+   host target 编得过、wasm32 编不过。凡动 `bindings/js/rust/visiaengine-wasm/src/`
+   的签名，切片内必须跑一次 `pixi run web-check`（不是 cargo check）。
+3. **陈旧护栏在场**：`scripts/web-mirror.mjs` 会比对源目录与 `pkg-node/*.d.ts` 的 mtime，
+   源更新即红并指名补救。该检红 ≠ 门禁坏，是「你在拿昨天的产物报今天的绿」。
+
+```bash
+# 验证：护栏在位 + 声明来源可查
+grep -c "陈旧" scripts/web-mirror.mjs          # 期望 ≥1
+grep -n "^ci = " pixi.toml                     # 期望：无 web-check（本条存在的原因）
+```

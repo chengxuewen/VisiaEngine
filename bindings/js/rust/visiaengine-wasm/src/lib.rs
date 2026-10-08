@@ -316,18 +316,16 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-43: 节点局部变换读回（16 槽输出）。0=成功；负=拒。
+    /// CAPI-43 mirror: node-local transform readback as 16 values (same
+    /// row-major flatten the C face writes). wasm has no out-parameter channel
+    /// — `&mut Vec<f64>` does not even compile for the wasm32 target — so the
+    /// C form's "negative code + untouched out buffer" maps here to an EMPTY
+    /// return (precedent: getCameraPose returns a Vec, no code).
     #[wasm_bindgen(js_name = getNodeTransform)]
-    pub fn get_node_transform(&mut self, entity: u64, out: &mut Vec<f64>) -> i32 {
+    pub fn get_node_transform(&self, entity: u64) -> Vec<f64> {
         match self.inner.get_node_transform(entity) {
-            Ok(mat) => {
-                out.clear();
-                for row in &mat {
-                    out.extend_from_slice(row);
-                }
-                0
-            }
-            Err(_) => -1,
+            Ok(mat) => mat.iter().flat_map(|row| row.iter()).copied().collect(),
+            Err(_) => Vec::new(),
         }
     }
 

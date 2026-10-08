@@ -1,7 +1,7 @@
 // CAPI-09 对账机（web-check 链）：node 载 pkg-node 产物——值对表 + d.ts bigint 编译面。
 // 常量单源=Rust（capi ffi pub const → js getter 引用）；此处验证"跨语言面不漂"。
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -11,6 +11,29 @@ const pkg = root + 'target/web/pkg-node/';
 // 1) 产物存在性（web-build.sh 全件）
 for (const f of ['visiaengine_wasm.js', 'visiaengine_wasm_bg.wasm', 'visiaengine_wasm.d.ts']) {
   assert.ok(existsSync(pkg + f), `缺产物 pkg-node/${f}——先跑 web-build.sh`);
+}
+
+// 1b) Staleness guard (English-only for new content, C17).
+// This script checks BUILD OUTPUT. Without a freshness check it happily passes
+// against yesterday's artifact while today's source does not even compile —
+// exactly how a wasm32-only breakage (`&mut Vec<f64>` bridge param: accepted by
+// the host target, rejected by wasm-bindgen's wasm32 codegen) survived two
+// bands, since `pixi run ci` carries no web segment at all. Fail loud instead.
+const newestMtime = (dir) => {
+  let max = 0;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = dir + '/' + e.name;
+    max = Math.max(max, e.isDirectory() ? newestMtime(p) : statSync(p).mtimeMs);
+  }
+  return max;
+};
+{
+  const built = statSync(pkg + 'visiaengine_wasm.d.ts').mtimeMs;
+  for (const d of ['bindings/js/rust/visiaengine-wasm/src', 'bindings/c/visiaengine-capi/src']) {
+    const src = newestMtime(root + d);
+    assert.ok(src <= built,
+      `产物陈旧：${d} 的源比 pkg-node/visiaengine_wasm.d.ts 新——先跑 pixi run web-check 再跑本检`);
+  }
 }
 const mod = require(pkg + 'visiaengine_wasm.js');
 const { VisiaEngine } = mod;
