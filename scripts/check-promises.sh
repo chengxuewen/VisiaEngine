@@ -11,8 +11,22 @@ cd "$(dirname "$0")/.."
 FILES=(README.md docs/whitepaper.md)
 DELIVERED="MVT|场景树|投影 morph|morph"
 
+# A cited repo path must exist on disk. This family produced a false ledger line twice: a
+# "double master copy" citation whose files were never committed, and ungated counts. If this
+# fires on a false positive, stop writing the dead name in path form — do not grow an allowlist.
+check_paths() {
+  local miss="" f
+  for f in $(grep -rhoE 'docs/[A-Za-z0-9/_.-]+\.(md|json|txt)' \
+               .agents/memorys/status.md .agents/memorys/decisions.md docs/*.md README.md 2>/dev/null | sort -u); do
+    [ -f "$f" ] || miss="$miss $f"
+  done
+  if [ -n "$miss" ]; then echo "DANGLING CITATION:$miss"; return 1; fi
+  return 0
+}
+
 run_lint() {
   local rc=0
+  check_paths || rc=1
   for f in "${FILES[@]}"; do
     local hits
     hits=$(python3 - "$f" "$DELIVERED" <<'PYIN'

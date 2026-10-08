@@ -51,6 +51,23 @@ if [ -f CMakeLists.txt ]; then
     fi
 fi
 
+# ⑧ workspace package count == README (ungated numbers drift: clause count needed a lock,
+# then ctest/gallery counts, now this). Value comes from cargo metadata, never hand-typed.
+pk=$(cargo metadata --no-deps --format-version 1 2>/dev/null | \
+     python3 -c 'import json,sys;print(len(json.load(sys.stdin)["packages"]))' 2>/dev/null || true)
+rpkg=$(grep -oE 'workspace 共 [0-9]+ 个包' README.md | grep -oE '[0-9]+' | head -1 || true)
+if [ -z "${pk:-}" ]; then
+    echo "GATE-DOCS ✗ ⑧cargo metadata 读取失败（断言无对象=不可信）"; fail=1
+elif [ "${rpkg:-x}" != "$pk" ]; then
+    echo "GATE-DOCS ✗ ⑧README 包数 '${rpkg:-缺}' ≠ cargo '$pk'"; fail=1
+fi
+
+# ⑨ pixel gates must not hard-code the clear colour: read it out of the frame instead.
+# Measured lesson (PIT-45): a one-triple-wrong literal made a coverage assertion count the
+# whole frame — constant-true for an entire band, and it passed CI the whole time.
+bad=$(grep -rnE 'let clear: \[u8; 3\] = \[[0-9]' crates examples --include='*.rs' 2>/dev/null || true)
+if [ -n "$bad" ]; then echo "GATE-DOCS ✗ ⑨手写清屏色字面量（改自标定 + 频率护栏）:"; echo "$bad"; fail=1; fi
+
 # ⑥ gallery manifest lock (B5 "one artifact, four consumers": source+prose+test+card —
 # registries are the single accounting point; gallery is DERIVED, never hand-edited)
 # manifest 由 `pixi run gallery` 产出（build/ 内，gitignored）；缺席=红（提醒先跑生成器）。
@@ -72,6 +89,6 @@ if [ -f "$GM" ]; then
 fi
 
 if [ "$fail" = 0 ]; then
-    echo "GATE-DOCS ✓（E $(echo "$files" | wc -l) 件三方 / README=${rn}↔spec=${sn} / 头签名 $(echo "$hs" | wc -l) 名 / 链接存活 / 画廊 $(grep -c '^E[0-9]' "$GM" 2>/dev/null || echo 0) 卡）"
+    echo "GATE-DOCS ✓（E $(echo "$files" | wc -l) 件三方 / README=${rn}↔spec=${sn} / 头签名 $(echo "$hs" | wc -l) 名 / 链接存活 / 画廊 $(grep -c '^E[0-9]' "$GM" 2>/dev/null || echo 0) 卡 / 包 ${pk}）"
 fi
 exit $fail
