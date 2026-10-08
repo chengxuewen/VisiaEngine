@@ -25,6 +25,7 @@ description: "分析用户意图，输出推荐技能列表。当用户说'怎�
 | **修复** | "修复"/"bug"/"错误"/"不工作" | `/systematic-debugging` |
 | **重构** | "重构"/"优化"/"简化"/"清理" | `/think-before-act` + `/remove-ai-slops` |
 | **设计** | "设计"/"架构"/"方案"/"怎么做" | `/brainstorming` + `/openspec-propose` |
+| **裁决** | "裁决逐项过"/"一个个来"/"不要一起列出"/"walk the options one by one" | `/adjudication-walkthrough` |
 | **测试** | "测试"/"E2E"/"覆盖率" | `/test-driven-development` + `/playwright` |
 | **文档** | "文档"/"README"/"说明" | `/doc-audit` |
 | **安全** | "安全"/"权限"/"认证" | `/security-review` |

@@ -6,7 +6,7 @@
 
 由 `superpowers`、`ponytail`、`oh-my-openagent`、`context-mode` 插件加载（装配点：`.opencode/opencode.json` → `plugin`）。通用方法论，适用所有项目，本文件不重复列举。
 
-## 项目 Skills（22，位于 `.agents/skills/`）
+## 项目 Skills（23，位于 `.agents/skills/`）
 
 路由触发面 = 各 SKILL.md frontmatter 的 `description`；代理按任务上下文自动激活，无需手动调用。
 
@@ -15,6 +15,7 @@
 | `think-before-act` | 元约束 | 先调研→列方案→用户审批→执行 |
 | `skill-router` | 元约束 | 意图分析，输出推荐技能组合 |
 | `ecosystem-scan` | 元约束 | .agents 体系审计 + 社区生态扫描 |
+| `adjudication-walkthrough` | 元约束 | 裁决逐项过（一次一项 · 七段模板 · 说人话） |
 | `lesson-review` | 记忆 | 批量会话回顾，教训沉淀入 memorys |
 | `doc-audit` | 文档 | 文档与架构自洽性审计（交互式） |
 | `book-to-skill` | 文档 | 书籍/文档 → 结构化技能 |

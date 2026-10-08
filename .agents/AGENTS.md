@@ -8,7 +8,7 @@ Agent 工具链根目录（149 文件，全部 .md 或技能附属物）。装�
 .agents/
 ├── memorys/   # 易变事实：status(状态快照) conventions(C 约定) decisions(D 决策) pitfalls(PIT 踩坑)
 ├── rules/     # 恒常约束：common/(入 instructions) + <lang>/(按需，由层级见 rules/README.md)
-└── skills/    # 22 技能目录，各以 SKILL.md frontmatter 注册；.skill_id 为安装元数据，勿动
+└── skills/    # 23 技能目录，各以 SKILL.md frontmatter 注册；.skill_id 为安装元数据，勿动
 ```
 
 ## 加载机制（决定写作纪律）

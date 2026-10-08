@@ -24,7 +24,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 ├── docs/             # whitepaper.md（定位一手事实源）+ architecture.md（v0.1 设计基线，D4 对齐）+ reference/（参考项目库 + evidence/ 证据快照）
 ├── pixi.toml/lock    # D5 环境单源（conda-forge 全锁含 rust 工具链）；bootstrap.{sh,bat} 首启 / pixi.{sh,bat} 激活
 ├── LICENSE-MIT / LICENSE-APACHE   # 双许可正本（不可撤销承诺见 README）
-├── SKILL.md          # 项目技能注册表（22 项）
+├── SKILL.md          # 项目技能注册表（23 项）
 └── README.md         # 白皮书摘要版
 ```
 
@@ -37,7 +37,7 @@ VisiaEngine（维视引擎）— 多维空间可视化引擎：统一 2D/2.5D/3D
 | 每轮会话加载了什么上下文 | `.opencode/opencode.json` → `instructions`（恰 14 条） | 新增条目 = 每轮固定 token 成本，先证明"每轮必需"再加 |
 | 项目状态/约定/决策/踩坑 | `.agents/memorys/` | 模板态，从零积累；编号体系见其 AGENTS.md |
 | 语言规则 | `.agents/rules/<lang>/` | rust/{coding-style,hooks} 已入 instructions（16 条）|
-| 技能 | `.agents/skills/*/SKILL.md` | 22 个；frontmatter description = 路由触发面 |
+| 技能 | `.agents/skills/*/SKILL.md` | 23 个；frontmatter description = 路由触发面 |
 | 前项目 MediaServo 的任何历史 | `.refinfo/MediaServo/` | 决策史/踩坑史/完整 rules——查证用，禁止引用编号进新仓 |
 
 ## CODE MAP
