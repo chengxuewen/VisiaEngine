@@ -491,3 +491,21 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - Open (declared, not swallowed): npm/pip packaging, staticlib consumer day,
   win/mac install forms, publish-band RUNPATH cleaning + CPack tarball,
   T3 human verification for E510/E511/E506 key4/E507.
+
+## Band L baseline (ledger reconciliation, 2026-10-08, plan ledger-tiles-keys v1.1)
+
+- Scope as adjudicated one card at a time (7/7, all to the lazy option; protocol
+  `adjudication-walkthrough`). Plan `.omo/plans/ledger-tiles-keys-2026-10-08.md`; Momus OKAY
+  (0 blocking, 1 non-blocking path-name nit, fixed in-plan).
+- `e8ddfb5`: `docs/gap-closure-roadmap.md` written for real (census + refreshed coverage map +
+  open gaps with triggers + reverse advantages) and the two dangling audit citations repaired.
+- `0ef26fc`: haze gates' background reference self-calibrated from the frame's own corner pixel,
+  with a >2% frequency guard; corner read back [13,18,25] = bit-identical behaviour, now proven.
+- `4618896`: three existence locks — cited `docs/**` paths must exist (check-promises), README
+  package count must equal `cargo metadata` (gate-docs 8, README fixed 10→11 crates/12 packages),
+  no `let clear: [u8;3] = [` literals (gate-docs 9). Each lock shown red by a planted probe.
+- Ledger truth today: **199 clauses / 49 C entries / abi (1<<16)|16 / 12 packages / 43 examples
+  = ctest 43 = gallery 43 cards / ci 11 segments**, all four recomputed by the gates.
+- Found while planning band T: the tile gap is the **single layer slot** in the capi engine
+  (basemap XOR vector), not scheduling — see PIT-46. Band T proceeds with zero ABI change
+  (Adjudication 2 = A: per-kind addressing).

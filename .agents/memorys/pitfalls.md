@@ -349,3 +349,20 @@
 - **Prohibited**: hand-writing `px_world_scale: 1.0` in a frame that draws px-sized points or
   strokes; hardcoding a clear-colour literal in a pixel assertion; treating lit-ratio as
   content verification for an example whose claim is about *what* is drawn.
+
+## PIT-46: a stale ledger line generated a wrong plan (2026-10-08)
+- **Symptoms**: the recommended next-step order handed to the user led with "integrate the tile
+  scheduler into the render loop" as the highest-value item. That work had already shipped
+  (N1.4 / CAPI-35): the engine pumps the layer every frame.
+- **Root cause**: the item was copied from a `余账` line in `status.md` without re-deriving it
+  from code. Ledger lines are cheap to write and never announce when they become false; the
+  install-tree band's own `余账` list had inherited one from the P1 band verbatim.
+- **Fix**: before a ledger item becomes a plan item, open its anchor. Here that took one grep and
+  produced the *real* gap instead: the capi engine keeps a **single** layer slot
+  (`engine.rs:1196/1991/2021` all assign `self.tiles = Some(..)`, no `None`), so a raster
+  basemap and vector tiles are mutually exclusive. Band T of the new plan is that, not scheduling.
+- **Verification**: `grep -n "self.tiles" bindings/c/visiaengine-capi/src/engine.rs` before
+  claiming anything about tile-layer capability; `sed -n '765,805p'` before claiming the pump is
+  missing. Cross-check any "余账/待办" line the same way when promoting it.
+- **Prohibited**: turning a ledger line into a plan item without re-measuring it; "we should
+  integrate X" where X exists.
