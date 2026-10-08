@@ -443,7 +443,7 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 ## V 系列 gap-closure 基线（2026-09-30，hyperplan→全量补全裁决→Block A/B 执行）
 
 - 源起：hyperplan 对抗 5 员×3 轮（研究底料=three.js 608 例普查 + refinfo 13 项目 + self-audit）→ 全量补全裁决 → 计划 v1.1（`.omo/plans/gap-closure-full-2026-09-30.md`，4 员审核 10 修 4 险）→ 执行
-- 审计双正本：`docs/reference/team-gap-analysis-2026-09-30.md` 时代（34→41 例后复普）+ `docs/gap-closure-roadmap.md`（15 覆盖/3 反超/4 部分/1 独有）
+- 审计正本（**2026-10-08 校正**）：本行原引「09-30 审计」与 `docs/gap-closure-roadmap.md` 为「双正本」，但前者（team-gap-analysis-2026-**09-30**.md）**从未入库**（git 全历史无此文件），后者当时也不存在。现役在盘正本 = `docs/reference/team-gap-analysis-2026-09-24.md`（S 级缺口表 + 例数普查）+ `docs/reference/team-gap-analysis-2026-09-28b.md`（three.js 608 例对标，取代 09-24 的例数段）+ `docs/gap-closure-roadmap.md`（2026-10-08 实写：逐条重测的覆盖图 / 未做清单 / 触发器 / 反向优势；09-30 当时的综合判断留在 gitignored 计划 `.omo/plans/gap-closure-full-2026-09-30.md`，不作库内引用）
 - **W1**（`9fd64a2`）：REND-46 stroke 屏幕空间拾取谓词（+5 纯数学测；引擎接线诚实挂账——C pick 面 EntityId 与 seg 无 entity 表冲突 CAPI-01，伪装即违纪）
 - **W2**（`e24b308`）：WGPU-38 depth haze——**raw depth 透视压缩雷探针现形**（16m≈0.994），SSAO view_z 米域线性化；三带几何感知双面锁（bg 12114 全雾/near 0 触碰）；E506 键 4
 - **D**（`13035eb`）：四漂移对账（MVT/morph/场景树/Flutter-C#）+ **check-promises lint**（proximity 匹配器；self-test 破探针抓到第一版行级 allowlist 太粗）+ llms.txt/docs-gen；**ci 十段→十一段**
