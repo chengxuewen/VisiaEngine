@@ -11,19 +11,17 @@
 #[path = "gallery.rs"]
 mod gallery;
 
-use std::sync::Arc;
-
+use examples::viewer::{Ctx, FormatPolicy};
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, Viewport,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 /// 四色板：CSS 原值（sRGB 域）。纯主色/中灰/白——中灰最能抓线性域错装。
 const SWATCHES: [(u8, u8, u8); 4] = [
@@ -135,68 +133,28 @@ fn prove_headless(frames: u32) {
 
 struct App {
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     commands: Vec<DrawCommand>,
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.core.is_some() {
+        if self.ctx.is_some() {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title(
-                            "VisiaEngine E502 · 色彩标定人验窗：四板=纯红 | 中灰#808080(不发亮) | 纯蓝 | 白(不偏粉)",
-                        ),
-                )
-                .expect("create_window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("create_surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter — lavapipe/real GPU required");
+        // Band V canary: window + device + surface + the Srgb format preference come
+        // from the shared bootstrap now. PreferSrgb is this example's own claim: the
+        // byte-exact color round-trip needs an Srgb target format.
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "VisiaEngine E502 · 色彩标定人验窗：四板=纯红 | 中灰#808080(不发亮) | 纯蓝 | 白(不偏粉)",
+            960,
+            600,
+            FormatPolicy::PreferSrgb,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-window"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("request_device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("surface config");
-        config.format = caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| {
-                matches!(
-                    f,
-                    wgpu::TextureFormat::Rgba8UnormSrgb | wgpu::TextureFormat::Bgra8UnormSrgb
-                )
-            })
-            .unwrap_or(caps.formats[0]);
-        surface.configure(&core.device, &config);
 
         let mut commands = vec![DrawCommand::ClearColor { rgba: [0.0; 4] }];
         for (i, (r, g, bl)) in SWATCHES.into_iter().enumerate() {
@@ -220,12 +178,10 @@ impl ApplicationHandler for App {
         }
         println!("loaded {} swatches", SWATCHES.len());
         self.commands = commands;
-        self.window = Some(window);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        self.ctx = Some(ctx);
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 
@@ -233,19 +189,11 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                if size.width == 0 || size.height == 0 {
-                    return;
-                }
-                if let (Some(core), Some(surface), Some(config)) = (
-                    self.core.as_mut(),
-                    self.surface.as_ref(),
-                    self.config.as_mut(),
-                ) {
-                    config.width = size.width.max(1);
-                    config.height = size.height.max(1);
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, size);
                 }
             }
+
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed
                     && matches!(&event.logical_key, Key::Named(NamedKey::Escape))
@@ -254,17 +202,15 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::RedrawRequested => {
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &self.config)
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     event_loop.exit();
                     return;
                 };
                 let rig = CameraRig::look_at([0.0, 0.0, 10.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
                 let Some(proj) = rig.ortho_frame(
                     2.0,
-                    config.width as f32,
-                    config.height.max(1) as f32,
+                    ctx.config.width as f32,
+                    ctx.config.height.max(1) as f32,
                     0.1,
                     100.0,
                 ) else {
@@ -272,7 +218,7 @@ impl ApplicationHandler for App {
                     return;
                 };
                 let frame = Frame {
-                    viewport: Viewport::new(config.width, config.height, 1.0),
+                    viewport: Viewport::new(ctx.config.width, ctx.config.height, 1.0),
                     camera: Camera::ortho(2.0, 2.0, 0.1, 100.0),
                     view_rot: rig.view_rotation(),
                     eye: [0.0, 0.0, 10.0],
@@ -284,29 +230,8 @@ impl ApplicationHandler for App {
                     post: Vec::new(),
                     commands: self.commands.clone(),
                 };
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(tex)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                        let view = tex
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
-                            &view,
-                            config.width,
-                            config.height.max(1),
-                            config.format,
-                        );
-                        core.queue.present(tex);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skipped: {other:?}"),
-                }
-                if let Some(w) = &self.window {
-                    w.request_redraw();
-                }
+                ctx.present(core, &frame);
+                ctx.request_redraw();
             }
             _ => {}
         }
@@ -314,16 +239,7 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut frames: Option<u32> = None;
-    let mut args = std::env::args().skip(1);
-    while let Some(a) = args.next() {
-        if a == "--frames" {
-            frames = args
-                .next()
-                .and_then(|v| v.parse().ok())
-                .filter(|n: &u32| *n > 0);
-        }
-    }
+    let frames = examples::viewer::argv_frames();
     if let Some(n) = frames {
         prove_headless(n);
         return Ok(());
@@ -332,9 +248,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
         core: None,
-        surface: None,
-        config: None,
-        window: None,
+        ctx: None,
         commands: Vec::new(),
     };
     event_loop.run_app(&mut app)?;

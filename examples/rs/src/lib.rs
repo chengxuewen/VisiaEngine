@@ -1,6 +1,8 @@
 //! 例子注册壳：lib 面只放跨例共享小件（BBox 取景拟合）；例子本体见 ../E*_*.rs。
 //! 「空 lib 消灭 examples-only 条件分支」的出生预置裁决（v1.3 F4）即此文件；现承载共用件非意外。
 
+pub mod viewer;
+
 /// 世界系 AABB（行向量约定 `[p,1]·M`，平移在第 3 行——io-gltf/D7 同构）。
 /// 用途：窗口例装载期取景拟合——E201 灰屏案的根治（历史教训：交互相机参数从未被像素验证）。
 #[derive(Clone, Copy, Debug, Default)]
