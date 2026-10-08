@@ -370,3 +370,31 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
   missing. Cross-check any "余账/待办" line the same way when promoting it.
 - **Prohibited**: turning a ledger line into a plan item without re-measuring it; "we should
   integrate X" where X exists.
+
+## PIT-47: 门禁接进 CI 前没问"它的工具由谁提供"——永久静默 SKIP 的绿 (2026-10-08)
+- **症状**: band K 把 `keys-probe` / `window-probe-all.sh` 写进 `.github/workflows/ci.yml`，
+  本机全绿；但镜像 runner 上这两行**永远不会执行任何断言**——它们找不到 `xwd` 就按设计
+  `SKIP exit 0`，CI 只打印绿。步骤存在≠步骤在跑。
+- **根因**: 两重。① 依赖来源错判：`xwd` 属**系统包 x11-apps**（`dpkg -S /usr/bin/xwd` 实测），
+  不在 pixi 环境里，而 workflow 的 apt 只装 `mesa-vulkan-drivers xvfb`；`xorg-libxtst`/XTest.h
+  反而在 pixi.lock 里（所以那部分没风险——逐件查来源才判得准）。② 门禁惯例本身是
+  「缺件=SKIP exit 0」（clone 不误红），这条惯例进了 CI 就变成「缺件=不跑也算过」，
+  即 PIT-25（缺席恒真）的 CI 接线变体。
+- **解法**: ① apt 补 `x11-apps` 并写注释说明它不是可选（防将来"整理依赖"删掉）；
+  ② 探针加 `--strict`：SKIP 翻成 exit 1 且**指名缺哪件**，CI 用 `--strict`，本机默认仍可跳过；
+  ③ 工具检索走 PATH（旧代码硬写 `/usr/bin/xwd`，别的容器布局既找不到也报不出原因）；
+  ④ 接门前先在本机把那条步骤**真跑一遍**（`window-probe-all.sh` 落地一整个 session 没跑过，
+  本条补跑：rc=0 / 20 常驻窗 / E509 lit=7500/7500 100.0% vs 5.0% 阈）。
+- **验证**:
+  ```bash
+  # 分支可达性（--strict 的意义就在于它能被触发）
+  python3 - <<'PY'   # 只让 xwd 缺失，注入式打 main() 的缺件分支
+  #   --strict --all -> rc=1 且报文 "missing toolchain: xwd"
+  #   默认           -> SKIP rc=0
+  PY
+  dpkg -S "$(command -v xwd)"                    # 期望点名系统包，别假设来自 pixi
+  grep -n "x11-apps\|--strict" .github/workflows/ci.yml
+  bash scripts/window-probe-all.sh; echo rc=$?   # 新接的门禁必须本机先真跑
+  ```
+- **禁止**: 把带 SKIP 语义的门禁接进 CI 而不给它一条"缺件即红"的调用形；
+  在提交 CI 变更前跳过本机实跑该步骤。

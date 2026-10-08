@@ -540,5 +540,6 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   Two port bugs found by running it for real: the X needle is the E number (titles use a
   space, not the file stem), and XWD `header_size` includes the variable-length name so no
   constant guards it -- the length identity `off + h*bpl == len` does.
+- Close-out `7e139f0` (PIT-47): the two new ci.yml L2 lines could only ever SKIP -- `xwd` ships in the system package `x11-apps` (not pixi) and the runner installed only `xvfb`, so the probes' own skip-on-missing-toolchain convention = a green not earned (PIT-25's CI-wiring variant). Fixed: apt installs x11-apps with a do-not-remove comment, keys-probe gained `--strict` (skip -> exit 1 naming the missing tool; ci.yml uses it, local default still skips), xwd found via PATH instead of a hardcoded /usr/bin. Branch tests: stub-only-xwd-missing + --strict -> rc=1 "missing toolchain: xwd"; default -> SKIP rc=0; real run --strict -> 4/4 rc=0. And window-probe-all.sh, wired a session ago and never run here, now has: rc=0, 20 resident windows, E509 lit=100.0% vs a 5.0% floor.
 - Ledger now: **199 clauses / 49 C entries / abi (1<<16)|16 / 12 packages / 44 examples =
   ctest 44 = gallery 44 cards / ci 11 segments / 9 crates**.
