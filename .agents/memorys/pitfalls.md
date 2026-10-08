@@ -317,3 +317,35 @@
   `grep -c "陈旧" scripts/web-mirror.mjs` ≥1。
 - **禁止**: 用宿主 `cargo test -p visiaengine-wasm` 结果指代 wasm32 可用性；
   未跑 `pixi run web-check` 而在基线/commit message 里写 WEB 字样。
+
+## PIT-45: "window looks lit" is not "window looks right" — two false-evidence channels (2026-10-08)
+- **Symptoms**: E510's and E511's resident windows passed every automated gate (first-frame
+  lit-ratio 82.3%, pixel-delta assertions, ctest, Xvfb display group) yet both rendered the
+  wrong thing: E510 showed yellow discs ~1/4 frame height swallowing the road ribbon; E511
+  showed a flat plate that "swung" about the wrong axis (it was built in the x-y plane in a
+  Z-up world and rotated about Y — a floor panel, not a gate).
+- **Root causes** (three, all independent):
+  1. `px_world_scale: 1.0` in a window/assertion lane means "1 pixel = 1 world unit". Point
+     radii and stroke widths are declared in **pixels** (`PointMark.radius_px`, GEO-24), so a
+     6 px marker became a 6-world-unit disc. The geo pipeline computes the scale from the
+     camera; hand-written frames must too.
+  2. A hardcoded clear-colour triple in a pixel assertion (`[16,21,29]`) missed every pixel
+     (actual `[15,20,28]`), so "geometry px" counted 153600/153600 = the assertion was
+     constant-true and had been for a whole band.
+  3. Lit-ratio and pixel-delta are *differential* measures: neither has any notion of whether
+     the subject resembles what the example claims to show.
+- **Fixes**:
+  1. derive `px_world_scale = 2·dist·tan(fov_y/2)/height` from the rig (helper in both examples);
+  2. self-calibrate the clear reference from the render's own corner pixel instead of a literal;
+  3. added a determinism canary (same pose renders byte-identically) so a pixel-delta claim
+     cannot be propped up by nondeterministic background;
+  4. review the actual picture: `xwd -> PNG` and look (or measure per-band delta). Machine
+     harness used: XTEST key/wheel/drag injection + screenshot diff (drives the "only a human
+     can press this" cases; angle/title echo read back through the window manager).
+- **Verification**: after fixes — E511 diff 1222 -> 5848 (measured, threshold 3500) and the
+  picture reads as two hinged leaves between posts on a ground plane; E510 geometry count
+  dropped from the vacuous 153600 to 16457 and the ribbon/markers are legible; harness reports
+  E506/E507/E510/E511 all OK with Esc exiting each through the real X input path.
+- **Prohibited**: hand-writing `px_world_scale: 1.0` in a frame that draws px-sized points or
+  strokes; hardcoding a clear-colour literal in a pixel assertion; treating lit-ratio as
+  content verification for an example whose claim is about *what* is drawn.
