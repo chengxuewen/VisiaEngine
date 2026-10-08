@@ -83,6 +83,12 @@ gate-trace = "bash scripts/spec-trace.sh"   # 批2 v1.4：追溯本机化入 ci 
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # GEO-18 解析边界门禁（代码形态，注释豁免）
 gate-docs = "bash scripts/gate-docs.sh"   # 批 5 T3：文档零漂移四检
 cmake-smoke = "bash scripts/cmake-smoke.sh"   # CMake 层三态门（无 cmake 机 SKIP；含负路径报文）
+# pack-check (v1.3 P3): installed-tree hygiene -- manifest / self-sufficiency /
+# no build-machine paths. Independent task, NOT in the ci chain: cmake-smoke
+# already proves the tree configures, builds and installs; this is the
+# pre-publish walk-through. RUNPATH is reported, never judged (cleaning belongs
+# to the publish band's assembly step; see scripts/gate-pack.sh header).
+pack-check = "bash scripts/gate-pack.sh"
 ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke"] }
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # ctest 转发壳（argv 单源=R9 表；CI xvfb-run 调用）
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2：glTF 装配链路（G3）
