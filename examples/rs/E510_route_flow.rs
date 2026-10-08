@@ -177,6 +177,17 @@ fn norm_of(p: [f32; 3]) -> [f32; 3] {
     }
 }
 
+/// World units per screen pixel at the orbit target (REND-29 exact path).
+/// Point radii and stroke widths carry *pixel* units, so leaving
+/// px_world_scale at 1.0 would turn a 6 px marker into a 6 *world unit* disc
+/// (measured: the markers swallowed the road in both lanes).
+fn px_scale(rig: &visiaengine_render::CameraRig, target: [f64; 3], height: u32) -> f32 {
+    let e = rig.eye();
+    let d = ((e[0] - target[0]).powi(2) + (e[1] - target[1]).powi(2) + (e[2] - target[2]).powi(2))
+        .sqrt();
+    (2.0 * d * (rig.fov_y / 2.0).tan() / f64::from(height.max(1))) as f32
+}
+
 fn frame(cmds: &[DrawCommand]) -> Frame {
     let rig = visiaengine_render::CameraRig::look_at(
         [0.0, -26.0, 18.0],
@@ -191,7 +202,7 @@ fn frame(cmds: &[DrawCommand]) -> Frame {
         proj: rig
             .perspective(rig.fov_y as f32, W as f32 / H as f32, 0.1, 200.0)
             .expect("proj"),
-        px_world_scale: 1.0,
+        px_world_scale: px_scale(&rig, [0.0, 0.0, 0.0], H),
         shadow: None,
         clip: None,
         edl: None,
@@ -221,7 +232,12 @@ fn prove(frames: u32) {
     let base = b.render_to_pixels(&frame(&cmds)).expect("render");
     // route spread: the S-curve must put geometry across the frame — sample
     // the road region lit vs clear pixels (probe floor, PIT-8 conservative).
-    let clear: [u8; 3] = [16, 21, 29]; // sRGB encode of clear [0.06,0.08,0.11] band
+    // Self-calibrated clear reference: the top-left corner of this scene is sky
+    // by construction, so the render itself reports its clear colour. A hand
+    // written triple here was silently wrong (the count matched *no* pixel,
+    // making the old assertion constant-true) -- measured, not assumed.
+    let px0 = &base.rgba.as_chunks::<4>().0[0];
+    let clear = [px0[0], px0[1], px0[2]];
     let geo = base
         .rgba
         .as_chunks::<4>()
@@ -229,7 +245,7 @@ fn prove(frames: u32) {
         .iter()
         .filter(|p| [p[0], p[1], p[2]] != clear)
         .count();
-    println!("E510 probe: geometry px={geo}");
+    println!("E510 probe: clear={:?} geometry px={geo}", clear);
     assert!(geo > 4000, "route geometry must cover the frame: {geo}");
 
     // Flow density law: denser sampling = strictly more marker pixels than a
@@ -450,7 +466,7 @@ impl ApplicationHandler for App {
                         200.0,
                     )
                     .expect("proj"),
-                px_world_scale: 1.0,
+                px_world_scale: px_scale(rig, [0.0, 0.0, 0.0], config.height),
                 shadow: None,
                 clip: None,
                 edl: None,
