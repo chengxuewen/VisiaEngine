@@ -30,20 +30,38 @@ const H: u32 = 320;
 
 /// One leaf: 2 units wide, 4 tall, pivoting at its own local origin (x=0),
 /// extending to +x. Both lanes build their scene from this.
+/// A gate leaf standing in the x-z plane (world is Z-up): 3 wide, 4 tall,
+/// hinged at its local origin and extending to +x. Facing -y, toward the camera.
 fn leaf_geometry() -> (Vec<[f32; 3]>, Vec<[f32; 3]>) {
     (
         vec![
-            [-1.0, -2.0, 0.0],
-            [1.0, -2.0, 0.0],
-            [1.0, 2.0, 0.0],
-            [-1.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [3.0, 0.0, 4.0],
+            [0.0, 0.0, 4.0],
         ],
-        vec![[0.0f32, 0.0, 1.0]; 4],
+        vec![[0.0f32, -1.0, 0.0]; 4],
     )
 }
 
+/// A flat quad in the x-y plane (ground) or in the x-z plane (upright), used for
+/// the reference geometry around the gate so the leaves read as a gateway.
+fn plate(core: &mut MeshCore, verts: &[[f32; 3]], nrm: [f32; 3]) -> MeshId {
+    let normals = vec![nrm; verts.len()];
+    let idx: Vec<u32> = (0..verts.len() as u32 - 1)
+        .flat_map(|i| [0, i, i + 1])
+        .collect();
+    core.upload_mesh(&MeshDesc {
+        uv: &[],
+        positions: verts,
+        normals: &normals,
+        indices: &idx,
+    })
+    .expect("plate")
+}
+
 /// GPU products for the scene, uploaded once per backend (both lanes share it).
-fn gate_products(core: &mut MeshCore) -> (MeshId, MeshId, MaterialId) {
+fn gate_products(core: &mut MeshCore) -> (GateIds, MaterialId) {
     let (leaf, normals) = leaf_geometry();
     let desc = || MeshDesc {
         uv: &[],
@@ -51,8 +69,6 @@ fn gate_products(core: &mut MeshCore) -> (MeshId, MeshId, MaterialId) {
         normals: &normals,
         indices: &[0, 1, 2, 0, 2, 3],
     };
-    let m0 = core.upload_mesh(&desc()).expect("leaf0");
-    let m1 = core.upload_mesh(&desc()).expect("leaf1");
     let mat = core
         .upload_material_desc(&MaterialDesc {
             base_color: [0.8, 0.55, 0.2, 1.0],
@@ -63,48 +79,115 @@ fn gate_products(core: &mut MeshCore) -> (MeshId, MeshId, MaterialId) {
             metallic: 0.0,
         })
         .expect("mat");
-    (m0, m1, mat)
+    let m0 = core.upload_mesh(&desc()).expect("leaf0");
+    let m1 = core.upload_mesh(&desc()).expect("leaf1");
+    // Ground + two posts: pure reference geometry (identity transform, never
+    // animated), so a change on screen can only come from the leaf poses.
+    let ground = plate(
+        core,
+        &[
+            [-14.0, -14.0, 0.0],
+            [14.0, -14.0, 0.0],
+            [14.0, 14.0, 0.0],
+            [-14.0, 14.0, 0.0],
+        ],
+        [0.0, 0.0, 1.0],
+    );
+    let post_l = plate(
+        core,
+        &[
+            [-4.2, 0.0, 0.0],
+            [-3.4, 0.0, 0.0],
+            [-3.4, 0.0, 5.2],
+            [-4.2, 0.0, 5.2],
+        ],
+        [0.0, -1.0, 0.0],
+    );
+    let post_r = plate(
+        core,
+        &[
+            [3.4, 0.0, 0.0],
+            [4.2, 0.0, 0.0],
+            [4.2, 0.0, 5.2],
+            [3.4, 0.0, 5.2],
+        ],
+        [0.0, -1.0, 0.0],
+    );
+    (
+        GateIds {
+            m0,
+            m1,
+            ground,
+            post_l,
+            post_r,
+        },
+        mat,
+    )
 }
 
-/// Leaf 2 sits 3 units to the right *inside its own transform* (composed),
-/// which is what DrawMesh.origin alone would not express.
-fn shifted_x(x: f64) -> [[f64; 4]; 4] {
-    let mut m = identity();
-    m[0][3] = x; // column-major translation column
-    m
+/// GPU handles for the gate scene (leaves are the only animated parts).
+#[derive(Clone, Copy)]
+struct GateIds {
+    m0: MeshId,
+    m1: MeshId,
+    ground: MeshId,
+    post_l: MeshId,
+    post_r: MeshId,
 }
 
-/// The two leaves at open angle `theta` (radians about +Z-up Y axis).
-fn gate_cmds(m0: MeshId, m1: MeshId, mat: MaterialId, theta: f64) -> Vec<DrawCommand> {
-    let rot = rot_y_f64(theta);
+/// The two leaves at open angle `theta` radians about the vertical Z axis.
+/// Left hinge sits at x=-3, right hinge at x=+3; at theta=0 the leaves meet in
+/// the middle (shut), and both swing toward -y (inward) as theta grows --
+/// which is why the right leaf carries the extra pi: same side, mirrored.
+fn gate_cmds(g: &GateIds, mat: MaterialId, theta: f64) -> Vec<DrawCommand> {
+    let still = |mesh: MeshId, origin: [f64; 3]| DrawCommand::DrawMesh {
+        mesh,
+        material: mat,
+        origin,
+        transform: [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+    };
     vec![
         DrawCommand::ClearColor {
             rgba: [0.06, 0.08, 0.11, 1.0],
         },
+        still(g.ground, [0.0, 0.0, 0.0]),
+        still(g.post_l, [0.0, 0.0, 0.0]),
+        still(g.post_r, [0.0, 0.0, 0.0]),
         DrawCommand::DrawMesh {
-            mesh: m0,
+            mesh: g.m0,
             material: mat,
-            origin: [0.0, 0.0, 0.0],
-            transform: rot,
+            origin: [-3.0, 0.0, 0.0],
+            transform: rot_z_f64(-theta),
         },
         DrawCommand::DrawMesh {
-            mesh: m1,
+            mesh: g.m1,
             material: mat,
             origin: [3.0, 0.0, 0.0],
-            transform: mul_mat(shifted_x(3.0), rot),
+            transform: rot_z_f64(std::f64::consts::PI + theta),
         },
     ]
 }
 
+/// One camera for both lanes (assertion and window) so what is asserted is what
+/// the human sees; target sits at leaf mid-height.
+fn gate_rig() -> CameraRig {
+    CameraRig::look_at([0.0, -9.5, 4.2], [0.0, 0.0, 2.0], [0.0, 0.0, 1.0])
+}
+
 fn headless_frame(commands: Vec<DrawCommand>, w: u32, h: u32) -> Frame {
-    let rig = CameraRig::look_at([0.0, 0.0, 12.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+    let rig = gate_rig();
     Frame {
         viewport: Viewport::new(w, h, 1.0),
-        camera: Camera::perspective(1.0, w as f32 / h as f32, 0.1, 100.0),
+        camera: Camera::perspective(rig.fov_y as f32, w as f32 / h as f32, 0.1, 100.0),
         view_rot: rig.view_rotation(),
         eye: rig.eye(),
         proj: rig
-            .perspective(1.0, w as f32 / h as f32, 0.1, 100.0)
+            .perspective(rig.fov_y as f32, w as f32 / h as f32, 0.1, 100.0)
             .expect("proj"),
         px_world_scale: 1.0,
         shadow: None,
@@ -119,18 +202,28 @@ fn prove(_frames: u32) {
     // Assertion lane: rotating the pose must move pixels; the composed-offset
     // second leaf must follow the same pose (canary against dropping transform).
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
-    let (m0, m1, mat) = gate_products(b.core_mut());
+    let (g, mat) = gate_products(b.core_mut());
 
     let closed = b
-        .render_to_pixels(&headless_frame(gate_cmds(m0, m1, mat, 0.0), W, H))
+        .render_to_pixels(&headless_frame(gate_cmds(&g, mat, 0.0), W, H))
         .expect("closed");
     let opened = b
         .render_to_pixels(&headless_frame(
-            gate_cmds(m0, m1, mat, std::f64::consts::FRAC_PI_4),
+            gate_cmds(&g, mat, std::f64::consts::FRAC_PI_4),
             W,
             H,
         ))
         .expect("opened");
+    // Determinism canary: same pose twice must be byte-identical (a moving
+    // background or nondeterministic clear would make the delta claim meaningless).
+    let closed2 = b
+        .render_to_pixels(&headless_frame(gate_cmds(&g, mat, 0.0), W, H))
+        .expect("closed2");
+    assert_eq!(
+        closed.rgba, closed2.rgba,
+        "same pose must render identically"
+    );
+    println!("E511 probe: determinism canary ok (identical frames)");
     let diff = closed
         .rgba
         .as_chunks::<4>()
@@ -140,9 +233,11 @@ fn prove(_frames: u32) {
         .filter(|(a, b2)| a[..3] != b2[..3])
         .count();
     println!("E511 probe: gate-open diff={diff}");
-    assert!(diff > 500, "rotated leaves must move pixels: {diff}");
+    // Threshold = measured 5848 (2026-10-08) minus ~40% headroom: catches regressions
+    // without chasing aesthetics (testing.md visual-lane discipline).
+    assert!(diff > 3500, "rotated leaves must move pixels: {diff}");
     save_frame(&opened, "E511_gate");
-    println!("E511 OK: transform face drives rigid rotation; static offset leaf composed");
+    println!("E511 OK: vertical leaves swing about the hinge; static ground/posts unchanged");
 }
 
 /// Window lane state (C15 dual-mode: zero-arg = resident human window).
@@ -151,7 +246,7 @@ struct App {
     core: Option<MeshCore>,
     surface: Option<wgpu::Surface<'static>>,
     config: Option<wgpu::SurfaceConfiguration>,
-    ids: Option<(MeshId, MeshId, MaterialId)>,
+    ids: Option<(GateIds, MaterialId)>,
     // Gate clock: theta sweeps 0..60 degrees on a cosine so both ends dwell.
     t: f64,
     last: Option<std::time::Instant>,
@@ -258,7 +353,7 @@ impl ApplicationHandler for App {
         // 0 .. 60 degrees, dwelling at both ends (cosine easing, no snap).
         self.theta = (1.0 - (self.t * 1.1).cos()) * 0.5 * std::f64::consts::FRAC_PI_3;
 
-        let (Some(core), Some(surface), Some(config), Some(window), Some((m0, m1, mat))) = (
+        let (Some(core), Some(surface), Some(config), Some(window), Some((g, mat))) = (
             self.core.as_mut(),
             self.surface.as_ref(),
             self.config.as_ref(),
@@ -298,7 +393,7 @@ impl ApplicationHandler for App {
             clip: None,
             edl: None,
             post: Vec::new(),
-            commands: gate_cmds(m0, m1, mat, self.theta),
+            commands: gate_cmds(&g, mat, self.theta),
         };
         match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(tex)
@@ -327,7 +422,7 @@ impl ApplicationHandler for App {
 impl App {
     /// Orbit around the gate centre by azimuth/elevation radians (E510 shape).
     fn orbit(&mut self, dtheta: f64, dphi: f64) {
-        let target = [1.5, 0.0, 0.0];
+        let target = [0.0, 0.0, 1.8];
         let eye = self.rig.eye();
         let off = [eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]];
         let r = (off[0] * off[0] + off[1] * off[1] + off[2] * off[2]).sqrt();
@@ -345,7 +440,7 @@ impl App {
     }
 
     fn zoom(&mut self, d: f64) {
-        let target = [1.5, 0.0, 0.0];
+        let target = [0.0, 0.0, 1.8];
         let eye = self.rig.eye();
         let off = [eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]];
         let len = (off[0] * off[0] + off[1] * off[1] + off[2] * off[2]).sqrt();
@@ -374,7 +469,7 @@ fn window_form() -> Result<(), Box<dyn std::error::Error>> {
         t: 0.0,
         last: None,
         theta: 0.0,
-        rig: CameraRig::look_at([1.5, -24.0, 14.0], [1.5, 0.0, 0.0], [0.0, 0.0, 1.0]),
+        rig: gate_rig(),
         drag: false,
         last_pos: (0.0, 0.0),
         ready: false,
@@ -383,30 +478,11 @@ fn window_form() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn rot_y_f64(a: f64) -> [[f64; 4]; 4] {
+fn rot_z_f64(a: f64) -> [[f64; 4]; 4] {
     let (s, c) = a.sin_cos();
     [
-        [c, 0.0, -s, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [s, 0.0, c, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-}
-
-fn mul_mat(a: [[f64; 4]; 4], b: [[f64; 4]; 4]) -> [[f64; 4]; 4] {
-    let mut o = [[0.0f64; 4]; 4];
-    for (r, or) in o.iter_mut().enumerate() {
-        for c in 0..4 {
-            or[c] = (0..4).map(|k| a[r][k] * b[k][c]).sum();
-        }
-    }
-    o
-}
-
-fn identity() -> [[f64; 4]; 4] {
-    [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
+        [c, -s, 0.0, 0.0],
+        [s, c, 0.0, 0.0],
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0],
     ]
