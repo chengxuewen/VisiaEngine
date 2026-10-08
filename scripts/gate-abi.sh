@@ -6,10 +6,19 @@ set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 NM=$(command -v nm || true); [ -n "$NM" ] || NM=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-nm
 CC=$(command -v cc || true);   [ -n "$CC" ] || CC=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-cc
-if [ ! -x "$NM" ] || [ ! -x "$CC" ]; then echo "GATE-ABI SKIP (无 nm/cc，host-spike 未装)"; exit 0; fi
+RE=$(command -v readelf || true); [ -n "$RE" ] || RE=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-readelf
+if [ ! -x "$NM" ] || [ ! -x "$CC" ] || [ ! -x "$RE" ]; then echo "GATE-ABI SKIP (无 nm/cc/readelf，host-spike 未装)"; exit 0; fi
 cargo build -p visiaengine-capi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; exit 1; }
 SO=target/debug/libvisiaengine.so
 [ -f "$SO" ] || { echo "GATE-ABI ✗ 缺 $SO（[lib] name 检查）"; exit 1; }
+# P1（packaging-round v1.3）：cdylib 必须自带名牌（SONAME）。无名牌时消费者记的是
+# 「链接命令行上那串字」——本机实测两形：给绝对路径 → DT_NEEDED=/abs/….so；有名牌 → 裸名。
+# want 现场从 [lib] name 推导：名牌与产物名同源，将来改库名漏改此处=本检红。
+libname=$(grep -A2 '^\[lib\]' bindings/c/visiaengine-capi/Cargo.toml | sed -n 's/^name = "\([a-z_]*\)".*/\1/p' | head -1)
+want="lib${libname}.so"
+have=$("$RE" -d "$SO" | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')
+[ -n "$want" ] || { echo "GATE-ABI ✗ [lib] name 读取失败（want 空=断言恒真，不可信）"; exit 1; }
+[ "$have" = "$want" ] || { echo "GATE-ABI ✗ SONAME: got='${have:-无}' want='$want'（名牌缺位→消费者 DT_NEEDED 随命令行漂移）"; exit 1; }
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
 echo "ABI-SYMBOLS="$N/49" | SO_SIZE=$(du -h "$SO" | cut -f1)"
 [ "$N" = "49" ] || { echo "GATE-ABI ✗ 符号数 $N"; exit 1; }
