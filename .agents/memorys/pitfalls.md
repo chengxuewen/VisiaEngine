@@ -350,6 +350,10 @@
   strokes; hardcoding a clear-colour literal in a pixel assertion; treating lit-ratio as
   content verification for an example whose claim is about *what* is drawn.
 
+**Pointer (band K, 2026-10-08)**: the hand-built harness this entry describes is now
+a repo tool -- `pixi run keys-probe` (scripts/keys-probe.py + scripts/xinject.c).
+Rebuild it by hand only if the tool is skipped for a missing dependency.
+
 ## PIT-46: a stale ledger line generated a wrong plan (2026-10-08)
 - **Symptoms**: the recommended next-step order handed to the user led with "integrate the tile
   scheduler into the render loop" as the highest-value item. That work had already shipped

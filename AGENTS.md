@@ -75,6 +75,7 @@ source pixi.sh       # 日常激活（或单命令 pixi run <task>）
 pixi run ci          # fmt+lint+check+test+audit 聚合（开工门禁）
 pixi run <check|build|test|lint|fmt|audit|verify>   # 单任务
 source pixi.sh && pixi run pack-check   # 装树卫生（清单/NEEDED 自足/无构建路径；RUNPATH 只报不判，清洗属发布带）
+pixi run keys-probe     # XTEST 输入探针（私有 Xvfb 显示；键/滚轮/拖拽真注入，画面不动即红；不在 ci 链）
 bash scripts/spec-trace.sh    # SDD↔测试双向追溯
 
 ## NOTES

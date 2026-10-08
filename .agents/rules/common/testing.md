@@ -112,3 +112,29 @@ grep -rn 'lum >\|red >\|green >' crates/*/tests/*.rs | wc -l   # 像素门计数
 grep -c "陈旧" scripts/web-mirror.mjs          # 期望 ≥1
 grep -n "^ci = " pixi.toml                     # 期望：无 web-check（本条存在的原因）
 ```
+
+## XTEST input probe = T3-input promoted to T2 (band K, 2026-10-08)
+
+`pixi run keys-probe` (scripts/keys-probe.py + scripts/xinject.c) injects real
+key/wheel/drag events into a live window on a **private** Xvfb display, then fails
+when the window stays alive but the picture never changes. Measured output of the
+committed set: E506 key 4 = 23.90%, E507 keys 2/3/1 = 5.87/29.85/29.85%,
+E510 drag = 8.95% (+ title `phase=43.0`), E511 clock at a 4s gap = 1.79%, and
+Escape closes all four through the same input path. Break probe recorded: stubbing
+`self.haze = !self.haze` in E506 printed `changed=0.00%` and exited 1.
+
+| Now machine-checked (T2) | Still human (T3) |
+|---|---|
+| a key/handler is wired to something the frame reads | does the result *look right* (aesthetics, colour taste) |
+| the title/state echo updates | is the motion smooth (frame pacing, not pixel deltas) |
+| drag/wheel change the view at all | does it read as the thing it claims to be |
+| Escape closes the window | resize-while-dragging, multi-monitor, WM oddities |
+| zero-arg run is resident (C15 breach detector built in) | anything needing a second app or a real GPU feel |
+
+Rules baked into the tool (keep them if you port it): private display, never
+`$DISPLAY` (PIT-22); assertions happen before cleanup; per-case settle/gap so a slow
+clock is not read as "nothing changed"; SKIP exit 0 only for a missing toolchain
+(Xvfb / `/usr/bin/xwd` / cc / `XTest.h`); a live window with no delta is exit 1.
+It stays **out of `pixi run ci`** (same policy as `pack-check`) and is wired into
+`.github/workflows/ci.yml` next to `scripts/window-probe-all.sh`, which had zero
+callers until this band.

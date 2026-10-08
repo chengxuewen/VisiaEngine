@@ -89,6 +89,11 @@ cmake-smoke = "bash scripts/cmake-smoke.sh"   # CMake 层三态门（无 cmake �
 # pre-publish walk-through. RUNPATH is reported, never judged (cleaning belongs
 # to the publish band's assembly step; see scripts/gate-pack.sh header).
 pack-check = "bash scripts/gate-pack.sh"
+# Band K (2026-10-08): XTEST input probe over the interactive example set.
+# Out of the ci chain on purpose (same policy as pack-check): it needs Xvfb +
+# /usr/bin/xwd + a C compiler, which pixi run ci does not promise. It starts its
+# own private display, so never wrap it in xvfb-run (PIT-22).
+keys-probe = "python3 scripts/keys-probe.py --all"
 ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke"] }
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # ctest 转发壳（argv 单源=R9 表；CI xvfb-run 调用）
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2：glTF 装配链路（G3）

@@ -48,6 +48,12 @@ jobs:
           pixi run smoke-hdr                   # N5: tonemap + hdr fixture asserts
           pixi run smoke-pbr                   # N6: GGX metallic/dielectric + roughness ladder asserts
           pixi run smoke-ssao                  # N7: SSAO off-vs-on crease-band asserts
+          # Band K: first-frame brightness guard over every resident-window example
+          # (self-managed Xvfb; was caller-less since it landed -- wired here).
+          bash scripts/window-probe-all.sh
+          # Band K: XTEST key/wheel/drag probe -- fails when a window stays alive
+          # but the picture never changes (pixel gates cannot see an unwired handler).
+          pixi run keys-probe   # own private display; no xvfb-run (PIT-22)
           # cmake example 族不另列：pixi run ci 第十段 cmake-smoke 内含 ctest -LE display
 
   qt:

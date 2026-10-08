@@ -509,3 +509,36 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - Found while planning band T: the tile gap is the **single layer slot** in the capi engine
   (basemap XOR vector), not scheduling — see PIT-46. Band T proceeds with zero ABI change
   (Adjudication 2 = A: per-kind addressing).
+
+## Band T + Band K baseline (2026-10-08, plan ledger-tiles-keys v1.1, all 7 cards = lazy option)
+
+- **Band T (two-layer map)**: capi Engine went from one tile slot to `layers: Vec<TileLayer>`
+  with an explicit `LayerKind`, per-kind view addressing, first-mount-only camera fit and
+  `RASTER_UNDERLAY_Z` applied only when both kinds are mounted. **Zero ABI change held**
+  (49 entries, abi `(1<<16)|16` untouched, no wasm/hpp work). Clauses CAPI-28/29/39/40 each
+  carry a Band T revision sentence; spec-trace stayed 199<->199 (no new clause ids).
+  - `d79bf78` engine + `tests/tile_layers.rs` (2 tests). Discrimination: single-slot revert
+    -> `COEXIST both=0`, `set_raster_view=-1`, red at `tile_layers.rs:90`.
+  - `23abf75` **E817_two_layer_map.c** — the visual witness: 5-segment live gate, families
+    measured `raster_only basemap=69120 road=0 poi=0` / `vector_only road=10739 poi=1314
+    basemap=0` / stacked v-then-r `9782/1314/26030` / stacked r-then-v `5343/684/60322` /
+    re-mount memcmp == 0. Break probe: single-slot semantics -> `road=0 poi=0` FAIL rc=1.
+  - Two plan premises died on contact: the proof cannot live in examples/rs (Engine is a
+    private `mod`), and the two fixtures sit on opposite sides of the planet, so stacking
+    them never shared a frame -> added `resources/data/raster_over` (the same four 79-byte
+    PNGs re-keyed into the vector region, 316 bytes) instead of claiming a gate that cannot
+    pass. Basemap witness = the EXCLUSION bucket, because the basemap's own colours satisfy
+    E206's water/seam predicates (PIT-8 fifth sighting).
+  - README: stacking claim added + its two numbers 43->44 measured from the same terminal
+    (gallery "44 cards (17 thumbnails, 44 detail pages)", cmake-smoke count lock 44==44).
+- **Band K (input probe becomes a repo tool)**: `scripts/xinject.c` + `scripts/keys-probe.py`
+  + `pixi run keys-probe` (out of the ci chain, pack-check policy) and the previously
+  caller-less `scripts/window-probe-all.sh` wired into `.github/workflows/ci.yml` L2.
+  Measured: E506 key4 23.90%, E507 keys 2/3/1 = 5.87/29.85/29.85%, E510 drag 8.95% +
+  wheel 9.18% (title `phase=43.0`->`56.9`), E511 clock 1.79% at a 4s gap, Escape exits all
+  four. Break probe: stubbed `self.haze = !self.haze` -> `changed=0.00%` + rc=1.
+  Two port bugs found by running it for real: the X needle is the E number (titles use a
+  space, not the file stem), and XWD `header_size` includes the variable-length name so no
+  constant guards it -- the length identity `off + h*bpl == len` does.
+- Ledger now: **199 clauses / 49 C entries / abi (1<<16)|16 / 12 packages / 44 examples =
+  ctest 44 = gallery 44 cards / ci 11 segments / 9 crates**.
