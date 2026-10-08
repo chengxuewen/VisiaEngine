@@ -10,6 +10,13 @@ if [ ! -x "$CM" ]; then
     exit 0
 fi
 CT="$(dirname "$CM")/ctest"
+# Artifact file name for the manifest check (single source = the CMake naming table,
+# VisiaEngineCargo.cmake:26-35; duplicated here only as a per-OS literal).
+case "$(uname -s)" in
+  Linux)  VE_SHARED=libvisiaengine.so ;;
+  Darwin) VE_SHARED=libvisiaengine.dylib ;;
+  *)      VE_SHARED=visiaengine.dll ;;
+esac
 B=target/cmake-smoke
 rm -rf "$B" "$B-neg" "$B-negconf"
 
@@ -55,10 +62,26 @@ for v in $(grep -rhoE 'FOLDER "[^"]+"' cmake examples bindings 2>/dev/null | sed
 done
 [ -z "$BAD" ] || { echo "CMAKE-SMOKE ✗ FOLDER 非磁盘目录（位置镜像定则，身份语义归 LABELS，见 D14/R9）:$BAD"; exit 1; }
 
-# 负路径 3：install 门面必 fail-loud（S-c β；静默 exit-0 说谎回潮=红。短语断言，报文折行教训同款）
+# State 4, positive (packaging-round v1.3 P2: the S-c beta "install must fail"
+# guard retired). The old assertion guarded an unimplemented feature; now the
+# mirror-image risk is a *silent partial tree*, so the check is manifest
+# equality -- every artifact a consumer needs by name, or red.
 "$CM" --install "$B" --prefix "$B-inst" >"$B-inst.out" 2>&1; i_rc=$?
+[ $i_rc -eq 0 ] || { echo "CMAKE-SMOKE ✗ install rc=$i_rc"; tail -3 "$B-inst.out"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+MISS=""
+for f in "lib/$VE_SHARED" \
+         "lib/cmake/visiaengine/visiaengineConfig.cmake" \
+         "lib/cmake/visiaengine/visiaengineConfigVersion.cmake" \
+         "include/visiaengine.h" \
+         "include/visiaengine/visiaengine.hpp" \
+         "include/visiaengine_widget.hpp" \
+         "share/licenses/visiaengine/LICENSE-MIT" \
+         "share/licenses/visiaengine/LICENSE-APACHE"; do
+  [ -f "$B-inst/$f" ] || MISS="$MISS $f"
+done
+[ -z "$MISS" ] || { echo "CMAKE-SMOKE ✗ 装树缺件:$MISS"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
 rm -rf "$B-inst" "$B-inst.out"
-[ $i_rc -ne 0 ] || { echo "CMAKE-SMOKE ✗ install 静默说谎回潮（应非零）"; exit 1; }
+TREE_NOTE="install 树 8 件齐"
 
 # display 子态（B2）：Xvfb 自启真跑窗口族（E702/E801 自动执行轨；apt CI 同款形）
 # 起不来=XKB/pixi clobber 坑（PIT-19）→ note 不假绿；xvfb-run 系 Debian 包裹，conda 无=直启 Xvfb
@@ -84,4 +107,4 @@ else
     DISPLAY_NOTE="display 族未执行（无 Xvfb——非通过）"
 fi
 
-echo "CMAKE-SMOKE ✓（bare 全链 + 三负路径报文 + 裸 PATH 三锚 + ${DISPLAY_NOTE}）"
+echo "CMAKE-SMOKE ✓（bare 全链 + 两负路径报文 + 裸 PATH 三锚 + ${TREE_NOTE} + ${DISPLAY_NOTE}）"

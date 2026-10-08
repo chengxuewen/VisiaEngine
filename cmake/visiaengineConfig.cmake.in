@@ -1,0 +1,37 @@
+@PACKAGE_INIT@
+
+# visiaengine package config (installed form). The cargo-built cdylib is not a
+# CMake-owned target, so there is no export set to include: the imported targets
+# below are created here, on the consumer side, with every path derived from
+# PACKAGE_PREFIX_DIR (provided by @PACKAGE_INIT@ from this file's own location).
+# That is what makes the installed tree relocatable -- do not substitute
+# CMAKE_INSTALL_PREFIX directly into these properties.
+
+if(NOT TARGET visiaengine::capi)
+  add_library(visiaengine::capi SHARED IMPORTED)
+  set_target_properties(visiaengine::capi PROPERTIES
+    IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/@VISIAENGINE_SHARED_NAME@"
+    INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@")
+  if(UNIX AND NOT APPLE)
+    # Same convenience the in-tree umbrella gives (no LD_LIBRARY_PATH needed),
+    # pointed at this tree's own lib dir instead of the build directory.
+    set_property(TARGET visiaengine::capi APPEND PROPERTY
+      INTERFACE_LINK_OPTIONS "-Wl,-rpath,${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@")
+  endif()
+endif()
+
+if(NOT TARGET visiaengine::cpp)
+  # Header-only RAII face: include dir is the top-level include/ (the header
+  # itself lives in include/visiaengine/ and pulls "visiaengine.h" from ../).
+  add_library(visiaengine::cpp INTERFACE IMPORTED)
+  set_target_properties(visiaengine::cpp PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@"
+    INTERFACE_LINK_LIBRARIES visiaengine::capi)
+endif()
+
+# Qt widget header ships in include/ but deliberately declares no dependency:
+# it includes <QWidget> and <X11/Xlib.h>, and the consumer is a Qt application
+# that already resolves those itself (examples/qt does exactly this). Shipping
+# the header is free; promising Qt/X11 on the consumer's behalf is not.
+
+check_required_components(visiaengine)

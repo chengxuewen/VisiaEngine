@@ -50,6 +50,12 @@ function(visiaengine_setup_cargo)
     set(VISIAENGINE_CARGO_STEP "cargo-build_capi" PARENT_SCOPE)
   endif()
 
+  # Install-tree consumer point (VisiaEngineInstall.cmake): the artifact path and
+  # its OS-specific file name are exported here so the package config and the
+  # install rule never re-derive the name (single source = this function).
+  set(VISIAENGINE_ARTIFACT "${_dir}/${_shared}" PARENT_SCOPE)
+  set(VISIAENGINE_SHARED_NAME "${_shared}" PARENT_SCOPE)
+
   add_library(visiaengine_capi_umbrella INTERFACE)
   add_library(visiaengine::capi ALIAS visiaengine_capi_umbrella)
   target_include_directories(visiaengine_capi_umbrella INTERFACE

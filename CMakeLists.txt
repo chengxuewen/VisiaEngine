@@ -19,10 +19,10 @@ visiaengine_setup_cargo()  # cargo-step + 伞 visiaengine::capi + 假 Config 桥
 # enable_testing() 必在全部 add_subdirectory 前（Qt 目录的 add_test 晚调即静默丢——实锤）
 enable_testing()
 
-# install 门面=打包轮硬债（S-c β 终裁）：零 install() 规则期拒绝说谎式 exit-0（先例=树内掩盖两案）
-if(NOT VISIAENGINE_EXPERIMENTAL_INSTALL)
-  install(CODE "message(FATAL_ERROR \"visiaengine: install tree not supported (pre-1.0)\\n  开发态: add_subdirectory 本仓根（visiaengine::capi / ::cpp 伞）\\n  预构建: -DVISIAENGINE_ARTIFACT_PATH=<libvisiaengine.so 目录>\\n  发布态: 候打包轮计划（台账 §7 硬债）\")")
-endif()
+# Install tree (packaging-round v1.3 P2; S-c beta guard retired here -- its
+# three-line message moved into README's install section, P4 accounting).
+include(cmake/VisiaEngineInstall.cmake)
+visiaengine_install_tree()
 
 include(cmake/VisiaEngineBindings.cmake)     # R9/R10：option + 注册宏 + rs 三件套
 if(VISIAENGINE_EXAMPLES AND NOT VISIAENGINE_ARTIFACT_PATH)
