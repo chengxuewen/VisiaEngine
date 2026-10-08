@@ -63,6 +63,14 @@ else
     [ "$gm_names" = "$reg_names" ] || { echo "GATE-DOCS ✗ ⑥画廊 manifest ≠ 磁盘注册集:"; diff <(echo "$reg_names") <(echo "$gm_names"); fail=1; }
 fi
 
+# ⑦ README 画廊卡数 == manifest 实数（2026-10-08：40≠43 漂移无人管，随装树带补锁；
+# 条数那一半住在 cmake-smoke（它才持有 ctest 真值），各锁住在已有数据的工具里。
+if [ -f "$GM" ]; then
+    mc=$(grep -c '^E' "$GM")
+    rg=$(grep -oE '例子画廊（[0-9]+ 卡' README.md | grep -oE '[0-9]+' | head -1 || true)
+    [ "${rg:-x}" = "$mc" ] || { echo "GATE-DOCS ✗ ⑦README 画廊 '${rg:-缺}' ≠ manifest '$mc'"; fail=1; }
+fi
+
 if [ "$fail" = 0 ]; then
     echo "GATE-DOCS ✓（E $(echo "$files" | wc -l) 件三方 / README=${rn}↔spec=${sn} / 头签名 $(echo "$hs" | wc -l) 名 / 链接存活 / 画廊 $(grep -c '^E[0-9]' "$GM" 2>/dev/null || echo 0) 卡）"
 fi

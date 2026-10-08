@@ -27,6 +27,13 @@ rm -rf "$B" "$B-neg" "$B-negconf"
     || { echo "CMAKE-SMOKE ✗ ctest（探针/headless example 未过）"; exit 1; }
 # ↑ -LE display：探针无标签+headless example 真跑；显示族（弹窗）由 smoke-x11/smoke-qt 专职 xvfb 覆盖
 
+# README 条数锁（2026-10-08：README 写 40 而注册表实为 43，且无人在看）。真值只有
+# 本脚本持有（要已配置目录），所以这条锁住在这里；画廊卡数那半住在 gate-docs ⑦。
+NC=$( "$CT" --test-dir "$B" -N 2>/dev/null | grep -c '^  Test ' )
+RN=$(grep -oE 'ctest 统一例子清单（[0-9]+ 条' README.md | grep -oE '[0-9]+' | head -1 || true)
+[ -n "$RN" ] || { echo "CMAKE-SMOKE ✗ README 条数读取失败（断言无对象=恒真）"; exit 1; }
+[ "$NC" = "$RN" ] || { echo "CMAKE-SMOKE ✗ README 条数=$RN ≠ ctest 实注册=$NC"; exit 1; }
+
 # 第四态：裸 PATH 三锚（IDE 直调形态守卫；B1 裁决：configure 探+双构建锚，Rust 例族域换形后不加回退）
 # （2026-09-15 实锤：pixi run 包装掩盖，用户 IDE /usr/bin/cmake 直调爆「could not execute rustc」）
 SYS_CM=$(command -v /usr/bin/cmake || true); [ -n "$SYS_CM" ] || SYS_CM="$CM"  # 探针=用户 IDE 真形（系统 cmake；无系统 cmake 机退 conda 件）

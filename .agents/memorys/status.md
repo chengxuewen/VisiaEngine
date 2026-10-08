@@ -454,3 +454,40 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - **V2.3 LAS=条件制未开**（真实 .las fixture 未落库）；**V2.4 蒙皮+morph=L 级候立项**（F1 提级在册，须独立 plan→Momus→批准）
 - 基线：**343 passed · spec-trace 199↔199 · ABI 49/49 (0x00010010) · ci 十一段 · 画廊 43 卡 · 领先 origin 3 笔（gitee 鉴权失败待用户侧刷新）**
 - 教训入册：PIT-41（多块 patch 截断雷，io-gltf 清空事故）/ PIT-42（WGSL uniform 三雷：闭包/let-if/array stride）/ PIT-43（flag 偏移漂移=探针职责）；后台代理五连败复盘（rpm 限流×3+stale-timeout×2，主会话直做 W1 40 分钟 vs 代理 3 轮全灭——小带直做优于派发）
+
+## Install-tree band baseline (2026-10-08, packaging-round v1.3 P1-P4)
+
+- Scope as user cut it: install tree only (npm/pip K0/K3/K4 out). Nine adjudication
+  cards walked one at a time with the new adjudication-walkthrough skill; Momus
+  re-reviewed v1.3 -> OKAY (0 blocking, 1 non-blocking dangling probe-B citation,
+  fixed). Decisions in **D23**.
+- P1 `c2fab6d`: SONAME stamped by the repo's first `build.rs`; gate-abi asserts it
+  (expected name derived live from `[lib] name`). Measured payoff: absolute-path
+  linking now yields `NEEDED=libvisiaengine.so` (was the full build path).
+- P2a `af2608f`: `cmake/VisiaEngineInstall.cmake` + `visiaengineConfig.cmake.in`;
+  S-c beta fail-loud guard retired in the facade (43 lines, gate-docs 5 budget OK);
+  `cmake-smoke` negative state inverted into a positive install state.
+- P2b `2d5fb2d`: pkg-config face; `.pc` URL read from Cargo.toml repository
+  (missing line = configure FATAL, probed); prefix uses the `pcfiledir` form after
+  a real bug (configure-time bake reported /usr/local) was caught and turned into
+  three text assertions.
+- P3 `8da46b3`: `scripts/gate-pack.sh` + `pixi run pack-check` (out of ci). All
+  three assertions seen red by break probes; RUNPATH reported not judged because
+  the leak was traced to this env's relocated conda `.pc` files (tinfo.pc naming a
+  sibling checkout prefix) feeding a `-sys` link line -- a publish-band assembly
+  concern, not a repo defect (user adjudicated P3=A against my written rec).
+- P4 (this commit): README install wording + numbers 40->43 with **two new locks**
+  (gallery cards in gate-docs 7, ctest count in cmake-smoke; both probe-red);
+  `docs/tutorials.md` installed-consumption section; D23; AGENTS COMMANDS line.
+- Incidental root-fix caught by the band's own web channel (`PIT-44` + the
+  `web-mirror.mjs` staleness guard): the V2.2 wasm bridge `get_node_transform(&mut
+  Vec<f64>)` never compiled for wasm32 -- host tests and the artifact-reading
+  mirror script both missed it for two bands.
+- Baseline: **ci rc=0, 343 passed, 11 segments; spec-trace 199<->199; GATE-ABI
+  (49 entries + SONAME) OK; GATE-DOCS 7 checks OK; CMAKE-SMOKE four states OK
+  (install tree 9 files, .pc text checks, ctest count lock); pack-check OK;
+  pixi run web-check rc=0 + MIRROR 3/3 same-terminal; 9 crates unchanged;
+  zero new dependencies (patchelf deliberately NOT added).**
+- Open (declared, not swallowed): npm/pip packaging, staticlib consumer day,
+  win/mac install forms, publish-band RUNPATH cleaning + CPack tarball,
+  T3 human verification for E510/E511/E506 key4/E507.

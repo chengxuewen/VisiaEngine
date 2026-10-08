@@ -74,6 +74,7 @@ bash bootstrap.sh    # 首次环境初始化（幂等，实测二跑 0.24s；pix
 source pixi.sh       # 日常激活（或单命令 pixi run <task>）
 pixi run ci          # fmt+lint+check+test+audit 聚合（开工门禁）
 pixi run <check|build|test|lint|fmt|audit|verify>   # 单任务
+source pixi.sh && pixi run pack-check   # 装树卫生（清单/NEEDED 自足/无构建路径；RUNPATH 只报不判，清洗属发布带）
 bash scripts/spec-trace.sh    # SDD↔测试双向追溯
 
 ## NOTES

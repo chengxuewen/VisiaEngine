@@ -228,3 +228,40 @@
 - 账：152 条 · 33 入口 minor=9 · ctest 31（E816 五段活体门实测 1596g/756r/target
   (3.579,3.714,0)）· wasm 桥 4 名（setMap/clearMap/navigateClick/getCameraPose，
   C 三口之 clear=NULL 在 web 分裂二法）· R2 零新依赖。
+
+## D23: Install-tree band (packaging-round v1.3) — user-adjudicated one by one (2026-10-08)
+
+**Context**: `.omo/plans/packaging-round.md` v1.2 (2026-09-20, Momus x2) planned
+install+npm+pip+corrosion as one band. User cut it to install-tree-only, then
+walked the open points with the adjudication-walkthrough protocol (one card per
+message). Momus re-reviewed the resulting v1.3 section and returned OKAY.
+
+**Decisions (all user-adopted, letter = the card's recommended option unless noted)**
+
+| Card | Question | Result |
+|------|----------|--------|
+| 1 | what the tree contains | **A+**: cdylib + three public headers + licenses + package config. **No static archive** (release `.a` measures 67 MB vs the 7.25 MB cdylib, zero in-repo consumers, and shipping it implies owning the system-library list). Upgrade cost when a consumer appears: ~10 lines + a list derivable by linking once. |
+| 2 | static-lib refusal challenged by user | measured rather than argued: linking a C consumer against the `.a` with only the cdylib's own `NEEDED` set (`-ldl -lpthread -lm -lgcc_s`) **works on Linux** -- so "no hidden autolink table" was withdrawn; the decision survived on the two remaining legs (size + zero consumers). |
+| 3 | SONAME | **A**: emit it from `bindings/c/visiaengine-capi/build.rs` (`cargo:rustc-cdylib-link-arg`), the wasmer shape. Voids v1.2's `IMPORTED_NO_SONAME TRUE`. First `build.rs` in this repo; wasm32 emits nothing; mac/win are declared gaps, no silent `else`. |
+| 4 | package config form | **A**: `configure_package_config_file` template, imported targets created consumer-side from `PACKAGE_PREFIX_DIR`. `install(EXPORT)` is unusable here (measured CMake errors), and `_IMPORT_PREFIX` does not exist in a hand-written config (measured: expands empty -> `/lib/...`). |
+| 5 | Qt widget header | **A**: ship it, declare nothing. Probed: with only our include dirs it fails at `visiaengine_widget.hpp:7` on `QtGlobal`, and the default env has no Qt headers -- so the tree ships the file and the consumer brings Qt/X11 (what `examples/qt` already does). |
+| 6 | README drift (40 vs measured 43) | **C**: fix the numbers **and** lock both halves -- gallery card count in `gate-docs` check 7, ctest registry count in `cmake-smoke` (each lives in the tool that already holds the true value). Both locks seen red by probe before shipping. |
+| 7 | P3 execution order | **A**: commit the finished small thing (skill port) separately, then review, then code. |
+| 8 | where the record lives | **B**: one `D23` entry written at the approval point (the plan file itself is gitignored, so the decision must be in the committed ledger to survive a fresh clone). |
+| 9 | P3 scope after new measurement | **A** (user chose against my written recommendation of patchelf-in-band): RUNPATH cleaning moved to the publish band's assembly step. Root cause traced: `.pixi/.../pkgconfig/tinfo.pc` in this env still names a *sibling* checkout prefix (env is a relocated copy), and a `-sys` build script feeds its `Libs:` line to the linker; any machine bakes its own env path, and install(CODE) cleaning would push patchelf onto every installer. |
+
+**Consequences**
+* Promised now: `find_package(visiaengine)` / `pkg-config` consume an installed
+  tree; consumers record the bare `libvisiaengine.so`; the tree survives a move
+  (probed by reinstall-and-rebuild).
+* Gates added: `gate-abi` SONAME assertion (expected name derived live from
+  `[lib] name`), `cmake-smoke` positive state 4 (install rc=0 + 9-item manifest +
+  `.pc` text checks -- the old "install must fail" assertion inverted),
+  `gate-pack.sh`/`pack-check` (manifest, `NEEDED` subset of system libs, no
+  build-machine paths). `ci` stays eleven segments: `pack-check` is independent.
+* Declared gaps (not silent): staticlib, npm/pip, win/mac install forms,
+  publish-time RUNPATH cleaning, relocatable `.pc` beyond pcfiledir form.
+* Incidental root-cause found by this band's wasm channel run: the V2.2 bridge
+  `get_node_transform(&mut Vec<f64>)` never compiled for wasm32; `ci` carries no
+  web segment and `web-mirror.mjs` had no freshness check, hence PIT-44 and the
+  staleness guard.

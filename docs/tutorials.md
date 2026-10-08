@@ -91,3 +91,43 @@ run-gui 探测 `:0` 回退；headless 族直跑，IDE 无 DISPLAY 亦可）。
 native 例窗况定性（2026-09-17 E702 修案同轮盘点）：真窗口例=E702/E801/E703 三枚（无参全常驻）；
 其余 C/C++ 例（E701/E704/E802/E810/E811×2/E812/E813/E814）=无头证据例，终端 `OK …` 行/PPM 落盘
 即其人验面，秒退=设计身份。
+
+## Installed SDK consumption (install tree, packaging-round v1.3 P2)
+
+The in-tree lanes above build from source (`add_subdirectory`). Since P2 the repo
+also produces an install tree that a consumer can use without the Rust toolchain.
+Verified on this machine (Linux); commands and their measured output:
+
+```bash
+# produce a tree
+pixi run cmake -S . -B build/sdk -G Ninja -DCMAKE_BUILD_TYPE=Release
+pixi run cmake --install build/sdk --prefix /opt/visia       # 9 files
+pixi run pack-check                                          # hygiene gate on the tree
+
+# CMake consumer
+find_package(visiaengine REQUIRED)        # name = project() name, lowercase
+target_link_libraries(app PRIVATE visiaengine::capi)   # or visiaengine::cpp
+# pkg-config consumer (plain C)
+export PKG_CONFIG_PATH=/opt/visia/lib/pkgconfig
+cc app.c $(pkg-config --cflags --libs visiaengine) -o app
+```
+
+Tree layout (header names are identical to the in-tree spellings, so the same
+source compiles in both states): `lib/libvisiaengine.so`, `include/visiaengine.h`,
+`include/visiaengine/visiaengine.hpp`, `include/visiaengine_widget.hpp`,
+`lib/cmake/visiaengine/{visiaengineConfig,visiaengineConfigVersion}.cmake`,
+`lib/pkgconfig/visiaengine.pc`, `share/licenses/visiaengine/LICENSE-{MIT,APACHE}`.
+
+Notes that are promises, not caveats:
+* The library carries a SONAME, so consumers record the bare `libvisiaengine.so`
+  instead of an absolute path; both the CMake config and the `.pc` derive the
+  prefix from their own location, so moving the tree only requires re-running
+  the consumer's configure step (probed: installed at prefix A, rebuilt against
+  prefix A moved to B, runs).
+* `visiaengine_widget.hpp` ships as a header only. It includes `<QWidget>` and
+  `<X11/Xlib.h>`; a Qt host resolves those itself (see `examples/qt`), which is
+  exactly what the installed tree expects. No Qt/X11 dependency is declared on
+  the consumer's behalf.
+* Not shipped by design: the static archive (no consumer, and the system-library
+  closure would be a hand-maintained second truth), and any npm/pip packaging
+  (Alpha ledger). macOS/Windows install forms are declared gaps.
