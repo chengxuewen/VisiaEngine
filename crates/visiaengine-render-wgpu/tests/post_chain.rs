@@ -378,10 +378,21 @@ fn haze_far_shifts_near_untouched() {
     // (depth 1.0 = 1000 m = full haze) in the lower rows too).
     //   background px (off == clear color) MUST haze fully (tint law);
     //   geometry px within far_start MUST stay bitwise untouched.
-    let clear: [u8; 3] = [13, 18, 25]; // probe-calibrated clear color (WGPU-34 family)
     let (w, h) = (off.width as usize, off.height as usize);
     let px = off.rgba.as_chunks::<4>().0;
     let hz = hazed.rgba.as_chunks::<4>().0;
+    // Background reference read out of the render itself, not hand-written (PIT-45: a stale
+    // literal makes the bg/geo partition constant-true without ever failing). The corner is
+    // sky in this framing; the frequency guard turns "it stopped being true" into a loud fail.
+    let c0 = &px[0];
+    let clear = [c0[0], c0[1], c0[2]];
+    let clear_hits = px.iter().filter(|p| [p[0], p[1], p[2]] == clear).count();
+    assert!(
+        clear_hits * 50 > px.len(),
+        "clear reference covers <=2% of the frame -> corner pixel is not background: {clear_hits}/{}",
+        px.len()
+    );
+    println!("post_chain haze: clear reference = {clear:?} ({clear_hits} px)");
     let mut bg_total = 0;
     let mut bg_hazed = 0;
     let mut geo_near_total = 0;

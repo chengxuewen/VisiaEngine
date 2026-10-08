@@ -218,7 +218,18 @@ fn prove(frames: u32) {
     // scene's near geometry (<40 m band) must stay untouched — on this city
     // frame every geometry pixel is inside far_start, so NO geometry pixel
     // may change at all.
-    let clear: [u8; 3] = [13, 18, 25]; // calibrated canary (WGPU-34 family)
+    // Self-calibrated background reference (PIT-45) — same rule as post_chain.rs: read the
+    // clear colour out of the frame, and assert it is actually widespread.
+    let offpx = off_a.rgba.as_chunks::<4>().0;
+    let c0 = &offpx[0];
+    let clear = [c0[0], c0[1], c0[2]];
+    let clear_hits = offpx.iter().filter(|p| [p[0], p[1], p[2]] == clear).count();
+    assert!(
+        clear_hits * 50 > offpx.len(),
+        "clear reference covers <=2% of the frame -> corner pixel is not background: {clear_hits}/{}",
+        offpx.len()
+    );
+    println!("E506 probe: clear={clear:?} bg_px={clear_hits}");
     let mut bg = (0usize, 0usize); // (hazed, total)
     let mut geo_touched = 0usize;
     for (o, x) in off_a
