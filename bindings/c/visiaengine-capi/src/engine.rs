@@ -131,7 +131,10 @@ pub struct Engine {
     /// interaction patterns demand (1M pts ≈ 30-100 ms/query on weak hosts).
     point_clouds: std::collections::HashMap<u64, PointCloudState>,
     /// P1 瓦片层（CAPI-28/29）：None=无瓦片面（渲染零触碰）；Some=调度器+批几何。
-    tiles: Option<TileLayer>,
+    /// Mounted tile layers, draw order == mount order (band T, plan
+    /// ledger-tiles-keys-2026-10-08). One layer per kind (Adjudication 2 = A):
+    /// `set_tile_view` drives the vector layer, `set_raster_view` the raster one.
+    layers: Vec<TileLayer>,
     /// I band (CAPI-41): SH-9 environment irradiance (linear RGB), pushed to
     /// the backend each render pass; None = legacy constant ambient.
     env_sh: Option<[[f32; 3]; 9]>,
@@ -233,10 +236,26 @@ fn rebuild_tile_batch(layer: &mut TileLayer, done_ids: Vec<visiaengine_io_tiles:
     layer.points = points;
 }
 
+/// Which family a mounted tile layer belongs to.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum LayerKind {
+    Vector,
+    Raster,
+}
+
+/// World units the raster basemap sits under vector geometry **when both kinds
+/// are mounted** (Adjudication 3 = A). Applied through DrawMesh.origin at draw
+/// time, so a single-kind scene keeps byte-identical output (the band canary);
+/// revisit toward a no-depth-write basemap pipeline when tilt/3D work lands.
+const RASTER_UNDERLAY_Z: f64 = -0.05;
+
 /// P1 tile layer (CAPI-28/29): scheduler + scene-center batch geometry.
 /// Render-loop consumes wpos/widx/strokes/points on first frame after mount;
 /// uploaded caches GPU table IDs (invalidate only on re-mount, not on set_tile_view).
 struct TileLayer {
+    /// Which family this layer belongs to (Adjudication 2 = A: kinds are how the
+    /// C API addresses layers, so no handle/index surface was added).
+    kind: LayerKind,
     set: visiaengine_io_tiles::TileSet,
     ids: Vec<visiaengine_io_tiles::TileId>,
     /// N1.4 (CAPI-35): HTTP layer = discovery mode. `ids` stays empty (no dir
@@ -331,7 +350,7 @@ impl Engine {
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
             point_clouds: std::collections::HashMap::new(),
-            tiles: None,
+            layers: Vec::new(),
             env_sh: None,
         })
     }
@@ -742,6 +761,22 @@ impl Engine {
         false
     }
 
+    /// Mount a layer by kind, replacing that kind's previous occupant. Same-kind
+    /// replace is the behaviour the single-slot engine already had (and what the
+    /// clause now says); GPU products of a replaced layer are dropped un-freed,
+    /// exactly as before (fix belongs to the day a re-mount flow is demanded).
+    fn mount_layer(&mut self, layer: TileLayer) {
+        match self.layers.iter().position(|l| l.kind == layer.kind) {
+            Some(at) => self.layers[at] = layer,
+            None => self.layers.push(layer),
+        }
+    }
+
+    /// Per-kind addressing for the two view entries (no index is exposed).
+    fn layer_of_mut(&mut self, kind: LayerKind) -> Option<&mut TileLayer> {
+        self.layers.iter_mut().find(|l| l.kind == kind)
+    }
+
     pub fn render(&mut self) -> Result<(), String> {
         self.advance_fly();
         let mut commands = vec![DrawCommand::ClearColor {
@@ -765,8 +800,11 @@ impl Engine {
                 .set_glyph_atlas(self.glyphs.pixels(), g, g)
                 .map_err(|e| format!("atlas: {e}"))?;
         }
-        // P1 tile layer: lazy GPU upload (once) + per-frame draw commands.
-        if let Some(ref mut layer) = self.tiles {
+        // P1 tile layers: lazy GPU upload (once) + per-frame draw commands.
+        // Stack order == mount order; `mixed` gates the basemap underlay.
+        let mixed = self.layers.iter().any(|l| l.kind == LayerKind::Raster)
+            && self.layers.iter().any(|l| l.kind == LayerKind::Vector);
+        for layer in self.layers.iter_mut() {
             // N1.4 (CAPI-35): HTTP layers advance their pump each frame
             // (budget 4 tiles/frame = frame-budget guard, gap-analysis C4).
             // FileSource layers are fully Done via mount ensure() → no-op.
@@ -859,11 +897,12 @@ impl Engine {
                     layer.raster_gpu.push((tex, mesh, material));
                 }
             }
+            let underlay = if mixed { RASTER_UNDERLAY_Z } else { 0.0 };
             for (_, mesh, material) in &layer.raster_gpu {
                 commands.push(DrawCommand::DrawMesh {
                     mesh: *mesh,
                     material: *material,
-                    origin: layer.center,
+                    origin: [layer.center[0], layer.center[1], layer.center[2] + underlay],
                     transform: IDENTITY,
                 });
             }
@@ -1182,18 +1221,23 @@ impl Engine {
             quads.push(q);
         }
         let count = quads.len() as u64;
-        let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
-        self.mode = Proj::Ortho;
-        self.zoom = radius.max(10.0);
-        self.rig = CameraRig::look_at(
-            [center[0], center[1], radius.max(10.0)],
-            center,
-            [0.0, 1.0, 0.0],
-        );
+        // Adjudication 4 = A: the FIRST mounted layer frames the view; a later
+        // mount must not steal a camera the host already positioned.
+        if self.layers.is_empty() {
+            let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
+            self.mode = Proj::Ortho;
+            self.zoom = radius.max(10.0);
+            self.rig = CameraRig::look_at(
+                [center[0], center[1], radius.max(10.0)],
+                center,
+                [0.0, 1.0, 0.0],
+            );
+        }
         // Reuse the TileLayer shell for camera-fit + view bookkeeping; the
         // raster quads ride the layer's set/ids (their decode lane is raster,
         // render-loop branch keys on the layer kind below).
-        self.tiles = Some(TileLayer {
+        self.mount_layer(TileLayer {
+            kind: LayerKind::Raster,
             set,
             ids,
             http: false,
@@ -1219,7 +1263,7 @@ impl Engine {
         max_x: f64,
         max_y: f64,
     ) -> Result<u64, String> {
-        let Some(layer) = self.tiles.as_mut() else {
+        let Some(layer) = self.layer_of_mut(LayerKind::Raster) else {
             return Err("raster layer not mounted (load_raster_dir first)".into());
         };
         if !(min_x.is_finite()
@@ -1927,15 +1971,18 @@ impl Engine {
         // 场景中心 = 全部瓦片 bbox 并集中心（批顶点烘中心小值域帧）。
         let (min_x, min_y, max_x, max_y) = union_bbox(&ids);
         let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
-        // P1 camera fit (same pattern as mount_geo): ortho top-down at batch center.
-        let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
-        self.mode = Proj::Ortho;
-        self.zoom = radius.max(10.0);
-        self.rig = CameraRig::look_at(
-            [center[0], center[1], radius.max(10.0)],
-            center,
-            [0.0, 1.0, 0.0],
-        );
+        // P1 camera fit (same pattern as mount_geo): ortho top-down at batch
+        // center. Guarded for the same reason as the raster mount (card 4 = A).
+        if self.layers.is_empty() {
+            let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
+            self.mode = Proj::Ortho;
+            self.zoom = radius.max(10.0);
+            self.rig = CameraRig::look_at(
+                [center[0], center[1], radius.max(10.0)],
+                center,
+                [0.0, 1.0, 0.0],
+            );
+        }
         let (mut wpos, mut widx) = (Vec::new(), Vec::new());
         let mut strokes = Vec::new();
         let mut points = Vec::new();
@@ -1988,7 +2035,8 @@ impl Engine {
             }
         }
         let count = ids.len() as u64;
-        self.tiles = Some(TileLayer {
+        self.mount_layer(TileLayer {
+            kind: LayerKind::Vector,
             set,
             ids,
             http: false,
@@ -2018,7 +2066,8 @@ impl Engine {
         let source = visiaengine_io_tiles::HttpSource::new(root_url);
         let set = visiaengine_io_tiles::TileSet::new(Box::new(source))
             .map_err(|e| format!("tiles: {e:?}"))?;
-        self.tiles = Some(TileLayer {
+        self.mount_layer(TileLayer {
+            kind: LayerKind::Vector,
             set,
             ids: Vec::new(),
             http: true,
@@ -2042,7 +2091,7 @@ impl Engine {
         max_x: f64,
         max_y: f64,
     ) -> Result<u64, String> {
-        let Some(layer) = self.tiles.as_mut() else {
+        let Some(layer) = self.layer_of_mut(LayerKind::Vector) else {
             return Err("tile layer not mounted (load_mvt_dir first)".into());
         };
         if !(min_x.is_finite()
@@ -2331,7 +2380,7 @@ impl Engine {
             evt: None,
             pcl_meta: std::collections::HashMap::new(),
             point_clouds: std::collections::HashMap::new(),
-            tiles: None,
+            layers: Vec::new(),
             env_sh: None,
         })
     }
