@@ -63,13 +63,15 @@ done
 [ -z "$BAD" ] || { echo "CMAKE-SMOKE ✗ FOLDER 非磁盘目录（位置镜像定则，身份语义归 LABELS，见 D14/R9）:$BAD"; exit 1; }
 
 # State 4, positive (packaging-round v1.3 P2: the S-c beta "install must fail"
-# guard retired). The old assertion guarded an unimplemented feature; now the
-# mirror-image risk is a *silent partial tree*, so the check is manifest
-# equality -- every artifact a consumer needs by name, or red.
+# guard retired). The mirror-image risk now is a *silent partial or wrong tree*,
+# so the checks are: rc==0, manifest equality, and .pc prefix self-consistency.
+# Cleanup runs LAST -- checking a tree you already deleted is a vacuous pass.
 "$CM" --install "$B" --prefix "$B-inst" >"$B-inst.out" 2>&1; i_rc=$?
-[ $i_rc -eq 0 ] || { echo "CMAKE-SMOKE ✗ install rc=$i_rc"; tail -3 "$B-inst.out"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+if [ $i_rc -ne 0 ]; then
+  echo "CMAKE-SMOKE ✗ install rc=$i_rc"; tail -3 "$B-inst.out"; rm -rf "$B-inst" "$B-inst.out"; exit 1
+fi
 MISS=""
-for f in "lib/$VE_SHARED" \
+for f in "lib/$VE_SHARED" "lib/pkgconfig/visiaengine.pc" \
          "lib/cmake/visiaengine/visiaengineConfig.cmake" \
          "lib/cmake/visiaengine/visiaengineConfigVersion.cmake" \
          "include/visiaengine.h" \
@@ -79,9 +81,25 @@ for f in "lib/$VE_SHARED" \
          "share/licenses/visiaengine/LICENSE-APACHE"; do
   [ -f "$B-inst/$f" ] || MISS="$MISS $f"
 done
-[ -z "$MISS" ] || { echo "CMAKE-SMOKE ✗ 装树缺件:$MISS"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+if [ -n "$MISS" ]; then
+  echo "CMAKE-SMOKE ✗ 装树缺件:$MISS"; rm -rf "$B-inst" "$B-inst.out"; exit 1
+fi
+NTREE=$(find "$B-inst" -type f | wc -l)
+TREE_NOTE="install 树 ${NTREE} 件"
+# File presence does not prove the .pc is right: a configure-time prefix bake
+# reports /usr/local while the tree sits elsewhere (caught live in this slice).
+# Asserted on the file text, not via pkg-config: `pkg-config --variable=libdir`
+# was measured to keep returning the tree path even when the file said
+# /usr/local, i.e. it cannot be the witness for this property.
+pc="$B-inst/lib/pkgconfig/visiaengine.pc"
+grep -q '^prefix=${pcfiledir}/' "$pc" \
+  || { echo "CMAKE-SMOKE ✗ .pc 前缀非 pcfiledir 形（baked 前缀=搬树即废）"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+grep -q "$PWD/target" "$pc" \
+  && { echo "CMAKE-SMOKE ✗ .pc 含构建目录绝对路径（发布物泄漏）"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+grep -q '^URL: https\?://' "$pc" \
+  || { echo "CMAKE-SMOKE ✗ .pc URL 未从 Cargo.toml repository 代入"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+TREE_NOTE="$TREE_NOTE / .pc 文本三检"
 rm -rf "$B-inst" "$B-inst.out"
-TREE_NOTE="install 树 8 件齐"
 
 # display 子态（B2）：Xvfb 自启真跑窗口族（E702/E801 自动执行轨；apt CI 同款形）
 # 起不来=XKB/pixi clobber 坑（PIT-19）→ note 不假绿；xvfb-run 系 Debian 包裹，conda 无=直启 Xvfb

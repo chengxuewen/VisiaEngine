@@ -1,0 +1,14 @@
+# Relocatable pkg-config form: the prefix is derived from the file's own
+# location (this file lives in <prefix>/<libdir>/pkgconfig), so `cmake --install
+# --prefix X` and a moved tree both report the right paths. ${...} is left alone
+# by configure_file(@ONLY); only the @...@ tokens are substituted here.
+prefix=${pcfiledir}/../..
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: visiaengine
+Description: VisiaEngine spatial rendering engine - C ABI SDK surface
+URL: @VISIAENGINE_URL@
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lvisiaengine
+Cflags: -I${includedir}

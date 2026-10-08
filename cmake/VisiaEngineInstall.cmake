@@ -48,6 +48,20 @@ function(visiaengine_install_tree)
   # manifest pick them up without an extra build step. SameMajorVersion: the
   # runtime ABI number (visiaengine_abi_version) is the real compatibility
   # contract and is pinned by the consumer probes, not by this file.
+  # pkg-config face for plain C consumers. The library name is the bare
+  # -lvisiaengine form -- only valid because the cdylib carries a SONAME (P1);
+  # without it this file would have to bake an absolute path.
+  file(READ "${PROJECT_SOURCE_DIR}/Cargo.toml" _ws)          # URL single source
+  string(REGEX MATCH "repository = \"([^\"]+)\"" _ur "${_ws}")
+  if(NOT _ur)
+    message(FATAL_ERROR "visiaengine: Cargo.toml repository unreadable (URL single-source contract broken)")
+  endif()
+  set(VISIAENGINE_URL "${CMAKE_MATCH_1}")
+  configure_file("${PROJECT_SOURCE_DIR}/cmake/visiaengine.pc.in"
+                 "${CMAKE_CURRENT_BINARY_DIR}/visiaengine.pc" @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/visiaengine.pc"
+          DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+
   configure_package_config_file(
     "${PROJECT_SOURCE_DIR}/cmake/visiaengineConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/visiaengineConfig.cmake"
