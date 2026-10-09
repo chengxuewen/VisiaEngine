@@ -5,7 +5,7 @@
 #[path = "gallery.rs"]
 mod gallery;
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
 use visiaengine_render::{
@@ -15,11 +15,10 @@ use visiaengine_render::{
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 const FIX: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -313,10 +312,8 @@ fn headless_run() {
 
 // ── 交互 ─────────────────────────────────────────────────────────────────────
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     rig: CameraRig,
     dragging: Option<(f64, f64)>,
     cmds: Vec<DrawCommand>,
@@ -329,50 +326,21 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("E504 玻璃水体 · 1/2=水a0.7/0.35 重传材质 R=复位 拖=轨道"),
-                )
-                .expect("win"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance.create_surface(Arc::clone(&window)).expect("surf");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E504 玻璃水体 · 1/2=水a0.7/0.35 重传材质 R=复位 拖=轨道",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("e504"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("dev");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         let mut cache = GlyphCache::new();
         let cmds = build(&mut core, self.water_a, &mut cache);
         self.cmds = cmds;
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.request_redraw();
     }
@@ -382,16 +350,11 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::KeyboardInput { event, .. } => self.on_key(event_loop, &event),
             WindowEvent::Resized(sz) => {
-                if let (Some(c), Some(s), Some(cfg)) =
-                    (&mut self.core, &self.surface, &mut self.config)
-                    && sz.width > 0
-                    && sz.height > 0
-                {
-                    cfg.width = sz.width;
-                    cfg.height = sz.height;
-                    s.configure(&c.device, cfg);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, sz);
                 }
             }
+
             WindowEvent::MouseInput {
                 button: MouseButton::Left,
                 state,
@@ -418,32 +381,16 @@ impl ApplicationHandler for App {
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &self.config)
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     return;
                 };
-                let fr = frame_of(&self.rig, self.cmds.clone(), config.width, config.height);
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(t)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(t) => {
-                        let view = t
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &fr,
-                            &view,
-                            config.width,
-                            config.height,
-                            config.format,
-                        );
-                        core.queue.present(t);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skip {other:?}"),
-                }
+                let fr = frame_of(
+                    &self.rig,
+                    self.cmds.clone(),
+                    ctx.config.width,
+                    ctx.config.height,
+                );
+                ctx.present(core, &fr);
                 self.request_redraw();
             }
             _ => {}
@@ -484,8 +431,8 @@ impl App {
     }
 
     fn request_redraw(&self) {
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 }
@@ -508,10 +455,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let el = EventLoop::new()?;
     el.set_control_flow(ControlFlow::Poll);
     let mut app = App {
-        window: None,
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
         rig: home(),
         dragging: None,
         cmds: Vec::new(),
