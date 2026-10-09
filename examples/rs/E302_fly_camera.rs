@@ -5,7 +5,7 @@
 #[path = "gallery.rs"]
 mod gallery;
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Easing, Frame, Instance, InstanceDesc, MaterialDesc, MeshDesc,
@@ -14,11 +14,10 @@ use visiaengine_render::{
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 const W: u32 = 640;
 const H: u32 = 480;
@@ -261,10 +260,8 @@ struct Flight {
 }
 
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     rig: CameraRig,
     flight: Option<Flight>,
     dragging: Option<(f64, f64)>,
@@ -290,50 +287,19 @@ impl ApplicationHandler for App {
         if self.core.is_some() {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("E302 相机飞行 · 1/2/3=预设 R=回家 拖/滚轮=中断接管 Esc=退出"),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter — lavapipe/real GPU required");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E302 相机飞行 · 1/2/3=预设 R=回家 拖/滚轮=中断接管 Esc=退出",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e302"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         self.commands = upload_scene!(&mut FaceRef(&mut core));
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.request_redraw();
     }
 
@@ -342,16 +308,11 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::KeyboardInput { event, .. } => self.on_key(event_loop, &event),
             WindowEvent::Resized(sz) => {
-                if let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &mut self.config)
-                    && sz.width > 0
-                    && sz.height > 0
-                {
-                    config.width = sz.width;
-                    config.height = sz.height;
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, sz);
                 }
             }
+
             WindowEvent::MouseInput {
                 button: MouseButton::Left,
                 state,
@@ -395,37 +356,16 @@ impl ApplicationHandler for App {
                         self.flight = None;
                     }
                 }
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &self.config)
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     return;
                 };
                 let frame = frame_of(
                     &self.rig,
                     self.commands.clone(),
-                    config.width,
-                    config.height,
+                    ctx.config.width,
+                    ctx.config.height,
                 );
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(tex)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                        let view = tex
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
-                            &view,
-                            config.width,
-                            config.height.max(1),
-                            config.format,
-                        );
-                        core.queue.present(tex);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skipped: {other:?}"),
-                }
+                ctx.present(core, &frame);
                 self.request_redraw();
             }
             _ => {}
@@ -461,8 +401,8 @@ impl App {
     }
 
     fn request_redraw(&self) {
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 }
@@ -486,10 +426,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
-        window: None,
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
         rig: p[0],
         flight: None,
         dragging: None,
