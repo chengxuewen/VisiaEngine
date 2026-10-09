@@ -62,3 +62,13 @@
 # new/changed .rs comments must be ASCII (run on staged diff; 0 matches expected)
 git diff --cached -U0 -- '*.rs' | grep -P '^\+.*[\x{4e00}-\x{9fff}]' || echo OK
 ```
+
+## C18: 共享件的边界 = 例子的教学主张（2026-10-08 band V 用户裁决 C2=A/C3=B）
+
+**约束**: 把跨例重复的代码收进共享件时，只收**逐字相同且不含主张**的部分（设备/表面/上下文的开机白、
+argv 解析）。例子用来教那一件事的代码（present 路径选择、鼠标键盘语义、像素谓词）**不得被共享吃掉**——
+`render_view_rects` 是 ⑤b 的课文，drag 在 E402/E403 是拾取/框选而非轨道。判据：若某段代码删掉后
+该例的 tutorials.md 主张就无人演示，它是课文不是重复。
+
+**检查命令**: `grep -n '非目标\|留本地' .omo/plans/viewer-shared-band-2026-10-08.md | head`；
+迁移批的门（确定性预检→sha/时序→交互三态）见 `rules/common/testing.md`「Batch-migration gates」。

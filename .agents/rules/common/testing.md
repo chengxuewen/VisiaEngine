@@ -151,3 +151,22 @@ green (PIT-25). A live window with no delta is exit 1.
 It stays **out of `pixi run ci`** (same policy as `pack-check`) and is wired into
 `.github/workflows/ci.yml` next to `scripts/window-probe-all.sh`, which had zero
 callers until this band.
+
+## Batch-migration gates (band V, 2026-10-08)
+
+Mechanical edits across many examples are only as safe as the pixel gate attached to
+them. The order that worked (and caught every real defect this band):
+
+1. **Pre-check determinism before using it as evidence**: capture the same window twice
+   back-to-back on the *unmodified* build. Equal -> a byte-identity gate is legal.
+   Unequal (E305/E510/E511: the scene is animated) -> byte gates are BANNED for that
+   example; use keys-probe percentages, time-progress ("the frame must change"), or the
+   interaction tri-state (idle / drag / wheel must be three distinct hashes).
+2. Capture the before-frame BEFORE editing. If you forgot, rebuild from git (checkout ->
+   build -> capture -> restore), so the comparison is still pre-vs-post, not post-vs-post.
+3. Card `cmp` only proves the headless lane; the migrated code is usually the *window*
+   lane. A static sha match does not prove input still works (a shared bootstrap can pass
+   frames while killing handlers) -- hence the interaction tri-state in every batch.
+4. Run display-family examples under a display and with the **registry argv**
+   (`_args_<stem>` in cmake/VisiaEngineBindings.cmake). Both mistakes happened this band
+   and each produced a red that was about my harness, not the code.

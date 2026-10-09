@@ -543,3 +543,31 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - Close-out `7e139f0` (PIT-47): the two new ci.yml L2 lines could only ever SKIP -- `xwd` ships in the system package `x11-apps` (not pixi) and the runner installed only `xvfb`, so the probes' own skip-on-missing-toolchain convention = a green not earned (PIT-25's CI-wiring variant). Fixed: apt installs x11-apps with a do-not-remove comment, keys-probe gained `--strict` (skip -> exit 1 naming the missing tool; ci.yml uses it, local default still skips), xwd found via PATH instead of a hardcoded /usr/bin. Branch tests: stub-only-xwd-missing + --strict -> rc=1 "missing toolchain: xwd"; default -> SKIP rc=0; real run --strict -> 4/4 rc=0. And window-probe-all.sh, wired a session ago and never run here, now has: rc=0, 20 resident windows, E509 lit=100.0% vs a 5.0% floor.
 - Ledger now: **199 clauses / 49 C entries / abi (1<<16)|16 / 12 packages / 44 examples =
   ctest 44 = gallery 44 cards / ci 11 segments / 9 crates**.
+
+## Band V baseline (shared viewer bootstrap, 2026-10-08, plan viewer-shared-band)
+
+- Adjudicated 5/5 = A/A/B/C/A (one card at a time, protocol adjudication-walkthrough).
+  Momus REJECTed v1.0 on one blocking item (canary E101 collided with C3b's protected
+  specimen) and 6 non-blocking nits; all fixed in v1.1, then executed.
+- New shared piece `examples/rs/src/viewer.rs` (206 non-blank lines): `argv_frames` /
+  `argv_frames_and_rest`, `Ctx::new(title,w,h,FormatPolicy)` (window+adapter+device+
+  surface+config+MeshCore), `on_resize`, `present`. Scope by ruling: **G1+G2 only**
+  (C2=A). FormatPolicy is a parameter because 4 examples (E204/E206/E502/E503) prefer an
+  Srgb format while 22 take the surface default -- collapsing that is how PIT-9 was born.
+- Migrated **21/29** rs examples: E502(canary) E205 E501 E504 E901 E202 E402 E403 E201
+  E301 E204 E206 E302 E304 E305 E510 E511 (+ the bootstrap-only rects family).
+  Example bodies: 11,480 -> 10,231 non-blank lines = **-1,249** (883 of it moved into
+  the 206-line shared piece, the rest is duplicated blocks collapsed to one call).
+- Deliberately NOT shared: interaction semantics (drag means pick in E402/E403, phase in
+  E510, per-viewport follow in E303) and the `render_view_rects` present of the ⑤b family
+  (that call IS those examples' lesson). Protected manual specimens: **E101 + E503**
+  (measured: only 9 of 26 window examples were fully unshared today; E201 could not be a
+  specimen because it already consumed `examples::BBox`).
+- Still open in this band: E303 / E306 / E505 (rects family), E401 / E601 (argv only);
+  E203 stays a positional CLI. No SDD clause for the shell (C5=A; B9's hpp precedent) --
+  199 clauses, 49 C entries, 12 packages, 44 examples all unchanged.
+- Baseline at close: `pixi run ci` rc=0 (11 segments) 345 passed · `keys-probe` 4/4 ·
+  GATE-DOCS ok (44 cards) · CMAKE-SMOKE ok · spec-trace 199<->199 · worktree clean.
+- Method worth reusing: per batch = determinism pre-check (two back-to-back captures) ->
+  static scenes may then use **live-window sha equality** as the gate; animated examples
+  must use keys-probe percentages / time-progress + interaction tri-state instead.
