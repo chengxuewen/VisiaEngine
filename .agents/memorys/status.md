@@ -588,3 +588,14 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - 本轮回顾自己抓到的一条：新写的 C19 检查命令**首版是假门**（谓词连正例都不命中，
   且依赖会话级 /tmp 文件）；已改为自带破坏探针的可证伪形并实跑（种植样本=1，仓内=0）。
 - 待办队列不变：push（V4 一笔）· T3 人验五条 · npm/pip 打包轮 · LAS/蒙皮票据制候令。
+
+## Publish band ledger note (2026-10-09, plan next-band-queue todo 3)
+- Live counters moved by this band, measured same-terminal: ci depends-on = **12**
+  (`pack-check` promoted into the chain); install tree = **9 files**, unchanged --
+  no new install rules; the CPack TGZ packages exactly what `cmake --install`
+  produces (file-for-file diff recorded in `.omo/evidence/todo3-tarball-list.txt`,
+  LOCAL artifact only, nothing published). Packaged lib: SONAME bare name +
+  system-only NEEDED; RUNPATH names this env's sibling conda prefix = the D23 P3
+  assembly concern, adjudicated report-only (no patchelf), decision note in
+  `cmake/VisiaEnginePackaging.cmake`. Dated baselines above keep their
+  as-of-close values (append-only history discipline).

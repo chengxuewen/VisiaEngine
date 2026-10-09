@@ -41,3 +41,5 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bindings/c/probe/CMakeLists.txt")
 endif()
 
 visiaengine_setup_bindings()  # rs 三件套+全局步+中央 glob⇄表 终账（必须在全部 add_subdirectory 后）
+
+include(cmake/VisiaEnginePackaging.cmake)  # CPack assembly: tarball = the install tree as-is (no new install rules)

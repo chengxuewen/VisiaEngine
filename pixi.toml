@@ -83,18 +83,20 @@ gate-trace = "bash scripts/spec-trace.sh"   # 批2 v1.4：追溯本机化入 ci 
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # GEO-18 解析边界门禁（代码形态，注释豁免）
 gate-docs = "bash scripts/gate-docs.sh"   # 批 5 T3：文档零漂移四检
 cmake-smoke = "bash scripts/cmake-smoke.sh"   # CMake 层三态门（无 cmake 机 SKIP；含负路径报文）
-# pack-check (v1.3 P3): installed-tree hygiene -- manifest / self-sufficiency /
-# no build-machine paths. Independent task, NOT in the ci chain: cmake-smoke
-# already proves the tree configures, builds and installs; this is the
-# pre-publish walk-through. RUNPATH is reported, never judged (cleaning belongs
-# to the publish band's assembly step; see scripts/gate-pack.sh header).
+# pack-check (v1.3 P3; promoted INTO the ci chain by the publish band 2026-10-09):
+# installed-tree hygiene -- manifest / self-sufficiency / no build-machine paths.
+# Runs after cmake-smoke (it reuses that build dir; SKIPs with exit 0 when
+# cmake/readelf are absent -- same gate-abi-family tool discipline, so a bare
+# clone never goes red for an absent optional tool). RUNPATH stays report-only:
+# cleaning belongs to the publish-band assembly step (scripts/gate-pack.sh header
+# + the decision note in cmake/VisiaEnginePackaging.cmake).
 pack-check = "bash scripts/gate-pack.sh"
 # Band K (2026-10-08): XTEST input probe over the interactive example set.
-# Out of the ci chain on purpose (same policy as pack-check): it needs Xvfb +
-# /usr/bin/xwd + a C compiler, which pixi run ci does not promise. It starts its
-# own private display, so never wrap it in xvfb-run (PIT-22).
+# Out of the ci chain on purpose: it needs Xvfb + /usr/bin/xwd + a C compiler,
+# which `pixi run ci` does not promise. It starts its own private display, so
+# never wrap it in xvfb-run (PIT-22).
 keys-probe = "python3 scripts/keys-probe.py --all"
-ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke"] }
+ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke", "pack-check"] }
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # ctest 转发壳（argv 单源=R9 表；CI xvfb-run 调用）
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2：glTF 装配链路（G3）
 smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2：GeoJSON 链路（H4）

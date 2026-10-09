@@ -29,7 +29,7 @@ cargo metadata --no-deps --format-version 1 |
 | Behaviour contracts | **199** clauses, two-way traceable to tests: REND 47 · WGPU 34 · GEO 27 · CORE 21 · CAPI 41 · IO 18 · GLTF 11 |
 | C ABI surface | **49** entries, abi `(1<<16)\|16`, mirrored across header / hpp / wasm / d.ts |
 | Examples | **43** files in 9 bands (E1xx 1 · E2xx 6 · E3xx 6 · E4xx 3 · E5xx 11 · E6xx 1 · E7xx 4 · E8xx 10 · E9xx 1), each with a ctest consumer path and a gallery card |
-| Gates | `pixi run ci` = 11 segments; plus `pack-check` and `web-check` as independent tasks |
+| Gates | `pixi run ci` = 12 segments (pack-check promoted into the chain 2026-10-09, publish band todo 3); plus `web-check` as an independent task |
 | Shipped consumption routes | in-tree `add_subdirectory`, **installed CMake tree** (`find_package(visiaengine)`) and `pkg-config` (D23) |
 
 ## 2. The 2026-09-24 S-level gaps, re-checked line by line
