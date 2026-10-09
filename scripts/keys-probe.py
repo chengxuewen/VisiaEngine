@@ -45,11 +45,30 @@ SETTLE = 5.0  # first frame + window map
 
 # (stem, actions, gap, min_changed_pct) -- actions are xinject argv tuples.
 # "noop" = focus only, so a delta between two captures can only be the app's clock.
+# The four window rows below (E303/E306/E504/E901) must NEVER be "noop": their
+# idle frame is static (input-gated redraw or deterministic re-render), so noop
+# would print 0.00% and gate on the harness, not on the app. Each drives
+# drag + wheel + one meaningful key.
+# Deliberately EXCLUDED (the Escape-must-close assertion would be permanently red):
+#   E201_load_gltf   -- Escape is a zoom key (examples/rs/E201_load_gltf.rs:52
+#                      `Escape => dist *= 0.9`); the window never closes on it.
+#   E501_shadow_demo -- no keyboard handling at all (only MouseWheel); same
+#                      never-closes reason.
+# Floors (2026-10-09, 5 consecutive --all runs; evidence
+# .omo/evidence/keys-probe-8row-2026-10-09/): floor = 0.4 x the row's weakest
+# measured action min (60% relative margin, floored): E303 15.46 -> 6.0,
+# E306 25.07 -> 10.0, E504 13.24 -> 5.0, E901 5.96 -> 2.3. run_case checks
+# every action in a row against the floor individually, so this is a
+# per-action contract, not a per-row average.
 CASES = [
     ("E506_postprocessing", [("key", "4")], 2.0, 0.5),
     ("E507_hdr_tonemap", [("key", "2"), ("key", "3"), ("key", "1")], 2.0, 0.5),
     ("E510_route_flow", [("drag", "140", "40"), ("wheel", "1", "3")], 2.0, 0.5),
     ("E511_gate", [("noop", "0")], 4.0, 0.4),
+    ("E303_split_screen", [("drag", "140", "40"), ("wheel", "1", "3"), ("key", "2")], 2.0, 6.0),
+    ("E306_map_controls", [("drag", "140", "40"), ("wheel", "1", "3"), ("key", "r")], 2.0, 10.0),
+    ("E504_glass_water", [("drag", "140", "40"), ("wheel", "1", "3"), ("key", "2")], 2.0, 5.0),
+    ("E901_twin_city", [("drag", "140", "40"), ("wheel", "1", "3"), ("key", "c")], 2.0, 2.3),
 ]
 
 
