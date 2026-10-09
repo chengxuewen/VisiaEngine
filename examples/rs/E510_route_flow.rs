@@ -14,12 +14,12 @@
 
 #[path = "gallery.rs"]
 mod gallery;
+use examples::viewer::{Ctx, FormatPolicy};
 use gallery::save_frame;
-use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
+use winit::window::WindowId;
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, PointMark, PointTableDesc,
@@ -262,10 +262,8 @@ fn prove(frames: u32) {
 
 /// Window lane state (C15 dual-mode: zero-arg = resident human window).
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     // Static GPU products (road + rails), built once in resumed().
     static_cmds: Vec<DrawCommand>,
     // Flow lane: sample positions along the route center; the point table is
@@ -286,54 +284,23 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    winit::window::WindowAttributes::default()
-                        .with_inner_size(winit::dpi::PhysicalSize::new(800u32, 560u32))
-                        .with_title("E510 route flow · drag=orbit wheel=zoom · Esc exit"),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E510 route flow · drag=orbit wheel=zoom · Esc exit",
+            800,
+            560,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e510"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         // Static scene (road + rails): reuse the prove-lane builder but with
         // flow_n = 0 (the point table is the per-frame dynamic part).
         let (cmds, center) = scene(&mut core, 0);
         self.static_cmds = cmds;
         self.center = center;
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.last = Some(std::time::Instant::now());
     }
@@ -407,14 +374,15 @@ impl ApplicationHandler for App {
         self.last = Some(now);
         self.phase = (self.phase + dt * 6.0) % self.center.len() as f64;
 
-        let (Some(core), Some(surface), Some(config), Some(window)) = (
-            self.core.as_mut(),
-            self.surface.as_ref(),
-            self.config.as_ref(),
-            self.window.as_ref(),
-        ) else {
+        // The rects-based present is this example's subject (5b) -- it stays local.
+        // The shared Ctx hands back the pieces the body needs, under the old names, so
+        // everything past this point is untouched text.
+        let (Some(core), Some(ctx)) = (self.core.as_mut(), self.ctx.as_mut()) else {
             return;
         };
+        let surface = &ctx.surface;
+        let config = &ctx.config;
+        let window = &ctx.window;
         window.set_title(
             format!(
                 "E510 route flow · phase={:.1} · drag=orbit wheel=zoom · Esc exit",
@@ -505,10 +473,8 @@ fn window_form() -> Result<(), Box<dyn std::error::Error>> {
     let el = EventLoop::new()?;
     el.set_control_flow(ControlFlow::Poll);
     let mut app = App {
-        window: None,
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
         static_cmds: Vec::new(),
         center: Vec::new(),
         table: None,

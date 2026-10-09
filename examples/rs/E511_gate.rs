@@ -10,13 +10,13 @@
 //!
 //! Claim: rigid node transforms only (CAPI-42/43) — skeletal/morph is V2.4.
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, MultiClearPolicy};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
+use winit::window::WindowId;
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -242,10 +242,8 @@ fn prove(_frames: u32) {
 
 /// Window lane state (C15 dual-mode: zero-arg = resident human window).
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     ids: Option<(GateIds, MaterialId)>,
     // Gate clock: theta sweeps 0..60 degrees on a cosine so both ends dwell.
     t: f64,
@@ -262,50 +260,19 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    winit::window::WindowAttributes::default()
-                        .with_inner_size(winit::dpi::PhysicalSize::new(760u32, 520u32))
-                        .with_title("E511 gate swing · drag=orbit wheel=zoom · Esc exit"),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E511 gate swing · drag=orbit wheel=zoom · Esc exit",
+            760,
+            520,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e511"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         self.ids = Some(gate_products(&mut core));
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.last = Some(std::time::Instant::now());
     }
@@ -353,15 +320,16 @@ impl ApplicationHandler for App {
         // 0 .. 60 degrees, dwelling at both ends (cosine easing, no snap).
         self.theta = (1.0 - (self.t * 1.1).cos()) * 0.5 * std::f64::consts::FRAC_PI_3;
 
-        let (Some(core), Some(surface), Some(config), Some(window), Some((g, mat))) = (
-            self.core.as_mut(),
-            self.surface.as_ref(),
-            self.config.as_ref(),
-            self.window.as_ref(),
-            self.ids,
-        ) else {
+        // 5th element is a nested tuple pattern -- handled by hand, not by the
+        // codemod's tuple parser (it is the reason E511 is the one file that refused).
+        let (Some(core), Some(ctx), Some((g, mat))) =
+            (self.core.as_mut(), self.ctx.as_mut(), self.ids)
+        else {
             return;
         };
+        let surface = &ctx.surface;
+        let config = &ctx.config;
+        let window = &ctx.window;
         window.set_title(
             format!(
                 "E511 gate swing · theta={:.1}deg · drag=orbit wheel=zoom · Esc exit",
@@ -461,10 +429,8 @@ fn window_form() -> Result<(), Box<dyn std::error::Error>> {
     let el = EventLoop::new()?;
     el.set_control_flow(ControlFlow::Poll);
     let mut app = App {
-        window: None,
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
         ids: None,
         t: 0.0,
         last: None,
