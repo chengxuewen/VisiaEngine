@@ -96,6 +96,11 @@ pack-check = "bash scripts/gate-pack.sh"
 # which `pixi run ci` does not promise. It starts its own private display, so
 # never wrap it in xvfb-run (PIT-22).
 keys-probe = "python3 scripts/keys-probe.py --all"
+# npm-pack: builder, not a gate — out of the ci chain (same policy as gallery /
+# keys-probe). Assembles build/npm/visiaengine/ + a LOCAL .tgz from the wasm build
+# output; needs node (default env) and a prior `pixi run web-check`. Nothing is
+# published; the tarball stays on this machine.
+npm-pack = "bash scripts/gen-npm-package.sh"
 ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke", "pack-check"] }
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # ctest 转发壳（argv 单源=R9 表；CI xvfb-run 调用）
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2：glTF 装配链路（G3）

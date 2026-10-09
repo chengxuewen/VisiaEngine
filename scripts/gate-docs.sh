@@ -3,7 +3,7 @@
 #  ① E 三方一致：example 文件名 = 头注释 E### = docs/tutorials.md（预留空号=仅索引行）；
 #  ② README 条款数 == spec-trace 实报数（文档只写可校验的数）；
 #  ③ visiaengine.h 原型名集 == Rust extern "C" fn 名集（符号数由 gate-abi 的 nm 守）；
-#  ④ docs/README 相对 .md 链接存活。
+#  ④ relative links in README/docs/llms.txt resolve (http/mailto/anchor/build exempt).
 # 纯 grep/diff <1s；失配=红+exit 1。
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
@@ -33,14 +33,23 @@ hs=$(grep -oE 'visiaengine_[a-z0-9_]+\(' bindings/c/visiaengine-capi/include/vis
 rs=$(grep -rhoE 'fn visiaengine_[a-z0-9_]+' bindings/c/visiaengine-capi/src/ | sed 's/^fn //' | sort -u)
 [ "$hs" = "$rs" ] || { echo "GATE-DOCS ✗ ③.h 原型集 ≠ Rust extern 集:"; diff <(echo "$hs") <(echo "$rs"); fail=1; }
 
-# ④ 相对链接
+# ④ relative links — extended this band from .md-only to every markdown link
+# destination in README.md + docs/**/*.md + llms.txt. Skips: http(s)/mailto, pure-#
+# anchors, destinations containing spaces (prose artifacts, not valid targets), and
+# build//target/ paths (generated trees absent in a bare clone — the gallery/
+# docs-gen bands own those outputs).
 while IFS= read -r f; do
     dir=$(dirname "$f")
-    while IFS= read -r link; do
-        case "$link" in http*) continue ;; esac
-        [ -f "$dir/$link" ] || { echo "GATE-DOCS ✗ ④断链: $f → $link"; fail=1; }
-    done < <(grep -oE '\]\(([^)#?]+\.md)' "$f" 2>/dev/null | sed 's/^](//')
-done < <(ls README.md docs/*.md docs/sdd/*.md docs/reference/*.md 2>/dev/null)
+    while IFS= read -r dest; do
+        case "$dest" in
+            http*|mailto:*|\#*|*\ *|build/*|target/*) continue ;;
+        esac
+        target=${dest%%#*}
+        target=${target%%\?*}
+        [ -n "$target" ] || continue
+        [ -e "$dir/$target" ] || { echo "GATE-DOCS ✗ ④断链: $f → $dest"; fail=1; }
+    done < <(grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//')
+done < <(ls README.md docs/*.md docs/sdd/*.md docs/reference/*.md llms.txt 2>/dev/null)
 
 # ⑤ 门面纯度（CMake 层纪律：根文件 ≤60 行且禁载编译规则——权威=cargo/pixi）
 if [ -f CMakeLists.txt ]; then
