@@ -12,13 +12,12 @@ use visiaengine_render::{
 };
 use visiaengine_render_wgpu::{HeadlessBackend, mesh_core::MeshCore};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 const FIX: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -199,10 +198,8 @@ fn headless_run(_n: u32) {
 
 // ── 交互路（无参：常驻窗，Esc/关窗退）─────────────────────────────────────────
 struct App {
-    window: Option<Arc<Window>>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
+    ctx: Option<Ctx>,
     cmds: Vec<DrawCommand>,
     ready: bool,
 }
@@ -212,47 +209,16 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title(
-                            "VisiaEngine E205 图注 · Esc/关窗退出（DejaVu 无 CJK=拉丁演示）",
-                        ),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "VisiaEngine E205 图注 · Esc/关窗退出（DejaVu 无 CJK=拉丁演示）",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e205"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         let face = load_face();
         let mut cache = GlyphCache::new();
         let cmds = scene(&mut core, &face, &mut cache);
@@ -260,9 +226,7 @@ impl ApplicationHandler for App {
             .expect("atlas");
         self.cmds = cmds;
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.request_redraw();
     }
@@ -276,44 +240,18 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::Resized(sz) => {
-                if let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &mut self.config)
-                    && sz.width > 0
-                    && sz.height > 0
-                {
-                    config.width = sz.width;
-                    config.height = sz.height;
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, sz);
                     self.request_redraw();
                 }
             }
             WindowEvent::RedrawRequested => {
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &self.config)
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     return;
                 };
-                let frame = ortho_frame(self.cmds.clone(), config.width, config.height, 30.0);
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(t)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(t) => {
-                        let view = t
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
-                            &view,
-                            config.width,
-                            config.height.max(1),
-                            config.format,
-                        );
-                        core.queue.present(t);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skip {other:?}"),
-                }
+                let frame =
+                    ortho_frame(self.cmds.clone(), ctx.config.width, ctx.config.height, 30.0);
+                ctx.present(core, &frame);
             }
             _ => {}
         }
@@ -322,23 +260,14 @@ impl ApplicationHandler for App {
 
 impl App {
     fn request_redraw(&self) {
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 }
 
 fn main() {
-    let mut frames: Option<u32> = None;
-    let mut args = std::env::args().skip(1);
-    while let Some(a) = args.next() {
-        if a == "--frames" {
-            frames = args
-                .next()
-                .and_then(|v| v.parse().ok())
-                .filter(|n: &u32| *n > 0);
-        }
-    }
+    let frames = examples::viewer::argv_frames();
     if let Some(n) = frames {
         headless_run(n);
         return;
@@ -346,10 +275,8 @@ fn main() {
     let event_loop = EventLoop::new().expect("event loop");
     event_loop.set_control_flow(ControlFlow::Wait);
     let mut app = App {
-        window: None,
         core: None,
-        surface: None,
-        config: None,
+        ctx: None,
         cmds: Vec::new(),
         ready: false,
     };
