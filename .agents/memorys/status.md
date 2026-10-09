@@ -577,3 +577,14 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - Method worth reusing: per batch = determinism pre-check (two back-to-back captures) ->
   static scenes may then use **live-window sha equality** as the gate; animated examples
   must use keys-probe percentages / time-progress + interaction tri-state instead.
+
+## lesson-review 记录（2026-10-08，band V 批 12–14 + V3/V4 收口会话）
+- 新增：PIT-48（harness 调用错误被 `2>/dev/null` 吞 = 判成被测物死；rc 必先断言）、
+  C19（自检/剪枝判据必须 token 级 + 上线前给检查本身种破坏探针；含如实注记：母本 codemod
+  仍是粗判据，仓内真判据是 `lint -D warnings`）、D24（共享件价值以站点数计不以行数计；
+  触发器实测覆盖计划存档步骤；V4 净额行数=零）。
+- 扩写：testing.md harness-truth 第 (2) 条补**第四见**（E201 argv 位置资产打头，ad-hoc
+  `--frames 1` 掉进开窗路，winit 报错长得像渲染 bug 实为跑道选择 bug）。
+- 本轮回顾自己抓到的一条：新写的 C19 检查命令**首版是假门**（谓词连正例都不命中，
+  且依赖会话级 /tmp 文件）；已改为自带破坏探针的可证伪形并实跑（种植样本=1，仓内=0）。
+- 待办队列不变：push（V4 一笔）· T3 人验五条 · npm/pip 打包轮 · LAS/蒙皮票据制候令。

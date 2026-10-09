@@ -398,3 +398,22 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
   ```
 - **禁止**: 把带 SKIP 语义的门禁接进 CI 而不给它一条"缺件即红"的调用形；
   在提交 CI 变更前跳过本机实跑该步骤。
+
+## PIT-48: 探针/注入器自身的调用错误被 `>/dev/null 2>&1` 吞掉，判成"被测物没反应" (2026-10-08, band V4)
+- **症状**: 交互三态门连报两例 `idle==drag==wheel`、打印"✗ 输入被吃掉"；而同一时刻
+  `pixi run keys-probe` 自己的 4/4 是绿的。第二次手搓 `gcc scripts/xinject.c -lX11 -lXtst`
+  又报 `-lXtst: not found`——因为 `keys-probe.py:build_injector()` 早已加了
+  `-L$ENV/lib -Wl,-rpath,$ENV/lib`，产物 `target/keys-probe/xinject` 也已存在。
+- **根因**: 两层。①xinject 的契约是**位置参数** `xinject <display> <title-substr> <action> [args]`，
+  我按习惯写成 `xinject -display :69 -drag ...`，参数解析失败即退出；②我把 stdout/stderr
+  全丢 `/dev/null`，于是"门没跑成"与"跑了但画面没变"在输出上**同形**。断言只看了后者。
+- **解法**: ①复用工具自己的构造器/产物，不重搓编译命令（缺的是 `-L`，不是我该学的知识）；
+  ②harness 调用一律 `> /tmp/x.log 2>&1` 留报文，并**先断言 harness rc==0**，再看画面 hash；
+  ③门的自证：判红前用 `xinject <disp> <needle> name` 证明它真找到了那个窗口。
+- **验证**:
+  ```bash
+  target/keys-probe/xinject :70 NOPE_NO_SUCH_WINDOW name >/tmp/h.log 2>&1; echo "rc=$?"  # 期望非 0
+  target/keys-probe/xinject :70 E501 name            # 期望回显 NAME=...，证明 needle 命中
+  grep -n "2>/dev/null" scripts/keys-probe.py        # 期望：harness 侧无吞报文形
+  ```
+- **禁止**: 断言"输入无效/画面不变"之前，harness 输出被丢弃或 rc 未查。

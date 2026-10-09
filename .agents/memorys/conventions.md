@@ -72,3 +72,32 @@ argv 解析）。例子用来教那一件事的代码（present 路径选择、�
 
 **检查命令**: `grep -n '非目标\|留本地' .omo/plans/viewer-shared-band-2026-10-08.md | head`；
 迁移批的门（确定性预检→sha/时序→交互三态）见 `rules/common/testing.md`「Batch-migration gates」。
+
+## C19: 自检/剪枝/门禁类步骤的判据必须 token 级，且上线前跑破坏探针 (2026-10-08 band V 实锤)
+
+**约束**: "这个符号还有人用吗""这条串还在吗"一类判据，按**文本行**判会被注释与字符串污染。
+实锤：batch 12 的剪 import 只剥了 `use` 行，于是 `Window` 因注释提及而存活——抓它的是本仓
+`lint`（`cargo clippy --workspace --all-targets -- -D warnings`），**不是脚本**；而当时我在提交里
+把脚本能力写得比实现更好（声称"注释提及不算使用"）。两个失败同族：①判据太粗 ②自述超出实现。
+
+正确判据次序：剥 `//` 注释 → 剥字符串字面量 → 剥 `use` 行 → 再按词边界查。
+新增自检/门禁上线前必跑**破坏探针**（改名/删掉被测物，门禁必须红且报文只指它）。
+
+**检查命令**:
+```bash
+# ① 谓词自证：给检查本身种破坏探针（命中>=1 才是真门；仓内必须为 0）
+printf 's = re.sub(r"use [^\\n]+", "", s)\n' > /tmp/c19-probe.py
+grep -c 're\\.sub(r\"use ' /tmp/c19-probe.py                       # 期望 1：谓词能命中粗判据形
+grep -rn 're\\.sub(r\"use ' scripts examples/rs/src crates bindings 2>/dev/null | wc -l   # 期望 0
+rm -f /tmp/c19-probe.py
+# ② 反向优势（本仓真判据）：lint 段是 -D warnings，剪枝漏网必被它抓
+grep -n '^lint = ' pixi.toml
+```
+**Note (honest, 2026-10-08)**: the band's codemod (`/tmp/migrate_viewer.py`, session-scoped
+and NOT in the repo -- plans and one-off scripts are deliberately not tracked) still carries
+the crude form at lines 207/211: it strips `use` lines only, no comment/string stripping.
+The token-level fix was implemented in the batch 13/14 one-off invocations, whose corrected
+predicates are likewise untracked. Therefore the durable guarantee is ② -- `lint` with
+`-D warnings` -- which is what actually caught `Window` in batch 12. ① exists so the next
+person who writes a prune step can prove their predicate bites before trusting it.
+

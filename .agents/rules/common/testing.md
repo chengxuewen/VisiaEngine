@@ -138,7 +138,12 @@ thing the example claims -- (1) display-family examples must run under Xvfb (the
 with no DISPLAY); (2) run the lane with the **registry argv** (`_args_<stem>` in
 cmake/VisiaEngineBindings.cmake), not an ad-hoc number -- E305's marker threshold is
 calibrated for 24 frames and panics at 4 on both the migrated and the pre-migration
-build (batch 11); (3) X keysym names are lowercase (`bracketright`), winit-style
+build (batch 11); **fourth sighting (V4): E201's argv is
+`resources/data/twoprim.glb --frames 3` -- a POSITIONAL ASSET FIRST. My ad-hoc
+`--frames 1` dropped the model path, which silently switched that example into its
+window lane and produced winit's "neither WAYLAND_DISPLAY nor DISPLAY is set" --
+an error that reads like a rendering bug and is actually a lane-selection bug. Rule:
+copy the registry argv VERBATIM, argument order included.**; (3) X keysym names are lowercase (`bracketright`), winit-style
 `BracketRight` silently does nothing while the injector prints ok.
 
 Rules baked into the tool (keep them if you port it): private display, never
