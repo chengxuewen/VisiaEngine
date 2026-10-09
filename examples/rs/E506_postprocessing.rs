@@ -7,12 +7,12 @@
 //! - `--frames N` = offscreen assert path: off vs bloom and off vs outline
 //!   pixel diffs exceed probe-pinned K; off state deterministic (canary).
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
+use winit::window::WindowId;
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, PostEffect, RenderBackend,
@@ -267,10 +267,8 @@ fn prove(frames: u32) {
 
 // ── resident window path (E304 winit shape) ──────────────────────────────────
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     commands: Vec<DrawCommand>,
     bloom: bool,
     outline: bool,
@@ -283,50 +281,19 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    winit::window::WindowAttributes::default()
-                        .with_inner_size(winit::dpi::PhysicalSize::new(640u32, 480u32))
-                        .with_title("E506 post off · 1=bloom 2=outline 4=haze 3=off · Esc exit"),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E506 post off · 1=bloom 2=outline 4=haze 3=off · Esc exit",
+            640,
+            480,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e506"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         self.commands = scene(&mut core);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.redraw();
     }
@@ -371,15 +338,12 @@ impl ApplicationHandler for App {
 
 impl App {
     fn redraw(&mut self) {
-        let (Some(core), Some(surface), Some(config), Some(window)) = (
-            self.core.as_mut(),
-            self.surface.as_ref(),
-            self.config.as_ref(),
-            self.window.as_ref(),
-        ) else {
+        // Method form (E506/E507): the whole redraw lives in `impl App::redraw`, and the
+        // window size is read from the live window, not the config -- preserved as is.
+        let (Some(core), Some(ctx)) = (self.core.as_mut(), self.ctx.as_mut()) else {
             return;
         };
-        let size = window.inner_size();
+        let size = ctx.window.inner_size();
         let (w, h) = (size.width.max(1), size.height.max(1));
         let mut post = Vec::new();
         if self.bloom {
@@ -392,20 +356,7 @@ impl App {
             post.push(PostEffect::haze(40.0, 200.0).expect("haze"));
         }
         let frame = frame(&self.commands, post, w, h);
-        match surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(tex)
-            | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                let view = tex
-                    .texture
-                    .create_view(&wgpu::TextureViewDescriptor::default());
-                core.render_view_format(&frame, &view, w, h, config.format);
-                core.queue.present(tex);
-            }
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                surface.configure(&core.device, config);
-            }
-            other => eprintln!("skip {other:?}"),
-        }
+        ctx.present(core, &frame);
         let state = match (self.bloom, self.outline, self.haze) {
             (false, false, false) => "off".to_string(),
             (true, false, false) => "bloom".to_string(),
@@ -421,7 +372,7 @@ impl App {
                 format!("{base}+haze")
             }
         };
-        window.set_title(
+        ctx.window.set_title(
             format!("E506 post {state} · 1=bloom 2=outline 4=haze 3=off · Esc exit").as_str(),
         );
     }
@@ -444,10 +395,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let el = EventLoop::new()?;
             el.set_control_flow(ControlFlow::Wait);
             let mut app = App {
-                window: None,
+                ctx: None,
                 core: None,
-                surface: None,
-                config: None,
                 commands: Vec::new(),
                 bloom: false,
                 outline: false,
