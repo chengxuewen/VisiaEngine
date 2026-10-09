@@ -5,7 +5,7 @@
 //!   --frames N   headless 自断言快退（ctest/CI 路）：3×3 解码计数 + 像素四族 + 缩略图
 //!   无参         常驻人验窗：拖=轨道 滚轮=缩放（正交 zoom）关窗/Esc 退出
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_io_tiles::{FileSource, GeoTile, TileGeom, TileId};
 use visiaengine_render::{
@@ -18,7 +18,7 @@ use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowId};
+use winit::window::WindowId;
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -280,10 +280,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// 常驻人验窗路（无参）：球面轨道拖拽 / 滚轮=正交 zoom（half-width）/ Esc/关窗退出。
 struct TileApp {
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
-    window: Option<Arc<Window>>,
     dragging: Option<(f64, f64)>,
     /// 正交 half-width（滚轮消费面=真缩放语义）。
     zoom: f64,
@@ -345,67 +343,24 @@ impl ApplicationHandler for TileApp {
         if self.core.is_some() {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    winit::window::WindowAttributes::default()
-                        .with_inner_size(winit::dpi::PhysicalSize::new(960u32, 600u32))
-                        .with_title(
-                            "VisiaEngine E206 · 3×3 矢量瓦片（拖=轨道 滚轮=缩放 关窗/Esc 退出）",
-                        ),
-                )
-                .expect("create_window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("create_surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter — lavapipe/real GPU required");
+        let Some((ctx, core)) = Ctx::new(
+            event_loop,
+            "VisiaEngine E206 · 3×3 矢量瓦片（拖=轨道 滚轮=缩放 关窗/Esc 退出）",
+            960,
+            600,
+            FormatPolicy::PreferSrgb,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-window"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("request_device");
-        let core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("surface config");
-        config.format = caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| {
-                matches!(
-                    f,
-                    wgpu::TextureFormat::Rgba8UnormSrgb | wgpu::TextureFormat::Bgra8UnormSrgb
-                )
-            })
-            .unwrap_or(caps.formats[0]);
-        surface.configure(&core.device, &config);
-        self.window = Some(window);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
+        self.ctx = Some(ctx);
         if let Some(tiles) = self.tiles.take() {
             self.upload(&tiles);
             self.tiles = Some(tiles);
         }
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 
@@ -414,19 +369,11 @@ impl ApplicationHandler for TileApp {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                if size.width == 0 || size.height == 0 {
-                    return;
-                }
-                if let (Some(core), Some(surface), Some(config)) = (
-                    self.core.as_mut(),
-                    self.surface.as_ref(),
-                    self.config.as_mut(),
-                ) {
-                    config.width = size.width.max(1);
-                    config.height = size.height.max(1);
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, size);
                 }
             }
+
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed
                     && matches!(&event.logical_key, Key::Named(NamedKey::Escape))
@@ -447,8 +394,8 @@ impl ApplicationHandler for TileApp {
                     if lx >= 0.0 {
                         self.yaw -= (x - lx) * 0.006;
                         self.pitch = (self.pitch - (y - ly) * 0.006).clamp(0.15, 1.55);
-                        if let Some(w) = &self.window {
-                            w.request_redraw();
+                        if let Some(ctx) = &self.ctx {
+                            ctx.request_redraw();
                         }
                     }
                     self.dragging = Some((x, y));
@@ -462,14 +409,12 @@ impl ApplicationHandler for TileApp {
                 };
                 let f = 1.0 - d * 0.0012;
                 self.zoom = (self.zoom * f).clamp(8_000.0, 500_000.0);
-                if let Some(w) = &self.window {
-                    w.request_redraw();
+                if let Some(ctx) = &self.ctx {
+                    ctx.request_redraw();
                 }
             }
             WindowEvent::RedrawRequested => {
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, self.surface.as_ref(), self.config.as_mut())
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     event_loop.exit();
                     return;
                 };
@@ -491,11 +436,11 @@ impl ApplicationHandler for TileApp {
                 let near = (dist * 0.01) as f32;
                 let far = (dist * 30.0) as f32;
                 let hw = self.zoom as f32;
-                let aspect = config.height.max(1) as f32 / config.width.max(1) as f32;
+                let aspect = ctx.config.height.max(1) as f32 / ctx.config.width.max(1) as f32;
                 let Some(proj) = rig.ortho_frame(
                     hw,
-                    config.width.max(1) as f32,
-                    config.height.max(1) as f32,
+                    ctx.config.width.max(1) as f32,
+                    ctx.config.height.max(1) as f32,
                     near,
                     far,
                 ) else {
@@ -522,41 +467,20 @@ impl ApplicationHandler for TileApp {
                     },
                 ];
                 let frame = Frame {
-                    viewport: Viewport::new(config.width, config.height, 1.0),
+                    viewport: Viewport::new(ctx.config.width, ctx.config.height, 1.0),
                     camera: Camera::ortho(hw, hw * aspect, near, far),
                     view_rot: rig.view_rotation(),
                     eye: rig.eye(),
                     proj,
-                    px_world_scale: 2.0 * hw / config.width.max(1) as f32,
+                    px_world_scale: 2.0 * hw / ctx.config.width.max(1) as f32,
                     shadow: None,
                     clip: None,
                     edl: None,
                     post: Vec::new(),
                     commands,
                 };
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(tex)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                        let view = tex
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
-                            &view,
-                            config.width,
-                            config.height.max(1),
-                            config.format,
-                        );
-                        core.queue.present(tex);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skipped: {other:?}"),
-                }
-                if let Some(w) = &self.window {
-                    w.request_redraw();
-                }
+                ctx.present(core, &frame);
+                ctx.request_redraw();
             }
             _ => {}
         }
@@ -569,10 +493,8 @@ fn run_window(tiles: Vec<GeoTile>) -> Result<(), Box<dyn std::error::Error>> {
     let center = scene_center(&tiles);
     let tile_w = (tiles[0].id.bbox().2 - tiles[0].id.bbox().0) as f32;
     let mut app = TileApp {
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
-        window: None,
         dragging: None,
         zoom: f64::from(tile_w) * 1.6,
         yaw: 0.0,
