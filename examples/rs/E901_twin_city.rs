@@ -6,7 +6,7 @@
 #[path = "gallery.rs"]
 mod gallery;
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
 use visiaengine_render::BackendError;
@@ -18,11 +18,10 @@ use visiaengine_render::{
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 const W: u32 = 640;
 const H: u32 = 480;
@@ -335,10 +334,8 @@ fn headless_run() {
 
 // ── 交互路（人工检验面：MeshCore 直渲 surface，同场景同阴影——E501 同制）───────
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     rig: CameraRig,
     dragging: Option<(f64, f64)>,
     origin: [f64; 3],
@@ -355,46 +352,16 @@ impl ApplicationHandler for App {
         if self.core.is_some() {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("VisiaEngine E901 孪生城 · 左键拖=轨道 滚轮=远近 关窗退出"),
-                )
-                .expect("create_window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("create_surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter — lavapipe/real GPU required");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "VisiaEngine E901 孪生城 · 左键拖=轨道 滚轮=远近 关窗退出",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e901"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("request_device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("surface config");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
-
         // 场景上传（与 headless 路同源函数）
         let mut commands = vec![DrawCommand::ClearColor {
             rgba: [0.30, 0.45, 0.70, 1.0],
@@ -447,10 +414,10 @@ impl ApplicationHandler for App {
         self.origin = origin;
         self.commands = commands;
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
-        self.window.as_ref().unwrap().request_redraw();
+        self.ctx = Some(ctx);
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
+        }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -458,16 +425,11 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::KeyboardInput { event, .. } => self.handle_key(event_loop, &event),
             WindowEvent::Resized(size) => {
-                if let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &mut self.config)
-                    && size.width > 0
-                    && size.height > 0
-                {
-                    config.width = size.width;
-                    config.height = size.height;
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, size);
                 }
             }
+
             WindowEvent::MouseInput {
                 button: MouseButton::Left,
                 state,
@@ -494,12 +456,10 @@ impl ApplicationHandler for App {
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &self.config)
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     return;
                 };
-                let aspect = config.width as f32 / config.height.max(1) as f32;
+                let aspect = ctx.config.width as f32 / ctx.config.height.max(1) as f32;
                 let Some(proj) = self
                     .rig
                     .perspective(self.rig.fov_y as f32, aspect, 1.0, 200.0)
@@ -516,38 +476,23 @@ impl ApplicationHandler for App {
                     ClipSetup::new(&[[0.0, 0.0, -1.0, f64::from(h)]])
                 });
                 let frame = Frame {
-                    viewport: Viewport::new(config.width, config.height, 1.0),
+                    viewport: Viewport::new(ctx.config.width, ctx.config.height, 1.0),
                     camera: Camera::perspective(self.rig.fov_y as f32, aspect, 1.0, 200.0),
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
                     px_world_scale: 0.14, // 参考深度不变（E501 同制：窗 resize 不重标线宽）
-                    shadow: Some(shadow_setup(self.origin, config.width, config.height)),
+                    shadow: Some(shadow_setup(
+                        self.origin,
+                        ctx.config.width,
+                        ctx.config.height,
+                    )),
                     clip,
                     edl: None,
                     post: Vec::new(),
                     commands: cmds,
                 };
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(tex)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                        let view = tex
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
-                            &view,
-                            config.width,
-                            config.height.max(1),
-                            config.format,
-                        );
-                        core.queue.present(tex);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skipped frame: {other:?}"),
-                }
+                ctx.present(core, &frame);
                 let again = match self.frames_left {
                     None => true,
                     Some(1) => false,
@@ -569,8 +514,8 @@ impl ApplicationHandler for App {
 
 impl App {
     fn set_title(&self) {
-        if let Some(w) = &self.window {
-            w.set_title(&format!(
+        if let Some(ctx) = &self.ctx {
+            ctx.window.set_title(&format!(
                 "E901 孪生城 · C={} [/]={:.1}m · L={} · 拖=轨道 滚轮=远近 Esc=退出",
                 if self.clip_h.is_some() { "ON" } else { "OFF" },
                 self.clip_h.unwrap_or(0.0),
@@ -618,8 +563,8 @@ impl App {
     }
 
     fn request_redraw(&self) {
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 }
@@ -651,10 +596,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
-        window: None,
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
         rig: CameraRig::look_at([cx, cy - 52.0, 36.0], [cx, cy, 1.0], [0.0, 1.0, 0.0]),
         dragging: None,
         origin: [0.0; 3],
