@@ -6,7 +6,7 @@
 #[path = "gallery.rs"]
 mod gallery;
 
-use examples::viewer::{Ctx, FormatPolicy};
+use examples::viewer::{Ctx, FormatPolicy, orbit_drag, zoom_dist};
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, Instance, InstanceDesc, MaterialId, MeshDesc, MeshId,
@@ -15,7 +15,7 @@ use visiaengine_render::{
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
 use winit::application::ApplicationHandler;
-use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::WindowId;
 
@@ -247,21 +247,12 @@ impl ApplicationHandler for App {
                 self.dragging = matches!(state, ElementState::Pressed).then_some((-1.0, -1.0));
             }
             WindowEvent::CursorMoved { position, .. } => {
-                if let Some((lx, ly)) = self.dragging.take() {
-                    let (x, y) = (position.x, position.y);
-                    if lx >= 0.0 {
-                        self.rig.orbit_delta((x - lx) * 0.006, (y - ly) * 0.006);
-                        self.request_redraw();
-                    }
-                    self.dragging = Some((x, y));
+                if orbit_drag(&mut self.rig, &mut self.dragging, position.x, position.y) {
+                    self.request_redraw();
                 }
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let d = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -f64::from(y) * 40.0,
-                    MouseScrollDelta::PixelDelta(p) => -p.y,
-                };
-                self.rig.dist = (self.rig.dist * (1.0 - d * 0.0012)).clamp(6.0, 200.0);
+                zoom_dist(&mut self.rig, &delta, 6.0, 200.0);
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {

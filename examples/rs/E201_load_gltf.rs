@@ -1,13 +1,13 @@
 //! E201 · 数据装载·glTF —— io-gltf × MeshCore 合流 + 键盘轨道（4 连招：装载→属性(E203)→样式→IO）。
 //! 用法: cargo run --example E201_load_gltf [path.glb] [--frames N]（smoke: N=3 自动退出）
 
-use examples::viewer::{Ctx, FormatPolicy};
+use examples::viewer::{Ctx, FormatPolicy, orbit_drag, zoom_dist};
 
 use visiaengine_io_gltf::load_gltf;
 use visiaengine_render::{Camera, CameraRig, DrawCommand, Frame, MeshDesc, MeshId, Viewport};
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::application::ApplicationHandler;
-use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::WindowId;
@@ -170,21 +170,12 @@ impl ApplicationHandler for App {
                 self.dragging = matches!(state, ElementState::Pressed).then_some((-1.0, -1.0));
             }
             WindowEvent::CursorMoved { position, .. } => {
-                if let Some((lx, ly)) = self.dragging {
-                    let (x, y) = (position.x, position.y);
-                    if lx >= 0.0 {
-                        self.rig.orbit_delta((x - lx) * 0.006, (y - ly) * 0.006);
-                        self.request_redraw();
-                    }
-                    self.dragging = Some((x, y));
+                if orbit_drag(&mut self.rig, &mut self.dragging, position.x, position.y) {
+                    self.request_redraw();
                 }
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let d = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -f64::from(y) * 40.0,
-                    MouseScrollDelta::PixelDelta(p) => -p.y,
-                };
-                self.rig.dist = (self.rig.dist * (1.0 - d * 0.0012)).clamp(0.3, 100.0);
+                zoom_dist(&mut self.rig, &delta, 0.3, 100.0);
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {

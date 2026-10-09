@@ -5,11 +5,16 @@
 //! (instance → adapter → device → surface → config → `MeshCore`), the resize
 //! reconfigure, and the present match including the `Outdated | Lost` retry arm.
 //!
-//! Deliberately NOT here: interaction semantics. Drag/wheel/rig live in each
-//! example, because the same event means different things across them (E402/E403
-//! drag = pick/box-select, E510 wheel = phase, E303 = per-viewport follow). A
-//! shared `Orbit` would homogenize distinct claims (C2 ruling: deferred to a
-//! trigger, see V4 of the plan).
+//! Interaction semantics: shared ONLY where the measurement said the code is the
+//! same claim (`orbit_drag`, `zoom_dist` -- band V4, V4 trigger). Measured, not
+//! assumed: E201/E501/E504/E901 have byte-identical drag bodies (E201 differed only
+//! by `.take()` on a `Copy` Option, which is behaviourally the same thing) and one
+//! wheel formula differing only in its per-scene clamp bounds. Still deliberately
+//! local, each for a reason the shared piece would erase: E402/E403 (the drag arm is
+//! a 3-tuple and its else-branch does hover-pick / box-select -- that IS the lesson),
+//! E306 (pan + right-button tilt), E508/E509/E510/E511/E206 (they inline their own
+//! spherical maths or give the wheel a non-camera meaning: E510 wheel = flow phase),
+//! E303 (per-viewport follow).
 //!
 //! What stays local, and must: the scene, the `Frame`, and every pixel assertion —
 //! those ARE the lesson of each example.
@@ -21,8 +26,10 @@
 
 use std::sync::Arc;
 
+use visiaengine_render::CameraRig;
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::dpi::PhysicalSize;
+use winit::event::MouseScrollDelta;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowAttributes};
 
@@ -215,6 +222,35 @@ pub fn argv_frames_and_rest() -> (Option<u32>, Vec<String>) {
         rest.push(a.clone());
     }
     (frames, rest)
+}
+
+/// Orbit-by-drag, the shape E201/E501/E504/E901 wrote identically.
+///
+/// The press arm stores the sentinel `(-1.0, -1.0)`: the *first* motion after a
+/// press only seeds the anchor (no rotation), every later motion rotates by the
+/// delta. Returns whether it rotated, so the caller keeps deciding whether to redraw.
+/// Sensitivity is a constant, not a parameter -- all four callers agreed on 0.006,
+/// and a knob nobody varies is decoration.
+pub fn orbit_drag(rig: &mut CameraRig, dragging: &mut Option<(f64, f64)>, x: f64, y: f64) -> bool {
+    let Some((lx, ly)) = dragging.take() else {
+        return false;
+    };
+    if lx >= 0.0 {
+        rig.orbit_delta((x - lx) * 0.006, (y - ly) * 0.006);
+    }
+    *dragging = Some((x, y));
+    lx >= 0.0
+}
+
+/// Wheel -> dolly, clamped. The formula is shared; the bounds are per scene because
+/// they are scene scale, not input feel (E201 0.3..100, E501 6..200, E504 10..160,
+/// E901 20..180 -- measured from the four call sites).
+pub fn zoom_dist(rig: &mut CameraRig, delta: &MouseScrollDelta, lo: f64, hi: f64) {
+    let d = match delta {
+        MouseScrollDelta::LineDelta(_, y) => -f64::from(*y) * 40.0,
+        MouseScrollDelta::PixelDelta(p) => -p.y,
+    };
+    rig.dist = (rig.dist * (1.0 - d * 0.0012)).clamp(lo, hi);
 }
 
 // A compile-time reminder that the helper itself is only reachable from the
