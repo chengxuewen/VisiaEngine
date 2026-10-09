@@ -175,3 +175,8 @@ them. The order that worked (and caught every real defect this band):
 4. Run display-family examples under a display and with the **registry argv**
    (`_args_<stem>` in cmake/VisiaEngineBindings.cmake). Both mistakes happened this band
    and each produced a red that was about my harness, not the code.
+5. For import-pruning steps inside a codemod, the real judge is `pixi run lint`
+   (`cargo clippy --workspace --all-targets -- -D warnings`, pixi.toml L76) -- a symbol
+   kept alive only by a comment mention becomes an unused-import **error** there. Prove
+   the prune predicate bites before trusting it: plant a sample, the check must hit it
+   (conventions.md C19 addendum).

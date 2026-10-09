@@ -101,3 +101,19 @@ predicates are likewise untracked. Therefore the durable guarantee is ② -- `li
 `-D warnings` -- which is what actually caught `Window` in batch 12. ① exists so the next
 person who writes a prune step can prove their predicate bites before trusting it.
 
+
+### C19 addendum (2026-10-08, adopted after lesson-review)
+
+Adopted ruling: **`lint` is the durable gate for prune-type steps; no new CI segment.**
+The discipline that was missing is "do not claim the script checks more than it does".
+
+- Durable gate (verified in-repo): `pixi.toml` L76
+  `lint = "cargo clippy --workspace --all-targets -- -D warnings"` — an unused import that
+  survives a crude prune becomes an error here. This is what caught `Window` (batch 12).
+- Self-test for any new prune/gate predicate (no /tmp dependency, run it in one line):
+  `printf 's = re.sub(r"use x","",s)\n' > /tmp/p; grep -c 're\.sub(r"use ' /tmp/p; rm /tmp/p`
+  — must print **1**; if it prints 0 the predicate is decorative and must be rewritten
+  before it is written into any rule or script.
+- Pointers added where they will be seen: `rules/common/testing.md` (Batch-migration
+  gates) and `rules/rust/coding-style.md` (可执行检查 section) both now name `lint -D
+  warnings` as the true judge of import-pruning steps.

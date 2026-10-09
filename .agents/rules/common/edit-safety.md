@@ -279,3 +279,20 @@ grep -c "重复模式" <file>    # 期望 1；>1 = edit 重复插入
 
 **验证**: `pixi run lint`（-D warnings）作为剪枝类步骤的真判据；`git diff --stat` 与脚本打印的文件数必须相等。
 **阻塞条件**: 脚本注释描述了实现没有的检查；或崩溃后未查盘就重跑批处理。
+
+### 27. 长 markdown/脚本写入：heredoc 外层不得嵌入同名分隔符；写错立即 `bash -n` 自检 (2026-10-08 lesson-review 实锤)
+
+**规则**: ① lesson-review / 记忆类长内容里若含代码围栏，围栏中又出现 `<<'PY'`、`PY` 之类的
+**独立成行的分隔符**，外层 heredoc 会被**提前闭合**，剩余文本被 bash 当命令继续执行——本会话
+实锤一次（python 报 "EOF while scanning triple-quoted string literal"，且尾部若干行被 shell 误读）。
+正解：外层用**唯一且内容中绝不出现**的定界符（如 `<<'PYPART1'`），或**分多条命令**各写一段；
+大块 markdown 优先直接 `cat >> f <<'EOF'`（纯文本、无嵌套），需要改中间某段才用 python。
+② 同一命令里写了 `f-string`/格式化串，占位符数量与实参必须**当场核对**（本会话 `%-24s…%d` 4 占位
+递 6 参 → "not all arguments converted"，红在**我的探针**而非被测物）。
+③ 正则**组名只能 ASCII**：`(?P=j>\s*)` 这类非 ASCII/带符号组名让 re 直接抛
+`bad character in group name`；且必须**先跑一遍**再交给批处理（该异常发生在看盘之前=零损失，
+是 #26 的"断言早于写盘"在工具链上的同族）。
+
+**验证**: `bash -n <改过的脚本>`；heredoc 后 `git diff --stat` 只列预期文件；
+`grep -c "<新段特征串>" <目标文件>` == 1。
+**阻塞条件**: 同一条命令里 heredoc 嵌套 heredoc；或格式化串未自证即用于门断言。
