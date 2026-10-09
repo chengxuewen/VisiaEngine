@@ -1,17 +1,16 @@
 //! E202 · 数据装载·GeoJSON —— geo(解析/投影/细分/样式) × MeshCore(D7 上传) 合流，2D 鸟瞰 + 平移缩放。
 //! 用法: cargo run --example E202_geo_viewer [path.geojson] [--frames N]（smoke: N=3）
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_geo::{load_geojson, tessellate};
 use visiaengine_render::{Camera, CameraRig, DrawCommand, Frame, MeshDesc, MeshId, Viewport};
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 /// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
 type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
@@ -26,10 +25,8 @@ const IDENT64: [[f64; 4]; 4] = [
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
 
 struct App {
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
-    window: Option<Arc<Window>>,
     dragging: Option<(f64, f64)>,
     rig: CameraRig,
     statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
@@ -77,8 +74,8 @@ impl App {
 
 impl App {
     fn request_redraw(&self) {
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 }
@@ -88,48 +85,16 @@ impl ApplicationHandler for App {
         if self.core.is_some() {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title(
-                            "VisiaEngine E202 · GeoJSON（左键拖=平移轨道 滚轮=地图缩放 关窗退出）",
-                        ),
-                )
-                .expect("create_window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("create_surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter — lavapipe/real GPU required");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "VisiaEngine E202 · GeoJSON（左键拖=平移轨道 滚轮=地图缩放 关窗退出）",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-window"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("request_device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("surface config");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
-
         // 场景上传：每个 glTF 实体 → mesh + material
         let doc = match load_geojson(self.glb_path()) {
             Ok(d) => d,
@@ -146,7 +111,7 @@ impl ApplicationHandler for App {
         // = origin+local，相机 target 必须对准世界层原点——[0,0,0] 机位对着距 park
         // 数百万米的空处 = 全帧只剩清屏色。像素门见 geo_pipeline::golden_geo_window_fit。
         let (hx, hy) = ((bbox[2] - bbox[0]) / 2.0, (bbox[3] - bbox[1]) / 2.0);
-        let load_aspect = size.width as f64 / size.height.max(1) as f64;
+        let load_aspect = ctx.config.width as f64 / ctx.config.height as f64;
         let tan_h = (self.rig.fov_y * 0.5).tan();
         self.rig.target = origin;
         self.rig.dist = (hx / (tan_h * load_aspect)).max(hy / tan_h) * 1.3;
@@ -233,12 +198,10 @@ impl ApplicationHandler for App {
             }
         }
         println!("loaded {} entities", self.statics.len());
-        self.window = Some(window);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        self.ctx = Some(ctx);
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 
@@ -246,19 +209,11 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                if size.width == 0 || size.height == 0 {
-                    return;
-                }
-                if let (Some(core), Some(surface), Some(config)) = (
-                    self.core.as_mut(),
-                    self.surface.as_ref(),
-                    self.config.as_mut(),
-                ) {
-                    config.width = size.width.max(1);
-                    config.height = size.height.max(1);
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, size);
                 }
             }
+
             WindowEvent::KeyboardInput { event, .. } => self.handle_key(&event),
             WindowEvent::MouseInput {
                 button: MouseButton::Left,
@@ -289,9 +244,7 @@ impl ApplicationHandler for App {
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &self.config)
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     event_loop.exit();
                     return;
                 };
@@ -308,7 +261,7 @@ impl ApplicationHandler for App {
                 );
                 self.statics = st;
                 commands.extend(self.extras.clone());
-                let aspect = config.width as f32 / config.height.max(1) as f32;
+                let aspect = ctx.config.width as f32 / ctx.config.height.max(1) as f32;
                 let (near, far) = ((self.rig.dist * 0.01) as f32, (self.rig.dist * 30.0) as f32);
                 let Some(proj) = self
                     .rig
@@ -318,7 +271,7 @@ impl ApplicationHandler for App {
                     return;
                 };
                 let frame = Frame {
-                    viewport: Viewport::new(config.width, config.height, 1.0),
+                    viewport: Viewport::new(ctx.config.width, ctx.config.height, 1.0),
                     camera: Camera::ortho(
                         self.rig.zoom as f32,
                         self.rig.zoom as f32 * aspect,
@@ -329,33 +282,14 @@ impl ApplicationHandler for App {
                     eye: self.rig.eye(),
                     proj,
                     // ortho 半宽=zoom → 世界宽 2·zoom 铺 width px（REND-29 精确路）
-                    px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
+                    px_world_scale: 2.0 * self.rig.zoom as f32 / ctx.config.width.max(1) as f32,
                     shadow: None,
                     clip: None,
                     edl: None,
                     post: Vec::new(),
                     commands,
                 };
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(tex)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                        let view = tex
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
-                            &view,
-                            config.width,
-                            config.height.max(1),
-                            config.format,
-                        );
-                        core.queue.present(tex);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skipped: {other:?}"),
-                }
+                ctx.present(core, &frame);
                 let again = match self.frames_left {
                     None => true,
                     Some(1) => false,
@@ -365,9 +299,7 @@ impl ApplicationHandler for App {
                     }
                 };
                 if again {
-                    if let Some(w) = &self.window {
-                        w.request_redraw();
-                    }
+                    ctx.request_redraw();
                 } else {
                     event_loop.exit();
                 }
@@ -395,10 +327,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
-        window: None,
         dragging: None,
         rig: CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0),
         statics: Vec::new(),
