@@ -9,7 +9,7 @@
 #[path = "gallery.rs"]
 mod gallery;
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, PointMark, PointTableDesc, RenderBackend, Viewport,
@@ -17,11 +17,10 @@ use visiaengine_render::{
 use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
 const IDENT: [[f64; 4]; 4] = [
@@ -139,10 +138,8 @@ fn prove(scene: &Scene, frames: u32, edl: bool) {
 
 /// 常驻人验窗路（无参）。
 struct App {
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
-    window: Option<Arc<Window>>,
     rig: CameraRig,
     dragging: Option<(f64, f64)>,
     scene: Scene,
@@ -156,55 +153,16 @@ impl ApplicationHandler for App {
         if self.core.is_some() {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("VisiaEngine E204 · 点云（拖=轨道 滚轮=远近·径恒定 关窗退出）"),
-                )
-                .expect("create_window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("create_surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter — lavapipe/real GPU required");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "VisiaEngine E204 · 点云（拖=轨道 滚轮=远近·径恒定 关窗退出）",
+            960,
+            600,
+            FormatPolicy::PreferSrgb,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-window"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("request_device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("surface config");
-        config.format = caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| {
-                matches!(
-                    f,
-                    wgpu::TextureFormat::Rgba8UnormSrgb | wgpu::TextureFormat::Bgra8UnormSrgb
-                )
-            })
-            .unwrap_or(caps.formats[0]);
-        surface.configure(&core.device, &config);
         self.table = Some(
             core.create_points(&PointTableDesc {
                 data: &self.scene.marks,
@@ -212,12 +170,10 @@ impl ApplicationHandler for App {
             .expect("point table"),
         );
         println!("loaded {} points", self.scene.marks.len());
-        self.window = Some(window);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        self.ctx = Some(ctx);
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 
@@ -225,19 +181,11 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
-                if size.width == 0 || size.height == 0 {
-                    return;
-                }
-                if let (Some(core), Some(surface), Some(config)) = (
-                    self.core.as_mut(),
-                    self.surface.as_ref(),
-                    self.config.as_mut(),
-                ) {
-                    config.width = size.width.max(1);
-                    config.height = size.height.max(1);
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (self.core.as_ref(), self.ctx.as_mut()) {
+                    ctx.on_resize(core, size);
                 }
             }
+
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed
                     && matches!(&event.logical_key, Key::Named(NamedKey::Escape))
@@ -257,8 +205,8 @@ impl ApplicationHandler for App {
                     let (x, y) = (position.x, position.y);
                     if lx >= 0.0 {
                         self.rig.orbit_delta((x - lx) * 0.006, (y - ly) * 0.006);
-                        if let Some(w) = &self.window {
-                            w.request_redraw();
+                        if let Some(ctx) = &self.ctx {
+                            ctx.request_redraw();
                         }
                     }
                     self.dragging = Some((x, y));
@@ -272,13 +220,13 @@ impl ApplicationHandler for App {
                 let f = 1.0 - d * 0.0012;
                 self.rig.zoom = (self.rig.zoom * f).clamp(2.0, 60.0);
                 self.rig.dist = (self.rig.dist * f).clamp(5.0, 80.0);
-                if let Some(w) = &self.window {
-                    w.request_redraw();
+                if let Some(ctx) = &self.ctx {
+                    ctx.request_redraw();
                 }
             }
             WindowEvent::RedrawRequested => {
-                let (Some(core), Some(surface), Some(config), Some(table)) =
-                    (&mut self.core, &self.surface, &self.config, self.table)
+                let (Some(core), Some(ctx), Some(table)) =
+                    (&mut self.core, &mut self.ctx, self.table)
                 else {
                     event_loop.exit();
                     return;
@@ -292,18 +240,19 @@ impl ApplicationHandler for App {
                     },
                 ];
                 let (near, far) = ((self.rig.dist * 0.01) as f32, (self.rig.dist * 30.0) as f32);
-                let Some(proj) = core_ortho(&self.rig, config.width, config.height, near, far)
+                let Some(proj) =
+                    core_ortho(&self.rig, ctx.config.width, ctx.config.height, near, far)
                 else {
                     event_loop.exit();
                     return;
                 };
                 let frame = Frame {
-                    viewport: Viewport::new(config.width, config.height, 1.0),
+                    viewport: Viewport::new(ctx.config.width, ctx.config.height, 1.0),
                     camera: Camera::ortho(self.rig.zoom as f32, self.rig.zoom as f32, near, far),
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
-                    px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
+                    px_world_scale: 2.0 * self.rig.zoom as f32 / ctx.config.width.max(1) as f32,
                     shadow: None,
                     clip: None,
                     edl: self
@@ -312,29 +261,8 @@ impl ApplicationHandler for App {
                     post: Vec::new(),
                     commands,
                 };
-                match surface.get_current_texture() {
-                    wgpu::CurrentSurfaceTexture::Success(tex)
-                    | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                        let view = tex
-                            .texture
-                            .create_view(&wgpu::TextureViewDescriptor::default());
-                        core.render_view_format(
-                            &frame,
-                            &view,
-                            config.width,
-                            config.height.max(1),
-                            config.format,
-                        );
-                        core.queue.present(tex);
-                    }
-                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                        surface.configure(&core.device, config);
-                    }
-                    other => eprintln!("skipped: {other:?}"),
-                }
-                if let Some(w) = &self.window {
-                    w.request_redraw();
-                }
+                ctx.present(core, &frame);
+                ctx.request_redraw();
             }
             _ => {}
         }
@@ -470,10 +398,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
-        window: None,
         rig: CameraRig::orbit([0.0, 0.0, 0.0], 0.4, 1.1, 16.0, 6.0, 1.0, 0.1, 100.0),
         dragging: None,
         scene,
