@@ -599,3 +599,49 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   assembly concern, adjudicated report-only (no patchelf), decision note in
   `cmake/VisiaEnginePackaging.cmake`. Dated baselines above keep their
   as-of-close values (append-only history discipline).
+
+## Next-band-queue baseline (2026-10-09, plan next-band-queue, todos 1-5)
+- Four commits, one per todo, each leaving `pixi run ci` rc=0: `98bdbbe` census ·
+  `0682fe3` keys-probe CASES 4→8 · `10c7dc7` CPack tarball + pack-check into ci ·
+  `81d89d0` npm local artifact + gate-docs check 4 extended. Todo 5 = this write-back.
+- **Todo 1 census** (`docs/reference/c-example-witness-census-2026-10-09.md`): the predicate
+  was written into the doc *before* any counting, then applied to 17 tracked files =
+  **6 WITNESS / 11 NO-witness** (`grep -c '| WIT[N]ESS |'` → 6, `'| N[O]-witness |'` → 11,
+  sum 17). Structural claim: a pixel witness **requires a `readback` call**, and all 11
+  NO-witness files have readback n=0. The WITNESS six: E701, E802, E813, E814, E816, E817.
+  Of the 11, six still claim visible output (E702/E704/E801/E812/E815 call render, E703
+  presents through the Qt pump), so a blanking or distortion regression there stays green.
+- **Todo 2 keys-probe 4→8 rows** (`scripts/keys-probe.py:63`): E303/E306/E504/E901 added,
+  each drag + wheel + one key. Floors = 0.4 × the row's weakest *measured* action min,
+  floored (E303 15.46→6.0, E306 25.07→10.0, E504 13.24→5.0, E901 5.96→2.3); the floor is a
+  per-action contract, not a row average. 8/8 green over 5 consecutive `--all` runs; each
+  new row shown red by temporarily replacing its actions with `noop` (restore proven).
+- **Keys-probe exclusions**, deliberate and recorded: E201_load_gltf, where Escape is a zoom
+  key (`examples/rs/E201_load_gltf.rs:52`, `Escape => dist *= 0.9`), and E501_shadow_demo,
+  which has zero keyboard handling (only a MouseWheel arm) -- the probe asserts Escape closes
+  within 6s, so both would be permanently red. **Noop-ban rationale**: those four window rows
+  must never use `noop`, because their idle frame is static, so a noop gate would print 0.00%
+  and test the harness instead of the app. `noop` survives only on E511, whose scene clock is
+  the thing under test.
+- **Todo 3 publish band**: CPack TGZ packages the install tree **file-for-file identical to
+  `cmake --install`, 9 files**, with no new install rules (diff recorded in
+  `.omo/evidence/todo3-tarball-list.txt`; LOCAL artifact, nothing published or pushed).
+  SONAME bare-name consumer witness: E701's `NEEDED` line reads `libvisiaengine.so`. RUNPATH
+  naming this env's sibling conda prefix = the D23 P3 assembly concern, documented in
+  `cmake/VisiaEnginePackaging.cmake` and adjudicated report-only -- **no patchelf**, no new
+  tool dependency.
+- **Todo 4 npm**: `build/npm/visiaengine-0.1.0.tgz` = **11 files**, version read from
+  `Cargo.toml` `[workspace.package]` by `scripts/gen-npm-package.sh` (never hand-typed). The
+  builder is a pixi task **out of ci** (same policy as gallery / keys-probe), and the
+  internal-link gate was folded into **gate-docs check 4 in place** (`.md-only` → every
+  markdown link in README / docs / llms.txt). So **ci 11→12 came from pack-check alone**;
+  this todo added no segment.
+- Ledger at close, every value recomputed same-terminal: **ci 12 segments · spec-trace
+  199↔199 · ctest 44 · gallery 44 cards · install tree 9 files · crates/ 9 (workspace 12
+  packages)**. Only the ci segment count moved this band.
+- **Open items (registered, not fixed)**: `examples/c/E814_labels_headless.c:48` --
+  `if (white < 60) fail(...)` drops the return, so that census row's pixel bound cannot
+  redden ctest; keys-probe's single-shot `noop` invocation prints a cosmetically wrong
+  usage/error line (no gate impact); an exit-key convention band for E201/E501 would unlock
+  two more probe rows; the npm package name was never checked against a registry (deliberate
+  offline stance, nothing pushed); the npm `exports` map is deferred.

@@ -28,9 +28,10 @@ cargo metadata --no-deps --format-version 1 |
 | Workspace | 12 packages: 9 crates under `crates/` + `visiaengine-capi` + `visiaengine-wasm` + `examples` shell |
 | Behaviour contracts | **199** clauses, two-way traceable to tests: REND 47 · WGPU 34 · GEO 27 · CORE 21 · CAPI 41 · IO 18 · GLTF 11 |
 | C ABI surface | **49** entries, abi `(1<<16)\|16`, mirrored across header / hpp / wasm / d.ts |
-| Examples | **43** files in 9 bands (E1xx 1 · E2xx 6 · E3xx 6 · E4xx 3 · E5xx 11 · E6xx 1 · E7xx 4 · E8xx 10 · E9xx 1), each with a ctest consumer path and a gallery card |
+| Examples | **44** files in 9 bands (E1xx 1 · E2xx 6 · E3xx 6 · E4xx 3 · E5xx 11 · E6xx 1 · E7xx 4 · E8xx 11 · E9xx 1; re-counted 2026-10-09), each with a ctest consumer path and a gallery card |
 | Gates | `pixi run ci` = 12 segments (pack-check promoted into the chain 2026-10-09, publish band todo 3); plus `web-check` as an independent task |
-| Shipped consumption routes | in-tree `add_subdirectory`, **installed CMake tree** (`find_package(visiaengine)`) and `pkg-config` (D23) |
+| Shipped consumption routes | in-tree `add_subdirectory`, **installed CMake tree** (`find_package(visiaengine)`) and `pkg-config` (D23); a **CPack tarball** of that same tree (9 files, file-for-file identical to `cmake --install`, `cmake/VisiaEnginePackaging.cmake`) and an **npm local artefact** (`build/npm/visiaengine-0.1.0.tgz`, 11 files, version read from `Cargo.toml`) are both LOCAL, never pushed to a registry (D25) |
+| Native pixel witnesses | **6 of 17** tracked C/C++/Qt example files assert a numeric pixel-family bound; the other 11 have zero `readback` calls, and 6 of those still claim visible output (named predicate + per-file table: `docs/reference/c-example-witness-census-2026-10-09.md`) |
 
 ## 2. The 2026-09-24 S-level gaps, re-checked line by line
 
@@ -82,7 +83,8 @@ A gap stays closed until its trigger is real; that is a decision, not neglect (s
 | Skinning + morph targets | a rigged glTF fixture + a demo ticket | L (own plan) |
 | LAS | one genuine scan file in `resources/data/` | M |
 | OIT / 6-face clip / stencil caps | a scene where painter sort visibly breaks | M / M-L |
-| npm / PyPI packages, tarball, RUNPATH scrub | GitHub mirror activation + org name | M |
+| npm / PyPI registry publish, publish-time RUNPATH scrub | GitHub mirror activation + org name. The npm **local** artefact and the CPack tarball landed 2026-10-09; what remains is a registry push, not assembly | M |
+| C/C++/Qt pixel witnesses (6 of 17 today) | a demo ticket naming an un-witnessed window example; the exit-code hole at `examples/c/E814_labels_headless.c:48` is registered, not fixed | S-M |
 | win / mac install forms | CI matrix day | M |
 | C binding generator (auto header) | C API stabilisation push | M |
 | Flutter / C# hosts | first external host asking | M each |
