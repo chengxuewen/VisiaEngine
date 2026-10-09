@@ -554,17 +554,23 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   surface+config+MeshCore), `on_resize`, `present`. Scope by ruling: **G1+G2 only**
   (C2=A). FormatPolicy is a parameter because 4 examples (E204/E206/E502/E503) prefer an
   Srgb format while 22 take the surface default -- collapsing that is how PIT-9 was born.
-- Migrated **21/29** rs examples: E502(canary) E205 E501 E504 E901 E202 E402 E403 E201
-  E301 E204 E206 E302 E304 E305 E510 E511 (+ the bootstrap-only rects family).
-  Example bodies: 11,480 -> 10,231 non-blank lines = **-1,249** (883 of it moved into
+- Migrated **24/29** rs examples: E502(canary) E205 E501 E504 E901 E202 E402 E403 E201
+  E301 E204 E206 E302 E304 E305 E510 E511 E303 E306 E505 (the last three of those
+  five in `--bootstrap-only` mode: their `render_view_rects` present is the ⑤b lesson).
+  Example bodies: 11,480 -> 10,104 non-blank lines = **-1,376** (883 of it moved into
   the 206-line shared piece, the rest is duplicated blocks collapsed to one call).
 - Deliberately NOT shared: interaction semantics (drag means pick in E402/E403, phase in
   E510, per-viewport follow in E303) and the `render_view_rects` present of the ⑤b family
   (that call IS those examples' lesson). Protected manual specimens: **E101 + E503**
   (measured: only 9 of 26 window examples were fully unshared today; E201 could not be a
   specimen because it already consumed `examples::BBox`).
-- Still open in this band: E303 / E306 / E505 (rects family), E401 / E601 (argv only);
-  E203 stays a positional CLI. No SDD clause for the shell (C5=A; B9's hpp precedent) --
+- V3 queue is closed: the five non-migrated files are excluded by evidence, not by
+  preference -- E101/E503 (specimens, C3=B), E203 (positional CLI, never in scope),
+  E401/E601 (no G1 bootstrap to share: zero Instance/adapter/Surface/winit; they already
+  use the production `HeadlessBackend`, shared one level above the viewer shell; E601's
+  lone `Instance::new` is the IR struct, not a wgpu Instance). The codemod refuses them
+  with `!! no ApplicationHandler impl` **before writing** -- both files byte-identical
+  to backups afterwards, which is edit-safety #26 item 3 executing, not being described.
   199 clauses, 49 C entries, 12 packages, 44 examples all unchanged.
 - Baseline at close: `pixi run ci` rc=0 (11 segments) 345 passed · `keys-probe` 4/4 ·
   GATE-DOCS ok (44 cards) · CMAKE-SMOKE ok · spec-trace 199<->199 · worktree clean.
