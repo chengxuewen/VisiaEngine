@@ -8,7 +8,7 @@
 //! （屏幕位移×世界比），zoom=rig.zoom（正交 half-width），tilt=rig.pitch/orbit。
 //! 正交顶视起步（地图姿态），pitch 可压到斜视。
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, RenderBackend, Viewport,
@@ -16,11 +16,10 @@ use visiaengine_render::{
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, MultiClearPolicy};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 const W: u32 = 320;
 const H: u32 = 240;
@@ -189,10 +188,8 @@ fn prove() {
 
 // ── resident window ──────────────────────────────────────────────────────────
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     commands: Vec<DrawCommand>,
     rig: CameraRig,
     pan: Option<(f64, f64)>,
@@ -206,50 +203,19 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("E306 map controls — 左键拖=平移 滚轮=缩放 右键拖=倾角 R=复位"),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E306 map controls — 左键拖=平移 滚轮=缩放 右键拖=倾角 R=复位",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e306"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         self.commands = scene(&mut core);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.redraw();
     }
@@ -261,12 +227,8 @@ impl ApplicationHandler for App {
                 if size.width == 0 || size.height == 0 {
                     return;
                 }
-                if let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, self.surface.as_ref(), self.config.as_mut())
-                {
-                    config.width = size.width;
-                    config.height = size.height;
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) {
+                    ctx.on_resize(core, size);
                     self.redraw();
                 }
             }
@@ -300,7 +262,7 @@ impl ApplicationHandler for App {
                 // pan：屏幕位移 → 世界位移（world-per-px = 2·zoom/h，正交精确定义）。
                 if let Some((lx, ly)) = self.pan {
                     let wpp = 2.0 * self.rig.zoom
-                        / f64::from(self.config.as_ref().map_or(H, |c| c.height).max(1));
+                        / f64::from(self.ctx.as_ref().map_or(H, |c| c.config.height).max(1));
                     let (dx, dy) = (x - lx, y - ly);
                     self.rig.target[0] -= dx * wpp;
                     self.rig.target[1] += dy * wpp; // 屏幕 y 向下 = 世界 y 向上反向
@@ -339,14 +301,12 @@ impl App {
     }
 
     fn redraw(&mut self) {
-        let (Some(core), Some(surface), Some(config), Some(window)) = (
-            self.core.as_mut(),
-            self.surface.as_ref(),
-            self.config.as_ref(),
-            self.window.as_ref(),
-        ) else {
+        let (Some(core), Some(ctx)) = (self.core.as_mut(), self.ctx.as_mut()) else {
             return;
         };
+        let surface = &ctx.surface;
+        let config = &ctx.config;
+        let window = &ctx.window;
         let frame = map_frame(&self.commands, &self.rig, config.width, config.height);
         window.set_title(
             format!(
@@ -400,10 +360,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let el = EventLoop::new()?;
     el.set_control_flow(ControlFlow::Wait);
     let mut app = App {
-        window: None,
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
         commands: Vec::new(),
         rig: home_rig(),
         pan: None,

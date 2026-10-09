@@ -3,7 +3,7 @@
 //! `--frames N`=离屏断言快退（分区族计数+缝色+顶视覆盖，PIT-8 探针定阈）。
 //! 小地图 rig=target 跟随主相机（同批命令双投两相机=WGPU-26 安全形）。
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Easing, Frame, Instance, InstanceDesc, MaterialDesc, MeshDesc,
@@ -15,11 +15,10 @@ mod gallery;
 use visiaengine_render_wgpu::mesh_core::MeshCore;
 use visiaengine_render_wgpu::{HeadlessBackend, MultiClearPolicy, unit_box_mesh};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowAttributes, WindowId};
+use winit::window::WindowId;
 
 const SIDE: usize = 12;
 const ID64: [[f64; 4]; 4] = [
@@ -278,10 +277,8 @@ struct Flight {
 }
 
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     rig: CameraRig,
     flight: Option<Flight>,
     dragging: Option<(f64, f64)>,
@@ -295,52 +292,19 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title(
-                            "E303 分屏驾驶舱 · 主透视+右栏顶视 · 1/2/3 飞行 拖滚=接管 R=回家",
-                        ),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E303 分屏驾驶舱 · 主透视+右栏顶视 · 1/2/3 飞行 拖滚=接管 R=回家",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e303"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         self.commands = scene(&mut core);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.request_redraw();
     }
@@ -350,14 +314,9 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::KeyboardInput { event, .. } => self.on_key(event_loop, &event),
             WindowEvent::Resized(sz) => {
-                if let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &mut self.config)
-                    && sz.width > 0
-                    && sz.height > 0
-                {
-                    config.width = sz.width;
-                    config.height = sz.height;
-                    surface.configure(&core.device, config);
+                // The zero-size guard and the configure live in Ctx::on_resize now.
+                if let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) {
+                    ctx.on_resize(core, sz);
                     self.request_redraw();
                 }
             }
@@ -402,11 +361,11 @@ impl ApplicationHandler for App {
                         self.flight = None;
                     }
                 }
-                let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, &self.surface, &self.config)
-                else {
+                let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) else {
                     return;
                 };
+                let surface = &ctx.surface;
+                let config = &ctx.config;
                 let passes = main_frames(&self.commands, &self.rig, config.width, config.height);
                 match surface.get_current_texture() {
                     wgpu::CurrentSurfaceTexture::Success(tex)
@@ -464,8 +423,8 @@ impl App {
     }
 
     fn request_redraw(&self) {
-        if let Some(w) = &self.window {
-            w.request_redraw();
+        if let Some(ctx) = &self.ctx {
+            ctx.request_redraw();
         }
     }
 }
@@ -488,10 +447,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
-        window: None,
+        ctx: None,
         core: None,
-        surface: None,
-        config: None,
         rig: presets()[0],
         flight: None,
         dragging: None,

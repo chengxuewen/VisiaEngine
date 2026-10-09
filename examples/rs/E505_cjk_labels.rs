@@ -6,6 +6,7 @@
 #[path = "gallery.rs"]
 mod gallery;
 
+use examples::viewer::{Ctx, FormatPolicy};
 use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, LabelMark, LabelTableDesc, MaterialDesc, MeshDesc,
@@ -13,12 +14,9 @@ use visiaengine_render::{
 };
 use visiaengine_render_wgpu::{HeadlessBackend, mesh_core::MeshCore};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowAttributes, WindowId};
-
-use std::sync::Arc;
+use winit::window::WindowId;
 
 const FIX: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -225,10 +223,8 @@ fn prove() {
 }
 
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     commands: Vec<DrawCommand>,
     glyphs: Option<visiaengine_io_text::GlyphCache>,
     ready: bool,
@@ -236,13 +232,11 @@ struct App {
 
 impl App {
     fn redraw(&mut self) {
-        let (Some(core), Some(surface), Some(config)) = (
-            self.core.as_mut(),
-            self.surface.as_ref(),
-            self.config.as_ref(),
-        ) else {
+        let (Some(core), Some(ctx)) = (self.core.as_mut(), self.ctx.as_mut()) else {
             return;
         };
+        let surface = &ctx.surface;
+        let config = &ctx.config;
         let frame = cam_frame(self.commands.clone(), config.width, config.height);
         match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(tex)
@@ -276,46 +270,16 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    WindowAttributes::default()
-                        .with_inner_size(PhysicalSize::new(960u32, 600u32))
-                        .with_title("E505 CJK 标注（静态演示）— 拖拽视角请用 E901 · Esc 退出"),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E505 CJK 标注（静态演示）— 拖拽视角请用 E901 · Esc 退出",
+            960,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e505"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
-
         let bytes = std::fs::read(FIX).expect("CJK subset font");
         let face = FontFace::from_bytes(&bytes).expect("face");
         let mut glyphs = GlyphCache::new();
@@ -328,9 +292,7 @@ impl ApplicationHandler for App {
         self.commands = scene(&mut core, &face, &mut glyphs);
         self.glyphs = Some(glyphs);
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.redraw();
     }
@@ -342,12 +304,8 @@ impl ApplicationHandler for App {
                 if size.width == 0 || size.height == 0 {
                     return;
                 }
-                if let (Some(core), Some(surface), Some(config)) =
-                    (&mut self.core, self.surface.as_ref(), self.config.as_mut())
-                {
-                    config.width = size.width;
-                    config.height = size.height;
-                    surface.configure(&core.device, config);
+                if let (Some(core), Some(ctx)) = (&mut self.core, &mut self.ctx) {
+                    ctx.on_resize(core, size);
                     self.redraw();
                 }
             }
@@ -382,10 +340,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let el = EventLoop::new()?;
             el.set_control_flow(ControlFlow::Wait);
             let mut app = App {
-                window: None,
+                ctx: None,
                 core: None,
-                surface: None,
-                config: None,
                 commands: Vec::new(),
                 glyphs: None,
                 ready: false,
