@@ -9,12 +9,12 @@
 //!   column pixel families differ; (2) roughness ladder — highlight pixel
 //!   counts shrink monotonically across the 4 roughness steps (probe-pinned).
 
-use std::sync::Arc;
+use examples::viewer::{Ctx, FormatPolicy};
 
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
+use winit::window::WindowId;
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MeshDesc, PostEffect, RenderBackend,
@@ -297,10 +297,8 @@ fn prove(frames: u32) {
 
 // ── resident window path (E506/E507 winit shape) ──────────────────────────────
 struct App {
-    window: Option<Arc<Window>>,
+    ctx: Option<Ctx>,
     core: Option<MeshCore>,
-    surface: Option<wgpu::Surface<'static>>,
-    config: Option<wgpu::SurfaceConfiguration>,
     commands: Vec<DrawCommand>,
     rig: CameraRig,
     drag: bool,
@@ -315,51 +313,20 @@ impl ApplicationHandler for App {
         if self.ready {
             return;
         }
-        let window = Arc::new(
-            event_loop
-                .create_window(
-                    winit::window::WindowAttributes::default()
-                        .with_inner_size(winit::dpi::PhysicalSize::new(800u32, 600u32))
-                        .with_title("E508 PBR grid · drag=orbit wheel=zoom · Esc exit"),
-                )
-                .expect("window"),
-        );
-        let size = window.inner_size();
-        let instance = visiaengine_render_wgpu::create_instance();
-        let surface = instance
-            .create_surface(Arc::clone(&window))
-            .expect("surface");
-        let Some(adapter) =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                compatible_surface: Some(&surface),
-                ..Default::default()
-            }))
-            .ok()
-        else {
-            eprintln!("no adapter");
+        let Some((ctx, mut core)) = Ctx::new(
+            event_loop,
+            "E508 PBR grid · drag=orbit wheel=zoom · Esc exit",
+            800,
+            600,
+            FormatPolicy::SurfaceDefault,
+        ) else {
             event_loop.exit();
             return;
         };
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("visiaengine-e508"),
-            required_features: wgpu::Features::empty(),
-            required_limits: adapter.limits(),
-            ..Default::default()
-        }))
-        .expect("device");
-        let mut core = MeshCore::new(device, queue, instance, adapter.clone());
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .expect("cfg");
-        config.format = caps.formats[0];
-        surface.configure(&core.device, &config);
         let (cmds, _) = scene(&mut core);
         self.commands = cmds;
         self.core = Some(core);
-        self.surface = Some(surface);
-        self.config = Some(config);
-        self.window = Some(window);
+        self.ctx = Some(ctx);
         self.ready = true;
         self.redraw();
     }
@@ -452,15 +419,10 @@ impl ApplicationHandler for App {
 
 impl App {
     fn redraw(&mut self) {
-        let (Some(core), Some(surface), Some(config), Some(window)) = (
-            self.core.as_mut(),
-            self.surface.as_ref(),
-            self.config.as_ref(),
-            self.window.as_ref(),
-        ) else {
+        let (Some(core), Some(ctx)) = (self.core.as_mut(), self.ctx.as_mut()) else {
             return;
         };
-        let size = window.inner_size();
+        let size = ctx.window.inner_size();
         let (w, h) = (size.width.max(1), size.height.max(1));
         let post = {
             let mut p = Vec::new();
@@ -473,28 +435,14 @@ impl App {
             p
         };
         let frame = frame(&self.commands, w, h, post, &self.rig);
-        match surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(tex)
-            | wgpu::CurrentSurfaceTexture::Suboptimal(tex) => {
-                let view = tex
-                    .texture
-                    .create_view(&wgpu::TextureViewDescriptor::default());
-                core.render_view_format(&frame, &view, w, h, config.format);
-                core.queue.present(tex);
-                window.set_title(
-                    format!(
-                        "E508 PBR — bloom={} outline={} · 1/2 切换 3=全关 · 拖=轨道 滚轮=远近",
-                        self.bloom_on, self.outline_on
-                    )
-                    .as_str(),
-                );
-            }
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                surface.configure(&core.device, config);
-            }
-            other => eprintln!("skip {other:?}"),
-        }
-        window.set_title("E508 PBR grid · drag=orbit wheel=zoom · Esc exit");
+        ctx.present(core, &frame);
+        // Pre-existing quirk, kept as-is (band V changes no semantics): this example
+        // used to echo `bloom=/outline=` into the title INSIDE the Success arm, and that
+        // call is immediately overwritten by the unconditional one below -- so the state
+        // echo never reaches the user. Removing the dead call is behaviour-preserving;
+        // if the echo is ever wanted, it belongs after present() and this line must go.
+        ctx.window
+            .set_title("E508 PBR grid · drag=orbit wheel=zoom · Esc exit");
     }
 }
 
@@ -515,10 +463,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let el = EventLoop::new()?;
             el.set_control_flow(ControlFlow::Poll);
             let mut app = App {
-                window: None,
+                ctx: None,
                 core: None,
-                surface: None,
-                config: None,
                 commands: Vec::new(),
                 rig: CameraRig::look_at([0.0, -13.0, 8.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
                 drag: false,
