@@ -6,7 +6,11 @@
  * scripts/keys-probe.py; see that file for the display/fixture policy.
  *
  * usage: xinject <display> <title-substr> <action> [args...]
- *   key <keysym>        e.g. key 4 / key Escape / key Prior
+ *   key <keysym>        X keysym names, lowercase-ish: key 4 / key Escape /
+ *                       key bracketright / key bracketleft. NOT the winit spellings
+ *                       ("BracketRight" resolves to nothing useful and the injector
+ *                       still reports ok, so a wrong name reads as "the key did
+ *                       nothing" -- three false reds this band came from that).
  *   wheel <dir> [reps]  dir>0 = up (button 4), else down (button 5)
  *   drag  <dx> <dy>     press at +40,+40 in window coords, 8 motion steps, release
  *   noop                focus only (a later delta can only come from the app clock)

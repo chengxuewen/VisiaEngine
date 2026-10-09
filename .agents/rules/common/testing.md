@@ -131,6 +131,16 @@ Escape closes all four through the same input path. Break probe recorded: stubbi
 | Escape closes the window | resize-while-dragging, multi-monitor, WM oddities |
 | zero-arg run is resident (C15 breach detector built in) | anything needing a second app or a real GPU feel |
 
+Harness-truth rule (band V, three false alarms in one session, each from MY run and
+not from the code): before calling a gate red, confirm the gate was pointed at the
+thing the example claims -- (1) display-family examples must run under Xvfb (their
+`--frames N` is a window frame counter, not a headless lane: batch 4 read 3/3 FAILED
+with no DISPLAY); (2) run the lane with the **registry argv** (`_args_<stem>` in
+cmake/VisiaEngineBindings.cmake), not an ad-hoc number -- E305's marker threshold is
+calibrated for 24 frames and panics at 4 on both the migrated and the pre-migration
+build (batch 11); (3) X keysym names are lowercase (`bracketright`), winit-style
+`BracketRight` silently does nothing while the injector prints ok.
+
 Rules baked into the tool (keep them if you port it): private display, never
 `$DISPLAY` (PIT-22); assertions happen before cleanup; per-case settle/gap so a slow
 clock is not read as "nothing changed"; SKIP exit 0 only for a missing toolchain
