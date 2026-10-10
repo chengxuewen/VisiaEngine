@@ -138,8 +138,9 @@ examples/cpp/template.cpp                  2
 examples/qt/E703_qt_viewer.cpp             0
 ```
 
-7 of 17 files read back pixels; all 6 files in the witness class are among them; the 8th
-readback reader (`examples/cpp/template.cpp`) has no bound → no-witness.
+7 of 17 files read back pixels: the 6 witnesses plus one skeleton
+(`examples/cpp/template.cpp`, readback=2, asserts no bound) -- readback is necessary for a
+witness on this surface, not sufficient.
 
 ## Rust-side precedents (the model a later band would follow)
 

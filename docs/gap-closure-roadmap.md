@@ -31,14 +31,16 @@ cargo metadata --no-deps --format-version 1 |
 | Examples | **44** files in 9 bands (E1xx 1 · E2xx 6 · E3xx 6 · E4xx 3 · E5xx 11 · E6xx 1 · E7xx 4 · E8xx 11 · E9xx 1; re-counted 2026-10-09), each with a ctest consumer path and a gallery card |
 | Gates | `pixi run ci` = 12 segments (pack-check promoted into the chain 2026-10-09, publish band todo 3); plus `web-check` as an independent task |
 | Shipped consumption routes | in-tree `add_subdirectory`, **installed CMake tree** (`find_package(visiaengine)`) and `pkg-config` (D23); a **CPack tarball** of that same tree (9 files, file-for-file identical to `cmake --install`, `cmake/VisiaEnginePackaging.cmake`) and an **npm local artefact** (`build/npm/visiaengine-0.1.0.tgz`, 11 files, version read from `Cargo.toml`) are both LOCAL, never pushed to a registry (D25) |
-| Native pixel witnesses | **6 of 17** tracked C/C++/Qt example files assert a numeric pixel-family bound; the other 11 have zero `readback` calls, and 6 of those still claim visible output (named predicate + per-file table: `docs/reference/c-example-witness-census-2026-10-09.md`) |
+| Native pixel witnesses | **6 of 17** tracked C/C++/Qt example files assert a numeric pixel-family bound; the other 11 have no bound: 10 have zero `readback` calls and the 11th
+(template.cpp, readback=2) asserts nothing, so readback is necessary-not-sufficient; 6 of the 11 still claim visible output (named predicate + per-file table: `docs/reference/c-example-witness-census-2026-10-09.md`) |
+| C/C++/Qt shared example bootstrap | band-V analogue on the host-language examples | **Closed -- carded away, not built** (D25 #6): `visiaengine_create_headless` shape = 14 call-site lines / 13 files, drift cosmetic (error-string prefixes), template.c/cpp already serve as skeletons, and those host-call lines ARE the tutorial claim (C18). Re-open triggers: native example count doubles, or a second real C++ consumer (same lineage as decisions.md L91) |
 
 ## 2. The 2026-09-24 S-level gaps, re-checked line by line
 
 | Then | Evidence then | Now |
 |---|---|---|
 | S1' MVT / HTTP tile sources + scheduler + LRU ("largest doc-vs-code contradiction") | grep = 0 code | **Closed.** `visiaengine-io-tiles`: MVT wire decoder (no new dependency), `TileSet` visible-enumerate + `ensure`/`pump` + LRU; CAPI-28/29/35 (dir + HTTP) and CAPI-39/40 (raster basemap) |
-| S2' no browsable web gallery | peers all have one | **Closed.** 43 cards + per-example detail pages, thumbnails rendered by the examples themselves (`pixi run gallery`) |
+| S2' no browsable web gallery | peers all have one | **Closed.** 44 cards + per-example detail pages, thumbnails rendered by the examples themselves (`pixi run gallery`) |
 | S3' scene serialisation | grep = 0 | **Still open** (re-grep today: 0). Hard dependency of the Visia Studio Beta tier; no plan filed. See §4 |
 | S4' scene graph parent/child | `core` was a flat slab | **Closed** for the promise that mattered: CAPI-30..34 (groups, reparent with cycle/depth guard, group offsets, ancestor-aware visibility). Rotation/scale inheritance deliberately not inherited — trigger-gated |
 
@@ -88,7 +90,7 @@ A gap stays closed until its trigger is real; that is a decision, not neglect (s
 | win / mac install forms | CI matrix day | M |
 | C binding generator (auto header) | C API stabilisation push | M |
 | Flutter / C# hosts | first external host asking | M each |
-| Docs site | decided as its own band | S-M |
+| Docs site | card 3 = A (2026-10-09): no site -- llms.txt + rustdoc + local gallery are the terminal state; mdbook stays rejected (批 5) | — |
 
 ## 5. Reverse advantages — do not regress these
 

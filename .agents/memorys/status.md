@@ -607,13 +607,16 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
 - **Todo 1 census** (`docs/reference/c-example-witness-census-2026-10-09.md`): the predicate
   was written into the doc *before* any counting, then applied to 17 tracked files =
   **6 WITNESS / 11 NO-witness** (`grep -c '| WIT[N]ESS |'` → 6, `'| N[O]-witness |'` → 11,
-  sum 17). Structural claim: a pixel witness **requires a `readback` call**, and all 11
-  NO-witness files have readback n=0. The WITNESS six: E701, E802, E813, E814, E816, E817.
-  Of the 11, six still claim visible output (E702/E704/E801/E812/E815 call render, E703
+  sum 17). Structural claim: a pixel witness **requires a `readback` call**; 10 of 11
+  NO-witness files have readback n=0 and the 11th (examples/cpp/template.cpp, readback=2)
+  asserts no bound -- readback is necessary, not sufficient. The WITNESS six: E701, E802, E813, E814, E816, E817.
+  Of the 11, six still claim visible output (E702/E704/E801/E815 call render, E703
   presents through the Qt pump), so a blanking or distortion regression there stays green.
 - **Todo 2 keys-probe 4→8 rows** (`scripts/keys-probe.py:63`): E303/E306/E504/E901 added,
   each drag + wheel + one key. Floors = 0.4 × the row's weakest *measured* action min,
-  floored (E303 15.46→6.0, E306 25.07→10.0, E504 13.24→5.0, E901 5.96→2.3); the floor is a
+  with deliberate downward rounding (E303 15.46→6.0, E306 25.07→10.0, E504 13.24→5.0,
+  E901 5.96→2.3 -- integer-floor where the margin is wide, 1-dp at E901's lower bound);
+  the floor is a
   per-action contract, not a row average. 8/8 green over 5 consecutive `--all` runs; each
   new row shown red by temporarily replacing its actions with `noop` (restore proven).
 - **Keys-probe exclusions**, deliberate and recorded: E201_load_gltf, where Escape is a zoom
