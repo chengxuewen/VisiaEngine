@@ -56,7 +56,8 @@ SETTLE = 5.0  # first frame + window map
 #                      never-closes reason.
 # Floors (2026-10-09, 5 consecutive --all runs; evidence
 # .omo/evidence/keys-probe-8row-2026-10-09/): floor = 0.4 x the row's weakest
-# measured action min (60% relative margin, floored): E303 15.46 -> 6.0,
+# measured action min (60% relative margin, then rounded DOWN -- to the integer where the
+# margin is wide, to 1 dp at E901's lower bound): E303 15.46 -> 6.0,
 # E306 25.07 -> 10.0, E504 13.24 -> 5.0, E901 5.96 -> 2.3. run_case checks
 # every action in a row against the floor individually, so this is a
 # per-action contract, not a per-row average.

@@ -295,11 +295,12 @@ message). Momus re-reviewed the resulting v1.3 section and returned OKAY.
      "先数后定义"。
   5. 发布带 = **C**：只做本机可实证的产物（CPack tarball）；跨平台矩阵按
      `.agents/rules/common/constraints.md` 挂起（交叉编译属 Docker/厂商工具链，不在此带）。
-  6. C 面共享引导 = **A 关闭**：实测 `visiaengine_create_headless` 引导形 **14 处 / 13 文件**
-     （裁决记录原写 15，按 #17 取实测值）；漂移为**措辞而非行为**；`template.c`/`template.cpp`
+  6. C 面共享引导 = **A 关闭**：实测 `visiaengine_create_headless` 引导形 **15 行 / 13 文件**
+     （谓词 `grep -rn 'visiaengine_create[a-z_]*\('`；两轮各错一次——14 是 C-only 行计数，15 初测是出现计数碰巧对上；
+     E817 重挂再 create 两次，故 3 行在一文件内）；漂移为**措辞而非行为**；`template.c`/`template.cpp`
      已在仓；那三行宿主调用正是这些例子的**课文**（C18：共享件不得吃掉主张）。
 - **可复用判据（D24 扩）**: 共享件与护栏工作的价值 = **站点数 × 同步机制缺席**，从不以行数计。
-  第 6 卡是正例：站点不少（14 处），但同步机制**在场**（手写头 + 模板骨架 + 例子面本身），
+  第 6 卡是正例：站点不少（15 行），但同步机制**在场**（手写头 + 模板骨架 + 例子面本身），
   故净值为零，关闭。第 2 卡的 pip 反向同理：站点数为**零**，所以它连打包债都算不上。
 - **账本冻结**: 199 条款 / 49 C 口 / 44 例（= ctest 44 = 画廊 44 卡）/ 12 包 / 12 ci 段。
   除最后一项外**全部未动**。本带唯一移动的计数是 **ci 段数 11→12**（pack-check 入链，有意为之）；

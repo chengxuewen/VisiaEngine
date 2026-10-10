@@ -46,7 +46,7 @@ files, NOT tracked files of this census (tracked-set rule of the task; they matc
 | `examples/cpp/E811_entity_hide_cpp.cpp` | NO-witness | none — `:22` `entity_count() != 2 → return 1`: numeric, non-pixel (zero readback) | — | n/a (headless registration) |
 | `examples/cpp/E812_mesh_add.cpp` | NO-witness | none — `:40`/`:54`/`:59` `entity_count()` equalities (2/2/0), return-code ledger checks; zero readback → no pixel measure exists | — | n/a (headless registration) |
 | `examples/cpp/template.cpp` | NO-witness | none — calls render (`:14`) and readback (`:16`) but compares no number against the buffer; the `lum>40` at `:13` is a comment pointing at E802, not code | — | n/a (skeleton; not ctest-registered) |
-| `examples/c/template.c` | NO-witness | none — window skeleton, zero readback, no numeric pixel use | — | n/a (skeleton; not ctest-registered) |
+| `examples/c/template.c` | NO-witness | none — skeleton that CALLS render (`:33`) yet zero readback, no numeric pixel use | — | n/a (skeleton; not ctest-registered) |
 | `examples/qt/E703_qt_viewer.cpp` | NO-witness | none — zero readback; painting happens through the Qt widget pump (`w.start(frames)`, `:34`); file prints frames/rc (`:40`) | — | n/a; registered `example_E703_qt_viewer --frames 6` with `LABELS example;native;display` + `SKIP_RETURN_CODE 77` (examples/qt/CMakeLists.txt:15–20) — frame lane runs only on the display sub-state track |
 
 ## Falsifiability of the predicate (three decisive reads)

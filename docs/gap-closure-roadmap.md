@@ -21,7 +21,7 @@ cargo metadata --no-deps --format-version 1 |
 
 ---
 
-## 1. Census (measured 2026-10-08)
+## 1. Census (measured 2026-10-08, re-counted 2026-10-09)
 
 | Axis | Value |
 |---|---|
@@ -31,9 +31,8 @@ cargo metadata --no-deps --format-version 1 |
 | Examples | **44** files in 9 bands (E1xx 1 · E2xx 6 · E3xx 6 · E4xx 3 · E5xx 11 · E6xx 1 · E7xx 4 · E8xx 11 · E9xx 1; re-counted 2026-10-09), each with a ctest consumer path and a gallery card |
 | Gates | `pixi run ci` = 12 segments (pack-check promoted into the chain 2026-10-09, publish band todo 3); plus `web-check` as an independent task |
 | Shipped consumption routes | in-tree `add_subdirectory`, **installed CMake tree** (`find_package(visiaengine)`) and `pkg-config` (D23); a **CPack tarball** of that same tree (9 files, file-for-file identical to `cmake --install`, `cmake/VisiaEnginePackaging.cmake`) and an **npm local artefact** (`build/npm/visiaengine-0.1.0.tgz`, 11 files, version read from `Cargo.toml`) are both LOCAL, never pushed to a registry (D25) |
-| Native pixel witnesses | **6 of 17** tracked C/C++/Qt example files assert a numeric pixel-family bound; the other 11 have no bound: 10 have zero `readback` calls and the 11th
-(template.cpp, readback=2) asserts nothing, so readback is necessary-not-sufficient; 6 of the 11 still claim visible output (named predicate + per-file table: `docs/reference/c-example-witness-census-2026-10-09.md`) |
-| C/C++/Qt shared example bootstrap | band-V analogue on the host-language examples | **Closed -- carded away, not built** (D25 #6): `visiaengine_create_headless` shape = 14 call-site lines / 13 files, drift cosmetic (error-string prefixes), template.c/cpp already serve as skeletons, and those host-call lines ARE the tutorial claim (C18). Re-open triggers: native example count doubles, or a second real C++ consumer (same lineage as decisions.md L91) |
+| Native pixel witnesses | **6 of 17** tracked C/C++/Qt example files assert a numeric pixel-family bound; the other 11 have no bound: 10 have zero `readback` calls and the 11th (template.cpp, readback=2) asserts nothing -- readback necessary, not sufficient. 8 of the 11 still claim visible output (seven `visiaengine_render`/`.render(` call sites + the Qt pump) (named predicate + per-file table: `docs/reference/c-example-witness-census-2026-10-09.md`) |
+| C/C++/Qt shared example bootstrap | band-V analogue on the host-language examples | **Closed -- carded away, not built** (D25 #6). Measured (predicate: recursive extended grep for visiaengine_create-family call parentheses across examples/c, examples/cpp, examples/qt): 15 call-site lines across 13 files -- E817 re-creates on remount, so one file holds three. Drift is cosmetic (error-string prefixes), the templates are compile-in skeletons outside the ctest set, and those host-call lines ARE the tutorial claim (C18). Re-open triggers: native example count doubles, or a second real C++ consumer (same lineage as decisions.md L91) |
 
 ## 2. The 2026-09-24 S-level gaps, re-checked line by line
 
@@ -90,7 +89,7 @@ A gap stays closed until its trigger is real; that is a decision, not neglect (s
 | win / mac install forms | CI matrix day | M |
 | C binding generator (auto header) | C API stabilisation push | M |
 | Flutter / C# hosts | first external host asking | M each |
-| Docs site | card 3 = A (2026-10-09): no site -- llms.txt + rustdoc + local gallery are the terminal state; mdbook stays rejected (批 5) | — |
+| Docs site | card 3 = A (2026-10-09): no site -- llms.txt + rustdoc + local gallery are the terminal state; mdbook stays rejected per the band-5 ruling | — |
 
 ## 5. Reverse advantages — do not regress these
 
