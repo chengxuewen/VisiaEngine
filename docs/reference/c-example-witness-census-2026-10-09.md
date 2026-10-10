@@ -156,14 +156,14 @@ with the probe-measured value recorded in a comment.
 ## What this implies (record only — no implementation proposed here)
 
 - 11 of 17 tracked files carry no pixel bound (command above: 17 − 6 = 11 rows).
-- Of those 11, 6 have a visible output claim that no machine check witnesses today:
-  E702, E704, E801, E815, E812 call `visiaengine_render`/`eng.render()` (1/1/3/2/1
-  occurrences per the render-census loop below) with zero readback, and E703 presents
-  through the Qt widget pump (`w.start(frames)`) on the display-only lane. A regression
-  that blanks or distorts their frames would stay green.
+- Of those 11, 8 have a visible output claim that no machine check witnesses today:
+  E702, E704, E801, E815, E812, template.c, template.cpp call the render entry point
+  (1/1/3/2/1/1/1 occurrences per the render-census loop below) and E703 presents through
+  the Qt widget pump (`w.start(frames)`) on the display-only lane. A regression that blanks
+  or distorts their frames would stay green.
 - 3 files (E810, E811 C, E811 cpp) never touch pixels and make no visual claim —
   absence looks correct there, not a gap.
-- 2 files are skeletons (template.c / template.cpp); whether a bound belongs in the
+- 2 skeleton files, already counted in the 8 above; whether a bound belongs in the
   teaching template is a design question for the later band.
 - E814 has a bound but the `fail()` return is discarded at `:48`, so it cannot redden
   ctest — one row in this census is exit-code-blind even though it holds a witness-class row.

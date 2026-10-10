@@ -610,8 +610,9 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   sum 17). Structural claim: a pixel witness **requires a `readback` call**; 10 of 11
   NO-witness files have readback n=0 and the 11th (examples/cpp/template.cpp, readback=2)
   asserts no bound -- readback is necessary, not sufficient. The WITNESS six: E701, E802, E813, E814, E816, E817.
-  Of the 11, six still claim visible output (E702/E704/E801/E815 call render, E703
-  presents through the Qt pump), so a blanking or distortion regression there stays green.
+  Of the 11, eight still claim visible output (seven render call-sites E702/E704/E801/
+  E812/E815/template.c/template.cpp + the Qt pump E703), so a blanking or distortion
+  regression there stays green.
 - **Todo 2 keys-probe 4→8 rows** (`scripts/keys-probe.py:63`): E303/E306/E504/E901 added,
   each drag + wheel + one key. Floors = 0.4 × the row's weakest *measured* action min,
   with deliberate downward rounding (E303 15.46→6.0, E306 25.07→10.0, E504 13.24→5.0,
