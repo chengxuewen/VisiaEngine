@@ -21,8 +21,8 @@ visiaengine_ensure_polyorch_rust()  # T-B1: USE_PIXI translation -> polyorch_rus
 
 include(cmake/VisiaEngineCargo.cmake)
 visiaengine_setup_cargo()  # cargo step + the visiaengine::capi umbrella + the fake in-tree Config bridge (T-C: capi engine = PolyOrch)
-include(cmake/VisiaEnginePolyOrchPilot.cmake)
-visiaengine_polyorch_pilot()  # T-B: geo pilot (polyorch_rust_test drives the first non-native target)
+include(cmake/VisiaEnginePolyOrchCrates.cmake)
+visiaengine_polyorch_crates()  # T-B: workspace crate face through PolyOrch (geo + core, dependency edge visible)
 
 # enable_testing() must run before ALL add_subdirectory calls (a late add_test in the Qt dir is silently dropped -- measured)
 enable_testing()
