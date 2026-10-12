@@ -35,34 +35,52 @@ function(visiaengine_setup_cargo)
   endif()
 
   if(NOT VISIAENGINE_ARTIFACT_PATH)
-    # IDE direct-invocation guard: conda cargo finds rustc via PATH; on a bare PATH = "could not execute rustc"
-    # (2026-09-15, measured: the pixi run wrapper masked it; it first blew up when the user's IDE invoked /usr/bin/cmake directly) --
-    # the build command is always prefixed with cargo's own directory (the rustc sibling is measured present), harmless in SYSTEM mode.
-    get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)
-    add_custom_target(cargo-build_capi ALL
-      COMMAND ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}"
-              ${VISIAENGINE_CARGO} build -p visiaengine-capi ${_flags}
-              --target-dir ${_rust_dir}
-      BYPRODUCTS ${_dir}/${_shared} ${_dir}/${_static}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      VERBATIM USES_TERMINAL)
-    # Root-level build step carries no FOLDER (position rule: root scope = a bare top-level listing; semantics carried by the name)
-    set(VISIAENGINE_CARGO_STEP "cargo-build_capi" PARENT_SCOPE)
+    # T-C (2026-10-10): the capi build engine moved to PolyOrch. polyorch_rust_build
+    # with no kind keyword dispatches the WP6 default pair -> handles
+    # visiaengine-capi-shared (cdylib) / visiaengine-capi-static (staticlib), with
+    # buildable mediators <handle>-build; the cargo env isolation (the IDE direct-call
+    # PATH guard above, historically this function's job) now lives in the supplier
+    # command wrapper -- probe-verified end to end (cold 1m21s, incremental 0.1s).
+    if(NOT COMMAND polyorch_rust_build OR NOT POLYORCH_RUST_FOUND)
+      message(FATAL_ERROR
+        "visiaengine_setup_cargo: the capi build needs the PolyOrch rust face. "
+        "Call visiaengine_ensure_polyorch() + visiaengine_ensure_polyorch_rust() "
+        "BEFORE visiaengine_setup_cargo() (the root orders this), or use the "
+        "prebuilt lane -DVISIAENGINE_ARTIFACT_PATH=...")
+    endif()
+    polyorch_rust_build(TARGET visiaengine-capi
+        PACKAGE visiaengine-capi CRATE visiaengine
+        MANIFEST "${_src}/Cargo.toml"
+        FOLDER "bindings/c/visiaengine-capi")
+    # ALL semantics kept: the default build must produce the artifacts (install-tree
+    # leg, umbrella link, IDE "build all"). Wrapper carries no FOLDER (root position rule).
+    add_custom_target(visiaengine-cargo ALL)
+    add_dependencies(visiaengine-cargo visiaengine-capi-shared-build visiaengine-capi-static-build)
+    set(VISIAENGINE_CARGO_STEP "visiaengine-cargo" PARENT_SCOPE)
   endif()
 
   # Install-tree consumer point (VisiaEngineInstall.cmake): the artifact path and
   # its OS-specific file name are exported here so the package config and the
   # install rule never re-derive the name (single source = this function).
-  set(VISIAENGINE_ARTIFACT "${_dir}/${_shared}" PARENT_SCOPE)
+  # T-C: under the polyorch lane the cdylib location comes from the handle
+  # (IMPORTED_LOCATION is configure-readable for single-config generators --
+  # probe-verified); the prebuilt lane keeps the name-table path.
+  if(VISIAENGINE_ARTIFACT_PATH)
+    set(VISIAENGINE_ARTIFACT "${_dir}/${_shared}")
+  else()
+    get_target_property(VISIAENGINE_ARTIFACT visiaengine-capi-shared IMPORTED_LOCATION)
+  endif()
+  set(VISIAENGINE_ARTIFACT "${VISIAENGINE_ARTIFACT}" PARENT_SCOPE)
   set(VISIAENGINE_SHARED_NAME "${_shared}" PARENT_SCOPE)
 
   add_library(visiaengine_capi_umbrella INTERFACE)
   add_library(visiaengine::capi ALIAS visiaengine_capi_umbrella)
   target_include_directories(visiaengine_capi_umbrella INTERFACE
     "$<BUILD_INTERFACE:${_src}/include>")
-  target_link_libraries(visiaengine_capi_umbrella INTERFACE "${_dir}/${_shared}")
+  target_link_libraries(visiaengine_capi_umbrella INTERFACE "${VISIAENGINE_ARTIFACT}")
   if(UNIX AND NOT APPLE) # in-tree consumers skip LD_LIBRARY_PATH (do not copy the predecessor's manual-env debt)
-    target_link_options(visiaengine_capi_umbrella INTERFACE "-Wl,-rpath,${_dir}")
+    get_filename_component(_adir "${VISIAENGINE_ARTIFACT}" DIRECTORY)
+    target_link_options(visiaengine_capi_umbrella INTERFACE "-Wl,-rpath,${_adir}")
   endif()
 
   # Fake in-tree Config (the iceoryx2 two-state trick; the install-generated one = packaging round):

@@ -15,12 +15,12 @@ project(visiaengine VERSION ${CMAKE_MATCH_1} LANGUAGES CXX)
 include(cmake/VisiaEngineSDK.cmake)
 visiaengine_resolve_sdks() # report line: Rust/Qt resolution results and sources (auto|pixi|system|prebuilt)
 
-include(cmake/VisiaEngineCargo.cmake)
-visiaengine_setup_cargo()  # cargo step + the visiaengine::capi umbrella + the fake in-tree Config bridge
-
 include(cmake/VisiaEnginePolyOrch.cmake)
 visiaengine_ensure_polyorch()  # D39 sentinel reuse/self-embed (first-wins; if the superbuild added it first, reuse its copy)
 visiaengine_ensure_polyorch_rust()  # T-B1: USE_PIXI translation -> polyorch_rust_setup(FROM pixi|system)
+
+include(cmake/VisiaEngineCargo.cmake)
+visiaengine_setup_cargo()  # cargo step + the visiaengine::capi umbrella + the fake in-tree Config bridge (T-C: capi engine = PolyOrch)
 include(cmake/VisiaEnginePolyOrchPilot.cmake)
 visiaengine_polyorch_pilot()  # T-B: geo pilot (polyorch_rust_test drives the first non-native target)
 

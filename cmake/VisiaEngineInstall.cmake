@@ -18,12 +18,21 @@ function(visiaengine_install_tree)
   include(CMakePackageConfigHelpers)
 
   set(_art "${VISIAENGINE_ARTIFACT}")
+  # T-C (2026-10-10): the artifact is now per-build-tree (.cargo-target inside
+  # ${CMAKE_BINARY_DIR}), so a fresh tree legitimately has no artifact at
+  # configure time -- the chicken-and-egg is solved where it belongs: the hard
+  # check moves to INSTALL time (install(CODE) below); configure only warns.
+  # (The pre-D39 shared target/cmake-rust masked this ordering; the old lane
+  # could configure a fresh tree only because another tree had built already.)
   if(NOT EXISTS "${_art}")
-    message(FATAL_ERROR
-      "visiaengine: asked to install but the artifact is absent: ${_art}\n"
-      "  build tree : configure+build first (cargo-build_capi runs automatically)\n"
+    message(WARNING
+      "visiaengine: artifact absent at configure time (normal for a fresh tree): ${_art}\n"
+      "  build tree : cmake --build <tree> --target visiaengine-cargo before --install\n"
       "  prebuilt   : -DVISIAENGINE_ARTIFACT_PATH=<dir containing libvisiaengine.so>")
   endif()
+  install(CODE "if(NOT EXISTS [[${_art}]])
+    message(FATAL_ERROR \"visiaengine: --install but the artifact is absent: ${_art} (build visiaengine-cargo first, or use the prebuilt lane)\")
+  endif()")
 
   # Library
   install(FILES "${_art}" DESTINATION "${CMAKE_INSTALL_LIBDIR}")
