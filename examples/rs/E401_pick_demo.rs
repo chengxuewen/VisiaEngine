@@ -1,6 +1,6 @@
-//! E401 · 交互·拾取高亮 —— 屏幕射线→pick_meshes→高亮覆写 全链演示（headless 形态，
-//! 零窗口依赖 → 本机/CI 直跑）。场景=双箱堆叠，拾取中心=视点近侧件。
-//! 用法：cargo run --example E401_pick_demo -- [--frames N]
+//! E401 · interaction, pick highlight -- the screen ray -> pick_meshes -> highlight override full-chain demo (headless form,
+//! zero window dependency -> runs directly on this machine/CI). Scene = two stacked boxes, picking the center = the viewpoint-near piece.
+//! Usage: cargo run --example E401_pick_demo -- [--frames N]
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -12,7 +12,7 @@ use visiaengine_render::{
 use visiaengine_render::{MeshCandidate, pick_meshes, screen_to_ray_ortho, screen_to_ray_persp};
 use visiaengine_render_wgpu::HeadlessBackend;
 
-const W: u32 = 256; // readback 行对齐（1024B=4×256）
+const W: u32 = 256; // readback row alignment (1024B = 4x256)
 const H: u32 = 256;
 
 #[allow(clippy::type_complexity)]
@@ -72,11 +72,11 @@ fn main() {
     let rig = CameraRig::look_at([4.0, 0.0, 20.0], [4.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
     let origin = [4.0, 0.0, 0.0];
 
-    // 拾取：中心射线命中视点近侧件（z 遮挡序与 draw 序无关，WGPU-13）
+    // pick: the center ray hits the viewpoint-near piece (z occlusion order is independent of draw order, WGPU-13)
     let ray = screen_to_ray_ortho(&rig, W as f32 / 2.0, H as f32 / 2.0, W as f32, H as f32)
         .expect("center ray");
-    // 拾取候选=完整世界系（无 origin 概念）；渲染 transform=**层内局部**
-    // （世界级 x=4 已由 origin=(4,0,0) 承担——双份烘移=离轴 64px，本行教训锁注释）
+    // pick candidates = the full world frame (no origin concept); render transform = **layer-local**
+    // (the world-level x = 4 is already carried by origin = (4,0,0) -- double-baking shifts 64px off-axis, this lesson is locked into the comment)
     let world_near = [
         [1.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
@@ -112,7 +112,7 @@ fn main() {
         },
     ];
     let hit = pick_meshes(ray, &cands).expect("center must hit a cube");
-    // 选择态：CPU 侧查色（高亮=纯色 overlay，[E3D:A5] 渲染侧最小子集）
+    // selection state: CPU-side color lookup (highlight = solid-color overlay, the [E3D:A5] minimal render-side subset)
     let highlight = [1.0, 0.83, 0.29, 1.0];
     let base = [0.0, 0.45, 1.0, 1.0];
     println!(
@@ -176,14 +176,14 @@ fn main() {
     println!("OK pick_demo");
 }
 
-/// [6b/3.5b 欠账结账] 10k 候选拾取压力一行：透视射线 ×100，
-/// 全扫+即算 AABB 剪枝（CORE-14/15 路，scan-first 纪律的 bench 证据面）。
-/// `RESULT bench_pick_10k <ms> ms`=每射线均值。
+/// [6b/3.5b debt settled] the 10k-candidate pick stress line: perspective rays x 100,
+/// full scan + compute-on-demand AABB pruning (the CORE-14/15 road, the bench evidence face of the scan-first discipline).
+/// `RESULT bench_pick_10k <ms> ms` = the per-ray mean.
 fn bench_pick_10k() {
     use std::time::Instant;
     let (pos, idx) = cube();
     let (side, step) = (100usize, 1.0f64);
-    assert_eq!(side * side, 10_000, "候选数=10k 面值");
+    assert_eq!(side * side, 10_000, "candidate count = 10k face value");
     let worlds: Vec<[[f64; 4]; 4]> = (0..side)
         .flat_map(|gy| (0..side).map(move |gx| [gx as f64 * step, gy as f64 * step, 0.0]))
         .map(|t| {
@@ -211,16 +211,16 @@ fn bench_pick_10k() {
     let rays: Vec<_> = (0..100u32)
         .filter_map(|i| screen_to_ray_persp(&rig, 20.0 + i as f32 * 2.5, 128.0, W as f32, H as f32))
         .collect();
-    assert!(!rays.is_empty(), "射线生成");
+    assert!(!rays.is_empty(), "ray generation");
     let t0 = Instant::now();
     let hits: usize = rays
         .iter()
         .map(|&r| pick_meshes(r, &cands).is_some() as usize)
         .sum();
-    // 命中自检：全漏=bench 只测剪枝路径，掩盖三角面成本面（诚实性锁）
+    // hit self-check: all-miss means the bench only measured the pruning path, hiding the triangle-cost face (an honesty lock)
     assert!(
         hits * 2 > rays.len(),
-        "射线族命中过少 {hits}/{}",
+        "the ray family hits too few {hits}/{}",
         rays.len()
     );
     let ms = t0.elapsed().as_secs_f64() * 1000.0 / rays.len() as f64;

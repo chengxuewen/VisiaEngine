@@ -1,12 +1,12 @@
-//! attach 侧 swapchain 封装（I3/CAPI-06；web Canvas 复用同型，批 7 J1）。
-//! 契约：surface 与 MeshCore 的 device/adapter 同后端配对；Outdated/Lost
-//! 重配=帧内消化（Filament 跳帧语义的 wgpu 对应物，D8 触发器①已兑现）。
+//! The attach-side swapchain wrapper (I3/CAPI-06; web Canvas reuses the same form, batch 7 J1).
+//! Contract: the surface and MeshCore's device/adapter pair on the same backend; Outdated/Lost
+//! reconfiguration = digested within the frame (the wgpu counterpart of Filament's frame-skip semantics, D8 trigger (1) delivered).
 
 use visiaengine_render::{BackendError, Frame};
 
 use crate::mesh_core::MeshCore;
 
-/// 窗口交换链状态（headless 后端不持有本件；attach 后置入引擎目标态）。
+/// Window exchange-chain state (the headless backend does not hold this; after attach it becomes the engine target state).
 pub struct Swapchain {
     surface: wgpu::Surface<'static>,
     pub width: u32,
@@ -15,22 +15,22 @@ pub struct Swapchain {
     chosen: Option<wgpu::TextureFormat>,
 }
 
-/// 一帧交换结果。
+/// One frame's exchange result.
 #[derive(PartialEq, Eq, Debug)]
 pub enum SwapOutcome {
-    /// 已 present
+    /// already presented
     Presented,
-    /// vsync 背压/遮挡：本帧丢弃不计错（宿主可连发）
+    /// vsync backpressure / occlusion: this frame is dropped without fault (the host may keep firing)
     Skipped,
-    /// 尺寸/能力过期，configure 后下一帧恢复
+    /// size/capability outdated; recovers on the next frame after configure
     Reconfigured,
 }
 
 impl Swapchain {
-    /// 从通用 target（Canvas/OffscreenCanvas/native 包装）建面。
+    /// Build the surface from a generic target (Canvas/OffscreenCanvas/native wrapper).
     ///
     /// # Errors
-    /// 后端不支持该 target 时返回错误。
+    /// Returns an error when the backend does not support the target.
     pub fn from_target(
         core: &MeshCore,
         target: wgpu::SurfaceTarget<'static>,
@@ -52,11 +52,11 @@ impl Swapchain {
         })
     }
 
-    /// 裸窗口句柄建面（CAPI-06 attach；x11 必带 display，win32 hinstance 可缺）。
+    /// Build the surface from raw window handles (CAPI-06 attach; x11 must carry display, win32 hinstance may be absent).
     ///
     /// # Safety
-    /// `display`/`window` 原始句柄必须存活至本 `Swapchain` 析构（宿主义务，
-    /// CAPI-06 合同条款），且为对应 kind 的合法平台句柄。
+    /// The raw `display`/`window` handles must outlive this `Swapchain` (a host duty,
+    /// a CAPI-06 contract clause), and must be legal platform handles of the matching kind.
     pub unsafe fn from_raw_handles(
         core: &MeshCore,
         display: Option<raw_window_handle::RawDisplayHandle>,
@@ -64,7 +64,7 @@ impl Swapchain {
         width: u32,
         height: u32,
     ) -> Result<Self, BackendError> {
-        // SAFETY: 上界义务由调用方（capi ffi attach）以宿主合同校验承担
+        // SAFETY: the above obligations are borne by the caller (capi ffi attach) via host-contract validation
         let surface = unsafe {
             core.instance
                 .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
@@ -84,10 +84,10 @@ impl Swapchain {
         })
     }
 
-    /// 配置/重配（尺寸变更、Outdated 恢复共用）。
+    /// Configure/reconfigure (shared by size changes and Outdated recovery).
     ///
     /// # Errors
-    /// 无可支持格式/尺寸非法时返回错误。
+    /// Returns an error when no supported format exists or the size is illegal.
     pub fn configure(&mut self, core: &MeshCore) -> Result<(), BackendError> {
         if self.width == 0 || self.height == 0 {
             return Err(BackendError {
@@ -100,10 +100,10 @@ impl Swapchain {
             .ok_or_else(|| BackendError {
                 reason: "no compatible surface config".into(),
             })?;
-        // 格式对齐管线（mesh pipeline 固定 Rgba8Unorm——default config 可能选
-        // Bgra* 变体致 render pass 验证炸；I3 smoke-x11 实锤）。capabilities
-        // 不含 Rgba 时退回 default 并由 configure 前的兼容性检查报错。
-        // 管线按格式惰性建（Bgra* 亦合法）：Rgba8Unorm 优先保 golden 同形
+        // align the format with the pipeline (the mesh pipeline is fixed Rgba8Unorm -- the default config may pick
+        // a Bgra* variant and blow up render-pass validation; proven by I3 smoke-x11). When capabilities
+        // lack Rgba, fall back to default and let the pre-configure compatibility check report the error.
+        // the pipeline is built lazily by format (Bgra* is legal too): Rgba8Unorm first to keep the golden form identical
         let caps = self.surface.get_capabilities(&core.adapter);
         let fmt = if caps.formats.contains(&wgpu::TextureFormat::Rgba8Unorm) {
             wgpu::TextureFormat::Rgba8Unorm
@@ -120,19 +120,19 @@ impl Swapchain {
         Ok(())
     }
 
-    /// 设新尺寸（viewport 通知路径；下帧 configure）。
+    /// Set the new size (the viewport notification path; configure on the next frame).
     pub fn resize(&mut self, width: u32, height: u32) {
         self.width = width;
         self.height = height;
-        self.configured = false; // 强制 configure
+        self.configured = false; // force configure
         self.chosen = None;
     }
 
-    /// 一帧：取像→渲→present。Timeout/Occluded=Skipped（非错误）。
+    /// One frame: acquire -> render -> present. Timeout/Occluded = Skipped (not an error).
     ///
     /// # Errors
-    /// 未配置/设备错误传播。
-    /// ⑤b 二波：多视口帧序（小窗开启时主+顶视两投）。
+    /// Unconfigured/device errors propagate.
+    /// 5b second wave: multi-viewport frame sequence (when the corner window is on, main + top view both project).
     pub fn render_multi(
         &mut self,
         core: &mut MeshCore,
@@ -195,7 +195,7 @@ impl Swapchain {
             wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
                 Ok(SwapOutcome::Skipped)
             }
-            // Outdated/Lost：重配即恢复（帧内消化；示例同款分派）
+            // Outdated/Lost: reconfigure and recover (digested in-frame; same dispatch in the examples)
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 self.configured = false;
                 self.configure(core)?;

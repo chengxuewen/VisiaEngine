@@ -1,6 +1,6 @@
-//! E504 · 玻璃与水体 —— 透明管线活例（④ REND-36/WGPU-27/28 演示+像素门）。
-//! 双模（族制）：无参=常驻窗（1/2=水 alpha 0.7/0.35 重传材质演示，拖轨道滚轮远近 R 复位）；
-//! `--frames N`=离屏断言（水下棋盘透视/玻璃楼见地/标签恒顶，阈=PIT-8 探针实测）。
+//! E504 · glass and water -- the transparent pipeline living example (band 4 REND-36/WGPU-27/28, demo + pixel gate).
+//! Dual mode (family system): no args = resident window (1/2 = water alpha 0.7/0.35 re-upload material demo, drag orbit wheel distance R reset);
+//! `--frames N` = offscreen assertions (checkerboard refraction under water / glass towers seeing ground / labels always top, thresholds = PIT-8 probe measured).
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -83,7 +83,7 @@ fn quad(s: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     )
 }
 
-/// 场景：4 色棋盘地面 + 玻璃楼群(a=0.35 实例批) + 全幅水面(a 可换) + 恒顶标签。
+/// Scene: a 4-color checkerboard ground + a glass tower cluster (a = 0.35 instanced batch) + a full-frame water surface (swappable a) + always-top labels.
 fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawCommand> {
     let mut cmds = vec![DrawCommand::ClearColor {
         rgba: [0.30, 0.45, 0.70, 1.0],
@@ -127,7 +127,7 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
         roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
         metallic: 0.0,
     });
-    // 棋盘 6×6：深浅两色 + 深色块单列（透视检查列）
+    // checkerboard 6x6: two tones of dark/light + a single dark column (the perspective-check column)
     let tile = quad(4.0);
     let tm = up.m(&MeshDesc {
         positions: &tile.0,
@@ -137,7 +137,7 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
     });
     for iy in 0..6i32 {
         for ix in 0..6i32 {
-            let dark_tile = ix == 1 && iy == 3; // 透视检查格（水下方左起第二列）
+            let dark_tile = ix == 1 && iy == 3; // the perspective-check cell (second column from the left, under the water)
             let mat = if dark_tile {
                 dark
             } else {
@@ -151,7 +151,7 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
             });
         }
     }
-    // 玻璃楼群（instanced，a=0.35——背后棋盘应可见）
+    // glass tower cluster (instanced, a = 0.35 -- the checkerboard behind should stay visible)
     let (p, n, i) = unit_box_mesh();
     let bx = up.m(&MeshDesc {
         positions: &p,
@@ -180,7 +180,7 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
         origin: [0.0; 3],
         transform: ID64,
     });
-    // 全幅水面 z=2（盖棋盘与楼脚，标签之前——画家序按视深自动）
+    // full-frame water surface z = 2 (covers the board and the tower feet, before the labels -- painter order by view depth automatically)
     let wq = quad(30.0);
     let wm = up.m(&MeshDesc {
         positions: &wq.0,
@@ -194,7 +194,7 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
         origin: [0.0, 0.0, 2.0],
         transform: ID64,
     });
-    // 恒顶标签 "GLASS"
+    // always-top label "GLASS"
     let face = FontFace::from_bytes(&std::fs::read(FIX).expect("font")).expect("face");
     let (qs, pen) = layout("GLASS", &face, cache, 26.0);
     let marks: Vec<LabelMark> = qs
@@ -220,7 +220,7 @@ fn build(up: &mut impl Up, water_a: f32, cache: &mut GlyphCache) -> Vec<DrawComm
         origin: [0.0; 3],
         transform: ID64,
     });
-    let _ = (light.len(), dark, glass, water); // 句柄已入各命令；哨兵免 dead_code
+    let _ = (light.len(), dark, glass, water); // handles already entered each command; the sentinel silences dead_code
     cmds
 }
 
@@ -283,7 +283,7 @@ fn headless_run() {
         let i = ((y * W + x) * 4) as usize;
         [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]]
     };
-    // 探针位（窗内顶视推定后实测钉）：暗格在水下应仍比亮格暗（透视=透明度生效）
+    // probe positions (settled after estimation from the in-window top view): the dark cell under water should still be darker than the light cell (refraction = transparency in effect)
     let col = 158;
     let (mut lo, mut hi) = (255u8, 0u8);
     for y in (120..160).step_by(2) {
@@ -301,16 +301,21 @@ fn headless_run() {
         })
         .count();
     println!("PROBE contrast={contrast} lo={lo} hi={hi} label={label_white}");
-    // 双向语义锁：a=0.5 必衰减（同景 a=1.0 对照实测 contrast=52，水盖对比=0 即透明失效）
+    // bidirectional semantics lock: a = 0.5 must attenuate (same scene a = 1.0 contrast control measured contrast = 52, water-cover contrast = 0 means transparency failed)
     assert!(
         contrast > 10 && contrast < 30,
-        "水膜衰减语义缺失：contrast={contrast}（透明/不透明两态同带）"
+        "the water-film attenuation semantics missing: contrast={contrast} (transparent and opaque states in the same band)"
     );
-    assert!(label_white > 25, "恒顶标签缺席 {label_white}"); // 实测 40
-    println!("OK glass_water contrast={contrast} label={label_white}（透明+恒顶现行）");
+    assert!(
+        label_white > 25,
+        "the always-top label absent {label_white}"
+    ); // measured 40
+    println!(
+        "OK glass_water contrast={contrast} label={label_white} (transparency + always-top run live)"
+    );
 }
 
-// ── 交互 ─────────────────────────────────────────────────────────────────────
+// -- interactive ----------------------------------------------------------------------
 struct App {
     ctx: Option<Ctx>,
     core: Option<MeshCore>,
@@ -328,7 +333,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "E504 玻璃水体 · 1/2=水a0.7/0.35 重传材质 R=复位 拖=轨道",
+            "E504 glass & water · 1/2 = water a 0.7/0.35 re-upload material, R = reset, drag = orbit",
             960,
             600,
             FormatPolicy::SurfaceDefault,

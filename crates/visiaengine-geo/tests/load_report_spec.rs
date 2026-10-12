@@ -1,9 +1,9 @@
-//! GEO-15/16：加载报告与修复策略契约（[E3D:A4] 移植）。
-//! 类别计数=丢弃时按类型内部分类（typed GeoError 变体映射），非 reason 字符串反解。
+//! GEO-15/16: load-report and repair-policy contract ([E3D:A4] port).
+//! Category counts = typed internal classification at discard time (typed GeoError variant mapping), not reason-string parsing back.
 
 use visiaengine_geo::{RepairPolicy, parse_geojson, parse_geojson_lenient, parse_geojson_with};
 
-/// 五类脏源各一件 + 两件正常（GEO-15 主 fixture）
+/// One piece per each of the five dirty sources + two normal (the GEO-15 main fixture)
 const DIRTY_FC: &str = r#"{
   "type": "FeatureCollection",
   "features": [
@@ -19,9 +19,9 @@ const DIRTY_FC: &str = r#"{
 // spec: GEO-15
 #[test]
 fn lenient_drops_are_categorized_and_counted() {
-    let (doc, rep) =
-        parse_geojson_lenient(DIRTY_FC.as_bytes()).expect("Lenient：单件脏不得拖垮整文档");
-    // 仅两件正常几何存活
+    let (doc, rep) = parse_geojson_lenient(DIRTY_FC.as_bytes())
+        .expect("Lenient: one dirty piece must not drag down the whole document");
+    // only the two normal geometries survive
     assert_eq!(doc.features().len(), 2);
     assert_eq!(
         doc.features()
@@ -30,19 +30,25 @@ fn lenient_drops_are_categorized_and_counted() {
             .collect::<Vec<_>>(),
         ["ok1", "ok2"]
     );
-    // 每类恰好命中一次（分类正确性 > 总数）
-    assert_eq!(rep.dropped_out_of_bounds, 1, "lat=91° 出界域");
-    // JSON 数字域预检在 geojson crate 文档层（见下边界断言）：parse 入口该类不可达，
-    // 字段保留给 web_mercator 直调宿主路径
+    // each class hits exactly once (classification correctness > totals)
+    assert_eq!(rep.dropped_out_of_bounds, 1, "lat=91° out of domain");
+    // the JSON number-domain pre-check lives at the geojson crate document layer (see the boundary assertion below): this class is unreachable at the parse entry,
+    // the field is reserved for the host path calling web_mercator directly
     assert_eq!(rep.dropped_non_finite, 0);
     assert_eq!(
         rep.dropped_unsupported, 1,
-        "MultiPolygon 属 H2 拆分面未就绪"
+        "MultiPolygon belongs to the not-ready H2 split surface"
     );
-    assert_eq!(rep.dropped_null_geometry, 1, "geometry:null 不得再静默");
-    assert_eq!(rep.dropped_nested_collection, 1, "GC 嵌套 ≥2 层拒绝计数");
+    assert_eq!(
+        rep.dropped_null_geometry, 1,
+        "geometry:null must not go silent again"
+    );
+    assert_eq!(
+        rep.dropped_nested_collection, 1,
+        "GC nested >= 2 levels reject count"
+    );
     assert_eq!(rep.total_dropped(), 4);
-    // GEO-15 边界：文档级错误（JSON 数字超 f64 域=语法层）双策略均整文件 Err
+    // GEO-15 boundary: document-level errors (a JSON number beyond the f64 domain = syntax layer) yield a whole-file Err under both policies
     let doc_level = r#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[1e400,0.0]}}]}"#;
     assert!(parse_geojson_lenient(doc_level.as_bytes()).is_err());
 }
@@ -50,10 +56,10 @@ fn lenient_drops_are_categorized_and_counted() {
 // spec: GEO-16
 #[test]
 fn fastfail_entry_keeps_first_error_semantics() {
-    // 旧入口 = FastFail：遇首件脏几何即整文档 Err（GEO-08 既有契约不变）
+    // the old entry = FastFail: the first dirty geometry rejects the whole document as Err (the existing GEO-08 contract unchanged)
     assert!(parse_geojson(DIRTY_FC.as_bytes()).is_err());
     assert!(parse_geojson_with(DIRTY_FC.as_bytes(), RepairPolicy::FastFail).is_err());
-    // 纯干净文档双入口结果一致（报告全零）
+    // a purely clean document gives equal results through both entries (all-zero report)
     let clean = r#"{"type":"FeatureCollection","features":[
       {"type":"Feature","properties":{},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}]}"#;
     let (d2, r2) = parse_geojson_lenient(clean.as_bytes()).unwrap();

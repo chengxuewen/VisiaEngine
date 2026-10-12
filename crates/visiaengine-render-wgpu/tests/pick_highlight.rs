@@ -1,5 +1,5 @@
-//! WGPU-12：选择高亮的渲染面（实体 material 覆写=纯色 overlay，[E3D:C/A5] CPU 侧）。
-//! 拾取链路复用：屏幕射线(REND-21/22) → pick_meshes(REND-23) → 高亮色 material。
+//! WGPU-12: the render face of selection highlight (entity material override = solid-color overlay, [E3D:C/A5] on the CPU side).
+//! The pick chain is reused: screen ray (REND-21/22) -> pick_meshes (REND-23) -> highlight-color material.
 
 use visiaengine_core::Scene;
 use visiaengine_render::{
@@ -7,7 +7,7 @@ use visiaengine_render::{
 };
 use visiaengine_render_wgpu::HeadlessBackend;
 
-const W: u32 = 256; // readback 行 1024B=4×256 对齐（COPY_BYTES_PER_ROW_ALIGNMENT）
+const W: u32 = 256; // the readback row is 1024B = 4x256 aligned (COPY_BYTES_PER_ROW_ALIGNMENT)
 const H: u32 = 256;
 
 fn cube1() -> (Vec<[f32; 3]>, Vec<u32>) {
@@ -38,7 +38,7 @@ fn cube1() -> (Vec<[f32; 3]>, Vec<u32>) {
     (positions, idx.concat())
 }
 
-/// 拾取候选用**完整世界矩阵**（pick 无 origin 概念，射线亦世界系）。
+/// Pick candidates use the **full world matrix** (pick has no origin concept, the ray is also in world space).
 fn world4(dz: f64) -> [[f64; 4]; 4] {
     [
         [1.0, 0.0, 0.0, 0.0],
@@ -48,8 +48,8 @@ fn world4(dz: f64) -> [[f64; 4]; 4] {
     ]
 }
 
-/// 渲染用**纯局部 transform**（层内 z 偏移）——世界 x=4 归 origin（D7：
-/// transform 禁烘世界级平移，否则 rebase 不消——本文件踩过后锁进矩阵语义）。
+/// Rendering uses a **pure local transform** (the z offset within the layer) -- world x = 4 belongs to origin (D7:
+/// the transform must not bake in world-level translation, otherwise rebase fails to cancel -- this file stepped on it and locked the semantics into the matrix).
 fn trz(dz: f64) -> [[f64; 4]; 4] {
     [
         [1.0, 0.0, 0.0, 0.0],
@@ -73,7 +73,7 @@ fn selected_entity_renders_highlight_overlay() {
     let origin = [4.0, 0.0, 0.0];
     let neg = [-origin[0], -origin[1]];
 
-    // 拾取链：中心射线 → 命中近件（x=4 列）
+    // the pick chain: center ray -> hit the near piece (the x = 4 column)
     let rig = CameraRig::look_at([4.0, 0.0, 20.0], [4.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
     let ray =
         screen_to_ray_ortho(&rig, W as f32 / 2.0, H as f32 / 2.0, W as f32, H as f32).unwrap();
@@ -83,10 +83,11 @@ fn selected_entity_renders_highlight_overlay() {
         indices: &idx,
         world: &world4(1.0),
     }];
-    let hit = visiaengine_render::pick_meshes(ray, &cands).expect("中心应命中近件");
+    let hit =
+        visiaengine_render::pick_meshes(ray, &cands).expect("the center should hit the near piece");
     assert_eq!(hit.entity, near);
 
-    // 渲染：视点近侧件（z=5，俯视先见）=高亮黄；下层=基础蓝。选中态 material 覆写。
+    // render: the piece on the viewpoint's near side (z = 5, first seen in top view) = highlight yellow; the lower layer = base blue. The selected state overrides the material.
     let yellow = [1.0, 0.83, 0.29, 1.0];
     let blue = [0.0, 0.45, 1.0, 1.0];
     let _ = neg;
@@ -94,7 +95,7 @@ fn selected_entity_renders_highlight_overlay() {
         rgba: [0.05, 0.07, 0.10, 1.0],
     }];
     for (dz, color) in [(5.0f64, yellow), (1.0, blue)] {
-        // 局部顶点 = shifted(-origin)（D7 纪律，同 geo_viewer 用法）
+        // local vertices = shifted(-origin) (the D7 discipline, the same usage as geo_viewer)
         let local: Vec<[f32; 3]> = pos
             .iter()
             .map(|p| [p[0] * 0.6, p[1] * 0.6, p[2] * 0.6])
@@ -138,18 +139,18 @@ fn selected_entity_renders_highlight_overlay() {
         img.rgba[i + 1] as i16,
         img.rgba[i + 2] as i16,
     );
-    // 高亮黄×方向光经验域（≈0.625）：r≥g>>b（蓝通道被压）
+    // highlight yellow x the directional-light empirical domain (~ 0.625): r >= g >> b (the blue channel suppressed)
     assert!(
         r > 120 && g > 90 && bl < 90 && r - bl > 60,
-        "中心像素应为高亮黄族，得 ({r},{g},{bl})"
+        "the center pixel should be in the highlight-yellow family, got ({r},{g},{bl})"
     );
 }
 
 // spec: WGPU-13
 #[test]
 fn occlusion_independent_of_draw_order() {
-    // 同堆叠场景、draw 序反转（远侧蓝先/近侧黄后 与 反之）→ 中心像素恒=近侧黄
-    // （深度遮挡与顺序无关——若管线缺深度，后 draw 者恒赢=本断言必红）
+    // the same stacked scene with the draw order reversed (far blue first / near yellow second, and the converse) -> the center pixel always = the near-side yellow
+    // (depth occlusion is order-irrelevant -- if the pipeline lacked depth, whoever drew last always wins = this assertion must go red)
     let yellow = [1.0, 0.83, 0.29, 1.0];
     let blue = [0.0, 0.45, 1.0, 1.0];
     let mut centers = Vec::new();
@@ -208,19 +209,19 @@ fn occlusion_independent_of_draw_order() {
     for (idx, c) in centers.iter().enumerate() {
         assert!(
             c.0 > 120 && c.1 > 90 && c.2 < 90,
-            "draw 序 {idx} 中心应=近侧黄，得 {c:?}"
+            "draw order {idx}: the center should = the near-side yellow, got {c:?}"
         );
     }
 }
 
 // spec: WGPU-12
-/// E402 窗口路镜像像素门（2026-09-17 hover/多选窗随带；testing.md 视觉例双保险第 1 条）。
-/// rig/placement/调色逐字镜像 examples/rs/E402_pick_interactive.rs——窗口与门共用数学。
-/// 谓词三自证：①未选中心=基色族；②选中中心=高亮黄族（WGPU-12 域）；③角部射线必不命中
-/// （canary——射线/位形解错时"全命中"或"全不命中"的巧合绿被此断钉死）。
+/// The E402 window-path mirror pixel gate (carried by the 2026-09-17 hover/multi-select window; testing.md visual-case double insurance clause 1).
+/// rig / placement / palette mirrored verbatim from examples/rs/E402_pick_interactive.rs -- the window and the gate share math.
+/// Predicate triple self-proof: (1) unselected center = base color family; (2) selected center = highlight-yellow family (the WGPU-12 domain); (3) an outer-corner ray must not hit
+/// (canary -- when the ray/placement solves wrong, the accidental greens of "hits everything" or "hits nothing" are nailed dead by this assertion).
 #[test]
 fn golden_pick_window_mirror() {
-    const PW: u32 = 512; // 16:10 窗口形镜像（E402 960×600 同比例；512=行对齐倍数）
+    const PW: u32 = 512; // the 16:10 window-form mirror (E402's 960x600 same ratio; 512 = a row-alignment multiple)
     const PH: u32 = 320;
     let mut scene = Scene::new();
     let ents: Vec<_> = (0..3).map(|_| scene.spawn()).collect();
@@ -244,7 +245,7 @@ fn golden_pick_window_mirror() {
         [0.20, 0.45, 0.90, 1.0],
     ];
     let yellow = [1.0f32, 0.83, 0.29, 1.0];
-    // E402 main() 机位逐字（dist=11，fov_y=1.0rad）
+    // E402 main()'s camera position verbatim (dist = 11, fov_y = 1.0 rad)
     let rig = CameraRig::orbit([0.0, 0.0, 1.5], 0.35, 0.95, 11.0, 1.0, 1.0, 0.1, 100.0);
     let Some(mut backend) = HeadlessBackend::new(PW, PH) else {
         eprintln!("SKIP: no adapter");
@@ -299,7 +300,7 @@ fn golden_pick_window_mirror() {
         [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]]
     };
 
-    // ① 中心射线命中的盒子（E402 点选同款链）
+    // (1) the box the center ray hits (E402's point-select chain same shape)
     let ray = visiaengine_render::screen_to_ray_persp(
         &rig,
         PW as f32 / 2.0,
@@ -318,11 +319,11 @@ fn golden_pick_window_mirror() {
             world: w,
         })
         .collect();
-    let hit = visiaengine_render::pick_meshes(ray, &cands).expect("中心应命中一盒");
+    let hit = visiaengine_render::pick_meshes(ray, &cands).expect("the center should hit one box");
     let hit_i = ents.iter().position(|e| *e == hit.entity).unwrap();
     println!("PROBE center hits box #{hit_i}");
 
-    // ② 未选态中心 = 该盒基色族（绿族 g 占优 for #1，红族 r 占优 for #0/#2 侧箱）
+    // (2) unselected center = that box's base-color family (green family g dominant for #1, red family r dominant for the #0/#2 side boxes)
     let img0 = render(&mut backend, None);
     let [r0, g0, b0] = center(&img0);
     println!("PROBE unselected center=({r0},{g0},{b0})");
@@ -337,24 +338,24 @@ fn golden_pick_window_mirror() {
     let ch = [r0, g0, b0];
     assert!(
         ch[dom] > 60 && ch[dom] > ch[(dom + 1) % 3] && ch[dom] > ch[(dom + 2) % 3],
-        "未选中心应为盒 #{hit_i} 基色族，得 ({r0},{g0},{b0})"
+        "the unselected center should be box #{hit_i}'s base-color family, got ({r0},{g0},{b0})"
     );
 
-    // ③ 选中态中心 = 高亮黄族（谓词承 WGPU-12 实证域）
+    // (3) selected center = the highlight-yellow family (the predicate inherits the WGPU-12 proven domain)
     let img1 = render(&mut backend, Some(hit_i));
     let [r1, g1, b1] = center(&img1);
     println!("PROBE selected center=({r1},{g1},{b1})");
     assert!(
         r1 > 120 && g1 > 90 && b1 < 90 && r1 - b1 > 60,
-        "选中中心应为高亮黄族，得 ({r1},{g1},{b1})"
+        "the selected center should be in the highlight-yellow family, got ({r1},{g1},{b1})"
     );
 
-    // ④ canary：右上外角射线必不命中（钉死"巧合命中一切"）
+    // (4) canary: the outer top-right corner ray must miss (nails dead the accidental "hits everything")
     let ray_corner =
         visiaengine_render::screen_to_ray_persp(&rig, PW as f32 - 2.0, 2.0, PW as f32, PH as f32)
             .expect("corner ray");
     assert!(
         visiaengine_render::pick_meshes(ray_corner, &cands).is_none(),
-        "外角射线意外命中——射线域失控"
+        "the outer corner ray unexpectedly hit -- the ray domain is out of control"
     );
 }

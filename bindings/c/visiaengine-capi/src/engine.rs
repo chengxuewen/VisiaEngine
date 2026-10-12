@@ -1,10 +1,10 @@
-//! VeEngine 实体（计划 v1.4 §3）：headless 出图真身（I2）。
-//! 装载=CPU 解析 → MeshCore 上传；拾取=REND-21..24 复用；策略=输入→相机。
-//! bytes-first load 口为批 7 预留（[FFI-R:EP-附]/P2）：I2 走 path，J1 前升 bytes。
+//! VeEngine entity (plan v1.4 §3): headless image output made real (I2).
+//! Load = CPU parse -> MeshCore upload; picking = REND-21..24 reuse; policy = input -> camera.
+//! The bytes-first load entry is reserved for batch 7 ([FFI-R:EP-附]/P2): I2 goes path, upgraded to bytes before J1.
 
 use visiaengine_core::{EntityId, Scene};
 
-use crate::ffi::enc_entity; // CAPI-10 反标键=宿主可见位形（CAPI-08 编码单源）
+use crate::ffi::enc_entity; // CAPI-10 reverse-lookup key = host-visible shape (CAPI-08 encoding single source)
 use visiaengine_io_text::GLYPH_ATLAS_PX;
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MaterialDesc, MaterialId, MeshCandidate, MeshDesc,
@@ -13,13 +13,13 @@ use visiaengine_render::{
     rebase::compose_mvp, screen_to_ray_ortho, screen_to_ray_persp,
 };
 
-/// B2 点拾取屏幕半径（REND-38 默认值；同 REND-30 radius_px 屏幕像素域）。
+/// B2 point-picking screen radius (REND-38 default; same screen-pixel domain as REND-30 radius_px).
 const PICK_RADIUS_PX: f32 = 6.0;
 use visiaengine_render_wgpu::HeadlessBackend;
 use visiaengine_render_wgpu::MultiClearPolicy;
 use visiaengine_render_wgpu::surface::Swapchain;
 
-/// 输入→相机引擎策略（非事件透传）：按下后移动=orbit，滚轮=共享 zoom。
+/// Input -> camera engine policy (not event passthrough): press+move = orbit, wheel = shared zoom.
 const ORBIT_RATE: f64 = 0.005;
 const ZOOM_RATE: f64 = 0.1;
 const FIT_PAD: f64 = 1.25;
@@ -36,13 +36,13 @@ struct DrawItem {
     indices: Vec<u32>,
 }
 
-/// 渲染目标态（CAPI-06：headless 与窗口互斥共存于同一引擎，attach 失败不动现态）。
+/// Render-target state (CAPI-06: headless and window coexist exclusively in one engine; a failed attach leaves the current state untouched).
 enum TargetMode {
     Headless,
     Window(Swapchain),
 }
 
-/// 投影模式（geo=ortho fit、gltf=persp，viewport 变更重建）。
+/// Projection mode (geo = ortho fit, gltf = persp, rebuilt on viewport change).
 #[derive(Clone, Copy, PartialEq)]
 pub enum Proj {
     Persp,
@@ -57,7 +57,7 @@ pub enum Proj {
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct MorphT(f64);
 
-/// CAPI-23 推进器状态：from 起飞快照 / to 目标 / 起止时钟 / 时长。
+/// CAPI-23 thruster state: from = takeoff snapshot / to = target / start-stop clocks / duration.
 struct Fly {
     from: CameraRig,
     to: CameraRig,
@@ -65,9 +65,9 @@ struct Fly {
     dur_s: f64,
 }
 
-/// 双平台单调毫秒钟：native=进程锚点差值（Instant 单调语义保留），wasm=Date.now()
-/// （std::time 在 wasm32-unknown-unknown 运行时不可用——Web 是本 SDK 主舞台，
-/// 此 shim 免 flyTo 触 capi_guard -4 假死）。
+/// Dual-platform monotonic millisecond clock: native = process-anchor delta (Instant monotonic semantics kept), wasm = Date.now()
+/// (std::time is unavailable at runtime on wasm32-unknown-unknown -- Web is this SDK's main stage,
+/// and this shim keeps flyTo from hitting capi_guard -4 frozen-death).
 #[must_use]
 fn now_ms() -> f64 {
     #[cfg(not(target_arch = "wasm32"))]
@@ -95,42 +95,42 @@ pub struct Engine {
     last: (f32, f32),
     backend: HeadlessBackend,
     target: TargetMode,
-    scene: Scene, // EntityId 生成器（slot+gen 与 core slab 同空间，pick/entity_at 共用）
+    scene: Scene, // EntityId generator (slot+gen in the same space as the core slab, shared by pick/entity_at)
     items: Vec<DrawItem>,
-    /// geo 扩片族命令（GEO-24/WGPU-17/18：mount 期建表，逐帧随 items 重放）
+    /// geo tile-expansion family commands (GEO-24/WGPU-17/18: table built at mount, replayed per frame alongside items)
     extra_cmds: Vec<DrawCommand>,
-    /// CAPI-12: load_geojson 保留面（每载一 doc，行=feature 下标 GEO-17）
+    /// CAPI-12: load_geojson retention face (one doc per load, row = feature index GEO-17)
     geo_docs: Vec<visiaengine_geo::GeoDocument>,
-    /// CAPI-10: entity（C u64 位形，与 pick 出口同编码；含 gen=ABA 免疫）→ (doc 序号, 行)
+    /// CAPI-10: entity (C u64 shape, same encoding as the pick output; gen included for ABA immunity) -> (doc ordinal, row)
     attr_of: std::collections::HashMap<u64, (usize, usize)>,
     /// N2.4 (CAPI-36): host-driven property diff-update override layer.
     /// Checked BEFORE geo_docs/pcl_meta in attr_* reads; typed columns
     /// (first-write-typed per CORE-11/12 — a type-mismatched update is
     /// rejected, not coerced).
     attr_overrides: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
-    /// CAPI-13: 隐藏实体位形表（render/pick 过滤域；枚举域不变，删除随 CAPI-16 清理）
+    /// CAPI-13: hidden-entity shape table (render/pick filter domain; enumeration domain unchanged, cleanup rides CAPI-16 deletion)
     hidden: Vec<u64>,
     /// Scene tree (CAPI-30): group-node display names (engine-local).
     node_names: std::collections::HashMap<u64, String>,
-    /// CAPI-20: 剖面裁切世界面（None/空=全保留；render 逐帧入 Frame.clip，
-    /// pick 命中点 keeps 谓词负侧=排除重试 [WGPU-21 管线面同一世界帧]）
+    /// CAPI-20: section-clip world planes (None/empty = keep all; render feeds Frame.clip per frame,
+    /// and the pick hit-point keeps predicate's negative side = exclude-and-retry [WGPU-21 pipeline face shares the same world frame])
     clip: Option<visiaengine_render::ClipSetup>,
     /// CAPI band N1.5: EDL opt-in switch (None=off, byte-identical legacy path).
     edl: Option<visiaengine_render::EdlSetup>,
-    /// CAPI-23：飞行推进器（墙钟住 engine——render crate 零 std::time 的分层定案；
-    /// None=idle/done 合并态）
+    /// CAPI-23: flight thruster (wall clock lives in the engine -- the layering decision behind zero std::time in the render crate;
+    /// None = merged idle/done state)
     fly: Option<Fly>,
-    /// ⑤b 二波：小地图（None=关；旧宿主零感知）
+    /// 5b second wave: minimap (None = off; old hosts perceive nothing)
     map: Option<MapView>,
     frame_cache: Option<Vec<u8>>,
-    /// CAPI-19：点云云级 meta（位形→单行 AttrSet；attr_* 缀查域，geo 图先查）。
+    /// CAPI-19: point-cloud cloud-level meta (shape -> single-row AttrSet; attr_* prefixed-lookup domain, geo layer checked first).
     pcl_meta: std::collections::HashMap<u64, visiaengine_core::AttrSet>,
-    /// B2 点拾取：每点云实体的世界位形（entity bits → origin/transform/positions）。
-    /// marks 本被 GPU 表收编即弃；留存 = CPU 屏幕空间最近点谓词的数据面。
+    /// B2 point-picking: the retained world shape of each point-cloud entity (entity bits -> origin/transform/positions).
+    /// marks were originally discarded once absorbed into the GPU table; retention = data face of the CPU screen-space nearest-point predicate.
     /// ponytail: linear scan per pick; hover-throttle = rung 1, BVH = rung 2 if
     /// interaction patterns demand (1M pts ≈ 30-100 ms/query on weak hosts).
     point_clouds: std::collections::HashMap<u64, PointCloudState>,
-    /// P1 瓦片层（CAPI-28/29）：None=无瓦片面（渲染零触碰）；Some=调度器+批几何。
+    /// P1 tile layer (CAPI-28/29): None = no tile face (render touches zero); Some = scheduler + batch geometry.
     /// Mounted tile layers, draw order == mount order (band T, plan
     /// ledger-tiles-keys-2026-10-08). One layer per kind (Adjudication 2 = A):
     /// `set_tile_view` drives the vector layer, `set_raster_view` the raster one.
@@ -138,17 +138,17 @@ pub struct Engine {
     /// I band (CAPI-41): SH-9 environment irradiance (linear RGB), pushed to
     /// the backend each render pass; None = legacy constant ambient.
     env_sh: Option<[[f32; 3]; 9]>,
-    /// CAPI-21：标注字体（None=文字管线休眠——样式/口在，零输出 [GEO-25/CAPI-22]）
+    /// CAPI-21: label font (None = text pipeline dormant -- styles/entry exist, zero output [GEO-25/CAPI-22])
     font: Option<visiaengine_io_text::FontFace>,
-    /// 跨装载常驻的字形图集（dirty→render 前全量重传 [WGPU-24]）
+    /// glyph atlas persisting across loads (dirty -> full re-upload before render [WGPU-24])
     glyphs: visiaengine_io_text::GlyphCache,
 
-    /// CAPI-17 事件锚（fn/user 裸指针 usize 形；触发域=owner 线程，
-    /// 与 CAPI-03 亲和门同谱，故 Send 包装安全）。
+    /// CAPI-17 event anchors (fn/user raw pointers in usize form; firing domain = owner thread,
+    /// same scheme as the CAPI-03 affinity gate, hence the Send wrapper is safe).
     evt: Option<EvtSink>,
 }
 
-/// B2 点拾取数据面：单点云实体的留存世界态（与 DrawPoints 同谱：origin+transform）。
+/// B2 point-picking data face: the retained world state of a single point-cloud entity (same scheme as DrawPoints: origin+transform).
 struct PointCloudState {
     entity: EntityId,
     origin: [f64; 3],
@@ -263,7 +263,7 @@ struct TileLayer {
     /// loop pumps the scheduler per frame. FileSource layers keep mount-time
     /// ids and the alive-filter (behavior unchanged = canary).
     http: bool,
-    /// 批顶点烘场景中心小值域帧（PIT-8 安全域）；Draw origin=center。
+    /// Batch vertices baked into the scene-center small-value-range frame (PIT-8 safe domain); Draw origin = center.
     center: [f64; 3],
     wpos: Vec<[f32; 3]>,
     widx: Vec<u32>,
@@ -279,7 +279,7 @@ struct TileLayer {
         visiaengine_render::MeshId,
         visiaengine_render::MaterialId,
     )>,
-    // 上传产物（render 期建表；缓存 id 防重传）
+    // Upload products (tables built at render time; cached ids prevent re-upload)
     uploaded: Option<(
         visiaengine_render::MeshId,
         visiaengine_render::MaterialId,
@@ -288,7 +288,7 @@ struct TileLayer {
     )>,
 }
 
-/// ⑤b 二波 CAPI-25：小地图视口（比例表+世界半高；None=关=旧单帧路，主 target 派生跟随）。
+/// 5b second wave CAPI-25: minimap viewport (normalized rect + world half-height; None = off = old single-frame path, derived follow of the main target).
 #[derive(Clone, Copy, Debug)]
 pub struct MapView {
     pub fx: f32,
@@ -298,12 +298,12 @@ pub struct MapView {
     pub zoom: f64,
 }
 
-/// SAFETY: 锚仅在 owner 线程被 gate 后触发（回调线程契约见 CAPI-17 条款体）。
+/// SAFETY: anchors fire only on the owner thread after gating (callback-thread contract in the CAPI-17 clause body).
 struct EvtAnchor(usize, usize);
 unsafe impl Send for EvtAnchor {}
 
-/// 事件汇双形：native=C 锚（Mutex 表需 Send）；wasm32=JS 闭包（RefCell 单线程，
-/// js_sys::Function 非 Send 合法）——Engine 的 Send 域随 cfg 保持精确。
+/// Event sink dual form: native = C anchors (Mutex table needs Send); wasm32 = JS closures (RefCell single-threaded,
+/// js_sys::Function legitimately non-Send) -- the Send domain of Engine stays exactly cfg-scoped.
 #[cfg(not(target_arch = "wasm32"))]
 type EvtSink = EvtAnchor;
 #[cfg(target_arch = "wasm32")]
@@ -355,7 +355,7 @@ impl Engine {
         })
     }
 
-    #[allow(clippy::too_many_arguments)] // 私有上传汇点（normals 参数化后 +1，拆门面反而碎）
+    #[allow(clippy::too_many_arguments)] // private upload sink (+1 after normals parameterization; splitting the facade would fragment it)
     #[allow(clippy::too_many_arguments)]
     fn upload(
         &mut self,
@@ -401,9 +401,9 @@ impl Engine {
         Ok(())
     }
 
-    // ===== 装载（CAPI-04）=====
+    // ===== Loading (CAPI-04) =====
 
-    /// CAPI-17：注册锚（cb=0 → 摘除）。
+    /// CAPI-17: register the anchor (cb=0 -> unregister).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_event_anchor(&mut self, cb: usize, user: usize) {
         self.evt = if cb == 0 {
@@ -413,13 +413,13 @@ impl Engine {
         };
     }
 
-    /// CAPI-17 wasm 形：闭包注册（js_sys::Function 由 wasm 桥包入）。
+    /// CAPI-17 wasm form: closure registration (js_sys::Function wrapped into the wasm bridge).
     #[cfg(target_arch = "wasm32")]
     pub fn set_event_fn(&mut self, f: Option<Box<dyn FnMut(u32, u64, u64)>>) {
         self.evt = f;
     }
 
-    /// CAPI-17：事件触发点（owner 线程内同步直调；重入=调用方禁区）。
+    /// CAPI-17: event firing point (synchronous direct call inside the owner thread; re-entry = caller no-go zone).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn emit(&mut self, event: u32, a: u64, b: u64) {
         if let Some(EvtAnchor(f, u)) = self.evt {
@@ -436,27 +436,27 @@ impl Engine {
         }
     }
 
-    /// glTF path 口（CAPI-04）。
+    /// glTF path entry (CAPI-04).
     pub fn load_gltf(&mut self, path: &str) -> Result<usize, String> {
         let doc = visiaengine_io_gltf::load_gltf(path).map_err(|e| format!("{path}: {e}"))?;
         self.mount_gltf(&doc)
     }
 
-    /// glTF bytes 口（批 7 js 面复用；[FFI-R:EP-附] bytes-first 兑现）。
+    /// glTF bytes entry (batch 7 js face reuse; [FFI-R:EP-附] bytes-first honored).
     #[cfg(all(feature = "web", target_arch = "wasm32"))]
     pub fn load_gltf_bytes(&mut self, data: &[u8]) -> Result<usize, String> {
         let doc = visiaengine_io_gltf::load_gltf_bytes(data).map_err(|e| format!("bytes: {e}"))?;
         self.mount_gltf(&doc)
     }
 
-    /// primitive 粒度=实体（与 GLTF-01 家族对齐；world 烘入上传顶点，
-    /// DrawItem.origin=0——headless demo 小坐标域，rebase 恒等合法）。
+    /// primitive granularity = entity (aligned with the GLTF-01 family; world baked into upload vertices,
+    /// DrawItem.origin = 0 -- headless demo small coordinate domain, rebase is identically legal).
     fn mount_gltf(&mut self, doc: &visiaengine_io_gltf::GltfDocument) -> Result<usize, String> {
         let n = doc.entities().len();
         if n == 0 {
             return Err("no primitives".to_string());
         }
-        // GLTF-11 纹理槽位 → GPU 纹理 id（去重按 image 槽位；同图多 primitive 共享）
+        // GLTF-11 texture slots -> GPU texture ids (deduped by image slot; one image across primitives shared)
         let mut tex_ids = Vec::with_capacity(doc.textures().len());
         for t in doc.textures() {
             tex_ids.push(
@@ -471,10 +471,10 @@ impl Engine {
         }
         let mut done = 0usize;
         for e in doc.entities() {
-            done += 1; // CAPI-17：逐实体进度（终态 done==n，与返回计数同谱）
+            done += 1; // CAPI-17: per-entity progress (terminal done==n, same scheme as the returned count)
             self.emit(crate::ffi::VE_EVT_LOAD_PROGRESS, done as u64, n as u64);
             let id = self.scene.spawn();
-            // 局部顶点不变；headless persp 相机 ±10 域，twoprim/hierarchy 同尺度合法
+            // local vertices unchanged; headless persp camera +/-10 domain, twoprim/hierarchy same scale is legal
             let mat = MaterialDesc {
                 base_color: e.mesh.base_color,
                 texture: e.mesh.texture.and_then(|s| tex_ids.get(s).copied()),
@@ -499,14 +499,14 @@ impl Engine {
         Ok(n)
     }
 
-    /// GeoJSON path 口（CAPI-04）。
+    /// GeoJSON path entry (CAPI-04).
     pub fn load_geojson(&mut self, path: &str) -> Result<usize, String> {
         let doc = visiaengine_geo::load_geojson(path).map_err(|e| format!("{path}: {e}"))?;
         self.mount_geo(doc)
     }
 
-    /// GeoJSON bytes 口（js 面；Lenient 策略——脏件丢弃不因数据拖死整层，
-    /// 报告导出=M2）。
+    /// GeoJSON bytes entry (js face; Lenient policy -- dirty pieces are discarded so bad data cannot drag down the whole layer,
+    /// report export = M2).
     #[cfg(all(feature = "web", target_arch = "wasm32"))]
     pub fn load_geojson_bytes(&mut self, data: &[u8]) -> Result<usize, String> {
         let (doc, _rep) =
@@ -514,14 +514,14 @@ impl Engine {
         self.mount_geo(doc)
     }
 
-    /// feature 粒度=实体（一件可多 part 共享 id）；layer bbox 中心
-    /// =origin（D7 shifted 纪律，geo_viewer 同款）；正交 fit 取景。
+    /// feature granularity = entity (one piece may have multiple parts sharing an id); layer bbox center
+    /// = origin (D7 shifted discipline, same as geo_viewer); ortho fit framing.
     fn mount_geo(&mut self, doc: visiaengine_geo::GeoDocument) -> Result<usize, String> {
         let [x0, y0, x1, y1] = doc.layer_bbox().ok_or("empty layer")?;
         let origin = [(x0 + x1) / 2.0, (y0 + y1) / 2.0, 0.0];
         let radius = ((x1 - x0) / 2.0).max((y1 - y0) / 2.0) * FIT_PAD;
-        // 退化层（单点/单线=半径 0）与 eye 同下限——ortho zoom=0=必崩既有洞，
-        // S2 标签单点测试抓回（存量 geo 测试全多点故未踏）
+        // degenerate layers (single point/line = radius 0) share the lower bound with the eye -- ortho zoom=0 = a pre-existing must-crash hole,
+        // caught back by the S2 label single-point test (all legacy geo tests are multi-point so it was never stepped in)
         self.zoom = radius.max(10.0);
         self.rig = CameraRig::look_at(
             [origin[0], origin[1], radius.max(10.0)],
@@ -530,24 +530,24 @@ impl Engine {
         );
         self.mode = Proj::Ortho;
         let neg = [-origin[0], -origin[1]];
-        let doc_no = self.geo_docs.len(); // CAPI-12: 本次装载在保留面中的序号
+        let doc_no = self.geo_docs.len(); // CAPI-12: the ordinal of this load within the retention face
         let mut rows: Vec<(u64, (usize, usize))> = Vec::new();
         let mut n = 0usize;
-        // GEO-25：标签请求（字体休眠=整段零收集，零输出不报错）
+        // GEO-25: label requests (font dormant = the whole section collects nothing, zero output no error)
         let mut label_marks: Vec<visiaengine_render::LabelMark> = Vec::new();
         let cols = doc.attrs();
         for (row, f) in doc.features().iter().enumerate() {
             let id = self.scene.spawn();
-            rows.push((enc_entity(id), (doc_no, row))); // CAPI-10: 键=宿主可见位形；行=GEO-17 展平下标
+            rows.push((enc_entity(id), (doc_no, row))); // CAPI-10: key = host-visible shape; row = GEO-17 flattened index
             n += 1;
-            // CAPI-17：feature 粒度进度（total=features.len，终态与 n 等）
+            // CAPI-17: feature-granularity progress (total = features.len, terminal state equals n)
             self.emit(
                 crate::ffi::VE_EVT_LOAD_PROGRESS,
                 n as u64,
                 doc.features().len() as u64,
             );
             if let (Some(face), Some(field)) = (self.font.as_ref(), f.style.text_field.as_deref()) {
-                // 列语义优先（列在且行值缺=skip 不落字面量）；列不存在=常量文本
+                // column semantics first (column present but the row value missing = skip, no literal fallback); column absent = constant text
                 let is_col = cols.names().any(|c| c == field);
                 let text: Option<&str> = if is_col {
                     cols.str_value(row, field)
@@ -564,7 +564,7 @@ impl Engine {
                     );
                     if !quads.is_empty() {
                         let lin = visiaengine_core::srgb_to_linear(f.style.text_color);
-                        let anchor = [ax as f32, ay as f32, 0.1]; // 恒顶 0.1（无深度竞争，纯序语义）
+                        let anchor = [ax as f32, ay as f32, 0.1]; // always-top 0.1 (no depth competition, pure ordering semantics)
                         label_marks.extend(quads.iter().map(|q| {
                             visiaengine_render::LabelMark::new(
                                 anchor,
@@ -573,7 +573,7 @@ impl Engine {
                                 [
                                     q.size_px[0],
                                     q.size_px[1],
-                                    q.top_left_px[0] - pen / 2.0, // MapLibre 默认 center 锚
+                                    q.top_left_px[0] - pen / 2.0, // MapLibre default center anchor
                                     q.top_left_px[1],
                                 ],
                             )
@@ -583,8 +583,8 @@ impl Engine {
             }
             let parts = visiaengine_geo::tessellate(&f.kind.shifted(neg), &f.style)
                 .map_err(|e| format!("tessellate: {e}"))?;
-            // [PIT-8 提取位] LineStrip→StrokeSeg / Marker→PointMark 转换与
-            // geo_viewer/geo_pipeline 同形三处——第三消费者已现，4de 后抽公共 helper。
+            // [PIT-8 extraction site] LineStrip->StrokeSeg / Marker->PointMark conversion and
+            // geo_viewer/geo_pipeline same shape in three places -- the third consumer has appeared; extract a shared helper after 4de.
             for gp in parts {
                 match gp {
                     visiaengine_geo::GeoPart::Fill(p) => {
@@ -669,21 +669,21 @@ impl Engine {
                 transform: IDENTITY,
             });
         }
-        self.geo_docs.push(doc); // CAPI-12 保留面（部分失败=未 push，反标同步不发布）
+        self.geo_docs.push(doc); // CAPI-12 retention face (partial failure = not pushed, the reverse-lookup mapping is not published synchronously)
         for (id, r) in rows {
             self.attr_of.insert(id, r);
         }
         Ok(n)
     }
 
-    // ===== 输入/相机（CAPI-05）=====
+    // ===== Input/camera (CAPI-05) =====
 
     pub fn apply_input(&mut self, kind: u32, px: f32, py: f32, wheel: f32) -> Option<bool> {
-        // CAPI-23 中断语义（MapLibre A 派）：指针/滚轮即 cancel；键(5)与未知不打断
+        // CAPI-23 interrupt semantics (MapLibre A branch): pointer/wheel cancel at once; keys (5) and unknown codes do not interrupt
         if matches!(kind, 1 | 2 | 4) {
             self.fly = None;
         }
-        // CAPI-25 配套：小图区内指针/滚轮=消费 no-op（v0 无拖图语义；导航走 navigate_click）
+        // CAPI-25 companion: pointer/wheel inside the minimap region = consumed no-op (v0 has no drag-pan semantics; navigation goes through navigate_click)
         if matches!(kind, 1..=4)
             && self
                 .map_rect()
@@ -720,25 +720,25 @@ impl Engine {
         }
     }
 
-    // ===== attach（CAPI-06）=====
+    // ===== attach (CAPI-06) =====
 
-    /// 裸句柄建面并接管渲染目标（configure 成功才算 attach 完成）。
+    /// Build a surface from raw handles and take over the render target (attach counts complete only when configure succeeds).
     ///
     /// # Safety
-    /// 见 `Swapchain::from_raw_handles`（宿主窗口存活义务）。
+    /// See `Swapchain::from_raw_handles` (host window liveness duty).
     pub unsafe fn attach_raw(
         &mut self,
         display: Option<raw_window_handle::RawDisplayHandle>,
         window: raw_window_handle::RawWindowHandle,
     ) -> Result<(), String> {
-        // 先建后换：失败保全 headless 现目标（attach 原子性，CAPI-06）
+        // build-then-swap: a failure preserves the current headless target (attach atomicity, CAPI-06)
         let sw =
             unsafe { self.backend.attach_surface(display, window) }.map_err(|e| e.to_string())?;
         self.target = TargetMode::Window(sw);
         Ok(())
     }
 
-    // ===== 渲染/回读（CAPI-04）=====
+    // ===== Render/readback (CAPI-04) =====
 
     /// Tree-aware visibility: entity itself OR any ancestor is in the hidden set.
     /// O(depth ≤ MAX_TREE_DEPTH=16); returns true if entity or any ancestor is hidden.
@@ -1027,8 +1027,8 @@ impl Engine {
             view_rot: self.rig.view_rotation(),
             eye,
             proj,
-            // ortho：世界宽 2·hw 铺 W px → px_world_scale=2·hw/W（REND-29 精确路；
-            // morph 中 = 两端线性插值，REND-41）
+            // ortho: world width 2*hw spans W px -> px_world_scale = 2*hw/W (REND-29 exact path;
+            // mid-morph = linear interpolation of the two ends, REND-41)
             px_world_scale,
             shadow: None,
             clip: self.clip,
@@ -1036,7 +1036,7 @@ impl Engine {
             post: Vec::new(),
             commands,
         };
-        // ⑤b 二波：map=Some ⇒ 主全幅+小图角窗两投；None ⇒ 旧单帧路（canary 构造保真）
+        // 5b second wave: map = Some -> main full-face + minimap corner window, dual projection; None -> the old single-frame path (canary construction fidelity)
         if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig()) {
             let (rw, rh) = (r.width.max(1), r.height.max(1));
             let proj = mrig
@@ -1100,7 +1100,7 @@ impl Engine {
         }
     }
 
-    /// readback 缓冲需求（未渲染=0，调用方据此给 -2/-5 归因）。
+    /// readback buffer requirement (unrendered = 0, callers attribute -2/-5 accordingly).
     #[must_use]
     pub fn frame_bytes(&self) -> Option<usize> {
         self.frame_cache.as_ref().map(Vec::len)
@@ -1117,7 +1117,7 @@ impl Engine {
         self.h = h;
         self.backend.resize(Viewport::new(w, h, 1.0));
         if let TargetMode::Window(sw) = &mut self.target {
-            sw.resize(w, h); // 下帧 configure 重配（CAPI-06 resize 路径）
+            sw.resize(w, h); // reconfigured at the next frame's configure (CAPI-06 resize path)
         }
         self.frame_cache = None;
     }
@@ -1336,10 +1336,10 @@ impl Engine {
         Ok(())
     }
 
-    /// 屏幕拾取（复用 REND-21..24；ortho/persp 双路；B2：mesh 未中时点云兕底）。
-    /// 命中=EntityId。点云路同谱：hidden 过滤 + clip keeps 负侧排除（REND-38）。
+    /// Screen picking (reuses REND-21..24; ortho/persp dual paths; B2: point-cloud fallback when the mesh misses).
+    /// Hit = EntityId. Point-cloud path same scheme: hidden filter + clip keeps negative-side exclusion (REND-38).
     pub fn pick(&self, px: f32, py: f32) -> Option<EntityId> {
-        // ⑤b 二波路由：小图区优先（视觉顶层=输入顶层）；其余=主 rig 原语义
+        // 5b second wave routing: minimap region first (visual top = input top); everything else = main rig original semantics
         if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig())
             && let Some((lx, ly)) = r.local(px.max(0.0) as u32, py.max(0.0) as u32)
         {
@@ -1355,8 +1355,8 @@ impl Engine {
         self.pick_points_in(&self.rig, px, py, self.w, self.h)
     }
 
-    /// B2 点云拾取（REND-38 谓词 + CAPI-13 hidden 过滤 + CAPI-20 clip 负侧排除）。
-    /// mesh 未中才走到这里 = REND-39 canary 构造保证（mesh 命中路零触碰）。
+    /// B2 point-cloud picking (REND-38 predicate + CAPI-13 hidden filter + CAPI-20 clip negative-side exclusion).
+    /// Reached only when the mesh missed = REND-39 canary construction guarantee (mesh hit path untouched).
     fn pick_points_in(
         &self,
         rig: &CameraRig,
@@ -1400,8 +1400,8 @@ impl Engine {
             })
             .collect();
         let mut hit = pick_points(&mvp, w as f32, h as f32, px, py, PICK_RADIUS_PX, &cands);
-        // clip keeps 负侧排除（REND-38 与 mesh 路逐点 keeps 同语义）：命中点被裁
-        // 则重找（含同云次近点）——谓词带 point_index，世界位 = M·local + origin。
+        // clip keeps negative-side exclusion (REND-38, point-level keeps carry the same semantics as the mesh path): if the hit point is clipped,
+        // re-search (including the next-nearest point of the same cloud) -- the predicate carries point_index, world position = M*local + origin.
         if let (Some(c), Some(cl)) = (&self.clip, hit.map(|h| (h.entity, h.point_index))) {
             let pc = self.point_clouds.get(&enc_entity(cl.0));
             if let Some(pc) = pc {
@@ -1436,7 +1436,7 @@ impl Engine {
         hit.map(|h| h.entity)
     }
 
-    /// 拾取核（rig/投影形/局部 px 全参数化：主视口与小图共用；返回 (位形, 命中点 xy)）。
+    /// Pick core (rig/projection form/local px fully parameterized: shared by the main viewport and the minimap; returns (shape, hit point xy)).
     fn pick_geo(
         &self,
         rig: &CameraRig,
@@ -1476,11 +1476,11 @@ impl Engine {
         }
     }
 
-    /// CAPI-13: 显隐切换（严格存在域校验；render/pick 过滤、枚举域不变）。
-    /// CAPI-23：起飞/改道。位姿六分量+fov，**near/far 恒当前 rig 现值**（[Momus-A1]
-    /// 深度域不飞行）；`dur_ms=0`=瞬移形（立即落位，非错误值）；飞行中重入=改道
-    /// （from=当前位姿快照，t 归零——首帧连续免跳变 [Momus-A3]）。
-    /// 域拒：非有限 / dist≤0 / zoom≤0 / fov∉(0,π)。
+    /// CAPI-13: visibility toggle (strict existence-domain validation; render/pick filtered, enumeration domain unchanged).
+    /// CAPI-23: takeoff/reroute. Pose six components + fov, **near/far always the current rig values** ([Momus-A1]
+    /// depth domain does not fly); `dur_ms=0` = teleport form (lands immediately, not an error value); re-entry mid-flight = reroute
+    /// (from = current pose snapshot, t reset -- first frame continuous to avoid a jump [Momus-A3]).
+    /// Domain rejection: non-finite / dist<=0 / zoom<=0 / fov outside (0,pi).
     #[allow(clippy::too_many_arguments)]
     pub fn fly_to(
         &mut self,
@@ -1515,7 +1515,7 @@ impl Engine {
         Ok(())
     }
 
-    /// 推进器落位核（fly_to/navigate_click 共路；域检由调用方完成）。
+    /// Thruster landing core (shared road of fly_to/navigate_click; domain checks done by the caller).
     fn fly_rig(&mut self, to: CameraRig, dur_ms: u64) {
         if dur_ms == 0 {
             self.rig = to;
@@ -1531,13 +1531,13 @@ impl Engine {
         });
     }
 
-    /// CAPI-24 语义源：不在飞=done（idle/done 合并单主值域）。
+    /// CAPI-24 semantics source: not flying = done (merged idle/done single primary domain).
     #[must_use]
     pub fn fly_state_done(&self) -> bool {
         self.fly.is_none()
     }
 
-    /// 飞行中进度 [0,1)（done/idle=None——out 不写路的引擎形）。
+    /// Progress while flying [0,1) (done/idle = None -- the engine form of the out-not-written path).
     #[must_use]
     pub fn fly_progress(&self) -> Option<f64> {
         self.fly
@@ -1545,8 +1545,8 @@ impl Engine {
             .map(|f| ((now_ms() - f.start_ms) / 1000.0 / f.dur_s).clamp(0.0, 1.0))
     }
 
-    /// 每帧推进（render 首行）：t>=1 直落 to 原值（端点精确 REND-16 同谱）；
-    /// 否则 fly_sample 采样落 rig（zoom 同步——ortho 族消费面）。
+    /// Per-frame advance (first line of render): t>=1 drops straight to the to original value (endpoint exact, same scheme as REND-16);
+    /// otherwise fly_sample lands on the rig (zoom synced -- the ortho family consumption face).
     fn advance_fly(&mut self) {
         let Some(f) = &self.fly else { return };
         let t = (now_ms() - f.start_ms) / 1000.0 / f.dur_s;
@@ -1562,8 +1562,8 @@ impl Engine {
         }
     }
 
-    /// CAPI-20：世界面系数组 [nx,ny,nz,d]（法向指保留侧，`dot(n,P)+d≥0` 保留，
-    /// AND 组合）。n=0=唯一清空形；退化/非有限/超 4 拒（ClipSetup::new 同源门）。
+    /// CAPI-20: world plane coefficient group [nx,ny,nz,d] (normal points to the kept side, `dot(n,P)+d>=0` keeps,
+    /// AND combination). n=0 = the only clear form; degenerate/non-finite/over-4 rejected (ClipSetup::new same-source gate).
     /// N2.1 test seam (rs-only): discrete projection switch (morph = None).
     /// Same shape family as set_morph_time(None) + mode writes; kept public
     /// for tests/examples that need the discrete reference path.
@@ -1611,7 +1611,7 @@ impl Engine {
         Ok(())
     }
 
-    /// CAPI-25：开/关小地图（比例表 0..1，fw/fh>0，zoom>0；域拒零副作用；None=清空旧路）。
+    /// CAPI-25: enable/disable the minimap (normalized rect 0..1, fw/fh>0, zoom>0; domain rejection with zero side effects; None = clear back to the old path).
     pub fn set_map(&mut self, rect: Option<(f32, f32, f32, f32)>, zoom: f64) -> Result<(), String> {
         let Some((fx, fy, fw, fh)) = rect else {
             self.map = None;
@@ -1639,14 +1639,14 @@ impl Engine {
         Ok(())
     }
 
-    /// 当前小地图像素 rect（比例表 resize 自动跟的求值点）。
+    /// The current minimap pixel rect (evaluation point of the normalized rect auto-following resize).
     #[must_use]
     pub fn map_rect(&self) -> Option<ViewportRect> {
         self.map
             .map(|m| ViewportRect::from_frac(m.fx, m.fy, m.fw, m.fh, self.w, self.h))
     }
 
-    /// 小地图顶视 rig（跟随主 target；pitch≈86° 近正视，up+Y 与视向近正交免退化）。
+    /// Minimap top-view rig (follows the main target; pitch of about 86 degrees near-vertical, up+Y near-orthogonal to the view direction to avoid degeneracy).
     #[must_use]
     fn map_rig(&self) -> Option<CameraRig> {
         let m = self.map?;
@@ -1663,7 +1663,7 @@ impl Engine {
         ))
     }
 
-    /// CAPI-26：小地图点击导航（两阶段：实体命中优先→地面 z=0 兜底；主 rig 保角保距换 target）。
+    /// CAPI-26: minimap click navigation (two stages: entity hit first -> ground z=0 fallback; the main rig keeps angle and distance while swapping the target).
     pub fn navigate_click(&mut self, px: f32, py: f32, dur_ms: u64) -> Result<(), String> {
         let rect = self.map_rect().ok_or("navigate_click: map not set")?;
         let (lx, ly) = rect
@@ -1686,22 +1686,22 @@ impl Engine {
         Ok(())
     }
 
-    /// CAPI-27：主相机位姿读回（宿主 HUD/到达断言）。
+    /// CAPI-27: main camera pose readback (host HUD / arrival assertions).
     #[must_use]
     pub fn camera_pose(&self) -> CameraRig {
         self.rig
     }
 
-    /// CAPI-21：装载/替换标注字体（bytes=TTF/OTF 全式；解析失败=Err 不动现存字体）。
+    /// CAPI-21: load/replace the label font (bytes = full TTF/OTF form; parse failure = Err, the existing font untouched).
     pub fn set_font(&mut self, bytes: &[u8]) -> Result<(), String> {
         let f =
             visiaengine_io_text::FontFace::from_bytes(bytes).map_err(|e| format!("font: {e:?}"))?;
         self.font = Some(f);
-        self.glyphs = visiaengine_io_text::GlyphCache::new(); // 换字体=图集作废重建
+        self.glyphs = visiaengine_io_text::GlyphCache::new(); // font swap = atlas voided and rebuilt
         Ok(())
     }
 
-    /// CAPI-20 读回（归一化后系数；截断/计数语义住 FFI 面）。
+    /// CAPI-20 readback (post-normalization coefficients; truncation/counting semantics live on the FFI face).
     #[must_use]
     pub fn clips(&self) -> Vec<[f64; 4]> {
         self.clip
@@ -1724,7 +1724,7 @@ impl Engine {
         Ok(())
     }
 
-    /// CAPI-14: 显隐查询（未知位形=None，与 setter 同域）。
+    /// CAPI-14: visibility query (unknown shape = None, same domain as the setter).
     #[must_use]
     pub fn is_visible(&self, entity: u64) -> Option<bool> {
         if !self.scene.is_alive(dec_entity(entity)) {
@@ -1733,7 +1733,7 @@ impl Engine {
         Some(!self.is_hidden(dec_entity(entity)))
     }
 
-    /// CAPI-15: 程序化加网格（调用期拷贝；退化零提交，spawn 回滚不外泄槽位）。
+    /// CAPI-15: procedural mesh add (call-time copy; degenerate = zero commit, spawn rollback leaks no slots).
     // N6: +roughness/metalness pushed it over the 7-arg clippy threshold.
     #[allow(clippy::too_many_arguments)]
     pub fn add_mesh(
@@ -1771,13 +1771,13 @@ impl Engine {
         match self.upload(id, positions, indices, normals, &mat, &[], origin, IDENTITY) {
             Ok(()) => Ok(enc_entity(id)),
             Err(e) => {
-                let _ = self.scene.despawn(id); // 代际 +1：失败位形永不复用撞出
+                let _ = self.scene.despawn(id); // generation +1: a failed shape is never reused and colliding out
                 Err(e)
             }
         }
     }
 
-    /// CAPI-19: 点云文件装载（path 便捷口=bytes 形之文件皮；wasm 走 bytes 直入）。
+    /// CAPI-19: point-cloud file load (path convenience entry = the file skin of the bytes form; wasm takes bytes direct).
     pub fn load_pcl(
         &mut self,
         path: &str,
@@ -1787,8 +1787,8 @@ impl Engine {
         self.load_pcl_bytes(&bytes, lenient)
     }
 
-    /// mount_pcl：单实体单 DrawPoints（origin=f64 bbox 中心，D7 零新数学）；
-    /// 云级 meta 注册 pcl_meta（attr 缀查域）；失败 spawn 回滚同 add_mesh 谱。
+    /// mount_pcl: one entity one DrawPoints (origin = f64 bbox center, D7 zero new math);
+    /// cloud-level meta registered in pcl_meta (attr prefixed-lookup domain); failure spawn rollback follows the add_mesh scheme.
     pub fn load_pcl_bytes(
         &mut self,
         bytes: &[u8],
@@ -1837,8 +1837,8 @@ impl Engine {
         Ok((bits, cloud.report))
     }
 
-    /// CAPI-18: 点云直通（单实体单 DrawPoints；origin=[0,0,0] 宿主系局部——
-    /// 非有限照收=宿主责任域，load 侧才挂 RepairPolicy；失败 despawn 回滚同 CAPI-15）。
+    /// CAPI-18: point-cloud passthrough (one entity one DrawPoints; origin = [0,0,0] host-space local --
+    /// non-finite accepted as-is = host responsibility domain, only the load side mounts RepairPolicy; failure despawn rollback same as CAPI-15).
     pub fn add_points(&mut self, raw: &[crate::ffi::VePointMark]) -> Result<u64, String> {
         let marks: Vec<PointMark> = raw
             .iter()
@@ -1848,11 +1848,11 @@ impl Engine {
         let table = match self.backend.create_points(&PointTableDesc { data: &marks }) {
             Ok(t) => t,
             Err(e) => {
-                let _ = self.scene.despawn(id); // 代际 +1：失败位形不复用（add_mesh 同谱）
+                let _ = self.scene.despawn(id); // generation +1: a failed shape is not reused (same scheme as add_mesh)
                 return Err(format!("create_points: {e:?}"));
             }
         };
-        let _ = table; // DrawPoints 命令消费（下方 push）
+        let _ = table; // DrawPoints command consumption (push below)
         let bits = enc_entity(id);
         // B2: retain positions for CPU point picking (origin=[0,0;3] host-local, same as DrawPoints)
         self.point_clouds.insert(
@@ -1923,12 +1923,12 @@ impl Engine {
         self.scene.group_offset(g).map_err(|e| e.to_string())
     }
 
-    /// CAPI-28：挂载 MVT 瓦片目录（FileSource；同谱=装载即几何就绪，视图后续喂）。
+    /// CAPI-28: mount an MVT tile directory (FileSource; same scheme = geometry ready at load time, the view fed afterwards).
     pub fn load_mvt_dir(&mut self, path: &str, z: u8) -> Result<u64, String> {
         let source = visiaengine_io_tiles::FileSource::new(path);
         let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
             .map_err(|e| format!("tiles: {e:?}"))?;
-        // 枚举目录里实际存在的瓦片（z 固定；扫描 {path}/{z}/*/*.mvt）
+        // enumerate the tiles actually present in the directory (z fixed; scan {path}/{z}/*/*.mvt)
         let mut ids: Vec<visiaengine_io_tiles::TileId> = Vec::new();
         let zdir = std::path::Path::new(path).join(z.to_string());
         let entries =
@@ -1968,7 +1968,7 @@ impl Engine {
                 )
             })
             .collect();
-        // 场景中心 = 全部瓦片 bbox 并集中心（批顶点烘中心小值域帧）。
+        // scene center = center of the union bbox of all tiles (batch vertices baked into a center small-value-range frame).
         let (min_x, min_y, max_x, max_y) = union_bbox(&ids);
         let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
         // P1 camera fit (same pattern as mount_geo): ortho top-down at batch
@@ -2083,7 +2083,7 @@ impl Engine {
         Ok(0)
     }
 
-    /// CAPI-29：喂视口 bbox（3857）→ visible→ensure→重建批几何（visible 集变化才重建）。
+    /// CAPI-29: feed the viewport bbox (3857) -> visible->ensure -> rebuild batch geometry (rebuilt only when the visible set changes).
     pub fn set_tile_view(
         &mut self,
         min_x: f64,
@@ -2145,9 +2145,9 @@ impl Engine {
         Ok(visible_count)
     }
 
-    /// CAPI-22：世界锚单标签（add_points 同谱=items 外管理域，位形可枚举、
-    /// v0 删除不入 remove 面=明账）。**字体未载=显式拒**（数据口无休眠义，
-    /// 与 GEO-25 样式休眠成对：样式休眠/口拒）。空文本/size 域外=拒零提交。
+    /// CAPI-22: single world-anchored label (same scheme as add_points = management domain outside items, shapes enumerable,
+    /// v0 deletion stays off the remove face = explicit account). **Font not loaded = explicit rejection** (the data entry carries no dormant meaning,
+    /// paired with GEO-25 style dormancy: style dormant / entry rejects). Empty text / size out of domain = rejected with zero commit.
     pub fn add_label(
         &mut self,
         world: [f64; 3],
@@ -2201,7 +2201,7 @@ impl Engine {
         Ok(enc_entity(id))
     }
 
-    /// CAPI-16: 删除实体（items/attr_of/hidden 三面清理；旧句柄再入=双销毁同谱）。
+    /// CAPI-16: delete an entity (items/attr_of/hidden three-face cleanup; old handle re-entry = same scheme as double destroy).
     pub fn remove_entity(&mut self, entity: u64) -> Result<(), String> {
         let Some(pos) = self
             .items
@@ -2219,8 +2219,8 @@ impl Engine {
         Ok(())
     }
 
-    /// CAPI-10: entity 键控三型属性读（位形与 pick 出口同编码）；
-    /// 缺失四径（无行/无列/异型/空格）一律 None 非零值。
+    /// CAPI-10: entity-keyed three-type attribute reads (shape encoded the same as the pick output);
+    /// the four absence paths (no row / no column / type mismatch / empty cell) are all None rather than zero values.
     /// N2.4 (CAPI-36 rs-face): property diff-update — typed-reject write.
     /// `f64/str/bool` select the column type; writing a DIFFERENT type to an
     /// existing column (override or source) is rejected (CORE-11/12
@@ -2345,7 +2345,7 @@ impl Engine {
 
 #[cfg(all(feature = "web", target_arch = "wasm32"))]
 impl Engine {
-    /// Canvas 引擎构造（批 7 J1：async 设备 + canvas surface 一气呵成）。
+    /// Canvas engine construction (batch 7 J1: async device + canvas surface in one go).
     pub async fn new_canvas(canvas: &web_sys::HtmlCanvasElement) -> Option<Self> {
         let w = canvas.width().max(1);
         let h = canvas.height().max(1);
@@ -2412,11 +2412,11 @@ const IDENTITY: [[f64; 4]; 4] = [
 
 #[cfg(test)]
 mod attr_tests {
-    //! CAPI-10/11/12（RED 先行）：保留面 + entity→(doc,row) 反标 + 三型读口。
+    //! CAPI-10/11/12 (RED first): retention face + entity->(doc,row) reverse lookup + three-type read entries.
     use super::*;
     use std::fs;
 
-    /// 最小两层件：A 三型齐（str/f64/bool），B 仅 name（空格= None 契约面）。
+    /// Minimal two-layer piece: A with all three types (str/f64/bool), B name only (empty cell = the None contract face).
     const GEO: &str = r#"{"type":"FeatureCollection","features":[
      {"type":"Feature","properties":{"name":"buildingA","height":12.5,"active":true},
       "geometry":{"type":"Polygon","coordinates":[[[0.0,0.0],[1.0,0.0],[1.0,1.0],[0.0,0.0]]]}},
@@ -2462,10 +2462,10 @@ mod attr_tests {
         // spec: CAPI-10
         let e = loaded();
         let b = enc_entity(e.entity_at(1).expect("feature 1 entity"));
-        assert_eq!(e.attr_f64(b, "height"), None); // 行在，格空
-        assert_eq!(e.attr_f64(b, "nope"), None); // 列不存在
-        assert_eq!(e.attr_f64(b, "name"), None); // 异型（str 列问 f64）
-        assert_eq!(e.attr_bool(b, "name"), None); // 异型（str 列问 bool）
+        assert_eq!(e.attr_f64(b, "height"), None); // row present, cell empty
+        assert_eq!(e.attr_f64(b, "nope"), None); // column absent
+        assert_eq!(e.attr_f64(b, "name"), None); // type mismatch (str column asked for f64)
+        assert_eq!(e.attr_bool(b, "name"), None); // type mismatch (str column asked for bool)
     }
 
     #[test]
@@ -2487,17 +2487,17 @@ mod attr_tests {
            "geometry":{"type":"Polygon","coordinates":[[[5.0,5.0],[6.0,5.0],[6.0,6.0],[5.0,5.0]]]}}
         ]}"#;
         assert_eq!(e.load_geojson(&tmp_layer("b", second)), Ok(1));
-        assert_eq!(e.attr_str(old, "name"), Some("buildingA")); // 旧行不串
+        assert_eq!(e.attr_str(old, "name"), Some("buildingA")); // old row does not bleed
         let c = enc_entity(e.entity_at(2).expect("new entity"));
         assert_eq!(e.attr_f64(c, "height"), Some(99.0));
         assert_eq!(e.attr_str(c, "name"), Some("towerC"));
-        assert_eq!(e.attr_bool(old, "active"), Some(true)); // 跨 doc 列隔离
+        assert_eq!(e.attr_bool(old, "active"), Some(true)); // column isolation across docs
     }
 }
 
 #[cfg(test)]
 mod mut_spec_tests {
-    //! CAPI-13..16（RED 先行）：显隐过滤 / 查询 / 程序化增 / 删-ABA。
+    //! CAPI-13..16 (RED first): visibility filtering / query / procedural add / delete-ABA.
     use super::*;
     use crate::ffi::enc_entity;
 
@@ -2508,7 +2508,7 @@ mod mut_spec_tests {
 
     fn eng() -> Engine {
         let mut e = Engine::new_headless(160, 120).expect("adapter");
-        assert_eq!(e.load_gltf(TWOPRIM).unwrap(), 2, "twoprim=2 实体");
+        assert_eq!(e.load_gltf(TWOPRIM).unwrap(), 2, "twoprim = 2 entities");
         e
     }
 
@@ -2530,8 +2530,8 @@ mod mut_spec_tests {
     fn clip_filters_pick_retry_and_set_domain() {
         let mut e = Engine::new_headless(160, 120).expect("adapter");
         let (pos, nrm, idx) = quad();
-        // 注：capi pick 域=positions×IDENTITY（origin 住 render 路=既有事实）——
-        // 测试把 z 烘进 positions 令两帧合一，回避该缺口不带病断言
+        // note: the capi pick domain = positions x IDENTITY (origin lives on the render path = established fact) --
+        // the test bakes z into positions to merge the two frames, sidestepping that gap without asserting on borrowed health
         let flat: Vec<[f32; 3]> = pos
             .iter()
             .map(|p| [p[0] * 8.0 - 4.0, p[1] * 8.0 - 4.0, 0.0])
@@ -2563,17 +2563,25 @@ mod mut_spec_tests {
             )
             .expect("back");
         let hitk = |e: &Engine| e.pick(80.0, 60.0).map(enc_entity);
-        assert_eq!(hitk(&e), Some(front), "默认命中前墙");
-        // 世界面 z≤1 保留：前墙(z=2)命中点被裁 → 重试环命中后墙
+        assert_eq!(hitk(&e), Some(front), "default hits the front wall");
+        // world plane z<=1 keeps: the front wall (z=2) hit point is clipped -> the retry loop hits the back wall
         assert_eq!(e.set_clips(&[[0.0, 0.0, -1.0, 1.0]]), Ok(()));
-        assert_eq!(hitk(&e), Some(back), "剖掉前墙必须重试命中后墙（非 miss）");
-        assert_eq!(e.render(), Ok(()), "clip 入帧渲染路通");
+        assert_eq!(
+            hitk(&e),
+            Some(back),
+            "clipping the front wall must retry onto the back wall (not a miss)"
+        );
+        assert_eq!(
+            e.render(),
+            Ok(()),
+            "clip enters the frame and the render path works"
+        );
         assert_eq!(e.clips(), vec![[0.0, 0.0, -1.0, 1.0]]);
-        // n=0 清空=唯一清除形 → 前墙复中
+        // n=0 clear = the only clearing form -> the front wall hits again
         assert_eq!(e.set_clips(&[]), Ok(()));
-        assert_eq!(hitk(&e), Some(front), "清空复原");
+        assert_eq!(hitk(&e), Some(front), "clear restores");
         assert!(e.clips().is_empty());
-        // 退化拒（与 FFI 同源）：零法向/非有限/>4
+        // degenerate rejection (same source as FFI): zero normal / non-finite / >4
         assert!(e.set_clips(&[[0.0, 0.0, 0.0, 1.0]]).is_err());
         assert!(e.set_clips(&[[f64::NAN, 0.0, 0.0, 0.0]]).is_err());
         assert!(e.set_clips(&[[0.0, 1.0, 0.0, 0.0]; 5]).is_err());
@@ -2597,17 +2605,17 @@ mod mut_spec_tests {
           {"type":"Feature","properties":{"text-field":"{name}"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}
         ]}"#;
         let mut e = Engine::new_headless(160, 120).expect("adapter");
-        // 无字体：样式在也零输出（挂载即过，不报错）
+        // no font: styles present yet zero output (mounting passes, no error)
         assert_eq!(e.mount_geo(geo(fc)).unwrap(), 1);
-        assert_eq!(e.label_cmd_count(), 0, "无字体=零标签输出");
-        // 注字体+重装：产表入列
+        assert_eq!(e.label_cmd_count(), 0, "no font = zero label output");
+        // font loaded + reload: table produced into the queue
         e.set_font(DEJAVU).expect("font");
         let mut e2 = Engine::new_headless(160, 120).expect("adapter");
         e2.set_font(DEJAVU).expect("font");
         assert_eq!(e2.mount_geo(geo(fc)).unwrap(), 1);
-        assert_eq!(e2.label_cmd_count(), 1, "一 doc 一标签表命令");
-        assert_eq!(e2.render(), Ok(()), "标签帧渲染路通");
-        // 列在（首行 name 建列）但该行为空→列语义 skip，不落字面量 "{name}" 文本
+        assert_eq!(e2.label_cmd_count(), 1, "one doc one label-table command");
+        assert_eq!(e2.render(), Ok(()), "label-frame render path works");
+        // column present (the first row name built the column) but this row is empty -> column semantics skip, no literal "{name}" text
         let miss = r#"{"type":"FeatureCollection","features":[
           {"type":"Feature","properties":{"text-field":"{name}","name":"X"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}},
           {"type":"Feature","properties":{"text-field":"{name}"},"geometry":{"type":"Point","coordinates":[11.0,51.0]}}
@@ -2615,24 +2623,24 @@ mod mut_spec_tests {
         let mut e3 = Engine::new_headless(160, 120).expect("adapter");
         e3.set_font(DEJAVU).expect("font");
         e3.mount_geo(geo(miss)).unwrap();
-        assert_eq!(e3.label_cmd_count(), 1, "一表合流");
+        assert_eq!(e3.label_cmd_count(), 1, "one table merged");
         assert_eq!(
             e3.label_mark_total(),
             1,
-            "缺值行=skip（X 一片，第二行零片）"
+            "missing-value row = skip (X one patch, second row zero patches)"
         );
-        // 常量文本（列不存在=字面量形）
+        // constant text (column absent = literal form)
         let lit = r#"{"type":"FeatureCollection","features":[
           {"type":"Feature","properties":{"text-field":"Gate"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}
         ]}"#;
         let mut e4 = Engine::new_headless(160, 120).expect("adapter");
         e4.set_font(DEJAVU).expect("font");
         e4.mount_geo(geo(lit)).unwrap();
-        assert_eq!(e4.label_cmd_count(), 1, "字面量文本产标");
+        assert_eq!(e4.label_cmd_count(), 1, "literal text produces a label");
     }
 
     impl Engine {
-        /// extra_cmds 中标签命令数（GEO-25 零输出/宿主自省口）。
+        /// quad count among the labels in extra_cmds (GEO-25 zero-output / host introspection entry).
         #[must_use]
         pub fn label_cmd_count(&self) -> usize {
             self.extra_cmds
@@ -2641,7 +2649,7 @@ mod mut_spec_tests {
                 .count()
         }
 
-        /// 标签表总 quad 数（列/字面量语义分辨口，宿主可自省）。
+        /// total quads of the label table (column/literal semantics resolution entry, host-inspectable).
         #[must_use]
         pub fn label_mark_total(&self) -> usize {
             self.backend.label_mark_total()
@@ -2652,23 +2660,26 @@ mod mut_spec_tests {
     #[test]
     fn fly_to_wallclock_advance_cancel_and_reroute() {
         let mut e = Engine::new_headless(160, 120).expect("adapter");
-        // dur=0 = 瞬移形（立即落位非错误）；near/far 恒现值 [A1]
+        // dur=0 = teleport form (immediate landing, not an error); near/far stay at current values [A1]
         let near0 = e.rig.near;
         assert!(
             e.fly_to([1.0, 2.0, 3.0], 0.3, 0.2, 12.0, 25.0, 1.0, 0)
                 .is_ok()
         );
-        assert!(e.fly_state_done(), "瞬移后即 done");
-        assert!((e.rig.target[0] - 1.0).abs() < 1e-9, "瞬移落位");
-        assert!((e.rig.near - near0).abs() < 1e-12, "near 恒 from 现值");
-        // 域拒：dist<=0 / 非有限 / fov>=π
+        assert!(e.fly_state_done(), "done right after teleport");
+        assert!((e.rig.target[0] - 1.0).abs() < 1e-9, "teleport lands");
+        assert!(
+            (e.rig.near - near0).abs() < 1e-12,
+            "near stays at the from value"
+        );
+        // domain rejection: dist<=0 / non-finite / fov>=pi
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, -1.0, 25.0, 1.0, 500).is_err());
         assert!(
             e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, f64::NAN, 500)
                 .is_err()
         );
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, 10.0, 25.0, 4.0, 500).is_err());
-        // 起飞 200ms：进度单调 → 到达落位精确（t>=1 直返 to 原值）
+        // takeoff 200ms: progress monotonic -> arrival lands exact (t>=1 returns the to original value directly)
         assert!(
             e.fly_to([5.0, 5.0, 0.0], 0.7, 0.5, 40.0, 30.0, 1.1, 200)
                 .is_ok()
@@ -2678,26 +2689,32 @@ mod mut_spec_tests {
         std::thread::sleep(std::time::Duration::from_millis(120));
         let _ = e.render();
         let p2 = e.fly_progress().unwrap_or(1.0);
-        assert!(p2 >= p1, "进度单调 {p1}->{p2}");
+        assert!(p2 >= p1, "progress monotonic {p1}->{p2}");
         let mut guard = 0;
         while !e.fly_state_done() && guard < 60 {
             let _ = e.render();
             std::thread::sleep(std::time::Duration::from_millis(20));
             guard += 1;
         }
-        assert!((e.rig.target[0] - 5.0).abs() < 1e-9, "到达落位精确");
-        assert!((e.rig.dist - 40.0).abs() < 1e-9, "dist 全量落位");
-        // 输入打断（A 派）：pointer-down cancel → done+无进度+可再飞；键(5)不打断
+        assert!((e.rig.target[0] - 5.0).abs() < 1e-9, "arrival lands exact");
+        assert!((e.rig.dist - 40.0).abs() < 1e-9, "dist fully landed");
+        // input interrupt (A branch): pointer-down cancel -> done + no progress + can re-fly; keys (5) do not interrupt
         assert!(e.fly_to([0.0; 3], 0.0, 0.0, 50.0, 30.0, 1.1, 5000).is_ok());
-        assert!(e.apply_input(5, 0.0, 0.0, 0.0).is_some(), "键输入消费");
-        assert!(!e.fly_state_done(), "键不打断飞行 [定案 A 派]");
+        assert!(
+            e.apply_input(5, 0.0, 0.0, 0.0).is_some(),
+            "key input consumed"
+        );
+        assert!(
+            !e.fly_state_done(),
+            "keys do not interrupt flight [settled A branch]"
+        );
         assert!(
             e.apply_input(2, 10.0, 10.0, 0.0).is_some(),
-            "指针按下仍消费"
+            "pointer press still consumed"
         );
-        assert!(e.fly_state_done(), "cancel 即不在飞（idle/done 合并）");
-        assert!(e.fly_progress().is_none(), "cancel 后无进度");
-        // 改道连续性：leg1 中途 → leg2 from=当前采样 ⇒ 首帧零跳变
+        assert!(e.fly_state_done(), "cancel = not flying (idle/done merged)");
+        assert!(e.fly_progress().is_none(), "no progress after cancel");
+        // reroute continuity: leg1 mid-flight -> leg2 from = current sample => zero first-frame jump
         assert!(
             e.fly_to([9.0, 9.0, 0.0], 0.7, 0.5, 44.0, 30.0, 1.1, 3000)
                 .is_ok()
@@ -2711,7 +2728,10 @@ mod mut_spec_tests {
         );
         let _ = e.render();
         let d = (e.rig.target[0] - mid[0]).abs();
-        assert!(d < 0.5, "改道首帧连续（跳距 {d}）");
+        assert!(
+            d < 0.5,
+            "reroute first frame continuous (jump distance {d})"
+        );
     }
 
     // spec: CAPI-25
@@ -2724,24 +2744,24 @@ mod mut_spec_tests {
             .map(|p| [p[0] * 20.0, p[1] * 20.0, 0.0])
             .collect();
         e.add_mesh(&big, None, &idx, [0.1, 0.6, 0.2, 1.0], [0.0; 3], 1.0, 0.0)
-            .expect("ground"); // 首件位形可=0（CAPI-01 合法分工，成败看 rc——此坑第三见记账）
-        // 域拒三连（fx+fw>1 / zoom 非正 / 脏 NaN）
+            .expect("ground"); // first-piece shape may = 0 (CAPI-01 legal division, success judged by rc -- this pit on the books for the third time)
+        // domain rejection triple (fx+fw>1 / zoom non-positive / dirty NaN)
         assert!(
             e.set_map(Some((0.7, 0.0, 0.4, 0.4)), 40.0).is_err(),
-            "越 1 界须拒"
+            "over the 1 boundary must reject"
         );
         assert!(
             e.set_map(Some((0.7, 0.0, 0.25, 0.25)), 0.0).is_err(),
-            "zoom 域"
+            "zoom domain"
         );
         assert!(
             e.set_map(Some((f32::NAN, 0.0, 0.2, 0.2)), 30.0).is_err(),
-            "frac 域"
+            "frac domain"
         );
-        assert!(e.map_rect().is_none(), "拒后零残留");
-        // navigate 无图=拒（无暗改道）
+        assert!(e.map_rect().is_none(), "zero residue after rejection");
+        // navigate with no map = rejected (no covert reroute)
         assert!(e.navigate_click(150.0, 50.0, 500).is_err());
-        // 开图（右 1/4 竖幅）+ 渲染：map 区与主区皆有内容（非底色像素）
+        // enable the map (right 1/4 portrait strip) + render: both the map region and the main region carry content (non-background pixels)
         e.set_map(Some((0.72, 0.02, 0.26, 0.96)), 30.0)
             .expect("map on");
         e.render().expect("render dual");
@@ -2755,24 +2775,30 @@ mod mut_spec_tests {
         };
         let (main_c, map_c) = (cnt(10, 130), cnt(150, 195));
         println!("PROBE map main={main_c} map={map_c}");
-        assert!(main_c > 200, "主视地面缺席 {main_c}");
-        assert!(map_c > 200, "小图顶视地面缺席 {map_c}");
-        // 路由：小图区按下=消费且位姿不变；主区拖动=yaw 变
+        assert!(main_c > 200, "main-view ground absent {main_c}");
+        assert!(map_c > 200, "minimap top-view ground absent {map_c}");
+        // routing: a press inside the minimap = consumed with the pose unchanged; a drag in the main region = yaw changes
         let yaw0 = e.camera_pose().yaw;
         assert_eq!(
             e.apply_input(2, 180.0, 50.0, 0.0),
             Some(true),
-            "小图按下消费"
+            "minimap press consumed"
         );
         let _ = e.apply_input(1, 190.0, 50.0, 0.0);
-        assert!((e.camera_pose().yaw - yaw0).abs() < 1e-12, "小图拖 no-op");
+        assert!(
+            (e.camera_pose().yaw - yaw0).abs() < 1e-12,
+            "minimap drag no-op"
+        );
         let _ = e.apply_input(2, 60.0, 50.0, 0.0);
         let _ = e.apply_input(1, 90.0, 50.0, 0.0);
-        assert!((e.camera_pose().yaw - yaw0).abs() > 1e-6, "主区拖生效");
-        // 小图 pick 命中地面实体（顶视中心=主 target 附近）
+        assert!(
+            (e.camera_pose().yaw - yaw0).abs() > 1e-6,
+            "main-region drag took effect"
+        );
+        // the minimap pick hits a ground entity (top-view center = near the main target)
         let hit = e.pick(180.0, 50.0);
-        assert!(hit.is_some(), "小图内 pick 须命中");
-        // 关图回旧路（canary 构造位）+ rect 消失
+        assert!(hit.is_some(), "pick inside the minimap must hit");
+        // disable the map back to the old path (canary construction position) + the rect vanishes
         e.set_map(None, 0.0).expect("clear");
         assert!(e.map_rect().is_none());
         e.render().expect("render legacy again");
@@ -2783,7 +2809,7 @@ mod mut_spec_tests {
     fn camera_pose_readback_is_single_source_of_truth() {
         let mut e = Engine::new_headless(160, 120).expect("adapter");
         let p0 = e.camera_pose();
-        // idle 读=稳态；瞬移后读=新值（宿主 HUD 断言面）
+        // idle read = steady state; read after teleport = new value (host HUD assertion face)
         assert!(e.fly_state_done());
         assert!((e.camera_pose().target[0] - p0.target[0]).abs() < 1e-12);
         let tgt = [3.0, 4.0, 0.0];
@@ -2793,9 +2819,9 @@ mod mut_spec_tests {
         assert_eq!(
             [p1.target[0], p1.target[1]],
             [3.0, 4.0],
-            "读回=落位 [CAPI-27]"
+            "readback = landed [CAPI-27]"
         );
-        assert!((p1.dist - p0.dist).abs() < 1e-12, "保距");
+        assert!((p1.dist - p0.dist).abs() < 1e-12, "distance kept");
     }
 
     // spec: CAPI-26
@@ -2811,28 +2837,28 @@ mod mut_spec_tests {
             .expect("ground");
         e.set_map(Some((0.5, 0.0, 0.5, 1.0)), 40.0).expect("map");
         let t0 = e.camera_pose();
-        // 小图左上 1/4 处点击 = 世界 (target + (−0.25·2·zoom_x, +0.25·2·zoom_y))
-        // rect=(100,0,100,100)；local 点击 (25,75)→NDC(−0.5,+0.5)→Δworld(−40, +20·aspect…以 ortho 定义)
+        // click at the minimap upper-left quarter = world (target + (-0.25*2*zoom_x, +0.25*2*zoom_y))
+        // rect=(100,0,100,100); local click (25,75) -> NDC (-0.5,+0.5) -> dworld (-40, +20*aspect... per the ortho definition)
         e.navigate_click(125.0, 75.0, 0).expect("nav teleport");
         let t1 = e.camera_pose();
         assert!(
             (t1.target[0] - t0.target[0]).abs() > 1.0,
-            "target 必移动 got {t1:?}"
+            "target must move got {t1:?}"
         );
-        assert!((t1.target[2]).abs() < 1e-9, "落位 z=0");
+        assert!((t1.target[2]).abs() < 1e-9, "lands at z=0");
         assert!(
             (t1.dist - t0.dist).abs() < 1e-12 && (t1.yaw - t0.yaw).abs() < 1e-12,
-            "保距保角 [裁决 e]"
+            "distance and angle kept [ruling e]"
         );
-        // 区外点击=拒且零改
+        // a click outside the region = rejected with zero change
         let t2 = e.camera_pose();
         assert!(
             e.navigate_click(50.0, 50.0, 0).is_err(),
-            "主视区点击走此口须拒"
+            "main-region clicks through this entry must reject"
         );
         let t3 = e.camera_pose();
         assert!((t3.target[0] - t2.target[0]).abs() < 1e-12);
-        // 带时长的飞：done 收敛 + 位姿=目标
+        // timed flight: done convergence + pose = target
         e.navigate_click(175.0, 25.0, 1).expect("nav fly dur=1ms");
         assert!(!e.fly_state_done() || e.camera_pose().target != t3.target);
         let mut guard = 0;
@@ -2841,27 +2867,35 @@ mod mut_spec_tests {
             std::thread::sleep(std::time::Duration::from_millis(5));
             guard += 1;
         }
-        assert!(e.fly_state_done(), "飞行必到达");
+        assert!(e.fly_state_done(), "flight must arrive");
     }
 
     // spec: CAPI-13
     #[test]
     fn hide_filters_pick_keeps_enumeration() {
         let mut e = eng();
-        let hit = e.pick(80.0, 60.0).expect("中心命中（CAPI-04 族）");
+        let hit = e.pick(80.0, 60.0).expect("center hit (CAPI-04 family)");
         let h = enc_entity(hit);
-        assert_eq!(e.set_visible(h, true), Ok(()), "默认可见域重复设=幂等");
+        assert_eq!(
+            e.set_visible(h, true),
+            Ok(()),
+            "re-setting within the default-visible domain = idempotent"
+        );
         assert_eq!(e.set_visible(h, false), Ok(()));
-        assert_eq!(e.set_visible(h, false), Ok(()), "重复隐藏幂等");
+        assert_eq!(
+            e.set_visible(h, false),
+            Ok(()),
+            "repeated hide is idempotent"
+        );
         assert_ne!(
             e.pick(80.0, 60.0).map(enc_entity).unwrap_or(u64::MAX),
             h,
-            "隐藏后中心不得命中本体"
+            "after hiding, the center must not hit the body itself"
         );
-        assert_eq!(e.entity_count(), 2, "枚举域不变");
+        assert_eq!(e.entity_count(), 2, "enumeration domain unchanged");
         assert!(
             (0..2u32).any(|k| e.entity_at(k) == Some(hit)),
-            "隐藏件仍可枚举"
+            "hidden items are still enumerable"
         );
         assert_eq!(e.is_visible(h), Some(false));
     }
@@ -2871,13 +2905,13 @@ mod mut_spec_tests {
     fn visible_getter_roundtrip_and_unknown() {
         let mut e = eng();
         let h0 = enc_entity(e.entity_at(0).unwrap());
-        assert_eq!(e.is_visible(h0), Some(true), "默认可见");
+        assert_eq!(e.is_visible(h0), Some(true), "visible by default");
         assert_eq!(e.set_visible(h0, false), Ok(()));
         assert_eq!(e.is_visible(h0), Some(false));
         assert_eq!(
             e.is_visible(u64::MAX >> 1),
             None,
-            "未知位形=None（FFI 层投影 -1）"
+            "unknown shape = None (FFI layer projects -1)"
         );
     }
 
@@ -2897,10 +2931,13 @@ mod mut_spec_tests {
                 0.0,
             )
             .expect("add ok");
-        assert_ne!(h, 0, "0=失败哨兵，成功必给位形");
+        assert_ne!(h, 0, "0 = failure sentinel, success must give a shape");
         assert_eq!(e.entity_count(), 3);
-        assert!(e.render().is_ok(), "加入件即入命令流");
-        // 退化三路：索引越界 / 空几何 / normals 长度失配——均无部分提交
+        assert!(
+            e.render().is_ok(),
+            "an added piece enters the command stream"
+        );
+        // degenerate three paths: index out of range / empty geometry / normals length mismatch -- all with no partial commit
         assert!(
             e.add_mesh(&pos, Some(&nrm), &[0, 9, 2], [1.0; 4], [0.0; 3], 1.0, 0.0)
                 .is_err()
@@ -2921,7 +2958,7 @@ mod mut_spec_tests {
             )
             .is_err()
         );
-        assert_eq!(e.entity_count(), 3, "退化零提交");
+        assert_eq!(e.entity_count(), 3, "degenerate = zero commit");
         assert!(e.remove_entity(h).is_ok());
         assert_eq!(e.entity_count(), 2);
     }
@@ -2933,22 +2970,35 @@ mod mut_spec_tests {
         let h0 = enc_entity(e.entity_at(0).unwrap());
         assert_eq!(e.remove_entity(h0), Ok(()));
         assert_eq!(e.entity_count(), 1);
-        assert!(e.remove_entity(h0).is_err(), "旧句柄再入=VE_ERR_ARG 谱");
-        assert_eq!(e.is_visible(h0), None, "已删位形查询同谱拒绝");
+        assert!(
+            e.remove_entity(h0).is_err(),
+            "old handle re-entry = VE_ERR_ARG scheme"
+        );
+        assert_eq!(
+            e.is_visible(h0),
+            None,
+            "a query on a deleted shape rejects the same way"
+        );
         let (pos, nrm, idx) = quad();
         let h_new = e
             .add_mesh(&pos, Some(&nrm), &idx, [1.0; 4], [0.0; 3], 1.0, 0.0)
-            .expect("同槽再_spawn：代际+1 新位形");
-        assert_ne!(h_new, h0, "ABA：旧句柄永不撞新代行");
-        assert!(e.remove_entity(h0).is_err(), "新实体在场，旧句柄仍死");
+            .expect("re-spawn in the same slot: generation+1, new shape");
+        assert_ne!(
+            h_new, h0,
+            "ABA: an old handle never collides into the new generation"
+        );
+        assert!(
+            e.remove_entity(h0).is_err(),
+            "the new entity is present, the old handle stays dead"
+        );
         assert_eq!(e.remove_entity(h_new), Ok(()));
     }
 }
 
 #[cfg(test)]
 mod point_pick_tests {
-    //! B2 REND-38/39 引擎级集成（super-band B2）：add_points → pick 命中点云实体。
-    //! mesh 优先构造保证（REND-39）：有 mesh 命中时点云路零触碰=既有 pick 测试即 canary。
+    //! B2 REND-38/39 engine-level integration (super-band B2): add_points -> pick hits a point-cloud entity.
+    //! The mesh-priority construction guarantee (REND-39): with a mesh hit the point-cloud path stays untouched = existing pick tests serve as canary.
     use super::*;
     use crate::ffi::enc_entity;
 
@@ -2964,7 +3014,7 @@ mod point_pick_tests {
         }
     }
 
-    /// 顶视机位（pitch=90°）：target=origin，点投到屏中心。
+    /// Top-view camera position (pitch=90°): target = origin, points project to the screen center.
     fn rig_over(e: &mut Engine) {
         let _ = e.fly_to(
             [0.0, 0.0, 0.0],

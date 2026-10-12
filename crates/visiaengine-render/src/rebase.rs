@@ -1,8 +1,8 @@
-//! D7 分层 origin 组合律（REND-19/20）：clip = P · view_rot · T(origin−eye) · M_local。
-//! origin、eye 为 f64 世界坐标，其差在 f64 域算完再降 f32——远原点在此相消，
-//! 顶点/中间量恒为小值，规避 f32 大坐标 ulp 吞精度（旧路 world 直 cast 的病）。
+//! D7 layered-origin composition law (REND-19/20): clip = P * view_rot * T(origin-eye) * M_local.
+//! origin and eye are f64 world coordinates; their difference is computed in the f64 domain and only then lowered to f32 -- the far origin cancels here,
+//! vertices and intermediates stay small values, dodging the f32 large-coordinate ulp-swallowed precision (the old road's disease of casting world directly).
 
-/// 组合 MVP（列主序 f32 输出，供 GPU uniform）。
+/// Compose the MVP (column-major f32 output, for the GPU uniform).
 #[must_use]
 pub fn compose_mvp(
     proj: &[[f32; 4]; 4],
@@ -19,7 +19,7 @@ pub fn compose_mvp(
         glam::DVec4::new(d.x, d.y, d.z, 1.0),
     );
     let m_local = glam::DMat4::from_cols_array_2d(model_local);
-    let view_trans = t_local * m_local; // f64 域：origin−eye 平移 ∘ 模型位姿
+    let view_trans = t_local * m_local; // f64 domain: the origin-eye translation composed with the model pose
     let view_trans = [
         view_trans.x_axis,
         view_trans.y_axis,

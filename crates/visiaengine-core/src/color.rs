@@ -1,9 +1,9 @@
-//! sRGB↔线性换算口（CORE-16）。色彩契约的 CPU 半边：宿主/CSS 惯例值=sRGB 编码，
-//! 引擎光照域=线性；GPU 半边由 Srgb 格式硬件承担（render-wgpu），本模块只管标量。
+//! sRGB<->linear conversion entries (CORE-16). The CPU half of the color contract: host/CSS convention values = sRGB encoded,
+//! the engine lighting domain = linear; the GPU half is carried by the Srgb format in hardware (render-wgpu), this module handles scalars only.
 
-/// sRGB 编码色 → 线性光（逐通道，alpha 原样）。IEC 61966-2-1 分段精确式
-/// （阈值 0.04045；线性段 /12.92，幂段 ((c+0.055)/1.055)^2.4）——pow2.2 近似不做，
-/// 端点必须逐位精确（golden 锁值面）。
+/// sRGB-encoded color -> linear light (per channel, alpha as-is). The piecewise-exact IEC 61966-2-1 form
+/// (threshold 0.04045; linear segment /12.92, power segment ((c+0.055)/1.055)^2.4) -- no pow2.2 approximation,
+/// the endpoints must be bit-exact (the golden locked-value face).
 #[must_use]
 pub fn srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
     let f = |v: f32| {
@@ -18,7 +18,7 @@ pub fn srgb_to_linear(c: [f32; 4]) -> [f32; 4] {
     [f(c[0]), f(c[1]), f(c[2]), c[3]]
 }
 
-/// 线性光 → sRGB 编码（逐通道，alpha 原样；CORE-16 逆口，供读回/调试与换算自检）。
+/// Linear light -> sRGB encoding (per channel, alpha as-is; the CORE-16 inverse entry, for readback/debug and conversion self-check).
 #[must_use]
 pub fn linear_to_srgb(c: [f32; 4]) -> [f32; 4] {
     let f = |v: f32| {

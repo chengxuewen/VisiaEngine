@@ -1,7 +1,7 @@
-//! E901 · 垂直切片 seed·孪生城 —— park.geojson 底图 × instanced 城 × PCSS 软影 × PNG 人检图。
-//! 批 4 全成果面（4ab/4c/4de/4f）一图流；PNG 落盘 target/twin_city.png（T3 人检清单）。
-//! 双模（E501 同制）：无参=常驻交互窗（左键拖=轨道 滚轮=远近 关窗退出）；
-//! `--frames N`=离屏单帧+断言+PNG（ctest 注册形/smoke-twin-city）。
+//! E901 · vertical-slice seed, twin city -- park.geojson basemap x instanced city x PCSS soft shadows x PNG human-check image.
+//! Batch 4's full outcome face (4ab/4c/4de/4f) in one picture; the PNG lands at target/twin_city.png (the T3 human-check list).
+//! Dual mode (same system as E501): no args = resident interactive window (left-drag = orbit, wheel = distance, close to exit);
+//! `--frames N` = offscreen single frame + assertions + PNG (the ctest-registered form/smoke-twin-city).
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -25,7 +25,7 @@ use winit::window::WindowId;
 
 const W: u32 = 640;
 const H: u32 = 480;
-const SIDE: usize = 16; // 16²=256 栋（park 实尺 93×31m，城 32×32m 置中）
+const SIDE: usize = 16; // 16^2 = 256 blocks (park real scale 93x31m, the city 32x32m centered)
 const ID64: [[f64; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
@@ -33,8 +33,8 @@ const ID64: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// 两路共用的资源构造脸（MeshId/MaterialId/TableId/InstanceId 皆 u64 位形，直接转发）。
-/// 本例内小 trait（orphan 规则合法），第四消费者出现时再议上位 render-wgpu。
+/// The resource-construction face shared by both roads (MeshId/MaterialId/TableId/InstanceId are all u64 shapes, forwarded directly).
+/// A small trait inside this example (legal under the orphan rule); revisit promotion into render-wgpu when a fourth consumer appears.
 trait Ctor {
     fn mesh(&mut self, d: &MeshDesc<'_>) -> Result<u64, BackendError>;
     fn material(&mut self, rgba: [f32; 4]) -> Result<u64, BackendError>;
@@ -84,7 +84,7 @@ impl Ctor for MeshCore {
     }
 }
 
-/// 底图：park.geojson（fills/strokes/markers 全族，geo_viewer 同款转换）→ 命令表 + 层原点。
+/// The basemap: park.geojson (the fills/strokes/markers full families, the geo_viewer-style conversion) -> command table + layer origin.
 fn geo_layer<C: Ctor>(c: &mut C) -> (Vec<DrawCommand>, [f64; 3]) {
     let doc = visiaengine_geo::load_geojson(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -178,7 +178,7 @@ fn city() -> Vec<Instance> {
         .flat_map(|gy| {
             (0..SIDE).map(move |gx| {
                 let i = gx + gy * SIDE;
-                let h = 1.6 + (i * 7919 % 11) as f32 * 1.15; // 1.6~13m 塔群
+                let h = 1.6 + (i * 7919 % 11) as f32 * 1.15; // a 1.6~13m tower cluster
                 let v = 0.72 + (i * 104729 % 7) as f32 * 0.03;
                 Instance::new(
                     [
@@ -194,7 +194,7 @@ fn city() -> Vec<Instance> {
         .collect()
 }
 
-/// 地面+城资源上传 → 追加命令（geo 层之后；两路同源）。
+/// Ground + city resource upload -> appended commands (after the geo layer; both roads one source).
 fn ground_city<C: Ctor>(c: &mut C, origin: [f64; 3], cmds: &mut Vec<DrawCommand>) -> usize {
     let ground = c
         .mesh(&MeshDesc {
@@ -249,7 +249,7 @@ fn ground_city<C: Ctor>(c: &mut C, origin: [f64; 3], cmds: &mut Vec<DrawCommand>
     city.len()
 }
 
-/// 太阳（PCSS 软影）：西南高角，light 正交框随视口比例（同 E501 位形参数）。
+/// The sun (PCSS soft shadows): south-west high angle, the light's orthographic box scales with the viewport (same position parameters as E501).
 fn shadow_setup(origin: [f64; 3], w: u32, h: u32) -> ShadowSetup {
     let ld = [0.35f32, 0.5, 0.79];
     let nn = (ld[0] * ld[0] + ld[1] * ld[1] + ld[2] * ld[2]).sqrt();
@@ -271,9 +271,10 @@ fn shadow_setup(origin: [f64; 3], w: u32, h: u32) -> ShadowSetup {
     }
 }
 
-// ── headless 路（CI 契约原样：单帧 + 亮暗族断言 + PNG 落盘 + OK 行）────────────
+// -- headless road (CI contract as-is: single frame + bright/dark family assertions + PNG save + OK line) --
 fn headless_run() {
-    let mut b = HeadlessBackend::new(W, H).expect("adapter（无 GPU 环境如实报错）");
+    let mut b = HeadlessBackend::new(W, H)
+        .expect("adapter (report honestly when there is no GPU environment)");
     let mut commands = vec![DrawCommand::ClearColor {
         rgba: [0.30, 0.45, 0.70, 1.0],
     }];
@@ -292,7 +293,7 @@ fn headless_run() {
         view_rot: rig.view_rotation(),
         eye: rig.eye(),
         proj,
-        px_world_scale: 0.14, // 480px / ~66m 视高 @ 参考深度
+        px_world_scale: 0.14, // 480px / ~66m view height @ reference depth
         shadow: Some(shadow_setup(origin, W, H)),
         clip: None,
         edl: None,
@@ -302,37 +303,39 @@ fn headless_run() {
     let img = b.render_to_pixels(&frame).expect("render");
     gallery::save_frame(&img, "E901_twin_city");
 
-    // ---- PNG 人检落盘 + 行为自检（城+底图+影斑三族）----
+    // ---- PNG human-check save + behavior self-check (the city + basemap + shadow-patch three families) ----
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/twin_city.png");
     image::RgbaImage::from_raw(W, H, img.rgba.clone())
         .expect("rgba len")
         .save(path)
         .expect("png save");
     let mut dark = 0u64;
-    let mut bright = 0u64; // 影调族=影地+楼暗面（前景长影带）；亮族=向阳顶/侧面
+    let mut bright = 0u64; // tone family = shadowed ground + tower dark faces (the long foreground shadow band); bright = sunlit tops/side faces
     for p in img.rgba.as_chunks::<4>().0.iter() {
         let (r, g, bl) = (p[0], p[1], p[2]);
         if r > 150 && g > 150 && bl > 150 {
-            bright += 1; // 楼体浅色族（v∈[0.72,0.9]×shade）
+            bright += 1; // the tower light-color family (v in [0.72,0.9] x shade)
         }
         let lum = r as u32 + g as u32 + bl as u32;
         if lum < 240 && r > 10 && bl.abs_diff(r) < 14 {
-            dark += 1; // 影斑族=ambient×灰蓝地的近中性低亮（天空 clear lum=381 天然排除）
+            dark += 1; // the shadow-patch family = ambient x gray-blue ground, near-neutral low brightness (the sky clear lum = 381 is naturally excluded)
         }
     }
-    assert!(bright > 120, "楼体亮色面不足 {bright}");
-    assert!(dark > 30, "影斑缺席 {dark}");
+    assert!(bright > 120, "tower bright faces insufficient {bright}");
+    assert!(dark > 30, "shadow patches absent {dark}");
     println!(
         "OK twin_city {} buildings, bright={bright} dark={dark} -> {path}",
         n
     );
-    println!("T3 人检：打开上述 PNG 核 ①楼宇阴影落在光反侧 ②底图描边/圆点无 z-fight ③半影软边");
     println!(
-        "T3 人检（交互窗形）：无参=常驻窗——C 开剖切（影随刀塌）[/] 刀高 ±1m L 标签开关 拖=轨道 滚轮=远近"
+        "T3 human check: open the PNG above and verify (1) tower shadows fall on the anti-light side (2) basemap strokes/dots without z-fight (3) soft penumbra edges"
+    );
+    println!(
+        "T3 human check (window form): no args = resident window -- C toggles the clip (shadows collapse with the knife) [/] knife height +/- 1m, L toggles labels, drag = orbit, wheel = distance"
     );
 }
 
-// ── 交互路（人工检验面：MeshCore 直渲 surface，同场景同阴影——E501 同制）───────
+// -- interactive road (human verification face: MeshCore renders straight to the surface, same scene same shadows -- same system as E501) --
 struct App {
     ctx: Option<Ctx>,
     core: Option<MeshCore>,
@@ -341,7 +344,7 @@ struct App {
     origin: [f64; 3],
     commands: Vec<DrawCommand>,
     frames_left: Option<u32>,
-    /// 交互收口带（D17-h）：C=剖切开关 [/]=刀高 ±1m，L=标签显隐，Esc=退出
+    /// The interactive control band (D17-h): C = clip toggle, [/] = knife height +/- 1m, L = label visibility, Esc = exit
     label_cmds: Vec<DrawCommand>,
     show_labels: bool,
     clip_h: Option<f32>,
@@ -354,7 +357,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E901 孪生城 · 左键拖=轨道 滚轮=远近 关窗退出",
+            "VisiaEngine E901 twin city · left-drag = orbit, wheel = distance, close to exit",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -362,15 +365,15 @@ impl ApplicationHandler for App {
             event_loop.exit();
             return;
         };
-        // 场景上传（与 headless 路同源函数）
+        // scene upload (the same-source function as the headless road)
         let mut commands = vec![DrawCommand::ClearColor {
             rgba: [0.30, 0.45, 0.70, 1.0],
         }];
         let (geo_cmds, origin) = geo_layer(&mut core);
         commands.extend(geo_cmds);
         ground_city(&mut core, origin, &mut commands);
-        // 三塔屋顶标注（表+atlas 构造；基础命令不含标签——redraw 帧按 L 开关拼接）。
-        // 字体缺失=整段静默降级（demo 容灾，非错误路径）。
+        // three tower-rooftop labels (table + atlas construction; the base commands carry no labels -- redraw frames splice per the L toggle).
+        // missing font = the whole section silently downgrades (a demo disaster tolerance, not an error path).
         let label_cmds = FontFace::from_bytes(
             &std::fs::read(concat!(
                 env!("CARGO_MANIFEST_DIR"),
@@ -463,7 +466,7 @@ impl ApplicationHandler for App {
                     cmds.extend(self.label_cmds.iter().cloned());
                 }
                 let clip = self.clip_h.and_then(|h| {
-                    // 世界面 z≤h 保留（n=(0,0,-1), d=h）：楼体逐层削显+影随刀塌
+                    // the world plane z <= h keeps (n = (0,0,-1), d = h): towers shave layer by layer and shadows collapse with the knife
                     ClipSetup::new(&[[0.0, 0.0, -1.0, f64::from(h)]])
                 });
                 let frame = Frame {
@@ -472,7 +475,7 @@ impl ApplicationHandler for App {
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
-                    px_world_scale: 0.14, // 参考深度不变（E501 同制：窗 resize 不重标线宽）
+                    px_world_scale: 0.14, // the reference depth stays (same system as E501: window resize does not re-scale line widths)
                     shadow: Some(shadow_setup(
                         self.origin,
                         ctx.config.width,
@@ -507,7 +510,7 @@ impl App {
     fn set_title(&self) {
         if let Some(ctx) = &self.ctx {
             ctx.window.set_title(&format!(
-                "E901 孪生城 · C={} [/]={:.1}m · L={} · 拖=轨道 滚轮=远近 Esc=退出",
+                "E901 twin city · C={} [/]={:.1}m · L={} · drag = orbit, wheel = distance, Esc = exit",
                 if self.clip_h.is_some() { "ON" } else { "OFF" },
                 self.clip_h.unwrap_or(0.0),
                 if self.show_labels { "ON" } else { "OFF" },
@@ -572,7 +575,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     if frames.is_some() {
-        headless_run(); // CI 路：单帧断言即退（N 在 smoke 语境=单帧契约）
+        headless_run(); // the CI road: a single-frame assertion then exit (N in the smoke context = the single-frame contract)
         return Ok(());
     }
     let (cx, cy) = {

@@ -1,5 +1,5 @@
-//! E201 · 数据装载·glTF —— io-gltf × MeshCore 合流 + 键盘轨道（4 连招：装载→属性(E203)→样式→IO）。
-//! 用法: cargo run --example E201_load_gltf [path.glb] [--frames N]（smoke: N=3 自动退出）
+//! E201 · data loading, glTF —— io-gltf x MeshCore confluence + keyboard orbit (the 4-combo: load -> attributes(E203) -> style -> IO).
+//! Usage: cargo run --example E201_load_gltf [path.glb] [--frames N] (smoke: N = 3 auto-exit)
 
 use examples::viewer::{Ctx, FormatPolicy, orbit_drag, zoom_dist};
 
@@ -12,7 +12,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::WindowId;
 
-/// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
+/// Upload-time decomposition record: mesh, material, world origin, origin-local pose (D7).
 type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
 
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
@@ -22,7 +22,7 @@ struct App {
     core: Option<MeshCore>,
     dragging: Option<(f64, f64)>,
     rig: CameraRig,
-    statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
+    statics: Vec<DrawRecord>, // mesh, material, origin, local pose (the D7 decomposition)
     frames_left: Option<u32>,
     glb_path: String,
 }
@@ -73,7 +73,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E201 · glTF（左键拖=轨道 滚轮=缩放 WASD/QE 关窗退出）",
+            "VisiaEngine E201 · glTF (left-drag = orbit, wheel = zoom, WASD/QE, close to exit)",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -81,7 +81,7 @@ impl ApplicationHandler for App {
             event_loop.exit();
             return;
         };
-        // 场景上传：每个 glTF 实体 → mesh + material
+        // Scene upload: each glTF entity -> mesh + material
         let doc = match load_gltf(self.glb_path()) {
             Ok(d) => d,
             Err(e) => {
@@ -90,7 +90,7 @@ impl ApplicationHandler for App {
                 return;
             }
         };
-        // GLTF-11 纹理槽位 → GPU 纹理（image 槽位序，与 capi mount 同构）
+        // GLTF-11 texture slots -> GPU textures (image slot order, isomorphic with the capi mount)
         let mut tex_ids = Vec::with_capacity(doc.textures().len());
         for t in doc.textures() {
             match core.upload_texture(&visiaengine_render::TextureDesc {
@@ -120,7 +120,7 @@ impl ApplicationHandler for App {
                 base_color: e.mesh.base_color,
                 texture: e.mesh.texture.and_then(|s| tex_ids.get(s).copied()),
                 repeat: [1.0, 1.0],
-                // mock-up [4ab①]：(1-metallic)*roughness（WGPU-14 Lambert 系数）
+                // mock-up [4ab-1]: (1-metallic)*roughness (the WGPU-14 Lambert coefficient)
                 specular: (1.0 - e.mesh.metallic_factor) * e.mesh.roughness_factor,
                 roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
                 metallic: 0.0,
@@ -128,7 +128,7 @@ impl ApplicationHandler for App {
             let Ok(mat) = core.upload_material_desc(&mat) else {
                 continue;
             };
-            // D7：world 4x4 分解 = 平移列 origin + 纯位姿 local
+            // D7: the world 4x4 decomposition = the translation column origin + a pure local pose
             let mut origin = [e.world[3][0], e.world[3][1], e.world[3][2]];
             let _ = &mut origin;
             let local = {
@@ -139,12 +139,12 @@ impl ApplicationHandler for App {
             self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
-        // 装载期取景拟合（BBox 门）：target=场景中心、dist=半径×2.8——任意 glb 均成景
+        // Load-time framing fit (the BBox gate): target = scene center, dist = radius x 2.8 -- any glb forms a scene
         let r = bbox.radius();
         self.rig.target = bbox.center();
         self.rig.dist = r * 2.2;
         self.rig.zoom = (r * 1.2).max(0.2);
-        self.rig.pitch = self.rig.pitch.max(0.95); // 薄平面场景：低俯角=贴地细条（扫描实锤 .35→红仅 205px）
+        self.rig.pitch = self.rig.pitch.max(0.95); // thin-plane scenes: a low depression angle = a ground-hugging sliver (scan proof .35 -> red only 205px)
         self.core = Some(core);
         self.ctx = Some(ctx);
         if let Some(ctx) = &self.ctx {

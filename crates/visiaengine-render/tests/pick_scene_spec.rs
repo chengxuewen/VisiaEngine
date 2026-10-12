@@ -1,9 +1,9 @@
-//! REND-23/24：场景级拾取编排（bbox 即算剪除 + 最近命中 + transform 合成）。
+//! REND-23/24: scene-level pick orchestration (bbox compute-on-demand culling + nearest hit + transform composition).
 
 use visiaengine_core::{Ray, Scene, Vec3};
 use visiaengine_render::{MeshCandidate, PickHit, pick_meshes};
 
-/// 单位立方体（±1），12 三角 CCW 外向。
+/// Unit cube (±1), 12 triangles CCW outward.
 #[must_use]
 fn cube() -> (Vec<[f32; 3]>, Vec<u32>) {
     let p = |x: f32, y: f32, z: f32| [x, y, z];
@@ -17,10 +17,10 @@ fn cube() -> (Vec<[f32; 3]>, Vec<u32>) {
         p(1., 1., 1.),
         p(-1., 1., 1.),
     ];
-    // 6 面 ×2 三角（外向 CCW 约定与 MT 正面口一致）
+    // 6 faces x 2 triangles (the outward CCW convention agrees with the MT front-face entry)
     let idx: &[&[u32]] = &[
         &[0, 2, 1],
-        &[0, 3, 2], // -z 面（朝 -z 视点正对）
+        &[0, 3, 2], // -z face (facing squarely a viewpoint at -z)
         &[4, 5, 6],
         &[4, 6, 7], // +z
         &[0, 1, 5],
@@ -56,9 +56,9 @@ fn nearest_wins_pruning_and_miss() {
     let mut scene = Scene::new();
     let e7 = scene.spawn();
     let e9 = scene.spawn();
-    // 射线自 z=10 下俯：dz=5 箱顶 z=6 距视点更近（4），dz=1 顶 z=2（8）
-    let near = translated(0.0, 0.0, 5.0); // z∈[4,6]，视点近侧
-    let far = translated(0.0, 0.0, 1.0); // z∈[0,2]，远侧
+    // ray diving from z = 10: dz = 5 box top z = 6 is nearer to the viewpoint (4), dz = 1 top z = 2 (8)
+    let near = translated(0.0, 0.0, 5.0); // z in [4,6], the viewpoint-near side
+    let far = translated(0.0, 0.0, 1.0); // z in [0,2], the far side
     let cands = [
         MeshCandidate {
             entity: e7,
@@ -77,15 +77,21 @@ fn nearest_wins_pruning_and_miss() {
         origin: Vec3::new(0.0, 0.0, 10.0),
         dir: Vec3::new(0.0, 0.0, -1.0),
     };
-    let hit: PickHit = pick_meshes(ray, &cands).expect("中心必命中");
-    assert_eq!(hit.entity, e7, "近件胜");
-    assert!((hit.t - 4.0).abs() < 1e-9, "近侧顶面 z=6 → t=4");
+    let hit: PickHit = pick_meshes(ray, &cands).expect("the center must hit");
+    assert_eq!(hit.entity, e7, "the near piece wins");
+    assert!(
+        (hit.t - 4.0).abs() < 1e-9,
+        "the near-side top face z = 6 -> t = 4"
+    );
     assert!((hit.point.z - 6.0).abs() < 1e-9);
-    // 移除近件 → 远件浮出
-    let hit2 = pick_meshes(ray, &cands[1..]).expect("远件");
+    // removing the near piece surfaces the far piece
+    let hit2 = pick_meshes(ray, &cands[1..]).expect("the far piece");
     assert_eq!(hit2.entity, e9);
-    assert!((hit2.t - 8.0).abs() < 1e-9, "移除近侧后顶 z=2 → t=8");
-    // 全旁路 → None
+    assert!(
+        (hit2.t - 8.0).abs() < 1e-9,
+        "after removing the near side, top z = 2 -> t = 8"
+    );
+    // all bypassed -> None
     let side = Ray {
         origin: Vec3::new(99.0, 99.0, 10.0),
         dir: Vec3::new(0.0, 0.0, -1.0),
@@ -100,7 +106,7 @@ fn transform_scale_and_empty_inputs() {
     let mut scene = Scene::new();
     let e1 = scene.spawn();
     let e2 = scene.spawn();
-    // 2× 缩放（对角）：局部 ±1 → 世界 ±2，-z 面 z=-2
+    // 2x scale (diagonal): local ±1 -> world ±2, the -z face at z = -2
     let scaled = [
         [2.0, 0.0, 0.0, 0.0],
         [0.0, 2.0, 0.0, 0.0],
@@ -117,10 +123,10 @@ fn transform_scale_and_empty_inputs() {
         origin: Vec3::new(0.5, 0.5, 10.0),
         dir: Vec3::new(0.0, 0.0, -1.0),
     };
-    let hit = pick_meshes(ray, &cands).expect("缩放件命中");
-    // 正面口语义：自 +z 下俯先撞缩放后 +z 面（z=2）→ t=8（背面 -z 若可达为 12）
-    assert!((hit.t - 8.0).abs() < 1e-9, "+z 面在 z=2 → t=8");
-    // 空几何候选不 panic（positions/indices 空）
+    let hit = pick_meshes(ray, &cands).expect("scaled piece hit");
+    // front-face semantics: diving from +z strikes first the post-scale +z face (z = 2) -> t = 8 (the back face -z would be reachable at 12)
+    assert!((hit.t - 8.0).abs() < 1e-9, "the +z face at z = 2 -> t = 8");
+    // empty-geometry candidates do not panic (empty positions/indices)
     let empty = [MeshCandidate {
         entity: e2,
         positions: &[],

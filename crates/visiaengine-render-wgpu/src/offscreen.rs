@@ -1,8 +1,8 @@
-//! L1 离屏渲染：无表面三角形 + 回读（golden 测试消费；CI lavapipe 必绿面）。
+//! L1 offscreen rendering: surface-less triangles + readback (consumed by golden tests; the must-green CI lavapipe face).
 
 use wgpu::util::DeviceExt as _;
 
-/// 一帧回读结果（RGBA8，行距由 width*4 天然 256 对齐于 640）。
+/// One frame's readback result (RGBA8; the row pitch width*4 is naturally 256-aligned at 640).
 pub struct OffscreenFrame {
     pub width: u32,
     pub height: u32,
@@ -10,15 +10,15 @@ pub struct OffscreenFrame {
 }
 
 const CLEAR: wgpu::Color = wgpu::Color {
-    // CORE-16：srgb 目标 load=线性域——此为 CSS(0.05,0.07,0.10) 的 srgb_to_linear
-    // 字面量钉（const 无法调用换算口；改值须同步过 CORE-16 双口）。
+    // CORE-16: the srgb target load = linear domain -- this is the srgb_to_linear of CSS (0.05,0.07,0.10)
+    // literal pin (a const cannot call the conversion entry; changing the value must pass the CORE-16 dual entries in sync).
     r: 0.003872,
     g: 0.007894,
     b: 0.012201,
     a: 1.0,
 };
 
-// 覆盖中心像素的红三角（NDC）
+// the red triangle covering the center pixel (NDC)
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
@@ -41,7 +41,7 @@ const VERTICES: [Vertex; 3] = [
     },
 ];
 
-/// 离屏渲染 640×480 红三角；无适配器返回 None（可报告状态）。
+/// Offscreen-render a 640x480 red triangle; no adapter returns None (a reportable state).
 #[must_use]
 pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
     let width: u32 = 640;
@@ -134,7 +134,7 @@ pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
             })],
             ..Default::default()
         });
-        // v30 规范对齐：draw/set_* 状态属于 render pass 作用域
+        // v30 spec alignment: draw/set_* state belongs to the render-pass scope
         pass.set_pipeline(&pipeline);
         pass.set_vertex_buffer(0, vbuf.slice(..));
         pass.draw(0..3, 0..1);
@@ -176,7 +176,7 @@ pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
         let _ = sender.send(res);
     });
     let _ = device.poll(wgpu::PollType::wait_indefinitely());
-    // v30：map_async 为回调式，poll 完成后 channel 即有 Result<Result<..>>
+    // v30: map_async is callback-style; once the poll completes the channel holds the Result<Result<..>>
     receiver
         .recv()
         .ok()?
@@ -194,7 +194,7 @@ pub fn render_offscreen_triangle() -> Option<OffscreenFrame> {
     })
 }
 
-/// 24 顶点/36 索引标准立方（每面独立法线；边长 1.0 居中原点）。
+/// The standard cube of 24 vertices / 36 indices (per-face normals; edge 1.0 centered at the origin).
 #[must_use]
 pub fn cube_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let faces: [([f32; 3], [[f32; 3]; 4]); 6] = [
@@ -267,12 +267,12 @@ pub fn cube_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     (pos, nrm, idx)
 }
 
-/// 单位盒：xy∈[-0.5,0.5]、**z∈[0,1] 底对齐**（WGPU-16 挤出语义的几何前提），
-/// 4 面 16 顶点/24 索引（底面省略——顶视/斜视永远不可见，白模压力例体积减半）。
-/// tests/instances.rs 与 examples/bench_twin.rs 双消费（DRY，[E3D:A5] 教学件同区）。
-/// 绕序=外法向 CCW（2026-09-17 E402 带挖出的存量雷：出生即反绕——GPU 路 cull
-/// 默认关而不可见，pick 正面规则 REND-23 一消费 winding 即 down 射线全 miss。
-/// 本行语义=拾取/未来装 cull 的唯一正确形，勿回退）。
+/// The unit box: xy in [-0.5,0.5], **z in [0,1] bottom-aligned** (the geometric precondition of the WGPU-16 extrusion semantics),
+/// 4 faces 16 vertices / 24 indices (bottom omitted -- never visible from top/oblique views, the white-model stress case halves the volume).
+/// Double consumption by tests/instances.rs and examples/bench_twin.rs (DRY, [E3D:A5] teaching-piece same zone).
+/// Winding = outward-normal CCW (the pre-existing mine unearthed in the 2026-09-17 E402 band: born reversed -- the GPU road's cull
+/// defaults off so it stayed invisible, and once pick follows the front-face rule REND-23 with winding, every downward ray misses.
+/// This line's semantics = the only correct form for picking / future cull installation, do not regress).
 #[must_use]
 pub fn unit_box_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let faces: [([f32; 3], [[f32; 3]; 4]); 4] = [
@@ -327,13 +327,13 @@ pub fn unit_box_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     (pos, nrm, idx)
 }
 
-/// 离屏渲染 640×480 单立方（正交正面，L1 golden 入口；无适配器=None）。
+/// Offscreen-render a single 640x480 cube (orthographic front, the L1 golden entry; no adapter = None).
 #[must_use]
 pub fn render_offscreen_cube(base_color: [f32; 4]) -> Option<OffscreenFrame> {
     render_offscreen_cube_at_with(base_color, [0.0; 3])
 }
 
-/// 立方在 offset 远点仍与原点渲染像素一致（WGPU-10：相机随至 10m 前，f64 相消）。
+/// The cube still renders pixel-identically at a far offset point (WGPU-10: the camera follows to 10m away, cancellation in f64).
 #[must_use]
 pub fn render_offscreen_cube_at(offset: [f64; 3]) -> Option<OffscreenFrame> {
     render_offscreen_cube_at_with([1.0, 0.0, 0.0, 1.0], offset)

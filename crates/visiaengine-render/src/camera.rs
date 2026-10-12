@@ -1,31 +1,31 @@
-//! 相机数学（CPU 面，glam 内部实现，矩阵裸数据出型——REND-09 同款纪律）。
-//! 变体声明（REND-11）：投影深度取 **wgpu 原生 [0,1] 约定**（clip z/w ∈ [0,1]）。
-//! 教训（G2 golden 实锤）：GL [-1,1] 变体在近处产生负深度→**硬件裁剪整帧静默无形**
-//! （无验证报错的几何死亡）。投影矩阵构造因此在此处手建并以 REND-11/12 行为断言锁死。
+//! Camera math (CPU face, glam as the internal implementation, matrices exported as bare data -- the same discipline as REND-09).
+//! Variant declaration (REND-11): projection depth takes the **wgpu-native [0,1] convention** (clip z/w in [0,1]).
+//! Lesson (G2 golden proof): the GL [-1,1] variant produces negative depth up close -> **the hardware clips the whole frame silently away**
+//! (geometric death with no validation error). The projection matrix is therefore hand-built here and locked by the REND-11/12 behavior assertions.
 
 use glam::{Mat4, Vec4};
 use visiaengine_core::{Ray, Vec3};
 
-/// f64 列主序 → f32（上传前唯一降位点，显式化避免 cast lint 面）。
+/// f64 column-major -> f32 (the single precision-lowering point before upload, made explicit to dodge the cast-lint face).
 #[must_use]
 fn down(m: [[f64; 4]; 4]) -> [[f32; 4]; 4] {
     m.map(|col| col.map(|v| v as f32))
 }
 
-/// 缓动曲线（REND-34）：f:[0,1]->[0,1] 单调增、端点逐位精确（f(0)=0/f(1)=1）、域外钳制。
-/// flyTo 时钟住 engine，本层纯数学（分层定案=计划 T1）。
+/// Easing curves (REND-34): f:[0,1]->[0,1] monotonic increasing, endpoints bit-exact (f(0)=0/f(1)=1), out-of-domain clamped.
+/// The flyTo clock lives in the engine, this layer is pure math (layering settled = plan T1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Easing {
-    /// 恒等（调试/线性巡览）
+    /// Identity (debug / linear tour)
     Linear,
-    /// smoothstep 3x^2-2x^3：慢起慢收（默认观感，近 MapLibre bezier 族）
+    /// smoothstep 3x^2-2x^3: slow start slow settle (default look, near the MapLibre bezier family)
     CubicInOut,
-    /// 1-(1-x)^3：快起慢收（到达减速落位感）
+    /// 1-(1-x)^3: fast start slow settle (arrival-deceleration landing feel)
     CubicOut,
 }
 
 impl Easing {
-    /// 曲线求值（钳域 + 端点逐位；二次式在 0/1 处即精确）。
+    /// Curve evaluation (clamped domain + bit-exact endpoints; the quadratic is exact at 0/1 by construction).
     #[must_use]
     pub fn ease(self, t: f64) -> f64 {
         let x = t.clamp(0.0, 1.0);
@@ -37,21 +37,21 @@ impl Easing {
     }
 }
 
-/// 轨道相机 rig：target 为中心，yaw/pitch/dist 球面（f64 稳态，输出 f32 矩阵）。
+/// Orbit camera rig: target at the center, yaw/pitch/dist spherical (f64 steady state, f32 matrices out).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CameraRig {
     pub target: [f64; 3],
     pub yaw: f64,
     pub pitch: f64,
     pub dist: f64,
-    /// 正交半宽（zoom 语义，REND-12）。
+    /// Orthographic half-width (zoom semantics, REND-12).
     pub zoom: f64,
     pub fov_y: f64,
     pub near: f64,
     pub far: f64,
 }
 
-/// 深度参数合法性：far>near 且拒 NaN/inf（clippy 偏序取反禁令的正解，REND-14 语义面）
+/// Depth-parameter legality: far > near and NaN/inf rejected (the right answer to the clippy partial-order negation ban, the REND-14 semantics face)
 #[must_use]
 fn depth_ok(near: f32, far: f32) -> bool {
     matches!(far.partial_cmp(&near), Some(std::cmp::Ordering::Greater))
@@ -62,7 +62,7 @@ fn depth_ok(near: f32, far: f32) -> bool {
 const UP: glam::DVec3 = glam::DVec3::new(0.0, 1.0, 0.0);
 
 impl CameraRig {
-    /// 自由 look_at 构造（eye→target 指向自动解算 yaw/pitch/dist）。
+    /// Free look_at construction (the eye->target direction auto-solves yaw/pitch/dist).
     #[must_use]
     pub fn look_at(eye: [f64; 3], target: [f64; 3], _up: [f64; 3]) -> Self {
         let e = glam::DVec3::from(eye);
@@ -86,9 +86,9 @@ impl CameraRig {
         }
     }
 
-    /// 全参轨道构造。**fov_y 单位=弧度**（与 look_at 默认 FRAC_PI_3 / perspective 消费同制；
-    /// 角度制数字直接传入=投影畸变雷，例面三处前科 [2026-09-18 E303 抓档]）。
-    /// 轨道参数构造（正交俯拍常用：pitch=90° 即地图视角）。
+    /// Full-parameter orbit construction. **fov_y unit = radians** (same system as the look_at default FRAC_PI_3 / the perspective consumption;
+    /// feeding degree numbers straight in = a projection-distortion mine, three priors on the case file [2026-09-18 E303 capture]).
+    /// Orbit-parameter construction (common for orthographic top views: pitch = 90 degrees is the map view).
     #[must_use]
     #[allow(clippy::too_many_arguments)]
     pub fn orbit(
@@ -113,11 +113,11 @@ impl CameraRig {
         }
     }
 
-    /// 2D↔3D 切换的参数空间插值（REND-15/16）。
-    /// ponytail: yaw 线性 lerp（demo 域 |Δyaw|<π）；wrap 最短弧待多圈轨道需求再引入。
+    /// Parameter-space interpolation for the 2D<->3D switch (REND-15/16).
+    /// ponytail: yaw linear lerp (demo domain |dyaw| < pi); the wrap shortest arc arrives when multi-loop orbit needs demand it.
     #[must_use]
     pub fn mix_rig(a: &Self, b: &Self, t: f64) -> Self {
-        // 端点恒等快路：浮点 x+(y-x)*1 不保证精确等于 y（REND-16 语义即端点精确）
+        // Endpoint identity fast path: floating x+(y-x)*1 does not guarantee exactly y (the REND-16 semantics are endpoint exactness)
         match t {
             0.0 => return *a,
             1.0 => return *b,
@@ -137,11 +137,11 @@ impl CameraRig {
         }
     }
 
-    /// flyTo 位姿采样（REND-34）：纯函数（墙钟推进器住 engine——宿主零 dt 义务，D8 正解）。
-    /// 最短弧：to.yaw 经 ±2pi 整数倍归一到 from.yaw+delta (delta in (-pi,pi]) 再插值
-    /// （姿态 mod 2pi 等价；小 delta<=pi 零干预纯线性——wrap 修正住采样器，不动 mix_rig）。
-    /// 端点精确快路：t=0/1 直返 from/to 原值（终点 yaw 保原始数，归一只作用途中，REND-16 同谱）。
-    /// near/far 不经飞行输入（CAPI-23 pose 无深度域=恒 from 现值，PIT-5/REND-14 锁连带）。
+    /// flyTo pose sampling (REND-34): pure function (the wall-clock thruster lives in the engine -- zero dt duty for the host, the D8 right answer).
+    /// Shortest arc: to.yaw is normalized over integer +/-2pi into from.yaw + delta (delta in (-pi,pi]) before interpolating
+    /// (poses are mod-2pi equivalent; small delta <= pi passes untouched pure linear -- the wrap correction lives in the sampler, not mix_rig).
+    /// Endpoint-exact fast path: t = 0/1 returns the from/to original values directly (the endpoint keeps the raw yaw, normalization acts mid-flight only, same scheme as REND-16).
+    /// near/far never pass through flight input (CAPI-23 pose carries no depth domain = always the from values, the PIT-5/REND-14 lock linkage).
     #[must_use]
     pub fn fly_sample(from: &Self, to: &Self, t: f64, easing: Easing) -> Self {
         match t {
@@ -167,14 +167,14 @@ impl CameraRig {
         (t + self.dist * glam::DVec3::new(cp * cy, cp * sy, sp)).to_array()
     }
 
-    /// 增量轨道（yaw 绕 Z-up 水平圆，pitch 极点软钳制——REND-13 断言面）。
+    /// Incremental orbit (yaw around the Z-up horizontal circle, pitch softly clamped at the poles -- the REND-13 assertion face).
     pub fn orbit_delta(&mut self, dyaw: f64, dpitch: f64) {
         self.yaw += dyaw;
         self.pitch =
             (self.pitch + dpitch).clamp(-std::f64::consts::FRAC_PI_2, std::f64::consts::FRAC_PI_2);
     }
 
-    /// 纯旋转视图基（REND-17：平移经 eye 走 rebase 组合）。
+    /// Pure-rotation view basis (REND-17: translation rides eye through the rebase composition).
     #[must_use]
     pub fn view_rotation(&self) -> [[f32; 4]; 4] {
         let mut v = self.view_matrix();
@@ -193,7 +193,7 @@ impl CameraRig {
             .to_cols_array_2d(),
         )
     }
-    /// 透视投影（REND-11：RH 深度 [0,1]；退化拒——REND-14）。
+    /// Perspective projection (REND-11: RH depth [0,1]; degenerates rejected -- REND-14).
     #[must_use]
     pub fn perspective(
         &self,
@@ -218,7 +218,7 @@ impl CameraRig {
         )
     }
 
-    /// 正交取景（REND-12：hw=zoom，hh=zoom*h/w；深度 [0,1]，退化拒——REND-14）。
+    /// Orthographic framing (REND-12: hw = zoom, hh = zoom*h/w; depth [0,1], degenerates rejected -- REND-14).
     #[must_use]
     pub fn ortho_frame(
         &self,
@@ -247,7 +247,7 @@ impl CameraRig {
             glam::DMat4::from_cols(
                 glam::DVec4::new(1.0 / hw, 0.0, 0.0, 0.0),
                 glam::DVec4::new(0.0, 1.0 / hh, 0.0, 0.0),
-                glam::DVec4::new(0.0, 0.0, 1.0 / nf, 0.0), // z'=(z+n)/(n-f)：A=1/nf
+                glam::DVec4::new(0.0, 0.0, 1.0 / nf, 0.0), // z' = (z+n)/(n-f): A = 1/nf
                 glam::DVec4::new(0.0, 0.0, near / nf, 1.0),
             )
             .to_cols_array_2d(),
@@ -255,7 +255,7 @@ impl CameraRig {
     }
 }
 
-// ===== REND-21/22：屏幕像素→世界射线（交互片，[E3D:4xx] 移植）=====
+// ===== REND-21/22: screen pixels -> world rays (the interaction slice, [E3D:4xx] port) =====
 
 const UP6: [f64; 3] = [0.0, 1.0, 0.0];
 
@@ -281,7 +281,7 @@ fn vnorm(a: [f64; 3]) -> Option<[f64; 3]> {
     (l > 1e-12).then(|| [a[0] / l, a[1] / l, a[2] / l])
 }
 
-/// 视基（fwd/right/up）。与 look_at 同一世界 UP 约定；极点视角（fwd∥UP）退化 None。
+/// View basis (fwd/right/up). Same world UP convention as look_at; pole views (fwd parallel UP) degenerate to None.
 #[must_use]
 fn view_basis(rig: &CameraRig) -> Option<([f64; 3], [f64; 3], [f64; 3])> {
     let eye = rig.eye();
@@ -294,13 +294,13 @@ fn view_basis(rig: &CameraRig) -> Option<([f64; 3], [f64; 3], [f64; 3])> {
 #[must_use]
 fn ndc(px: f32, py: f32, w: f32, h: f32) -> (f64, f64) {
     (
-        2.0 * f64::from(px) / f64::from(w) - 1.0, // px=0 左缘 → -1
-        1.0 - 2.0 * f64::from(py) / f64::from(h), // py=0 顶缘 → +1（屏幕 y 向下）
+        2.0 * f64::from(px) / f64::from(w) - 1.0, // px = 0 left edge -> -1
+        1.0 - 2.0 * f64::from(py) / f64::from(h), // py = 0 top edge -> +1 (screen y downward)
     )
 }
 
-/// 透视：屏幕像素（左上原点，px∈[0,w]）→ 世界射线（用 rig.fov_y，D7 全程 f64）。
-/// 退化输入（w/h≤0、fov 非法、极点姿态）None。
+/// Perspective: screen pixels (top-left origin, px in [0,w]) -> world ray (uses rig.fov_y, all f64 per D7).
+/// Degenerate input (w/h <= 0, illegal fov) -> None.
 #[must_use]
 pub fn screen_to_ray_persp(rig: &CameraRig, px: f32, py: f32, w: f32, h: f32) -> Option<Ray> {
     let (fwd, right, up) = view_basis(rig)?;
@@ -323,8 +323,8 @@ pub fn screen_to_ray_persp(rig: &CameraRig, px: f32, py: f32, w: f32, h: f32) ->
     })
 }
 
-/// 正交：视平面偏移 origin = eye + right·(hw·nx) + up·(hh·ny)，dir=fwd。
-/// 半宽=rig.zoom，半高=zoom·h/w（REND-12 同一约定）。
+/// Orthographic: view-plane offset origin = eye + right*(hw*nx) + up*(hh*ny), dir = fwd.
+/// (the same REND-12 convention).
 #[must_use]
 pub fn screen_to_ray_ortho(rig: &CameraRig, px: f32, py: f32, w: f32, h: f32) -> Option<Ray> {
     let (fwd, right, up) = view_basis(rig)?;
@@ -345,8 +345,8 @@ pub fn screen_to_ray_ortho(rig: &CameraRig, px: f32, py: f32, w: f32, h: f32) ->
     })
 }
 
-/// REND-37：世界射线 → 地面平面 z=0 求交（导航用；非拾取——拾取走 ray-triangle）。
-/// `t=−o.z/d.z`，`d.z≥−1e-9`（水平/上向/近水平）或 `t≤0`（地面出发向上/背向）=None（域内拒，免 t 爆炸）。
+/// REND-37: world ray -> ground-plane z = 0 intersection (CPU companion of navigate_click; non-finite / parallel = None).
+/// `t=-o.z/d.z`, and `d.z >= -1e-9` (horizontal / upward / near-horizontal) or `t <= 0` (starting from the ground upward / pointing away) = None (domain rejection to avoid t explosion).
 #[must_use]
 pub fn ray_ground_intersect(ray: visiaengine_core::Ray) -> Option<visiaengine_core::Vec3> {
     let (o, d) = (ray.origin, ray.dir);

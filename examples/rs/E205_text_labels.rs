@@ -1,6 +1,6 @@
-//! E205 · 图注文字·标注双模 —— io-text 全链活例（CAPI 同底座：face/cache/layout + 标签管线）。
-//! 双模（E901 同制）：无参=常驻窗（Esc/关窗退）；--frames N=离屏断言快退。
-//! 注：DejaVu 无 CJK 字形——中文路=宿主注 CJK 字体同口（演示如实拉丁，明账）。
+//! E205 · image-caption text, labels in dual mode -- the io-text full-chain living example (same CAPI base: face/cache/layout + the label pipeline).
+//! Dual mode (same system as E901): no args = resident window (Esc/close exits); --frames N = offscreen asserting fast exit.
+//! Note: DejaVu has no CJK glyphs -- the Chinese road = the host injecting a CJK font through the same entry (the demo honestly stays Latin, explicit account).
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -30,7 +30,7 @@ const ID64: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// 双后端上传脸（E901 Ctor 同制小 trait：HeadlessBackend 走 trait 正名、MeshCore 走原生）。
+/// Dual-backend upload face (the small trait of the E901 Ctor same system: HeadlessBackend through the trait's proper name, MeshCore through the native one).
 trait Up {
     fn m(&mut self, d: &MeshDesc<'_>) -> u64;
     fn mt(&mut self, d: &MaterialDesc) -> u64;
@@ -59,7 +59,7 @@ impl Up for MeshCore {
     }
 }
 
-/// 场景构造（headless/窗双路同源）：彩板地面 ×3 + 三段标签。
+/// Scene construction (headless/window two roads one source): colored ground panels x3 + three label segments.
 fn scene(b: &mut impl Up, face: &FontFace, cache: &mut GlyphCache) -> Vec<DrawCommand> {
     let mut cmds = vec![DrawCommand::ClearColor {
         rgba: [0.09, 0.11, 0.16, 1.0],
@@ -99,7 +99,7 @@ fn scene(b: &mut impl Up, face: &FontFace, cache: &mut GlyphCache) -> Vec<DrawCo
             transform: ID64,
         });
     }
-    // 三段标签（大小/色语境各异）：anchor=中心点 pen/2 左移，dx/dy 原样（add_label 同式）
+    // three label segments (sizes/color contexts each different): anchor = center point shifted left by pen/2, dx/dy as-is (same expression as add_label)
     let mut marks = Vec::new();
     for (text, cx, cy, size, col) in [
         ("VISIA", 0.0f32, -2.0f32, 34.0f32, [1.0f32, 1.0, 1.0, 1.0]),
@@ -114,8 +114,8 @@ fn scene(b: &mut impl Up, face: &FontFace, cache: &mut GlyphCache) -> Vec<DrawCo
     ] {
         let (quads, pen) = layout(text, face, cache, size);
         let lin = visiaengine_core::srgb_to_linear(col);
-        // center 对齐=dx 侧平移（px 域）；anchor 恒世界位（units 混用陷阱：pen 是 px
-        // 不可进 world 坐标——E814/hpp/capi 三处同式互证）
+        // center alignment = lateral dx shift (px domain); the anchor stays world-positioned (the units-mixing trap: pen is px
+        // and must not enter world coordinates -- the same expression cross-proved at E814/hpp/capi in three places)
         marks.extend(quads.iter().map(|q| {
             LabelMark::new(
                 [cx, cy, 0.4],
@@ -149,7 +149,7 @@ fn ortho_frame(commands: Vec<DrawCommand>, w: u32, h: u32, zoom: f32) -> Frame {
         proj: rig
             .ortho_frame(zoom, w as f32, h as f32, 0.5, 500.0)
             .expect("ortho"),
-        px_world_scale: 2.0 * zoom / w as f32, // REND-29 精确路：标签恒 px
+        px_world_scale: 2.0 * zoom / w as f32, // the REND-29 exact road: labels stay constant px
         shadow: None,
         clip: None,
         edl: None,
@@ -162,7 +162,7 @@ fn load_face() -> FontFace {
     FontFace::from_bytes(&std::fs::read(FIX).expect("DejaVu fixture")).expect("face")
 }
 
-// ── headless 路（--frames N：断言+OK 行）──────────────────────────────────────
+// -- headless road (--frames N: assertions + OK line) --------------------------------
 fn headless_run(_n: u32) {
     const W: u32 = 240;
     const H: u32 = 180;
@@ -191,12 +191,14 @@ fn headless_run(_n: u32) {
         .filter(|p| p[0] > 150 && p[1] > 150 && p[2] < 120)
         .count();
     println!("PROBE white={white} warm={warm}");
-    assert!(white > 120, "主标签白墨缺席 {white}");
-    assert!(warm > 30, "金色副标签缺席 {warm}");
-    println!("OK text_labels white={white} warm={warm}（三语境标签 atlas 全链通）");
+    assert!(white > 120, "the main label's white ink absent {white}");
+    assert!(warm > 30, "the gold secondary label absent {warm}");
+    println!(
+        "OK text_labels white={white} warm={warm} (three-context labels pass the whole atlas chain)"
+    );
 }
 
-// ── 交互路（无参：常驻窗，Esc/关窗退）─────────────────────────────────────────
+// -- interactive road (no args: resident window, Esc/close exits) ----------------------
 struct App {
     core: Option<MeshCore>,
     ctx: Option<Ctx>,
@@ -211,7 +213,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E205 图注 · Esc/关窗退出（DejaVu 无 CJK=拉丁演示）",
+            "VisiaEngine E205 captions · Esc/close to exit (DejaVu without CJK = Latin demo)",
             960,
             600,
             FormatPolicy::SurfaceDefault,

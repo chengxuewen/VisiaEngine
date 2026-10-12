@@ -1,7 +1,7 @@
-//! E505 · CJK 中文标注 —— io-text 宿主注字体同口（CAPI-21）的中文全链演示。
-//! 双模（E205 同制）：无参=常驻窗（Esc/关窗退）；--frames N=离屏断言快退。
-//! 字体：resources/data/NotoSansSC-demo.otf（OFL 子集，仅演示字形——加字重跑
-//! scripts/gen_cjk_subset.py；全文案见 E505_TEXT 常量）。
+//! E505 · CJK labels -- the Chinese full-chain demo through the io-text host-font entry (CAPI-21).
+//! Dual mode (same system as E205): no args = resident window (Esc/close exits); --frames N = offscreen asserting fast exit.
+//! Font: resources/data/NotoSansSC-demo.otf (an OFL subset, demo glyphs only -- to add weights run
+//! scripts/gen_cjk_subset.py; the full wording is in the E505_TEXT constant).
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -22,7 +22,7 @@ const FIX: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../resources/data/NotoSansSC-demo.otf"
 );
-/// 演示文案（子集字形的覆盖清单=此处的去重字符集）。
+/// Demo wording (the coverage manifest of the subset glyphs = the deduplicated character set here).
 const E505_TEXT: [&str; 4] = ["维视引擎", "中文标注演示", "塔A · 主控", "塔B · 数据中心"];
 const ID64: [[f64; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
@@ -63,7 +63,7 @@ fn scene(up: &mut impl Up, face: &FontFace, glyphs: &mut GlyphCache) -> Vec<Draw
     let mut commands = vec![DrawCommand::ClearColor {
         rgba: [0.05, 0.07, 0.10, 1.0],
     }];
-    // 地面。
+    // Ground.
     let ground = [
         [-6.0f32, -6.0, 0.0],
         [6.0, -6.0, 0.0],
@@ -90,7 +90,7 @@ fn scene(up: &mut impl Up, face: &FontFace, glyphs: &mut GlyphCache) -> Vec<Draw
         origin: [0.0; 3],
         transform: ID64,
     });
-    // 两塔。
+    // Two towers.
     for (x, y, color) in [
         (-2.0f32, -1.0f32, [0.25, 0.45, 0.80, 1.0]),
         (2.0, 1.5, [0.30, 0.65, 0.35, 1.0]),
@@ -131,7 +131,7 @@ fn scene(up: &mut impl Up, face: &FontFace, glyphs: &mut GlyphCache) -> Vec<Draw
             transform: ID64,
         });
     }
-    // CJK 标签（世界锚，白字）。
+    // CJK labels (world anchored, white ink).
     let mut marks: Vec<LabelMark> = Vec::new();
     for (world, text) in [
         ([-2.0, -1.0, 2.9], E505_TEXT[2]),
@@ -193,9 +193,9 @@ fn prove() {
     let face = FontFace::from_bytes(&bytes).expect("face");
     let mut glyphs = GlyphCache::new();
     let mut b = HeadlessBackend::new(480, 320).expect("adapter");
-    // 图集先灌（labels 采样图集纹理——E205 同序）。
+    // fill the atlas first (labels sample the atlas texture -- the same order as E205).
     let cmds = {
-        // layout 已在 scene() 内跑；此处先跑一遍只为了 glyph cache 填充 + 图集上传。
+        // layout already ran inside scene(); running it once more here only to fill the glyph cache + upload the atlas.
         let _ = layout(E505_TEXT[0], &face, &mut glyphs, 30.0);
         let _ = layout(E505_TEXT[1], &face, &mut glyphs, 30.0);
         let _ = layout(E505_TEXT[2], &face, &mut glyphs, 30.0);
@@ -205,7 +205,7 @@ fn prove() {
         scene(&mut b, &face, &mut glyphs)
     };
     let img = b.render_to_pixels(&cam_frame(cmds, 480, 320)).unwrap();
-    // 白字像素门（图集字形采样=白族像素，非背景非地面非塔色）。
+    // white-pixel gate (atlas glyph sampling = white-family pixels, neither background nor ground nor tower color).
     let white: u32 = img
         .rgba
         .as_chunks::<4>()
@@ -272,7 +272,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "E505 CJK 标注（静态演示）— 拖拽视角请用 E901 · Esc 退出",
+            "E505 CJK labels (static demo) -- for drag-to-orbit use E901 · Esc to quit",
             960,
             600,
             FormatPolicy::SurfaceDefault,

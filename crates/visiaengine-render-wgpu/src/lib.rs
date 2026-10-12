@@ -1,11 +1,11 @@
 //! # visiaengine-render-wgpu
 //!
-//! 默认后端（D4 终审：wgpu 直用自研管线）。wgpu 类型止步于本 crate（不变式②）。
+//! The default backend (D4 final ruling: wgpu used directly with the self-built pipeline). wgpu types stop at this crate (invariant 2).
 //!
-//! 分层（docs/sdd/render-wgpu.md）：
-//! - L0 无头面：[`create_instance`] / [`available_adapters`]（WGPU-01/02）
-//! - L1 离屏 golden：offscreen 渲染（S4 片）
-//! - L2 窗口 smoke：`examples/`（`--frames N` 自动退出）
+//! Layering (docs/sdd/render-wgpu.md):
+//! - L0 headless face: [`create_instance`] / [`available_adapters`] (WGPU-01/02)
+//! - L1 offscreen golden: offscreen rendering (S4 slice)
+//! - L2 window smoke: `examples/` (`--frames N` auto-exit)
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
@@ -20,19 +20,19 @@ pub use offscreen::{
     unit_box_mesh,
 };
 
-/// 以 PRIMARY 后端族构造 Instance（Vulkan/Metal/DX12/GL）。
+/// Build the Instance with the PRIMARY backend family (Vulkan/Metal/DX12/GL).
 #[must_use]
 pub fn create_instance() -> wgpu::Instance {
     let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
     desc.backends = wgpu::Backends::PRIMARY;
-    // 骨架期显式空标志：debug profile 下 default=from_build_config() 开 VALIDATION，
-    // 将尝试 VK_EXT_debug_utils——lavapipe/旧 loader 缺符号即 panic（CI debug 测试同雷）。
-    // 校验/诊断模式（GPU_BASED_VALIDATION 等）属专项切片，随 Studio 诊断面启用。
+    // explicit empty flags during the skeleton phase: under the debug profile default = from_build_config() turns on VALIDATION,
+    // which tries VK_EXT_debug_utils -- lavapipe/older loaders panic on missing symbols (the same mine for CI debug tests).
+    // Validation/diagnostic modes (GPU_BASED_VALIDATION etc.) belong to a specialist slice, enabled with the Studio diagnostic face.
     desc.flags = wgpu::InstanceFlags::empty();
     wgpu::Instance::new(desc)
 }
 
-/// 枚举可用适配器信息。无 GPU/驱动缺失时为空 vec（可报告状态，非崩溃理由）。
+/// Enumerate available adapter info. An empty vec without GPU/driver (a reportable state, not a crash reason).
 #[must_use]
 pub fn available_adapters() -> Vec<wgpu::AdapterInfo> {
     let instance = create_instance();

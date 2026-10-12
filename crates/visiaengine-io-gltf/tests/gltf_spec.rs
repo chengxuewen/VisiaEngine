@@ -1,8 +1,8 @@
-//! GLTF-01..08 契约测试（fixture=程序化 glb，resources/data/ 入 git）。
+//! GLTF-01..08 contract tests (fixture = programmatic glb, resources/data/ enters git).
 
 use visiaengine_io_gltf::{IoError, load_gltf};
 
-// fixture 以 crate 相对定位（cargo 测试 CWD=crate root，非仓根）
+// fixture located crate-relatively (cargo test CWD = crate root, not the repo root)
 fn fixture(name: &str) -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../resources/data")
@@ -46,13 +46,13 @@ fn missing_normals_default_or_generated() {
 #[test]
 fn base_color_from_material() {
     let doc = load_gltf(fixture(TRI)).unwrap();
-    // IR 面=sRGB 约定（CORE-16）：规范线性 factor 经 linear_to_srgb 归位一次，
-    // 后端上传咽喉再转回线性——往返 ≤2e-7（8bit 量化下无损）
+    // the IR face = sRGB convention (CORE-16): the normative linear factor lands once via linear_to_srgb,
+    // the backend upload chokepoint converts back to linear -- round-trip <= 2e-7 (lossless under 8-bit quantization)
     let bc = doc.entities()[0].mesh.base_color;
     let want = [0.3491902f32, 0.4845292, 0.9546872, 1.0];
     assert!(
         bc.iter().zip(want).all(|(a, b)| (a - b).abs() < 1e-4),
-        "base_color 应=linear_to_srgb(0.1,0.2,0.9)，得 {bc:?}"
+        "base_color should = linear_to_srgb(0.1,0.2,0.9), got {bc:?}"
     );
     let two = load_gltf(fixture(TWO)).unwrap();
     assert_eq!(two.entities()[0].mesh.base_color, [1.0, 0.0, 0.0, 1.0]);
@@ -92,13 +92,13 @@ fn missing_file_io_err() {
 fn y_up_orientation_preserved() {
     let doc = load_gltf(fixture(HIER)).unwrap();
     let w = doc.entities()[0].world;
-    assert_eq!(w[3][2], 3.0, "z 原样保留（无 Z-up 翻号）");
-    assert_eq!(w[0][0], 1.0, "无旋转烘焙时单位对角");
+    assert_eq!(w[3][2], 3.0, "z kept as-is (no Z-up sign flip)");
+    assert_eq!(w[0][0], 1.0, "unit diagonal with no rotation baked");
 }
 
-// ===== GLTF-09：primitive 模式过滤 + 加载报告（[E3D:A4] 移植，顺带正确性修复）=====
+// ===== GLTF-09: primitive mode filter + load report ([E3D:A4] port, a correctness fix along the way) =====
 
-/// 手工组 GLB：mesh0 = [POINTS primitive(脏混入), TRIANGLES primitive(正常)]
+/// Hand-assembled GLB: mesh0 = [POINTS primitive (dirty smuggle-in), TRIANGLES primitive (normal)]
 fn glb_bytes(json: &str, bin: &[u8]) -> Vec<u8> {
     let mut jp = json.as_bytes().to_vec();
     while !jp.len().is_multiple_of(4) {
@@ -157,8 +157,12 @@ fn non_triangle_primitives_are_skipped_and_reported() {
     std::fs::write(&dir, mixed_mode_glb()).unwrap();
     let (doc, rep) = visiaengine_io_gltf::load_gltf_with_report(&dir).unwrap();
     let _ = std::fs::remove_file(&dir);
-    // POINTS primitive 曾以"假三角"混进实体列表 —— 现正确跳过并计数
-    assert_eq!(doc.entities().len(), 1, "仅 TRIANGLES primitive 存活");
+    // the POINTS primitive once smuggled into the entity list as a "fake triangle" -- now correctly skipped and counted
+    assert_eq!(
+        doc.entities().len(),
+        1,
+        "only the TRIANGLES primitive survives"
+    );
     assert_eq!(doc.entities()[0].mesh.positions.len(), 4);
     assert_eq!(rep.skipped_non_triangle, 1);
     assert_eq!(rep.total_skipped(), 1);

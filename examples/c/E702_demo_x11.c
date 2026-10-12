@@ -1,8 +1,8 @@
-/* E702 · 绑定镜像·C X11 —— attach 真窗口双模例（I3/smoke-x11；宿主集成骨架；
- * 跑不通即 API 未完成 [E3D:D7]）。
- * 双模（E801/E703 同制，argv 单源 C15）：
- *   无参                = 常驻人验窗（Expose 重绘，关窗/WM_DELETE 退出）
- *   --frames N [path]   = 自动快退（ctest 注册形/smoke-x11）；path 缺省=twoprim.glb */
+/* E702 -- binding mirror, C X11 -- the attach real-window dual-mode example (I3/smoke-x11; the host-integration skeleton;
+ *  if it does not run, the API is unfinished [E3D:D7]).
+ *  Dual mode (same system as E801/E703, argv single source C15):
+ *   no arguments          = resident human-verified window (Expose repaints, close/WM_DELETE exits)
+ *   --frames N [path]     = automatic fast exit (the ctest-registered form/smoke-x11); path defaults to twoprim.glb */
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <stdio.h>
@@ -24,7 +24,7 @@ static int render_or_fail(uint64_t ve, Display *d, int i) {
 }
 
 int main(int argc, char **argv) {
-    int frames = 0; /* 0=常驻人验形（约定：run 步零参=一直显示） */
+    int frames = 0; /* 0 = resident human-verified form (convention: zero-arg run step = display forever) */
     const char *path = "resources/data/twoprim.glb";
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
         printf("FAIL load: %s\n", visiaengine_last_error(ve));
         return 1;
     }
-    /* attach：xid + Display* 双槽（x11 display 必填，CAPI-06） */
+    /* attach: xid + Display* dual slots (x11 display required, CAPI-06) */
     if (visiaengine_attach(ve, (uint64_t)win, (uint64_t)dpy, 0) != VE_OK) {
         printf("FAIL attach: %s\n", visiaengine_last_error(ve));
         return 1;
@@ -57,17 +57,17 @@ int main(int argc, char **argv) {
     if (frames > 0) {
         for (int i = 0; i < frames; ++i) {
             if (render_or_fail(ve, dpy, i)) return 1;
-            usleep(80000); /* 80ms：present 与 X 服务端 flush 交叠 */
+            usleep(80000); /* 80ms: let present overlap with the X server-side flush */
         }
         if (visiaengine_destroy(ve) != VE_OK) { puts("FAIL destroy"); return 1; }
         XCloseDisplay(dpy);
         puts("OK capi x11");
         return 0;
     }
-    /* 常驻形：WM_DELETE 握手 + Expose 重绘（attach 骨架例保持最小，不做 resize 联动——E801 面） */
+    /* resident form: WM_DELETE handshake + Expose repaint (the attach skeleton example stays minimal, no resize linkage -- that is E801's face) */
     Atom wm = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(dpy, win, &wm, 1);
-    puts("E702 常驻：关窗退出（自动形=--frames N）");
+    puts("E702 resident: close the window to exit (automatic form = --frames N)");
     for (XEvent ev;;) {
         XNextEvent(dpy, &ev);
         if (ev.type == Expose && ev.xexpose.count == 0) {

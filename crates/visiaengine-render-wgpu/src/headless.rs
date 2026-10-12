@@ -1,4 +1,4 @@
-//! L1 无头后端：MeshCore + 离屏 target + 回读（golden 测试消费面）。
+//! The L1 headless backend: MeshCore + offscreen target + readback (the golden-test consumption face).
 
 use visiaengine_render::{
     BackendError, Capability, Frame, InstanceDesc, InstanceId, LabelTableDesc, MaterialDesc,
@@ -9,7 +9,7 @@ use visiaengine_render::{
 use crate::mesh_core::MeshCore;
 use crate::offscreen::OffscreenFrame;
 
-/// 无窗口后端：公开面与 REND 契约一致（G3 窗口路径共享 MeshCore）。
+/// The windowless backend: the public face matches the REND contract (the G3 window path shares MeshCore).
 pub struct HeadlessBackend {
     core: MeshCore,
     viewport: Viewport,
@@ -43,7 +43,7 @@ impl HeadlessBackend {
         })
     }
 
-    /// async 构造（web/批 7 J1；native 等价 `new`）。
+    /// Async construction (web / batch 7 J1; native equivalent of `new`).
     pub async fn new_async(width: u32, height: u32) -> Option<Self> {
         let sh = crate::mesh_core::create_shared_device_async().await?;
         let core = MeshCore::new(sh.device, sh.queue, sh.instance, sh.adapter);
@@ -57,7 +57,7 @@ impl HeadlessBackend {
         })
     }
 
-    /// Canvas attach（wasm32+web feature；swapchain 与设备同 instance）。
+    /// Canvas attach (wasm32 + web feature; the swapchain shares the device's instance).
     #[cfg(all(target_arch = "wasm32", feature = "web"))]
     pub fn attach_canvas(
         &mut self,
@@ -88,7 +88,7 @@ impl HeadlessBackend {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb, // CORE-16 输出端：线性写出，store 硬件编码
+            format: wgpu::TextureFormat::Rgba8UnormSrgb, // the CORE-16 output end: write linear, the store hardware-encodes
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         });
@@ -96,7 +96,7 @@ impl HeadlessBackend {
         (target, view)
     }
 
-    /// ⑤b 多视口渲染+回读（rect 域；策略= WGPU-26 安全/裁决两形）。
+    /// 5b multi-viewport render + readback (rect domain; policy = the safe/ruling two forms of WGPU-26).
     #[must_use]
     pub fn render_to_pixels_rects(
         &mut self,
@@ -115,20 +115,20 @@ impl HeadlessBackend {
         self.read_back()
     }
 
-    /// 渲染并回读（同步）。
+    /// Render and read back (synchronous).
     #[must_use]
     pub fn render_to_pixels(&mut self, frame: &Frame) -> Option<OffscreenFrame> {
         self.render(frame);
         self.read_back()
     }
 
-    /// 回读现 target（行对齐去 padding；_pixels/_rects 共用尾）。
+    /// Read back the current target (row-alignment depadded; _pixels/_rects share the tail).
     #[must_use]
     fn read_back(&mut self) -> Option<OffscreenFrame> {
         let _unused: Option<Frame> = None;
         let (w, h) = (self.viewport.width(), self.viewport.height());
-        // 行对齐（COPY_BYTES_PER_ROW_ALIGNMENT）：任意 w 合法（capi 宿主尺寸不可控——
-        // 原实现仅 64px 倍数宽度可用，golden 域恰好躲过，I2 出图链实锤修复）
+        // row alignment (COPY_BYTES_PER_ROW_ALIGNMENT): any w is legal (capi host sizes are uncontrollable --
+        // the original implementation only worked at 64px multiple widths, the golden domain happened to dodge it, the I2 image chain nailed the fix)
         let bpr_raw = (w * 4) as u64;
         let bpr = bpr_raw.div_ceil(u64::from(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT))
             * u64::from(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
@@ -176,7 +176,7 @@ impl HeadlessBackend {
             .map_err(|e| eprintln!("map failed: {e}"))
             .ok()?;
         let raw = readback.get_mapped_range(0..size).ok()?;
-        // 去 padding：按行裁回 packed（对外 OffscreenFrame 契约不变，消费方零感知）
+        // depad: cut each row back from packed (the outward OffscreenFrame contract unchanged, consumers feel nothing)
         let mut rgba = Vec::with_capacity((w * h * 4) as usize);
         for y in 0..h as usize {
             let start = y * bpr as usize;
@@ -209,7 +209,7 @@ impl RenderBackend for HeadlessBackend {
     }
 
     fn render(&mut self, frame: &Frame) {
-        // 目标格式必须与 make_target 的 Srgb 形一致（管线/pass 兼容性锁）
+        // the target format must match make_target's Srgb form (the pipeline/pass compatibility lock)
         self.core.render_view_format(
             frame,
             &self.target_view,
@@ -257,7 +257,7 @@ impl RenderBackend for HeadlessBackend {
 }
 
 impl HeadlessBackend {
-    /// glyph atlas 上传（WGPU-24）：io-text `GlyphCache::pixels()` 直喂（R8 全量替换）。
+    /// Glyph atlas upload (WGPU-24): io-text `GlyphCache::pixels()` fed directly (R8 wholesale replacement).
     pub fn set_glyph_atlas(
         &mut self,
         r8: &[u8],
@@ -267,16 +267,16 @@ impl HeadlessBackend {
         self.core.set_glyph_atlas(r8, width, height)
     }
 
-    /// 已建标签表 quad 总数（宿主自省/GEO-25 语义断言口）。
+    /// Total quads of the built label tables (host introspection / the GEO-25 semantics assertion entry).
     #[must_use]
     pub fn label_mark_total(&self) -> usize {
         self.core.label_mark_total()
     }
 
-    /// attach 面（CAPI-06）：裸句柄建 swapchain（配置成功才返回；失败不动现目标）。
+    /// attach face (CAPI-06): build the swapchain from raw handles (returns only on a successful configure; failure leaves the current target untouched).
     ///
     /// # Safety
-    /// 句柄存活义务见 [`Swapchain::from_raw_handles`]（capi attach 合同承接）。
+    /// Handle-lifetime duty per [`Swapchain::from_raw_handles`] (carried in by the capi attach contract).
     pub unsafe fn attach_surface(
         &mut self,
         display: Option<raw_window_handle::RawDisplayHandle>,
@@ -295,7 +295,7 @@ impl HeadlessBackend {
         Ok(sw)
     }
 
-    /// 窗口帧渲染（swapchain 路径；headless target 不参与）。
+    /// Window frame render (the swapchain path; the headless target does not participate).
     pub fn render_swapchain(
         &mut self,
         frame: &visiaengine_render::Frame,
@@ -304,7 +304,7 @@ impl HeadlessBackend {
         sw.render(&mut self.core, frame)
     }
 
-    /// ⑤b 二波：swapchain 多帧路。
+    /// 5b second wave: the swapchain multi-frame path.
     pub fn render_swapchain_multi(
         &mut self,
         passes: &[(visiaengine_render::Frame, visiaengine_render::ViewportRect)],

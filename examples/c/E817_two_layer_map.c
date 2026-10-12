@@ -1,13 +1,13 @@
-/* E817_two_layer_map · SDK 消费·C 双层地图（矢量瓦片叠在栅格底图之上）。
- * band-T 条款修订句（CAPI-28/29/39/40）的活体门；无头证据身份（E813/E816 同制）：
- * 五段活体门，秒退。
- * 段1 空帧 canary；段2 栅格单独=底图族在位而矢量族恒 0；段3 矢量单独=反之；
- * 段4 两型同挂（先矢后栅 + 先栅后矢两形）=两族同框（本带主张的视觉见证）；
- * 段5 同型重挂=画面逐字节不变（替换非堆叠）。
- * 矢量族谓词逐字复用 examples/rs/E206_tile_viewer.rs prove() 的已实测形。底图族用
- * 排除桶（非角标非矢量三色）而非色盒：E206 的 water/seam 谓词与底图配色相撞
- * （raster_only 帧实测 water=69120、seam=34560），而 vector_only 帧 other=0 ——
- * 排除桶因此是零猜测的底图见证（PIT-8 探针先行）。 */
+/* E817_two_layer_map -- SDK consumption, C two-layer map (vector tiles over the raster basemap).
+ *  The living gate for the band-T clause revisions (CAPI-28/29/39/40); headless evidence identity (same system as E813/E816):
+ *  five living-gate segments, exits in seconds.
+ *  Segment 1 empty-frame canary; segment 2 raster alone = basemap family present while the vector family stays 0; segment 3 vector alone = the converse;
+ *  segment 4 both kinds mounted (vector-then-raster + raster-then-vector forms) = both families in frame (the visual witness this band claims);
+ *  segment 5 remount of the same kind = picture byte-identical (replacement, not stacking).
+ *  The vector-family predicate reuses verbatim the measured form of prove() in examples/rs/E206_tile_viewer.rs. The basemap family uses
+ *  the exclusion bucket (neither corner labels nor the three vector colors) rather than a color box: E206's water/seam predicates collide
+ *  with the basemap palette (the raster_only frame measured water = 69120, seam = 34560), while the vector_only frame has other = 0 --
+ *  the exclusion bucket is therefore a zero-guess basemap witness (PIT-8 probe ahead). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,6 +1,6 @@
-//! 列式命名属性（[E3D:A1] 概念移植）：闭合 enum Column，无 dyn/RTTI。
-//! 行=元素索引、列=命名属性；"缺失"与零值语义分离（Option 稀疏格）。
-//! CORE-11/12/13 契约行为。
+//! Columnar named attributes ([E3D:A1] concept port): closed enum Column, no dyn/RTTI.
+//! row = element index, column = named attribute; "missing" is semantically separate from zero values (Option sparse cells).
+//! CORE-11/12/13 contract behavior.
 
 #[derive(Clone, Debug, PartialEq)]
 enum Column {
@@ -25,7 +25,7 @@ struct Col {
     data: Column,
 }
 
-/// 属性列集：行数与宿主（如 `GeoDocument::features`）1:1 对齐（CORE-12）。
+/// Attribute column set: row count aligns 1:1 with the host (e.g. `GeoDocument::features`) (CORE-12).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AttrSet {
     rows: usize,
@@ -38,7 +38,7 @@ impl AttrSet {
         Self::default()
     }
 
-    /// 行数（列存储不变式：所有列等长 == rows）。
+    /// Row count (column-store invariant: all columns are equally long == rows).
     #[must_use]
     pub fn len(&self) -> usize {
         self.rows
@@ -49,7 +49,7 @@ impl AttrSet {
         self.rows == 0
     }
 
-    /// 追加空行，返回行号。
+    /// Append an empty row, return the row number.
     pub fn add_row(&mut self) -> usize {
         let r = self.rows;
         self.rows += 1;
@@ -72,7 +72,7 @@ impl AttrSet {
         self.cols.iter().find(|c| c.name == name).map(|c| &c.data)
     }
 
-    /// f64 列写入。同名异型写拒绝（CORE-13 首写定型）。
+    /// f64 column write. Same-name different-type writes are rejected (CORE-13 first-write fixes the type).
     pub fn set_f64(&mut self, row: usize, name: &str, v: f64) -> bool {
         self.pad_to(row);
         match self.cols.iter_mut().find(|c| c.name == name) {
@@ -95,7 +95,7 @@ impl AttrSet {
         }
     }
 
-    /// 字符串列写入（CORE-11 三型之一）。
+    /// String column write (one of the CORE-11 three types).
     pub fn set_str(&mut self, row: usize, name: &str, v: impl Into<String>) -> bool {
         self.pad_to(row);
         match self.cols.iter_mut().find(|c| c.name == name) {
@@ -118,7 +118,7 @@ impl AttrSet {
         }
     }
 
-    /// bool 列写入。
+    /// bool column write.
     pub fn set_bool(&mut self, row: usize, name: &str, v: bool) -> bool {
         self.pad_to(row);
         match self.cols.iter_mut().find(|c| c.name == name) {
@@ -141,7 +141,7 @@ impl AttrSet {
         }
     }
 
-    /// 缺失（列不存在/异型/行越界/空格）一律 None（CORE-11）。
+    /// Absence (column missing / type mismatch / row out of bounds / empty cell) is always None (CORE-11).
     #[must_use]
     pub fn f64(&self, row: usize, name: &str) -> Option<f64> {
         if row >= self.rows {
@@ -175,7 +175,7 @@ impl AttrSet {
         }
     }
 
-    /// 列名枚举（宿主自省/调试）。
+    /// Column-name enumeration (host introspection/debug).
     pub fn names(&self) -> impl Iterator<Item = &str> {
         self.cols.iter().map(|c| c.name.as_str())
     }

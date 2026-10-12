@@ -1,9 +1,9 @@
-//! E206 · 数据装载·矢量瓦片 —— io-tiles(MVT) → GeoTile → 渲染管线（tile-streaming 带 B3+多瓦片）。
-//! 3×3 邻域瓦片（FileSource 装载捆绑合成 fixture=零许可面），各瓦片独立 D7 origin 锚定上传
-//! （瓦片缝=边框描线可视化），滚轮=正交 zoom（half-width 语义），拖拽=球面轨道。
-//! 用法: cargo run --example E206_tile_viewer -- [--frames N]
-//!   --frames N   headless 自断言快退（ctest/CI 路）：3×3 解码计数 + 像素四族 + 缩略图
-//!   无参         常驻人验窗：拖=轨道 滚轮=缩放（正交 zoom）关窗/Esc 退出
+//! E206 · data loading, vector tiles -- io-tiles (MVT) -> GeoTile -> render pipeline (the tile-streaming band B3 + multi-tile).
+//! A 3x3 neighborhood of tiles (FileSource load bundling a synthetic fixture = the zero-license face), each tile uploaded with its own D7 origin anchor
+//! (tile seams = border strokes visualized), wheel = orthographic zoom (half-width semantics), drag = spherical orbit.
+//! Usage: cargo run --example E206_tile_viewer -- [--frames N]
+//!   --frames N   headless self-asserting fast exit (the ctest/CI road): 3x3 decode counts + four pixel families + thumbnail
+//!   no arguments  resident human-verified window: drag = orbit, wheel = zoom (orthographic zoom), close/Esc exits
 
 use examples::viewer::{Ctx, FormatPolicy};
 
@@ -36,12 +36,12 @@ fn ident() -> [[f64; 4]; 4] {
     ]
 }
 
-/// 视口驱动装载（Phase 1 D1）：TileSet::visible 枚举 3×3 bbox → ensure → 解码。
-/// 硬编码 3×3 循环退役——瓦片集合现在是调度器从 bbox 推导的（IO-13/14 消费面）。
+/// Viewport-driven loading (Phase 1 D1): TileSet::visible enumerates the 3x3 bbox -> ensure -> decode.
+/// The hardcoded 3x3 loop retires -- the tile set is now derived by the scheduler from the bbox (the IO-13/14 consumption face).
 fn load_viewport(root: &str) -> Result<Vec<GeoTile>, String> {
     let mut set = visiaengine_io_tiles::TileSet::new(Box::new(FileSource::new(root)))
         .map_err(|e| e.to_string())?;
-    // bbox = 九瓦片并集（北西角 tile(0,0) 的 max 角 → 南东角 tile(2,2) 的 min 角）。
+    // bbox = the union of the nine tiles (the max corner of the north-west tile(0,0) -> the min corner of the south-east tile(2,2)).
     let nw = TileId::new(10, 0, 0).ok_or("tile id")?;
     let se = TileId::new(10, 2, 2).ok_or("tile id")?;
     let (min_x, _, _, max_y) = nw.bbox();
@@ -62,16 +62,16 @@ fn load_viewport(root: &str) -> Result<Vec<GeoTile>, String> {
     Ok(out)
 }
 
-/// 场景中心（3×3 邻域的 3857 中点=中心瓦片 (2,2) 的中心）。
+/// Scene center (the 3857 midpoint of the 3x3 neighborhood = the center of the central tile (2,2)).
 fn scene_center(tiles: &[GeoTile]) -> [f64; 2] {
     let c = &tiles[4];
     let (min_x, min_y, max_x, max_y) = c.id.bbox();
     [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0]
 }
 
-/// 场景装配：全部瓦片几何合并为一次上传（每瓦片顶点按各自 origin local 化=同一
-/// 3857 世界帧；D7 锚使不同瓦片的 local 顶点可直接并批——origin 只进 Draw 命令，
-/// 而命令统一以 [0,0,0] 锚渲染=顶点已自带世界位）。
+/// Scene assembly: all tile geometries merged into one upload (each tile's vertices localized to its own origin = the same
+/// 3857 world frame; the D7 anchor lets local vertices of different tiles batch directly -- origin only enters the Draw command,
+/// and commands render uniformly anchored at [0,0,0] = vertices already carry their world position).
 struct SceneBatch {
     wpos: Vec<[f32; 3]>,
     widx: Vec<u32>,
@@ -89,9 +89,9 @@ fn build_batch(tiles: &[GeoTile]) -> SceneBatch {
         points: Vec::new(),
     };
     for gt in tiles {
-        // world = own_origin + local；Draw origin=[0,0,0] ⇒ 顶点直接烘世界位是
-        // f32 精度雷（D7 违）——正确形=顶点存 world−batch_anchor，batch_anchor
-        // =场景中心（小值域），Draw origin=center。
+        // world = own_origin + local; Draw origin = [0,0,0] => baking world positions straight into vertices is an
+        // f32 precision mine (a D7 violation) -- the correct form = vertices store world - batch_anchor, batch_anchor
+        // = scene center (a small value range), Draw origin = center.
         for f in &gt.features {
             let class = f.attrs.get("class").cloned().unwrap_or_default();
             match &f.geom {
@@ -134,7 +134,7 @@ fn build_batch(tiles: &[GeoTile]) -> SceneBatch {
     b
 }
 
-/// headless 自断言：3×3 解码计数 + 像素四族（水蓝/路橙/点红/缝青）+ 缩略图。
+/// Headless self-assertion: 3x3 decode counts + four pixel families (water blue / road orange / point red / seam cyan) + thumbnail.
 fn prove(tiles: &[GeoTile], frames: u32) {
     let Some(mut b) = HeadlessBackend::new(W, H) else {
         eprintln!("ERROR: no adapter");
@@ -238,7 +238,10 @@ fn prove(tiles: &[GeoTile], frames: u32) {
     assert!(teal > 1500, "tile seam outlines (multi-tile proof)");
 
     gallery::save_frame(&img, "E206_tile_viewer");
-    println!("OK tile viewer（{} 瓦片解码渲染自证）", tiles.len());
+    println!(
+        "OK tile viewer ({} tiles decode and render self-proved)",
+        tiles.len()
+    );
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -274,18 +277,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // 常驻人验窗（C15 双模：零参=窗）：3×3 瓦片 + 轨道/正交缩放/Esc。
+    // Resident human-verified window (the C15 dual mode: zero args = window): 3x3 tiles + orbit/orthographic zoom/Esc.
     run_window(tiles)
 }
 
-/// 常驻人验窗路（无参）：球面轨道拖拽 / 滚轮=正交 zoom（half-width）/ Esc/关窗退出。
+/// The resident human-verified window road (no arguments): spherical orbit drag / wheel = orthographic zoom (half-width) / Esc-close exits.
 struct TileApp {
     ctx: Option<Ctx>,
     core: Option<MeshCore>,
     dragging: Option<(f64, f64)>,
-    /// 正交 half-width（滚轮消费面=真缩放语义）。
+    /// Orthographic half-width (the wheel consumption face = real zoom semantics).
     zoom: f64,
-    /// 球面轨道角（拖拽消费面）。
+    /// Spherical orbit angles (the drag consumption face).
     yaw: f64,
     pitch: f64,
     gt_center: [f64; 2],
@@ -294,7 +297,7 @@ struct TileApp {
     mat: Option<visiaengine_render::MaterialId>,
     strokes: Option<visiaengine_render::TableId>,
     points: Option<visiaengine_render::TableId>,
-    /// resumed 期一次性消费（上传后保留供 prove 语义；窗面不复用）。
+    /// One-time consumption during resumed (kept after upload for the prove semantics; the window face does not reuse it).
     tiles: Option<Vec<GeoTile>>,
 }
 
@@ -345,7 +348,7 @@ impl ApplicationHandler for TileApp {
         }
         let Some((ctx, core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E206 · 3×3 矢量瓦片（拖=轨道 滚轮=缩放 关窗/Esc 退出）",
+            "VisiaEngine E206 · 3x3 vector tiles (drag = orbit, wheel = zoom, close/Esc to exit)",
             960,
             600,
             FormatPolicy::PreferSrgb,
@@ -402,7 +405,7 @@ impl ApplicationHandler for TileApp {
                 }
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                // 正交缩放=half-width（zoom），滚轮指数式（E204 同款手感）。
+                // orthographic zoom = half-width (zoom), the wheel exponentiated (the same feel as E204).
                 let d = match delta {
                     winit::event::MouseScrollDelta::LineDelta(_, y) => -f64::from(y) * 40.0,
                     winit::event::MouseScrollDelta::PixelDelta(p) => -p.y,
@@ -424,7 +427,7 @@ impl ApplicationHandler for TileApp {
                     event_loop.exit();
                     return;
                 };
-                // 球面轨道：yaw/pitch 绕场景中心，dist=2.2×tile_w 固定观察距。
+                // spherical orbit: yaw/pitch around the scene center, dist = 2.2*tile_w fixed viewing distance.
                 let c = self.gt_center;
                 let dist = f64::from(self.tile_w) * 2.2;
                 let eye = [

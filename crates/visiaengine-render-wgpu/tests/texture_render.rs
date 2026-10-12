@@ -1,5 +1,5 @@
-//! WGPU-14/15：Textured 管线（采样×base_color×shade）与 fractional repeat；
-//! Flat 管线逐像素零回归由既有 golden 全集自证。
+//! WGPU-14/15: the Textured pipeline (sampling x base_color x shade) and fractional repeat;
+//! the Flat pipeline's per-pixel zero regression is self-proven by the existing golden full set.
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, TextureDesc, Viewport,
@@ -9,7 +9,7 @@ use visiaengine_render_wgpu::HeadlessBackend;
 const W: u32 = 64;
 const H: u32 = 64;
 
-/// 4×4 RGBA 棋盘：(i+j) 偶=红，奇=绿。
+/// 4x4 RGBA checkerboard: (i+j) even = red, odd = green.
 fn checker() -> Vec<u8> {
     let mut px = Vec::new();
     for j in 0..4u32 {
@@ -35,7 +35,7 @@ struct QuadMesh {
 }
 
 fn quad_and_frame(tex_mat: u64) -> (QuadMesh, Scene) {
-    // ±2.5：铺满 64px 视口（z=3/fov60 下 ±1 只占半屏，采样窗会脱面）
+    // ±2.5: tiles the 64px viewport (under z = 3 / fov60 the ±1 occupies only half the screen, the sampling window would leave the face)
     let positions = vec![
         [-2.5, -2.5, 0.],
         [2.5, -2.5, 0.],
@@ -132,7 +132,7 @@ fn draw(repeat: [f32; 2]) -> visiaengine_render_wgpu::OffscreenFrame {
     b.render_to_pixels(&sc.frame).expect("render")
 }
 
-/// 64×64 水平渐变纹理场景（R=4i，G=4j）——WGPU-15 回绕 oracle。
+/// A 64x64 horizontal gradient texture scene (R = 4i, G = 4j) -- the WGPU-15 wrap oracle.
 fn draw_grad(repeat: [f32; 2]) -> visiaengine_render_wgpu::OffscreenFrame {
     let mut grad = Vec::new();
     for j in 0..64u32 {
@@ -212,16 +212,19 @@ fn draw_flat_mat_rough(roughness: f32) -> visiaengine_render_wgpu::OffscreenFram
 #[test]
 fn textured_pipeline_samples_checker_x_base_x_shade() {
     let img = draw([1., 1.]);
-    // 中心区扫描（避开四边形边缘）：棋盘双极性各自成片，亮度带 170..230
-    // 验证 shade(≈0.62)×base(1.0)×texel(Srgb 解码 1.0) 乘法链
-    // CORE-16 域：encode(0.62)=207（拒绝未乘 shade 的 255——230 上界保 25 距）
+    // center-region scan (avoiding the quad edges): the checkerboard's two polarities each form a sheet, luminance band 170..230
+    // verifies the shade(~ 0.62) x base(1.0) x texel(Srgb-decoded 1.0) multiply chain
+    // CORE-16 domain: encode(0.62) = 207 (rejects 255 from an unmultiplied shade -- the 230 upper bound keeps a distance of 25)
     let (mut reds, mut greens) = (0u32, 0u32);
     for y in 20..44 {
         for x in 20..44 {
             let p = px(&img, x, y);
-            assert!(p[0] < 230 && p[1] < 230, "shade 未乘链出 255 {p:?}");
-            // 色相带谓词（CORE-16 域：线性混色后编码抬中间调，绝对阈脆）：
-            // 主导通道强 + 通道差大 = 棋盘极性；混合带（r≈g）自然出局
+            assert!(
+                p[0] < 230 && p[1] < 230,
+                "the unmultiplied-shade chain emitted 255 {p:?}"
+            );
+            // the hue-band predicate (the CORE-16 domain: after linear mixing the encoding lifts midtones, absolute thresholds are brittle):
+            // the dominant channel strong + large channel difference = checkerboard polarity; mixed bands (r ~ g) naturally fall out
             if p[0] > 150 && p[0] > p[1] + 50 {
                 reds += 1;
             } else if p[1] > 150 && p[1] > p[0] + 50 {
@@ -231,16 +234,16 @@ fn textured_pipeline_samples_checker_x_base_x_shade() {
     }
     assert!(
         reds >= 15 && greens >= 15,
-        "棋盘双极性缺失 red={reds} green={greens}"
+        "the checkerboard dual polarity missing red={reds} green={greens}"
     );
-    // (阈 15=实测半区保守位；色相带谓词见上)
+    // (threshold 15 = the conservative seat of the measured half-region; the hue-band predicate above)
 }
 
 // spec: WGPU-15
 #[test]
 fn fractional_repeat_shifts_pattern() {
-    // 渐变纹理（R=4i 水平斜坡）是 repeat 的精确 oracle：repeat=1 一行内无回绕，
-    // repeat=2 采样 w=2u 中途恰好一次 wrap 断崖（棋盘奇偶断言在线性滤波下不成立，弃）
+    // the gradient texture (R = 4i horizontal ramp) is the exact repeat oracle: repeat = 1 has no wrap inside one row,
+    // repeat = 2 samples w = 2u and hits exactly one wrap cliff mid-way (the checkerboard odd-even assertion does not hold under linear filtering, discarded)
     let one = draw_grad([1., 1.]);
     let two = draw_grad([2., 2.]);
     let wraps = |img: &visiaengine_render_wgpu::OffscreenFrame| -> u32 {
@@ -248,15 +251,15 @@ fn fractional_repeat_shifts_pattern() {
             .filter(|&x| px(img, x - 1, 32)[0] as i16 - px(img, x, 32)[0] as i16 > 100)
             .count() as u32
     };
-    assert_eq!(wraps(&one), 0, "repeat=1 斜坡不应回绕");
-    assert_eq!(wraps(&two), 1, "repeat=2 应恰一次回绕");
+    assert_eq!(wraps(&one), 0, "the repeat=1 ramp must not wrap");
+    assert_eq!(wraps(&two), 1, "repeat=2 must wrap exactly once");
 }
 
 // spec: WGPU-14
 #[test]
 fn flat_pipeline_zero_regression_marker() {
-    // Flat 路径（无纹理材质）走既有管线：twoprim fixture 中心亮度带（族断言，
-    // 精确像素回归由 offscreen_golden/geo_pipeline 全集承担）
+    // the Flat path (texture-less material) rides the existing pipeline: the twoprim fixture's center luminance band (family assertion,
+    // the exact-pixel regression is carried by the offscreen_golden / geo_pipeline full sets)
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let doc = visiaengine_io_gltf::load_gltf(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -309,7 +312,10 @@ fn flat_pipeline_zero_regression_marker() {
     };
     let img = b.render_to_pixels(&frame).expect("render flat");
     let c = px(&img, 32, 32);
-    assert!(c[0] + c[1] + c[2] > 40, "Flat 出图非背景 {c:?}");
+    assert!(
+        c[0] + c[1] + c[2] > 40,
+        "the Flat image is not background {c:?}"
+    );
 }
 
 // spec: REND-25
@@ -319,7 +325,7 @@ fn meshdesc_uv_optional_contract() {
     let pos = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
     let nrm = [[0.0, 0.0, 1.0]; 3];
     let idx = [0u32, 1, 2];
-    // 空片=合法（Flat 存量形态：整 mesh uv 零填充）
+    // an empty piece = legal (the Flat existing form: the whole mesh's uv zero-filled)
     assert!(
         b.create_mesh(&MeshDesc {
             positions: &pos,
@@ -329,7 +335,7 @@ fn meshdesc_uv_optional_contract() {
         })
         .is_ok()
     );
-    // 非空且长度≠顶点数=拒绝（不静默补齐）
+    // non-empty and length != vertex count = rejected (no silent padding)
     assert!(
         b.create_mesh(&MeshDesc {
             positions: &pos,
@@ -353,7 +359,10 @@ fn material_unknown_texture_is_err() {
         roughness: 1.0, // N6: dielectric legacy band (WGPU-35 probe ledger)
         metallic: 0.0,
     });
-    assert!(r.is_err(), "未知纹理引用不得静默降 Flat");
+    assert!(
+        r.is_err(),
+        "an unknown texture reference must not silently downgrade to Flat"
+    );
 }
 
 // spec: WGPU-14

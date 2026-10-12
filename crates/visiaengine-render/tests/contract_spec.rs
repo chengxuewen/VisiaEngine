@@ -1,4 +1,4 @@
-//! visiaengine-render 契约测试（仅公开 API；// spec: 标签入双向追溯门禁）。
+//! visiaengine-render contract tests (public API only; // spec: tags feed the bidirectional traceability gate).
 
 use visiaengine_render::{
     BackendError, Camera, CameraRig, Capability, DrawCommand, Frame, Instance, InstanceDesc,
@@ -35,7 +35,7 @@ impl RenderBackend for Stub {
     fn resize(&mut self, _viewport: Viewport) {}
     fn render(&mut self, frame: &Frame) {
         for cmd in &frame.commands {
-            // 穷举消费面：IR 加变体时此处编译失败=契约同步器
+            // exhaustive consumption face: adding an IR variant makes this fail to compile = the contract synchronizer
             match cmd {
                 DrawCommand::ClearColor { .. }
                 | DrawCommand::DrawMesh { .. }
@@ -69,7 +69,7 @@ fn backend_trait_object_safe() {
 // spec: REND-02
 #[test]
 fn stub_impl_without_wgpu() {
-    // 本文件即证明：实现 RenderBackend 无需任何后端 crate（不变式②契约面纯度）
+    // this file is the proof: implementing RenderBackend needs no backend crate whatsoever (invariant 2, the contract-face purity)
     let mut b = Stub {
         meshes: 0,
         materials: 0,
@@ -91,8 +91,8 @@ fn stub_impl_without_wgpu() {
             rgba: [0.05, 0.07, 0.1, 1.0],
         }],
     };
-    b.render(&frame); // 不 panic
-    assert!(!b.supports(Capability::LineStrip)); // stub 能力全否，行为可预期
+    b.render(&frame); // no panic
+    assert!(!b.supports(Capability::LineStrip)); // the stub denies all capabilities, behavior predictable
 }
 
 // spec: REND-03
@@ -127,7 +127,7 @@ fn ir_variants_exhaustive_construct() {
     ];
     let kinds: Vec<&'static str> = cmds.iter().map(DrawCommand::kind).collect();
     assert_eq!(kinds, vec!["clear-color", "draw-mesh", "draw-instances"]);
-    // 穷举面自检：match 未来加变体时此函数编译失败，逼 IR 消费端显式处理
+    // exhaustive-face self-check: a future match arm addition fails this function's compile, forcing explicit handling on IR consumers
     for c in &cmds {
         match c {
             DrawCommand::ClearColor { .. }
@@ -286,7 +286,7 @@ fn trait_defaults_texture_extension() {
         meshes: 0,
         materials: 100,
     };
-    // 默认体=转发：texture/repeat/specular 被安全丢弃，id 仍由 create_material 分配
+    // default body = forwarding: texture/repeat/specular are safely dropped, the id is still allocated by create_material
     let id = s
         .create_material_desc(&MaterialDesc {
             base_color: [1.0, 0.0, 0.0, 1.0],
@@ -298,7 +298,7 @@ fn trait_defaults_texture_extension() {
         })
         .unwrap();
     assert_eq!(id, 101);
-    // 无纹理后端 upload=显式拒绝（不假成功）
+    // a backend without textures: upload = explicit rejection (no fake success)
     let e = s
         .upload_texture(&TextureDesc {
             rgba: &[0u8; 4],
@@ -316,7 +316,7 @@ fn create_instances_default_err() {
         meshes: 0,
         materials: 0,
     };
-    // 未覆写后端的默认体=显式拒绝（upload_texture 同款协议，不假成功）
+    // the default body of a non-overriding backend = explicit rejection (the same protocol as upload_texture, no fake success)
     let e = s
         .create_instances(&InstanceDesc {
             data: &[Instance::new([1.0, 2.0, 0.0], 3.0, [0.8, 0.8, 0.9])],
@@ -350,7 +350,11 @@ fn draw_instances_carries_d7_origin_and_instance_table() {
             ..
         } => {
             assert_eq!((mesh, material, instances), (11, 22, 33));
-            assert_eq!(origin, [1.0e7, 0.0, 0.0], "D7 语义与 DrawMesh 同款");
+            assert_eq!(
+                origin,
+                [1.0e7, 0.0, 0.0],
+                "the D7 semantics are the same as DrawMesh"
+            );
         }
         _ => panic!("variant"),
     }
@@ -359,7 +363,7 @@ fn draw_instances_carries_d7_origin_and_instance_table() {
 // spec: REND-27
 #[test]
 fn instance_pod_layout_32b() {
-    // CPU repr(C) ↔ WGSL struct 逐字节同形锁（offset 0..12/height 12/color 16..28/pad 28）
+    // the CPU repr(C) <-> WGSL struct byte-identical lock (offset 0..12 / height 12 / color 16..28 / pad 28)
     assert_eq!(std::mem::size_of::<Instance>(), 32);
     assert_eq!(std::mem::offset_of!(Instance, offset), 0);
     assert_eq!(std::mem::offset_of!(Instance, height), 12);
@@ -368,7 +372,7 @@ fn instance_pod_layout_32b() {
     let raw: &[u8; 32] = bytemuck::bytes_of(&inst).try_into().unwrap();
     let f = |o: usize| -> f32 { f32::from_le_bytes(raw[o..o + 4].try_into().unwrap()) };
     assert_eq!((f(0), f(12), f(16)), (1.0, 4.0, 5.0));
-    assert_eq!(f(28), 0.0, "pad 归零（new 构造担保）");
+    assert_eq!(f(28), 0.0, "pad zeroed (the new constructor guarantees)");
 }
 
 const T4F64: [[f64; 4]; 4] = [
@@ -387,7 +391,7 @@ fn frame_carries_px_world_scale() {
         view_rot: IDENTITY4,
         eye: [0.0; 3],
         proj: IDENTITY4,
-        px_world_scale: 0.25, // 1px ≙ 0.25 世界单位（宿主给，GPU 乘子）
+        px_world_scale: 0.25, // 1px ~ 0.25 world units (given by the host, the GPU multiplier)
         shadow: None,
         clip: None,
         edl: None,
@@ -421,7 +425,7 @@ fn expansion_tables_default_err_and_layout_locked() {
         })
         .unwrap_err();
     assert!(e.reason.contains("points"), "{e:?}");
-    // 布局锁（WGSL 同形：vec4 同宽字段消对齐歧义 [4de R1]）
+    // layout lock (WGSL same form: same-width vec4 fields erase alignment ambiguity [4de R1])
     assert_eq!(std::mem::size_of::<StrokeSeg>(), 48);
     assert_eq!(std::mem::offset_of!(StrokeSeg, a), 0);
     assert_eq!(std::mem::offset_of!(StrokeSeg, b), 16);
@@ -453,9 +457,9 @@ fn draw_strokes_and_points_kinds() {
 // spec: REND-31
 #[test]
 fn shadow_setup_is_frame_option_and_none_default_regression_key() {
-    // Frame.shadow=Option：None=现行为逐位不变（4f 零回归钥匙位）；
-    // 深度域构造路=CameraRig 系（REND-11/12 行为断言域）——本测试锁类型轮转，
-    // 症状级死锁（非全黑非全亮）在 WGPU-19 像素面（shadows.rs）。
+    // Frame.shadow = Option: None = current behavior bitwise unchanged (the 4f zero-regression key bit);
+    // the depth-domain construction road = the CameraRig family (the REND-11/12 behavior-assertion domain) -- this test locks the type rotation,
+    // while symptom-level deadlock (neither all-black nor all-bright) lives on the WGPU-19 pixel face (shadows.rs).
     let rig = CameraRig::look_at([0.0, -10.0, 10.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
     let setup = ShadowSetup {
         proj: rig.ortho_frame(8.0, 64.0, 64.0, 1.0, 100.0).unwrap(),
@@ -468,7 +472,7 @@ fn shadow_setup_is_frame_option_and_none_default_regression_key() {
             slope: -1.5,
         },
     };
-    assert_eq!(setup, setup); // PartialEq（帧缓存对比面）
+    assert_eq!(setup, setup); // PartialEq (the frame-cache comparison face)
     let mut f = Frame {
         viewport: Viewport::new(8, 8, 1.0),
         camera: Camera::perspective(60.0, 1.0, 0.1, 100.0),
@@ -485,96 +489,113 @@ fn shadow_setup_is_frame_option_and_none_default_regression_key() {
     assert!(f.shadow.is_some());
     f.shadow = None;
     assert_eq!(f.shadow, None);
-    // 默认 bias 常数在案（调参基线）
+    // the default bias constants on record (the tuning baseline)
     assert_eq!(ShadowSetup::DEFAULT_BIAS.constant, -1.2);
 }
 
-// ── REND-32 剖面裁切 ClipSetup（B2 带 S1·RED）────────────────────────────────
+// -- REND-32 section clipping ClipSetup (B2 band S1, RED) --------------------------------
 
-/// 三自证①canary 形：0 面=全保留（不误杀）；构造契约=零法向/非有限拒收。
+/// Triple self-proof (1) canary form: 0 planes = keep all (no mistaken kills); the construction contract = reject zero normals / non-finite.
 #[test]
 // spec: REND-32
 fn clip_setup_none_planes_keeps_everything_and_rejects_degenerate() {
     let empty = visiaengine_render::ClipSetup::EMPTY;
     assert_eq!(empty.count, 0);
-    // 世界系任意点（含超大坐标=园区 3857 量级）在 0 面下全保留
+    // arbitrary world-space points (including oversized coordinates = the 3857-campus magnitude) all kept under 0 planes
     assert!(empty.keeps([0.0, 0.0, 0.0]));
     assert!(empty.keeps([1.0e7, -2.0e6, 300.0]));
-    // 零法向 → None（法向必须归一化，退化面不得进管线）
+    // zero normal -> None (normals must be normalized, degenerate planes must not enter the pipeline)
     assert!(visiaengine_render::ClipSetup::new(&[[0.0, 0.0, 0.0, 1.0]]).is_none());
-    // 非有限 → None
+    // non-finite -> None
     assert!(visiaengine_render::ClipSetup::new(&[[f64::NAN, 1.0, 0.0, 0.0]]).is_none());
     assert!(visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, f64::INFINITY]]).is_none());
-    // >4 面 → None（MAX_PLANES 上限；六面盒=二带挂账）
+    // > 4 planes -> None (the MAX_PLANES cap; a six-plane box = the second band's backlog)
     let p = [0.0f64, 1.0, 0.0, 0.0];
     assert!(visiaengine_render::ClipSetup::new(&[p, p, p, p, p]).is_none());
-    // 恰 4 面 OK
+    // exactly 4 planes OK
     assert!(visiaengine_render::ClipSetup::new(&[p, p, p, p]).is_some());
 }
 
-/// 三自证②命中正例：单面 y=0 法向 +y → 上半保留、下半裁除；面上点=保留（≥0 闭区间）。
+/// Triple self-proof (2) hit positive: one plane y = 0 with normal +y -> upper half kept, lower half clipped; points on the plane = kept (the >= 0 closed interval).
 #[test]
 // spec: REND-32
 fn clip_single_plane_keeps_positive_side_inclusive() {
-    // 平面 [nx,ny,nz,d] 语义：法向指向保留侧，保留判据 dot(n,P)+d ≥ 0
-    let cs = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0]]).expect("上保留面");
+    // plane [nx,ny,nz,d] semantics: the normal points to the kept side, the keep predicate is dot(n,P)+d >= 0
+    let cs =
+        visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0]]).expect("the upper-kept plane");
     assert!(cs.keeps([5.0, 3.0, -2.0]));
     assert!(!cs.keeps([5.0, -0.001, 0.0]));
-    assert!(cs.keeps([5.0, 0.0, 0.0]), "面上点必须保留（闭区间）");
-    // d 平移：y=2 以下裁除
-    let cs2 = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, -2.0]]).expect("平移面");
+    assert!(
+        cs.keeps([5.0, 0.0, 0.0]),
+        "a point on the plane must be kept (closed interval)"
+    );
+    // d translation: below y = 2 clipped away
+    let cs2 =
+        visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, -2.0]]).expect("translated plane");
     assert!(cs2.keeps([0.0, 2.0, 0.0]));
     assert!(!cs2.keeps([0.0, 1.9, 0.0]));
 }
 
-/// 非均匀缩放 M：n_m=Mᵀn 经列主序推正 + d 恒等式（world=M·q+origin 的判据同解）。
+/// Non-uniform scale M: n_m = Mᵀn pushed correctly through column-major + the d identity (the same solution as the world = M*q + origin predicate).
 #[test]
 // spec: REND-32
 fn clip_local_model_space_scaled_identity() {
-    // M=diag(3,3,6)·translate(0,0,3)（列主序：平移在末列）
+    // M = diag(3,3,6) * translate(0,0,3) (column-major: translation in the last column)
     let m: [[f64; 4]; 4] = [
         [3.0, 0.0, 0.0, 0.0],
         [0.0, 3.0, 0.0, 0.0],
         [0.0, 0.0, 6.0, 0.0],
         [0.0, 0.0, 3.0, 1.0],
     ];
-    // 世界面 z≤0.5 保留：n=(0,0,-1) d=0.5, origin=0
+    // world plane z <= 0.5 kept: n = (0,0,-1) d = 0.5, origin = 0
     let (nm, dm) = visiaengine_render::clip_to_local([0.0, 0.0, -1.0, 0.5], [0.0; 3], &m);
-    // n_m=-(col2 linear)=（0,0,-6)；d_m=0.5+n·t=0.5-3=-2.5；塔 z_m∈[0,1]→全裁（世界 3..9>0.5）
+    // n_m = -(col2 linear) = (0,0,-6); d_m = 0.5 + n*t = 0.5 - 3 = -2.5; tower z_m in [0,1] -> all clipped (world 3..9 > 0.5)
     assert_eq!(nm, [0.0f32, 0.0, -6.0]);
     assert_eq!(dm, -2.5);
     let test = |q: [f32; 3]| nm[0] * q[0] + nm[1] * q[1] + nm[2] * q[2] + dm >= 0.0;
-    assert!(!test([0.0, 0.0, 0.0]), "世界 z=3>0.5 必裁");
-    assert!(!test([0.0, 0.0, 1.0]), "世界 z=9>0.5 必裁");
-    assert!(test([0.0, 0.0, -1.0]), "世界 z=-3≤0.5 必留（负侧同解对照）");
-    // 同面 identity M：单位块=纯 origin 形（回归 2 参旧语义）
+    assert!(!test([0.0, 0.0, 0.0]), "world z = 3 > 0.5 must clip");
+    assert!(!test([0.0, 0.0, 1.0]), "world z = 9 > 0.5 must clip");
+    assert!(
+        test([0.0, 0.0, -1.0]),
+        "world z = -3 <= 0.5 must keep (the negative-side same-solution control)"
+    );
+    // the same plane with identity M: the unit block = the pure origin form (a regression to the two-parameter old semantics)
     let (ni, di) = visiaengine_render::clip_to_local([0.0, 0.0, -1.0, 0.5], [0.0; 3], &IDENTITY4F);
     assert_eq!(ni, [0.0f32, 0.0, -1.0]);
     assert_eq!(di, 0.5);
 }
 
-/// 三自证③AND 组合 + 远原点逐位同谓词（§1d 精度纪律=本带核心不变式）。
+/// Triple self-proof (3) AND combination + far-origin bitwise same predicate (§1d precision discipline = the core invariant of this band).
 #[test]
 // spec: REND-32
 fn clip_and_compose_and_far_origin_bitwise_predicate() {
-    // AND：任一负侧即裁（x>-1 ∧ y>-1 第一象限角保留）
+    // AND: any negative side clips (x > -1 and y > -1 keep the first-quadrant corner)
     let corner = visiaengine_render::ClipSetup::new(&[[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]])
-        .expect("角域两面");
+        .expect("corner-domain two planes");
     assert!(corner.keeps([0.0, 0.0, 0.0]));
-    assert!(!corner.keeps([-2.0, 0.0, 0.0]), "任一负侧=裁");
+    assert!(!corner.keeps([-2.0, 0.0, 0.0]), "any negative side = clip");
     assert!(!corner.keeps([0.0, -2.0, 0.0]));
-    // 远原点纪律：世界 f64 面 + origin f64 锚点 → local f32 系数；
-    // 同几何「原点系 vs 大坐标+origin」换算结果必须逐位一致（否则 shader 面位置抖动）
+    // the far-origin discipline: world f64 plane + origin f64 anchor -> local f32 coefficients;
+    // the same geometry "origin frame vs large coordinates + origin" conversions must agree bitwise (otherwise positional jitter on the shader face)
     let (n, d) =
         visiaengine_render::clip_to_local([0.0, 1.0, 0.0, 0.0], [1.0e7, 2.0e6, 0.0], &IDENTITY4F);
     assert_eq!(n, [0.0f32, 1.0, 0.0]);
-    assert_eq!(d, 2.0e6, "local d=面过锚点的 y 偏移（n·(o+t) 恒等式）");
-    // 判据点 P_world=origin+local：world dot == local dot（±f32 舍入同一路径）
+    assert_eq!(
+        d, 2.0e6,
+        "local d = the y offset of the plane past the anchor (the n*(o+t) identity)"
+    );
+    // judgment point P_world = origin + local: world dot == local dot (the same path modulo f32 rounding)
     let big = visiaengine_render::ClipSetup::new(&[[0.0, 1.0, 0.0, -2.0e6]])
-        .expect("大坐标面 y>2e6 保留");
-    assert!(big.keeps([1.0e7, 2.0e6 + 0.5, 0.0]), "锚点上方 0.5m 保留");
-    assert!(!big.keeps([1.0e7, 2.0e6 - 0.5, 0.0]), "锚点下方 0.5m 裁除");
-    // f32 侧同判据：d 存 -2e6 时 f64 相减路径与 f32 直比同结论
+        .expect("large-coordinate plane y > 2e6 kept");
+    assert!(
+        big.keeps([1.0e7, 2.0e6 + 0.5, 0.0]),
+        "0.5m above the anchor kept"
+    );
+    assert!(
+        !big.keeps([1.0e7, 2.0e6 - 0.5, 0.0]),
+        "0.5m below the anchor clipped"
+    );
+    // the f32 side, same predicate: with d stored as -2e6 the f64 subtraction path and the direct f32 comparison agree
     let (n2, d2) = visiaengine_render::clip_to_local(
         [0.0, 1.0, 0.0, -2.0e6],
         [1.0e7, 2.0e6, 0.0],
@@ -583,7 +604,7 @@ fn clip_and_compose_and_far_origin_bitwise_predicate() {
     assert_eq!(
         (d2 * 1e3) as i64,
         0,
-        "面过 origin 时 local d 必须=0（f64 精确相减；非 0=抖动即条款红）got {d2}"
+        "when the plane passes through origin, local d must = 0 (exact f64 subtraction; nonzero = jitter = the clause goes red) got {d2}"
     );
     assert_eq!(n2, [0.0f32, 1.0, 0.0]);
 }
@@ -591,7 +612,7 @@ fn clip_and_compose_and_far_origin_bitwise_predicate() {
 // spec: REND-33
 #[test]
 fn label_mark_layout_locked_and_default_err() {
-    // 64B = 4×vec4 布局三重锁（REND-30 同制）
+    // 64B = 4 x vec4 triple layout lock (same system as REND-30)
     assert_eq!(std::mem::size_of::<LabelMark>(), 64);
     assert_eq!(std::mem::size_of::<[LabelMark; 2]>(), 128);
     let m = LabelMark::new(
@@ -601,26 +622,26 @@ fn label_mark_layout_locked_and_default_err() {
         [8.0, 12.0, -1.5, 10.5],
     );
     let bytes: &[u8] = bytemuck::bytes_of(&m);
-    // pos@0 / color@16 / uv@32 / metrics@48 字节偏移钉
+    // byte-offset pins pos@0 / color@16 / uv@32 / metrics@48
     assert_eq!(&bytes[0..4], &1.0f32.to_le_bytes()[..]);
     assert_eq!(&bytes[16..20], &0.1f32.to_le_bytes()[..]);
     assert_eq!(&bytes[32..36], &0.25f32.to_le_bytes()[..]);
     assert_eq!(&bytes[48..52], &8.0f32.to_le_bytes()[..]);
-    // kind 臂
+    // the kind arms
     let cmd = DrawCommand::DrawLabels {
         table: 7,
         origin: [0.0; 3],
         transform: IDENTITY4F,
     };
     assert_eq!(cmd.kind(), "draw-labels");
-    // 族协议第 6 员：默认体=显式 Err（静默跳过封堵）
+    // the sixth member of the family protocol: default body = explicit Err (silent skips blocked)
     let mut s = Stub {
         meshes: 0,
         materials: 0,
     };
     let e = s
         .create_labels(&LabelTableDesc { data: &[m] })
-        .expect_err("默认必须拒");
+        .expect_err("the default must reject");
     assert!(format!("{e:?}").to_lowercase().contains("not supported") || true);
 }
 
@@ -628,13 +649,17 @@ fn label_mark_layout_locked_and_default_err() {
 #[test]
 fn viewport_rect_routing_minimals() {
     let r = ViewportRect::new(64, 8, 32, 24);
-    // contains 闭左开右（x∈[64,96) y∈[8,32)）
+    // contains closed-left open-right (x in [64,96) y in [8,32))
     assert!(r.contains(64, 8) && r.contains(95, 31));
     assert!(!r.contains(63, 8) && !r.contains(96, 8) && !r.contains(64, 32));
-    // local：区原点相对（screen_to_ray 复用形）
+    // local: relative to the region origin (the screen_to_ray reuse form)
     assert_eq!(r.local(70, 20), Some((6.0, 12.0)));
-    assert_eq!(r.local(63, 20), None, "区外=None（路由拒形）");
-    // full 形与恒等
+    assert_eq!(
+        r.local(63, 20),
+        None,
+        "outside the region = None (the routing rejection form)"
+    );
+    // the full form and identity
     let f = ViewportRect::full(96, 64);
     assert_eq!((f.x, f.y, f.width, f.height), (0, 0, 96, 64));
     assert!(f.contains(95, 63) && !f.contains(96, 63));

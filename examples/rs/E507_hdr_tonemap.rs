@@ -259,8 +259,8 @@ fn prove(frames: u32) {
     let d_compose = diff_px(&aces, &aces_bloom);
     // Probe (lavapipe, 320×240 city scene, 76800 px): off-vs-reinhard=14957,
     // off-vs-aces=76800 (filmic toe moves EVERY pixel), reinhard-vs-aces
-    // =76800. N6 GGX 后 compose=506（退役的 mock specular 曾把部分建筑面推过 bloom
-    // 阈，真 GGX 的 dielectric 高光更窄 → bloom 源像素减半）；地板随新探针重钉。
+    // = 76800. After N6 GGX compose = 506 (the retired mock specular once pushed some building faces over the bloom
+    // threshold, real GGX dielectric highlights are narrower -> half the bloom source pixels); the floor re-pinned with the new probe.
     // Floors (PIT-8): −40%.
     println!(
         "E507 probe: off-vs-reinhard={d_rein} off-vs-aces={d_aces} rein-vs-aces={d_modes} compose={d_compose}"

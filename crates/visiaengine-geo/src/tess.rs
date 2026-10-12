@@ -1,7 +1,7 @@
-//! 细分（GEO-09..11/14）：GeoKind → 三角形 parts。
-//! D7 接口纪律：输入 local 坐标（解析边界已投影；origin 分解在上传方）。
-//! v0 形态：positions 展开为独立三角形（identity indices）——小顶点量下换取简单性，
-//! 索引复用（顶点缓存）留性能片。
+//! Subdivision (GEO-09..11/14): GeoKind -> triangle parts.
+//! D7 interface discipline: input is local coordinates (projection done at the parsing boundary; origin decomposition on the upload side).
+//! v0 form: positions expand into independent triangles (identity indices) -- trading simplicity for small vertex counts,
+//! index reuse (vertex cache) left to the performance slice.
 
 use lyon_path::Path;
 use lyon_tessellation::geometry_builder::{BuffersBuilder, Positions, VertexBuffers};
@@ -10,19 +10,19 @@ use lyon_tessellation::{FillOptions, FillTessellator};
 
 use crate::{GeoError, GeoKind, StyleRecord};
 
-/// rgba → rgb（扩片族色住表用；4 元素切片直取，无 panic 面 [clippy unwrap_used 纪律]）。
+/// rgba -> rgb (colors for the tile-expansion family that lands on the GPU table; direct 4-element slice take, no panic surface [clippy unwrap_used discipline]).
 const fn rgb(c: [f32; 4]) -> [f32; 3] {
     [c[0], c[1], c[2]]
 }
 
-/// part 用途判别（消费端绑 material 色）。
+/// Part-purpose discriminator (the consumer binds the material color).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PartKind {
     Fill,
 }
 
-/// 折线条带（GEO-24，4de）：相邻点=一段；**扩片数学住 GPU（WGPU-17），
-/// geo 层只给位形+px 语义**（中立类型，不引 render IR 依赖——分层纪律）。
+/// Polyline ribbon (GEO-24, 4de): adjacent points = one segment; **the tile-expansion math lives on the GPU (WGPU-17),
+/// the geo layer only supplies shape + px semantics** (neutral types, no render IR dependency -- layering discipline).
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineStrip {
     pub pts: Vec<[f32; 2]>,
@@ -30,7 +30,7 @@ pub struct LineStrip {
     pub width_px: f32,
 }
 
-/// 点标记（GEO-24）：圆 splat 由 WGPU-18 FS mask 兑现。
+/// Point marker (GEO-24): the round splat is delivered by the WGPU-18 FS mask.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Marker {
     pub pos: [f32; 2],
@@ -38,7 +38,7 @@ pub struct Marker {
     pub radius_px: f32,
 }
 
-/// 细分输出三族（GEO-24 取代 Stroke/Marker 三角形态——CPU 条带/方块退役）。
+/// The three families of subdivision output (GEO-24 replaces the triangle forms of Stroke/Marker -- the CPU ribbon/square retires).
 #[derive(Clone, Debug)]
 pub enum GeoPart {
     Fill(TessPart),
@@ -46,7 +46,7 @@ pub enum GeoPart {
     Markers(Vec<Marker>),
 }
 
-/// 一块可上 GPU 的三角网格（positions: local x,y，z=0；每 3 顶点一三角形）。
+/// One mesh that can land on the GPU (positions: local x, y, z = 0; every 3 vertices = one triangle).
 #[derive(Clone, Debug)]
 pub struct TessPart {
     pub kind: PartKind,
@@ -74,7 +74,7 @@ impl TessPart {
 }
 
 fn build_path(rings: &[&Vec<[f64; 2]>]) -> Path {
-    // 每个元素即一条环（外环与洞同层传入）
+    // each element is one ring (outer ring and holes arrive at the same level)
     let mut b = Path::builder();
     for ring in rings {
         let Some(first) = ring.first() else {
@@ -107,8 +107,8 @@ fn tess_fill(path: &Path, color: [f32; 4]) -> Result<TessPart, GeoError> {
     Ok(part)
 }
 
-/// 几何 → 细分 parts。
-/// 线要素同时补端点 marker（v0 可视化选择）；points 恒出 Marker part（GEO-11 用干净两点线测试，marker 空 positions 不影响其 fold 断言——见测试构造）。
+/// Geometry -> subdivision parts.
+/// Line features also gain endpoint markers (a v0 visualization choice); points always emit a Marker part (GEO-11 tests with a clean two-point line, the empty-positions marker does not affect its fold assertion -- see the test construction).
 pub fn tessellate(kind: &GeoKind, style: &StyleRecord) -> Result<Vec<GeoPart>, GeoError> {
     let mut parts: Vec<GeoPart> = Vec::new();
     match kind {
@@ -132,7 +132,7 @@ pub fn tessellate(kind: &GeoKind, style: &StyleRecord) -> Result<Vec<GeoPart>, G
                     .map(|r| {
                         let mut pts: Vec<[f32; 2]> =
                             r.iter().map(|p| [p[0] as f32, p[1] as f32]).collect();
-                        pts.push(pts[0]); // 环闭合（GEO-24 断言面）
+                        pts.push(pts[0]); // ring closure (the GEO-24 assertion face)
                         LineStrip {
                             pts,
                             color: rgb(style.stroke),

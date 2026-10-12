@@ -1,5 +1,5 @@
-//! 网格管线核心：设备持有 + mesh/material 资源表 + `frame→任意 view` 绘制。
-//! 双消费者（DRY）：`HeadlessBackend`（L1 离屏）与 `examples/`（L2 窗口）。
+//! The mesh pipeline core: device ownership + mesh/material resource tables + `frame -> any view` drawing.
+//! Double consumers (DRY): `HeadlessBackend` (L1 offscreen) and `examples/` (L2 window).
 
 use std::collections::HashMap;
 
@@ -18,39 +18,39 @@ struct GpuMesh {
     index_count: u32,
 }
 
-/// 无表面依赖的渲染核心；target view 由调用方每帧提供。
+/// The render core without surface dependency; the target view is supplied per frame by the caller.
 pub struct MeshCore {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    /// attach/surface 复用同一 instance+adapter（设备配对约束，I3）
+    /// attach/surface reuse the same instance+adapter (the device-pairing constraint, I3)
     pub instance: wgpu::Instance,
     pub adapter: wgpu::Adapter,
     meshes: HashMap<MeshId, GpuMesh>,
     materials: HashMap<MaterialId, MatGpu>,
     next_id: u64,
-    /// 纹理槽位（WGPU-14）：tex id → (texture, view)；sampler 全局单例（REPEAT/linear）
+    /// Texture slots (WGPU-14): tex id -> (texture, view); the sampler is a global singleton (REPEAT/linear)
     textures: HashMap<u64, (wgpu::Texture, wgpu::TextureView)>,
     next_tex: u64,
     sampler: Option<wgpu::Sampler>,
-    /// 实例表（WGPU-16）：id → (storage buffer, 实例数)
+    /// Instance table (WGPU-16): id -> (storage buffer, instance count)
     instances: HashMap<u64, GpuInstances>,
-    /// 线段表（WGPU-17）：id → (storage buffer, 段数)
+    /// Line-segment table (WGPU-17): id -> (storage buffer, segment count)
     strokes_t: HashMap<TableId, GpuInstances>,
-    /// 点表（WGPU-18）：id → (storage buffer, 点数)
+    /// Point table (WGPU-18): id -> (storage buffer, point count)
     points_t: HashMap<TableId, GpuInstances>,
     bgl_label: wgpu::BindGroupLayout,
     layout_label: wgpu::PipelineLayout,
-    /// 标签表（WGPU-24）：id → (storage buffer, quad 数)
+    /// Label table (WGPU-24): id -> (storage buffer, quad count)
     labels_t: HashMap<TableId, GpuInstances>,
-    /// glyph atlas 单槽（WGPU-24）：R8 纹理 + view（io-text 全量上传，None=表在场也跳过）
+    /// Glyph atlas single slot (WGPU-24): R8 texture + view (io-text full upload, None = skip even when the table is present)
     glyph_atlas: Option<(wgpu::Texture, wgpu::TextureView)>,
-    /// atlas 采样器（ClampToEdge+Linear，常驻）
+    /// Atlas sampler (ClampToEdge + Linear, resident)
     label_smp: wgpu::Sampler,
-    /// 共享扩片四边形（side∈±1，2 三角）——strokes/points 常设顶点源
+    /// The shared tile-expansion quad (side in ±1, 2 triangles) -- the standing vertex source for strokes/points
     quad_vb: wgpu::Buffer,
     quad_ib: wgpu::Buffer,
-    /// (色彩格式, 变体) → 管线（三 layout 三管线族：mega-bool 否决 [E3D:B2]；
-    /// 格式维=I3 surface 遗产 [Momus-R3]；Instanced=4c/WGPU-16）
+    /// (color format, variant) -> pipeline (three layouts, three pipeline families: the mega-bool veto [E3D:B2];
+    /// the format dimension = the I3 surface legacy [Momus-R3]; Instanced = 4c/WGPU-16)
     pipelines: HashMap<(wgpu::TextureFormat, Variant), wgpu::RenderPipeline>,
     shader: wgpu::ShaderModule,
     layout: wgpu::PipelineLayout,
@@ -63,10 +63,10 @@ pub struct MeshCore {
     bgl_inst: wgpu::BindGroupLayout,
     bgl_stroke: wgpu::BindGroupLayout,
     bgl_point: wgpu::BindGroupLayout,
-    /// 深度面缓存（WGPU-13：尺寸变更重建；pipeline 与 attachment 格式同源）
+    /// Depth-face cache (WGPU-13: rebuild on size change; the pipeline and the attachment format share one source)
     depth_cache: Option<(u32, u32, wgpu::Texture, wgpu::TextureView)>,
-    /// WGPU-19：shadow map（1024²，懒建常驻）+ dummy 1×1（None 位恒绑）+ 比较采样器
-    /// + params-off UBO（enabled=0，light_dir 载默认位型=旧 LIGHT 常数逐位）
+    /// WGPU-19: shadow map (1024^2, lazily built and resident) + dummy 1x1 (the None position always binds) + comparison sampler
+    /// + params-off UBO (enabled = 0, light_dir carries the default position = the old LIGHT constants bitwise)
     shadow_map: Option<(wgpu::Texture, wgpu::TextureView)>,
     sh_dummy: wgpu::TextureView,
     sh_sampler: wgpu::Sampler,
@@ -98,17 +98,17 @@ pub struct MeshCore {
     post_stages: [Option<(u32, u32, wgpu::TextureView, wgpu::TextureFormat)>; 2],
 }
 
-/// 材质 GPU 态：32B uniform 块 + 可选纹理 view（textured 变体键源）。
+/// The material GPU state: a 32B uniform block + an optional texture view (the textured-variant key source).
 struct MatGpu {
     buf: wgpu::Buffer,
     textured: bool,
     view: Option<wgpu::TextureView>,
-    /// ④ 透明谓词源：材质 alpha（宿主面=a 道原值，srgb_to_linear 透传）。
-    /// alpha<1 ⇒ 该件走透明管线（REND-36 单一判；材质 a==1∧texel a<1 走旧路=声明）。
+    /// Source of the transparency predicate (4): material alpha (host face = the raw a channel, passed through by srgb_to_linear).
+    /// alpha < 1 => the piece rides the transparent pipeline (REND-36 single decision; material a == 1 with texel a < 1 rides the old path = declared).
     alpha: f32,
 }
 
-/// 管线变体（REND-27 键源；Textured×Instanced 组合不装 [四不装②]）。
+/// Pipeline variant (the REND-27 key source; the Textured x Instanced combination is not installed [four-not-installed 2]).
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Variant {
     Flat,
@@ -116,37 +116,37 @@ enum Variant {
     Instanced,
     Strokes,
     Points,
-    /// 文字标签贴片（WGPU-24/S2）：atlas 覆盖率 × 表色，屏幕恒大小（bgl=0+11+12+13）。
+    /// Text-label patch (WGPU-24/S2): atlas coverage x table color, screen-constant size (bgl = 0+11+12+13).
     Labels,
-    /// WGPU-19 caster pass（无色彩目标；Mesh=DrawMesh 源，Inst=DrawInstances 源）
+    /// The WGPU-19 caster pass (no color target; Mesh = DrawMesh source, Inst = DrawInstances source)
     ShadowMesh,
     ShadowInst,
-    /// ④ 透明三员（REND-36/WGPU-27）：blend=SRC_ALPHA 标准式（Labels 同方程）+
-    /// depthWrite=false/compare 保 Less；layout 与不透明同源零扩（WGPU-14 编号零破先例同制）。
+    /// The transparent trio (4) (REND-36/WGPU-27): blend = the SRC_ALPHA standard form (Labels same equation) +
+    /// depthWrite = false / compare stays Less; the layout shares its source with the opaque, zero extension (the WGPU-14 zero-number-breakage precedent, same system).
     FlatT,
     TexturedT,
     InstancedT,
 }
 
-/// ⑤b 多视口 clear 策略（默认=安全形；AllClear 仅裁决探针）。
+/// The 5b multi-viewport clear policy (default = the safe form; AllClear only as a ruling probe).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MultiClearPolicy {
-    /// 首 pass Clear（全幅底色），后续 Load——wgpu30 安全形（WGPU-26 实测锁）。
+    /// First pass Clear (full-frame background), subsequent Load -- the wgpu30 safe form (WGPU-26 measured lock).
     FirstClearRestLoad,
-    /// 每 pass 都 Clear（Clear respects area 则互存；全区则后吞前——分歧探针）。
+    /// Every pass Clears (Clear respects area means mutual storage; full-region means the latter swallows the former -- the divergence probe).
     AllClear,
 }
 
-/// GPU 实例表（WGPU-16）：32B/条 storage 缓冲 + 条数。
+/// The GPU instance table (WGPU-16): a 32B-per-entry storage buffer + entry count.
 struct GpuInstances {
     buf: wgpu::Buffer,
     count: u32,
 }
 
-/// 深度管线格式（wgpu 原生 [0,1]，PIT-5 纪律的正方）
+/// The depth pipeline format (wgpu native [0,1], the rightful side of the PIT-5 discipline)
 pub(crate) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-/// 无 surface 请求 PRIMARY 适配器并建设备；失败=None（可报告语义）。
+/// Request the PRIMARY adapter without a surface and build the device; failure = None (reportable semantics).
 #[must_use]
 pub struct Shared {
     pub device: wgpu::Device,
@@ -155,14 +155,14 @@ pub struct Shared {
     pub adapter: wgpu::Adapter,
 }
 
-/// 无 surface 请求 PRIMARY 适配器并建设备（instance/adapter 随还——surface 配对约束）；
-/// 失败=None（可报告语义）。
+/// Request the PRIMARY adapter without a surface and build the device (instance/adapter returned -- the surface pairing constraint);
+/// failure = None (reportable semantics).
 #[must_use]
 pub fn create_shared_device() -> Option<Shared> {
     pollster::block_on(create_shared_device_async())
 }
 
-/// async 主体（web 主线程禁阻塞，批 7 J1；native 走 pollster 等价壳）。
+/// The async body (the web main thread forbids blocking, batch 7 J1; native runs the pollster equivalent shell).
 pub async fn create_shared_device_async() -> Option<Shared> {
     let instance = crate::create_instance();
     let adapter = instance
@@ -212,7 +212,7 @@ impl MeshCore {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        // View 块 256B（WGPU-21 含裁切面段；前 176B 位序不变）
+                        // the View block is 256B (WGPU-21 including the clip-plane segment; the first 176B keep the position order)
                         min_binding_size: wgpu::BufferSize::new(416),
                     },
                     count: None,
@@ -229,7 +229,7 @@ impl MeshCore {
                 },
             ];
             match variant {
-                // ④ T 族 bgl 与同族全同（layout 零扩 [WGPU-27]；穷举同步器此臂现行点名）
+                // The T-family bgl is identical across the family (layout zero extension [WGPU-27]; the exhaustive synchronizer names this arm live)
                 Variant::Flat | Variant::FlatT => {}
                 Variant::Textured | Variant::TexturedT => {
                     entries.push(wgpu::BindGroupLayoutEntry {
@@ -261,7 +261,7 @@ impl MeshCore {
                         count: None,
                     })
                 }
-                // WGPU-18 点表 storage（32B/条下限，binding6；材质不参与同裁决点 a）
+                // WGPU-18 point-table storage (32B per entry minimum, binding6; materials do not participate, same as ruling point a)
                 Variant::Points => {
                     entries.remove(1);
                     entries.push(wgpu::BindGroupLayoutEntry {
@@ -275,9 +275,11 @@ impl MeshCore {
                         count: None,
                     });
                 }
-                // WGPU-19 接收端三元在 match 后统一追加（dummy 常驻=动态分支非布局分支）
-                Variant::ShadowMesh | Variant::ShadowInst => unreachable!("caster bgl 独立造"),
-                // WGPU-24 标签：表(11 storage 64B)+atlas 纹(12)+采样(13)；材质不挂 [裁决 a]
+                // WGPU-19 receiver trio appended after the match uniformly (dummy residency = a dynamic branch, not a layout branch)
+                Variant::ShadowMesh | Variant::ShadowInst => {
+                    unreachable!("the caster bgl is built separately")
+                }
+                // WGPU-24 labels: table (11 storage 64B) + atlas texture (12) + sampler (13); materials not attached [ruling a]
                 Variant::Labels => {
                     entries.remove(1);
                     entries.extend_from_slice(&[
@@ -309,7 +311,7 @@ impl MeshCore {
                         },
                     ]);
                 }
-                // WGPU-17 线段表 storage（48B/条下限）；材质 binding2 不参与 [裁决点 a]
+                // WGPU-17 line-table storage (48B per entry minimum); material binding2 does not participate [ruling point a]
                 Variant::Strokes => {
                     entries.remove(1);
                     entries.push(wgpu::BindGroupLayoutEntry {
@@ -367,11 +369,11 @@ impl MeshCore {
                 entries: &entries,
             })
         };
-        // WGPU-19 caster bgl 对（binding0 [+5]；无色彩目标管线用）
+        // The WGPU-19 caster bgl pair (binding0 [+5]; for the pipeline with no color target)
         let mk_shadow_entries = |inst: bool| {
             let mut e = vec![wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                // WGPU-22：fs_shadow 消费 view.planes（caster 同裁）→ +FRAGMENT 可见
+                // WGPU-22: fs_shadow consumes view.planes (the caster clipped the same) -> +FRAGMENT visible
                 visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
@@ -428,7 +430,7 @@ impl MeshCore {
             bind_group_layouts: &[Some(&bgl_stroke)],
             immediate_size: 0,
         });
-        // 共享扩片四边形（[E3D:B4] GS→VS 形态的常设顶点源）
+        // The shared tile-expansion quad (the standing vertex source of the [E3D:B4] GS->VS form)
         let quad_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("quad-vb"),
             contents: bytemuck::cast_slice(&[-1.0f32, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0]),
@@ -813,13 +815,13 @@ impl MeshCore {
                 buf,
                 textured,
                 view,
-                alpha: lin[3], // a 道透传=srgb_to_linear 原值 [REND-36 单一判源]
+                alpha: lin[3], // the a channel passed through = the srgb_to_linear raw value [REND-36 single decision source]
             },
         );
         Ok(id)
     }
 
-    /// RGBA8 → GPU 纹理（WGPU-14）：行距补零至 256 对齐（write_texture 约束）。
+    /// RGBA8 -> GPU texture (WGPU-14): the row pitch zero-padded to 256 alignment (the write_texture constraint).
     pub fn upload_texture(&mut self, desc: &TextureDesc<'_>) -> Result<TextureId, BackendError> {
         if desc.width == 0 || desc.height == 0 {
             return Err(BackendError {
@@ -842,8 +844,8 @@ impl MeshCore {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            // CORE-16：宿主纹理字节=sRGB 编码（PNG/JPEG/位图惯例），Srgb 格式
-            // =采样时硬件解码进线性光照域（与材质块/clear 同域，K3 片）。
+            // CORE-16: the host texture bytes = sRGB encoded (the PNG/JPEG/bitmap convention), the Srgb format
+            // = hardware-decodes into the linear lighting domain at sampling (same domain as the material block/clear, the K3 slice).
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
@@ -885,14 +887,14 @@ impl MeshCore {
         Ok(id)
     }
 
-    /// 实例表上传（WGPU-16）：32B/条 storage 表；空表建期即拒（REND-27 闭合裁决）。
+    /// Instance-table upload (WGPU-16): a 32B-per-entry storage table; empty tables rejected at build (the REND-27 closed ruling).
     pub fn create_instances(&mut self, desc: &InstanceDesc<'_>) -> Result<u64, BackendError> {
         if desc.data.is_empty() {
             return Err(BackendError {
                 reason: "empty instance table".into(),
             });
         }
-        let mut data = desc.data.to_vec(); // CORE-16 咽喉五：实例色线性化副本（链乘同域）
+        let mut data = desc.data.to_vec(); // chokepoint five of CORE-16: the linearized copy of instance colors (the multiply chain stays in-domain)
         for inst in &mut data {
             inst.color = srgb_to_linear([inst.color[0], inst.color[1], inst.color[2], 1.0])[..3]
                 .try_into()
@@ -918,9 +920,9 @@ impl MeshCore {
         Ok(id)
     }
 
-    /// View uniform 块 128B（REND-29 兑现；[f32;32] 与 WGSL struct 同布局）：
-    /// mat@0..16 / right@16 / up@20 / px_scale@23 / eye_local@24..27（世界 eye−origin f32）。
-    /// right/up=view_rot 行抽取——与 screen_to_ray_* 同一 view_rot 单一事实源。
+    /// The View uniform block is 128B (the REND-29 delivery; [f32;32] matches the WGSL struct layout):
+    /// mat@0..16 / right@16 / up@20 / px_scale@23 / eye_local@24..27 (the world eye-origin in f32).
+    /// right/up = view_rot row extraction -- the single source of truth sharing view_rot with screen_to_ray_*.
     fn view_block(
         &self,
         frame: &Frame,
@@ -937,7 +939,7 @@ impl MeshCore {
         let mut block = [0.0f32; 104];
         block[..16].copy_from_slice(bytemuck::cast_slice(&mvp));
         let r = &frame.view_rot;
-        // 列主序 m[col][row]：世界 right=行0=(m00,m10,m20)；up=行1
+        // column-major m[col][row]: world right = row 0 = (m00,m10,m20); up = row 1
         block[16] = r[0][0];
         block[17] = r[1][0];
         block[18] = r[2][0];
@@ -958,8 +960,8 @@ impl MeshCore {
             );
             block[28..44].copy_from_slice(bytemuck::cast_slice(&lvp));
         }
-        // WGPU-21：面系数 per-draw 换算（origin+transform 就在本函数签名里——
-        // 无新 binding/绑组构造的设计红利）；None/EMPTY=全零=shader 早退恒通。
+        // WGPU-21: per-draw plane-coefficient conversion (origin + transform are right in this function's signature --
+        // the design dividend of no new binding/bind-group construction); None/EMPTY = all zeros = the shader early-out always passes.
         if let Some(cs) = &frame.clip {
             for (i, pl) in cs.planes[..cs.count].iter().enumerate() {
                 let (nm, dl) = visiaengine_render::clip_to_local(*pl, *origin, transform);
@@ -993,8 +995,8 @@ impl MeshCore {
         block
     }
 
-    /// [4f §2.4] GL 后端降级门（wgpu-30 中 GLES=Gl 子版本，单变体覆盖）：
-    /// 到达即 warn-once + 全链路按 None 处理（dummy/off 常驻位，不 panic 不黑屏）。
+    /// [4f section 2.4] The GL-backend downgrade gate (in wgpu-30 GLES = the Gl sub-version, one variant covers it):
+    /// arriving means warn-once + the whole chain treated as None (the dummy/off resident positions, no panic no black screen).
     fn shadow_active(&self, frame: &Frame) -> bool {
         if frame.shadow.is_none() {
             return false;
@@ -1002,14 +1004,14 @@ impl MeshCore {
         if matches!(self.adapter.get_info().backend, wgpu::Backend::Gl) {
             static ONCE: std::sync::Once = std::sync::Once::new();
             ONCE.call_once(|| {
-                eprintln!("warn: shadow unsupported on GL backend, disabled [4f 降级]");
+                eprintln!("warn: shadow unsupported on GL backend, disabled [4f downgrade]");
             });
             return false;
         }
         true
     }
 
-    /// 帧共享 shadow 资源（非激活=dummy/off 常驻位）：返回 (params buf, map view)。
+    /// The frame-shared shadow resources (inactive = the dummy/off resident positions): returns (params buf, map view).
     fn shadow_frame_res(&mut self, frame: &Frame) -> (wgpu::Buffer, wgpu::TextureView) {
         let Some(s) = frame.shadow.filter(|_| self.shadow_active(frame)) else {
             return (self.sh_off.clone(), self.sh_dummy.clone());
@@ -1049,14 +1051,14 @@ impl MeshCore {
         (buf, mview)
     }
 
-    /// 线段表上传（WGPU-17）：48B/条；空表建期拒（4c 同纪律）。
+    /// Line-table upload (WGPU-17): 48B per entry; empty tables rejected at build (the same discipline as 4c).
     pub fn create_strokes(&mut self, desc: &StrokeTableDesc<'_>) -> Result<TableId, BackendError> {
         if desc.data.is_empty() {
             return Err(BackendError {
                 reason: "empty stroke table".into(),
             });
         }
-        // CORE-16 咽喉三：扩片族色=线性化副本入表（Pod 契约不变，消费面=色域注记）
+        // chokepoint three of CORE-16: tile-expansion family colors = linearized copies into the table (the Pod contract unchanged, the consumption face = color-domain note)
         let mut data = desc.data.to_vec();
         for seg in &mut data {
             seg.color = srgb_to_linear([seg.color[0], seg.color[1], seg.color[2], 1.0])[..3]
@@ -1083,14 +1085,14 @@ impl MeshCore {
         Ok(id)
     }
 
-    /// 点表上传（WGPU-18）：32B/条；空表建期拒（族纪律）。
+    /// Point-table upload (WGPU-18): 32B per entry; empty tables rejected at build (family discipline).
     pub fn create_points(&mut self, desc: &PointTableDesc<'_>) -> Result<TableId, BackendError> {
         if desc.data.is_empty() {
             return Err(BackendError {
                 reason: "empty point table".into(),
             });
         }
-        let mut data = desc.data.to_vec(); // CORE-16 咽喉三同型（点色线性化副本）
+        let mut data = desc.data.to_vec(); // same shape as chokepoint three of CORE-16 (the point-color linearized copy)
         for m in &mut data {
             m.color = srgb_to_linear([m.color[0], m.color[1], m.color[2], 1.0])[..3]
                 .try_into()
@@ -1116,14 +1118,14 @@ impl MeshCore {
         Ok(id)
     }
 
-    /// 点表销毁（V2.1）：GPU buffer + 表项移除；未知 id 静默无操作（幂等）。
+    /// Point-table destroy (V2.1): GPU buffer + table entry removal; unknown id = silent no-op (idempotent).
     pub fn destroy_points(&mut self, id: TableId) {
         self.points_t.remove(&id);
     }
 
-    /// 标签表上传（WGPU-24）：64B/条；空表建期拒（族纪律同 points）。
-    /// 色=线性域直传（sRGB 咽喉在生产者 io-text/CAPI 面，非此处——label 表与
-    /// point/stroke 表分域：后者 CPU 副本转换，label 由 layout 上游给线性值）。
+    /// Label-table upload (WGPU-24): 64B per entry; empty tables rejected at build (family discipline same as points).
+    /// Color = the linear domain passed directly (the sRGB chokepoint is on the producer io-text/CAPI face, not here -- the label table
+    /// and the point/stroke tables split domains: the latter convert via CPU copies, labels arrive linear-valued from layout upstream).
     pub fn create_labels(&mut self, desc: &LabelTableDesc<'_>) -> Result<TableId, BackendError> {
         if desc.data.is_empty() {
             return Err(BackendError {
@@ -1150,13 +1152,13 @@ impl MeshCore {
         Ok(id)
     }
 
-    /// labels_t 各表 count 和（族语义断言口）。
+    /// The sum of counts across labels_t tables (the family-semantics assertion entry).
     #[must_use]
     pub fn label_mark_total(&self) -> usize {
         self.labels_t.values().map(|g| g.count as usize).sum()
     }
 
-    /// glyph atlas 上传/重建（WGPU-24）：R8 单通道覆盖率，全量替换（io-text dirty 驱动）。
+    /// Glyph atlas upload/rebuild (WGPU-24): R8 single-channel coverage, wholesale replacement (io-text dirty-driven).
     pub fn set_glyph_atlas(
         &mut self,
         r8: &[u8],
@@ -1246,8 +1248,8 @@ impl MeshCore {
         self.depth_cache = Some((width, height, tex, view));
     }
 
-    /// 一帧渲染到任意 view（清屏色取 commands 首个 ClearColor；DrawMesh 全量重绘，v0 无剔除）。
-    /// 尺寸驱动内部深度面（WGPU-13：遮挡正确性——近物遮远物不依赖 draw 顺序）。
+    /// Render one frame to any view (the clear color takes the first ClearColor in commands; DrawMesh redraws fully, v0 has no culling).
+    /// The size drives the internal depth face (WGPU-13: occlusion correctness -- near objects hiding far ones does not depend on draw order).
     pub fn render_view(
         &mut self,
         frame: &Frame,
@@ -1258,7 +1260,7 @@ impl MeshCore {
         self.render_view_format(frame, view, width, height, wgpu::TextureFormat::Rgba8Unorm);
     }
 
-    /// 色彩格式版（surface 路径与 headless 固定格式分流，I3 格式对齐）。
+    /// The color-format version (the surface path and the headless fixed format split, the I3 format alignment).
     pub fn render_view_format(
         &mut self,
         frame: &Frame,
@@ -1280,8 +1282,8 @@ impl MeshCore {
                 | DrawCommand::DrawLabels { .. } => None,
             })
             .unwrap_or([0.0; 4]);
-        // CORE-16 咽喉二：ClearColor 宿主面=sRGB；srgb 目标 load 按线性解释
-        // （探针实锤 0.05 直载→63 亮），先转线性保 CSS 原感字节形
+        // chokepoint two of CORE-16: ClearColor on the host face = sRGB; the srgb target load interprets linearly
+        // (probe proof: loading 0.05 raw -> 63 bright), convert to linear first to keep the original CSS-feel byte form
         let cl = srgb_to_linear(clear);
         self.ensure_depth(width.max(1), height.max(1));
         let depth_view = self
@@ -1754,11 +1756,11 @@ impl MeshCore {
         }
     }
 
-    /// ⑤b 多视口分屏（WGPU-26）：单 surface/单全幅 depth 上 N 个 scissor 圈地区域，
-    /// 各携自己的 Frame（相机独立、命令共享）。**安全形=首 pass Clear（全幅底色=缝色）
-    /// + 后续 Load**；`AllClear` 仅裁决探针用。depth：非末 pass Store、末 pass Discard
-    ///   （同旧形）；caster 一趟（frame0 配置——light-space 与主相机无关，双投共享 [裁决 d]）。
-    ///   full-rect 不 set viewport/scissor=旧路逐位等（canary 锁）。
+    /// 5b multi-viewport splitting (WGPU-26): N scissor-locked regions on one surface / one full-frame depth,
+    /// each carrying its own Frame (cameras independent, commands shared). **The safe form = first pass Clear (full-frame background = seam color)
+    /// + subsequent Load**; `AllClear` serves only as the ruling probe. depth: non-last passes Store, the last pass Discard
+    ///   (the same old form); one caster run (frame0 configuration -- light-space is independent of the main camera, both projections share [ruling d]).
+    ///   full-rect sets no viewport/scissor = bitwise equal to the old path (canary lock).
     pub fn render_view_rects(
         &mut self,
         passes: &[(Frame, visiaengine_render::ViewportRect)],
@@ -1824,10 +1826,10 @@ impl MeshCore {
                 } else {
                     wgpu::LoadOp::Load
                 },
-                // WGPU-26 定案修正：深度**每 pass 必清**（首 pass 的全幅 clear 覆盖全区，
-                // 后续 pass 若 Load 会拿主视不透明地面的深度做 occlusion=小地图整幅被吞，
-                // 2026-09-18 像素门现行抓得）；色仅首 pass Clear（=缝底色），后区不擦。
-                // pass 间深度无消费者 ⇒ 全 Discard（免 Store 带宽）。
+                // WGPU-26 settled correction: depth **must clear per pass** (the first pass's full-frame clear covers the whole region;
+                // if subsequent passes Load, they take the main view's opaque-ground depth as occlusion = the minimap is swallowed whole,
+                // caught live by the 2026-09-18 pixel gate); color clears only on the first pass (= seam background), later regions are not wiped.
+                // No depth consumer between passes => all Discard (saves Store bandwidth).
                 wgpu::LoadOp::Clear(1.0),
                 wgpu::StoreOp::Discard,
                 if full { None } else { Some(*rect) },
@@ -1843,8 +1845,8 @@ impl MeshCore {
         color_format: wgpu::TextureFormat,
         sh_view: &wgpu::TextureView,
     ) {
-        // ===== WGPU-19 caster pre-pass（shadow=Some 才跑；DrawMesh/DrawInstances 投影，
-        // 扩片族不投 [不装②]；无色彩目标 pass，bias 住 caster 管线 depth_stencil）=====
+        // ===== WGPU-19 caster pre-pass (runs only when shadow = Some; DrawMesh/DrawInstances project,
+        // the tile-expansion families do not project [not-installed 2]; a pass with no color target, bias lives in the caster pipeline's depth_stencil) =====
         if frame.shadow.is_some() && self.shadow_active(frame) {
             let mut sp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow-pass"),
@@ -1945,9 +1947,9 @@ impl MeshCore {
         }
     }
 
-    /// ④ 两 pass 编排 [WGPU-28]：透明族=材质 a<1 分拣（REND-36 单一判）→
-    /// pass1 不透明（vec 序原样）+ pass2 透明按视深降序（画家，D7 f64 距离）+ Labels 恒顶收尾；
-    /// **无透明且无标签=旧单 pass 路（字节保）**；pass2 depth Load 承 pass1 深度 [Momus-A2]。
+    /// Two-pass orchestration (4) [WGPU-28]: the transparent family = sorted by material a < 1 (REND-36 single decision) ->
+    /// pass1 opaque (vec order as-is) + pass2 transparent sorted by view depth descending (painter, D7 f64 distances) + Labels always last on top;
+    /// **without transparency and without labels = the old single-pass path (byte preserved)**; pass2 depth Load inherits pass1 depth [Momus-A2].
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     fn run_main_pass(
         &mut self,
@@ -1999,7 +2001,7 @@ impl MeshCore {
         let p1_store = if trans.is_empty() {
             depth_store
         } else {
-            wgpu::StoreOp::Store // 透明 pass 需承不透明深度 [Momus-A2]
+            wgpu::StoreOp::Store // the transparent pass must carry the opaque depth [Momus-A2]
         };
         self.one_main_pass(
             encoder,
@@ -2088,13 +2090,13 @@ impl MeshCore {
             }),
             ..Default::default()
         });
-        // scissor 圈栅格（色/深写入围栏）；full-rect 不走此支=旧路逐位等（canary）
+        // scissor-locked raster (the color/depth write fence); full-rect does not take this branch = bitwise equal to the old path (canary)
         if let Some(r) = rect {
             pass.set_scissor_rect(r.x, r.y, r.width.max(1), r.height.max(1));
             pass.set_viewport(
                 r.x as f32,
                 r.y as f32,
-                r.width as f32, // scissor/viewport 域（尺寸恒小值，cast 安全）
+                r.width as f32, // the scissor/viewport domain (sizes stay small values, the cast is safe)
                 r.height as f32,
                 0.0,
                 1.0,
@@ -2114,8 +2116,8 @@ impl MeshCore {
     ) {
         for &cmd in cmds {
             match cmd {
-                // N1 半程：扩片族臂先占位（N2/N3 实装出图）——穷举同步器锁在此，
-                // 漏臂=编译失败（契约面兑现，非静默跳过）
+                // N1 half-road: the tile-expansion family arms take placeholders first (N2/N3 implement the imagery) -- the exhaustive synchronizer locks here,
+                // a missing arm = compile failure (the contract face delivered, not a silent skip)
                 DrawCommand::ClearColor { .. } => {}
                 DrawCommand::DrawLabels {
                     table,
@@ -2127,14 +2129,14 @@ impl MeshCore {
                         "view",
                     );
                     let Some(gi) = self.labels_t.get(table) else {
-                        continue; // 缺表=skip（族纪律，WGPU-18 同谱）
+                        continue; // missing table = skip (family discipline, same scheme as WGPU-18)
                     };
                     let Some((_, atlas_view)) = &self.glyph_atlas else {
                         static ONCE: std::sync::Once = std::sync::Once::new();
                         ONCE.call_once(|| {
                             eprintln!("warn: labels present but atlas unset — skipped [WGPU-24]");
                         });
-                        continue; // atlas 未上传=整族不可见（族纪律+warn-once）
+                        continue; // atlas not uploaded = the whole family invisible (family discipline + warn-once)
                     };
                     let tbuf = gi.buf.clone();
                     let count = gi.count;
@@ -2192,7 +2194,7 @@ impl MeshCore {
                         "view",
                     );
                     let Some(gi) = self.points_t.get(table) else {
-                        continue; // 缺表=skip（族纪律，WGPU-18）
+                        continue; // missing table = skip (family discipline, WGPU-18)
                     };
                     let tbuf = gi.buf.clone();
                     let count = gi.count;
@@ -2348,8 +2350,8 @@ impl MeshCore {
                     pass.set_index_buffer(ibuf.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..index_count, 0, 0..1);
                 }
-                // ponytail: 两臂 ~25 行 mvp/查表/管线缓存 同形——提公共 helper 的触发
-                // =4de 第三消费者（线/点扩片）；现保持 Flat/Textured 路径逐字不动=零回归构造保证
+                // ponytail: the two arms' ~25 lines of mvp/table-lookup/pipeline-cache share shape -- the trigger to
+                // extract a shared helper = the 4de third consumer (line/point tile-expansion); for now the Flat/Textured paths stay verbatim = the zero-regression construction guarantee
                 DrawCommand::DrawInstances {
                     mesh,
                     material,
@@ -2366,7 +2368,7 @@ impl MeshCore {
                         None => continue,
                     };
                     let Some(gi) = self.instances.get(instances) else {
-                        continue; // 缺表=skip（mesh 缺失同纪律，WGPU-16）
+                        continue; // missing table = skip (the same discipline as missing meshes, WGPU-16)
                     };
                     let inst_buf = gi.buf.clone();
                     let count = gi.count;
@@ -2439,7 +2441,7 @@ impl MeshCore {
                         "view",
                     );
                     let Some(gi) = self.strokes_t.get(table) else {
-                        continue; // 缺表=skip（族纪律，WGPU-17）
+                        continue; // missing table = skip (family discipline, WGPU-17)
                     };
                     let tbuf = gi.buf.clone();
                     let count = gi.count;
@@ -2483,8 +2485,8 @@ impl MeshCore {
     }
 }
 
-/// ④ 画家排序键：entity 面心≈origin+M 平移列 的 |·−eye|²（f64 D7 域；
-/// 远原点相减同律 PIT-5/REND-20）。同键=提交序稳定（sort_by 稳定性构造保证 [裁决 h]）。
+/// The painter-sort key: |.-eye|^2 of the entity face center ~ origin + the M translation column (the f64 D7 domain;
+/// far-origin subtraction follows the same law, PIT-5/REND-20). Equal keys keep submission order stable (the sort_by stability is a construction guarantee [ruling h]).
 fn cmd_view_depth2(cmd: &DrawCommand, eye: [f64; 3]) -> f64 {
     let (o, t) = match *cmd {
         DrawCommand::DrawMesh {
@@ -2501,7 +2503,7 @@ fn cmd_view_depth2(cmd: &DrawCommand, eye: [f64; 3]) -> f64 {
     })
 }
 
-/// 按目标色彩格式建管线（`Rgba8Unorm` 与 `Bgra8Unorm*` 系由 surface caps 决定）。
+/// Build the pipeline by the target color format (`Rgba8Unorm` vs the `Bgra8Unorm*` family is decided by the surface caps).
 #[must_use]
 #[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
 fn build_pipeline(
@@ -2534,7 +2536,7 @@ fn build_pipeline(
         blend: None,
         write_mask: wgpu::ColorWrites::ALL,
     })];
-    // WGPU-24：标签=alpha 混合（覆盖率直出）——其余族保持无混合不透明
+    // WGPU-24: labels = alpha blending (coverage emitted directly) -- the other families stay unblended opaque
     let cts_label = [Some(wgpu::ColorTargetState {
         format: color_format,
         blend: Some(wgpu::BlendState {
@@ -2553,7 +2555,7 @@ fn build_pipeline(
     })];
     let color_targets: &[Option<wgpu::ColorTargetState>] = match variant {
         Variant::ShadowMesh | Variant::ShadowInst => &[],
-        // ④ 透明族=Labels 同标准式（Momus 注：本式即 ALPHA_BLENDING 非预乘标准）
+        // The transparent family (4) = Labels with the same standard form (Momus note: this form is ALPHA_BLENDING, not premultiplied standard)
         Variant::Labels | Variant::FlatT | Variant::TexturedT | Variant::InstancedT => &cts_label,
         _ => &cts,
     };
@@ -2580,8 +2582,8 @@ fn build_pipeline(
         },
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
-            // WGPU-24 恒顶 [裁决点 e]：标签不写深度+Always（覆盖语义；命令序末位天然叠放）
-            // WGPU-27 透明族：不写深度（互见/画家序定合成 [裁决 d]），compare 保 Less（被不透明遮=遮）
+            // Labels always on top (WGPU-24) [ruling point e]: labels write no depth + Always (coverage semantics; the command order places them last naturally)
+            // The transparent family (WGPU-27): no depth writes (mutual visibility; [Momus-A2] ordering handled by the passes)
             depth_write_enabled: Some(!matches!(
                 variant,
                 Variant::Labels | Variant::FlatT | Variant::TexturedT | Variant::InstancedT
@@ -2592,7 +2594,7 @@ fn build_pipeline(
                 wgpu::CompareFunction::Less
             }),
             stencil: wgpu::StencilState::default(),
-            // polygon-offset 伴生件 [E3D:B7③]：扩片族盖面不斗同深度 z-fight
+            // polygon-offset companion piece [E3D:B7-3]: the tile-expansion family caps against it without fighting same-depth z-fight
             bias: if matches!(variant, Variant::Strokes | Variant::Points) {
                 wgpu::DepthBiasState {
                     constant: -1,
@@ -2600,7 +2602,7 @@ fn build_pipeline(
                     ..Default::default()
                 }
             } else if matches!(variant, Variant::ShadowMesh | Variant::ShadowInst) {
-                // caster 侧 acne 双保险（接收端另有常数偏置 [R2]；与 DEFAULT_BIAS 同步）
+                // double insurance against acne on the caster side (the receiver carries a constant bias as well [R2]; keep in sync with DEFAULT_BIAS)
                 wgpu::DepthBiasState {
                     constant: -1,
                     slope_scale: -0.5,

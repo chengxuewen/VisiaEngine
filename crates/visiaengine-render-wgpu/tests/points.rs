@@ -1,5 +1,5 @@
-//! WGPU-18：Points splat 管线——屏幕系展开 + FS 圆 mask（真圆点，纠 geo 方块存量）。
-//! 相机取俯角 76°（sin≈0.97）保圆证据不被透视压扁 [PIT-8 校准]。
+//! WGPU-18: the Points splat pipeline -- screen-space expansion + FS circle mask (true round dots, correcting the geo square pre-existing state).
+//! The camera takes a 76-degree depression (sin ~ 0.97) so the circle evidence is not squashed by perspective [PIT-8 calibration].
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, PointMark, PointTableDesc, RenderBackend, TableId,
@@ -15,7 +15,7 @@ const T4: [[f64; 4]; 4] = [
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
-/// 眼 [0,-2,8]：目标面 ≈0.15 世界/px（半高 ~4.8/64——阶梯量纲前提）
+/// eye [0,-2,8]: the target plane ~ 0.15 world/px (half-height ~ 4.8/64 -- the premise of the ladder's unit system)
 const PX_SCALE: f32 = 0.15;
 
 fn frame_with(commands: Vec<DrawCommand>) -> Frame {
@@ -95,13 +95,16 @@ fn single_mark_is_round_not_square() {
     let g = |p: [u8; 4]| p[1] > 200 && p[0] < 40 && p[2] < 40;
     let (cx, cy) = (32i32, 32i32);
     let at = |dx: i32, dy: i32| g(px(&img, (cx + dx) as u32, (cy + dy) as u32));
-    // 探针先校准中心（probe 后收紧）：中心实心
-    assert!(at(0, 0), "中心缺色");
-    // 圆证据：轴向近缘 (±6,0) 有色；对角 (±6.5,±6.5) 世界距 >r → 弃片
-    assert!(at(6, 0) || at(0, 6), "轴向近缘缺色（半径未生效）");
+    // the probe calibrates the center first (tightened after probing): center solid
+    assert!(at(0, 0), "center missing color");
+    // circle evidence: axial near edges (±6,0) carry color; diagonals (±6.5,±6.5) world distance > r -> discarded patch
+    assert!(
+        at(6, 0) || at(0, 6),
+        "axial near edges missing color (radius not in effect)"
+    );
     assert!(
         !at(7, 7) && !at(-7, 7) && !at(7, -7) && !at(-7, -7),
-        "对角被覆盖=方片非圆（mask 缺席）"
+        "diagonal covered = square patch, not circle (mask absent)"
     );
 }
 
@@ -126,9 +129,9 @@ fn radius_ladder_scales_area() {
     };
     let w = |p: [u8; 4]| p[0] > 200 && p[1] > 200 && p[2] > 200;
     let (s, l) = (count(&small, 0, W, 0, H, w), count(&big, 0, W, 0, H, w));
-    assert!(s >= 5, "小点缺席 {s}");
-    // 面积比 (10/2)²=25，透视/椭圆微损 → ≥8 保守
-    assert!(l > s * 8, "半径阶梯失真 {s}→{l}");
+    assert!(s >= 5, "small dot absent {s}");
+    // area ratio (10/2)^2 = 25, perspective/ellipse micro-loss -> >= 8 conservative
+    assert!(l > s * 8, "radius ladder distorted {s}->{l}");
 }
 
 // spec: WGPU-18
@@ -147,10 +150,19 @@ fn three_marks_families_with_positions() {
     let r = |p: [u8; 4]| p[0] > 200 && p[1] < 40 && p[2] < 40;
     let bl = |p: [u8; 4]| p[2] > 200 && p[0] < 40 && p[1] < 40;
     let g = |p: [u8; 4]| p[1] > 200 && p[0] < 40 && p[2] < 40;
-    // 右/up 世界 +y 投影上移（行减小）——符号错→上下镜像
-    assert!(count(&img, 0, 24, 20, 46, r) >= 12, "红左窗缺席");
-    assert!(count(&img, 40, W, 20, 46, bl) >= 12, "蓝右窗缺席");
-    assert!(count(&img, 20, 44, 0, 30, g) >= 12, "绿上窗缺席");
+    // right/up project to world +y moving upward (rows decrease) -- a wrong sign mirrors vertically
+    assert!(
+        count(&img, 0, 24, 20, 46, r) >= 12,
+        "the red left window is absent"
+    );
+    assert!(
+        count(&img, 40, W, 20, 46, bl) >= 12,
+        "the blue right window is absent"
+    );
+    assert!(
+        count(&img, 20, 44, 0, 30, g) >= 12,
+        "the green top window is absent"
+    );
 }
 
 // spec: WGPU-18
@@ -158,7 +170,7 @@ fn three_marks_families_with_positions() {
 fn empty_and_missing_tables_semantics() {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     assert!(b.create_points(&PointTableDesc { data: &[] }).is_err());
-    // 缺表=skip 非 panic
+    // missing table = skip, not panic
     let f = frame_with(vec![
         DrawCommand::ClearColor {
             rgba: [0.02, 0.02, 0.02, 1.0],
@@ -169,12 +181,14 @@ fn empty_and_missing_tables_semantics() {
             transform: T4,
         },
     ]);
-    let img = b.render_to_pixels(&f).expect("缺表不得 panic");
-    assert!(px(&img, 32, 32)[0] < 10, "缺表画出了东西");
+    let img = b
+        .render_to_pixels(&f)
+        .expect("a missing table must not panic");
+    assert!(px(&img, 32, 32)[0] < 10, "the missing table drew something");
 }
 
-/// G1 大批量完整性门（点云带 E/G 片，WGPU-18 多例同条款）：100k 点表 →
-/// splat 覆盖下界 + 四边缘带各有像素（封批量截断/stride 错——WGPU-16 静默 skip 同族）。
+/// The G1 large-batch integrity gate (the point-cloud band E/G slices, WGPU-18 same-clause multiple instances): a 100k-point table ->
+/// splat coverage lower bound + each of the four edge bands carries pixels (sealing batch truncation / stride mistakes -- the same family as WGPU-16's silent skip).
 // spec: WGPU-18
 #[test]
 fn golden_batch_integrity_100k() {
@@ -183,7 +197,7 @@ fn golden_batch_integrity_100k() {
         eprintln!("SKIP: no adapter");
         return;
     };
-    let side = 317u32; // 317² ≈ 100489 ≥ 100k 表量级
+    let side = 317u32; // 317^2 ~ 100489 >= the 100k table magnitude
     let marks: Vec<visiaengine_render::PointMark> = (0..side)
         .flat_map(|gy| (0..side).map(move |gx| (gx, gy)))
         .map(|(gx, gy)| {
@@ -198,7 +212,11 @@ fn golden_batch_integrity_100k() {
             )
         })
         .collect();
-    assert!(marks.len() >= 100_000, "表量级门槛 {}", marks.len());
+    assert!(
+        marks.len() >= 100_000,
+        "the table-magnitude threshold {}",
+        marks.len()
+    );
     let table = b
         .create_points(&visiaengine_render::PointTableDesc { data: &marks })
         .unwrap();
@@ -239,22 +257,25 @@ fn golden_batch_integrity_100k() {
             .count() as u32
     };
     let total = nb(0, S, 0, S);
-    // 域值=实测 −40% 纪律（PIT-8 先跑后钉）：四带各 >500 且总覆盖 >60_000
+    // domain values = measured minus 40% discipline (PIT-8: run first, pin after): each of the four bands > 500 with total coverage > 60_000
     let bands = [
         nb(0, S, 0, 16),
         nb(0, S, S - 16, S),
         nb(0, 16, 0, S),
         nb(S - 16, S, 0, S),
     ];
-    assert!(total > 60_000, "100k 批量总覆盖塌陷: {total}");
+    assert!(
+        total > 60_000,
+        "the 100k batch total coverage collapsed: {total}"
+    );
     assert!(
         bands.iter().all(|x| *x > 500),
-        "边缘带缺失（批量截断形）: {bands:?}"
+        "edge band missing (batch-truncation form): {bands:?}"
     );
 }
 
-/// G2 远原点像素互逆·点版（WGPU-10 形多例同条款）：同 local 表 origin=(1e7,0,0)
-/// ↔ origin=0 逐字节一致——E202 灰屏案的点版复发温床专捕。
+/// G2 far-origin pixel reciprocity, point edition (the WGPU-10 form, same-clause multiple instances): the same local table origin = (1e7,0,0)
+/// <-> origin = 0 agrees byte by byte -- the specialized catcher for the point-edition recurrence bed of the E202 gray-screen case.
 // spec: WGPU-10
 #[test]
 fn golden_far_origin_pixels_roundtrip_points() {
@@ -306,5 +327,8 @@ fn golden_far_origin_pixels_roundtrip_points() {
     };
     let a = shoot([0.0; 3], &mut b);
     let f = shoot([1e7, 0.0, 0.0], &mut b);
-    assert_eq!(a, f, "远原点互逆像素分叉（D7 点版面回归雷）");
+    assert_eq!(
+        a, f,
+        "far-origin reciprocity pixel fork (the D7 point-face regression mine)"
+    );
 }

@@ -1,6 +1,6 @@
 //! # visiaengine-geo
-//! GeoJSON → 3857 平面 f64 几何 + 最小样式。零渲染依赖（host 侧做 D7 origin 分解）。
-//! 行为契约：docs/sdd/geo.md（GEO-01..08；细分/样式 GEO-09..14 随 H2）。
+//! GeoJSON -> 3857 plane f64 geometry + minimal style. Zero render dependency (the host side performs the D7 origin decomposition).
+//! Behavior contract: docs/sdd/geo.md (GEO-01..08; subdivision/style GEO-09..14 ride H2).
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
@@ -17,26 +17,26 @@ use visiaengine_core::{AttrSet, Vec3};
 
 #[derive(Error, Debug)]
 pub enum GeoError {
-    #[error("文件不存在: {path}")]
+    #[error("file does not exist: {path}")]
     NotFound { path: String },
-    #[error("GeoJSON 解析失败: {reason}")]
+    #[error("GeoJSON parse failed: {reason}")]
     Parse { reason: String },
-    #[error("纬度 {lat}° 超出 Web Mercator 域 ±85.0511°")]
+    #[error("latitude {lat}° outside the Web Mercator domain ±85.0511°")]
     InvalidCoord { lat: f64 },
-    #[error("坐标分量非有限（NaN/inf）")]
+    #[error("coordinate component non-finite (NaN/inf)")]
     NonFinite,
-    #[error("不支持几何变体: {what}")]
+    #[error("unsupported geometry variant: {what}")]
     Unsupported { what: &'static str },
-    #[error("GeometryCollection 嵌套 ≥2 层")]
+    #[error("GeometryCollection nested >= 2 levels")]
     NestedCollection,
-    #[error("IO 失败: {source}")]
+    #[error("IO failure: {source}")]
     Io {
         #[from]
         source: std::io::Error,
     },
 }
 
-/// 细分前几何（3857 米，z 恒 0）。
+/// Pre-subdivision geometry (3857 meters, z always 0).
 #[derive(Clone, Debug, PartialEq)]
 pub enum GeoKind {
     Point(Vec3),
@@ -48,9 +48,9 @@ pub enum GeoKind {
     },
 }
 
-/// simplestyle 六键子集（GEO-12/13，H2 消费）。
+/// The simplestyle six-key subset (GEO-12/13, consumed by H2).
 impl GeoKind {
-    /// 平移几何（GEO-14：world→local 化 = shifted(-origin)，杜绝消费方手改顶点）。
+    /// Translate the geometry (GEO-14: world->local = shifted(-origin), eliminating hand-edited vertices on the consumer side).
     #[must_use]
     pub fn shifted(&self, d: [f64; 2]) -> Self {
         let s = |v: &Vec3| Vec3::new(v.x + d[0], v.y + d[1], v.z);
@@ -69,7 +69,7 @@ impl GeoKind {
     }
 }
 
-/// 默认蓝（GEO-13 语义）；六键解析见 style 模块。
+/// Default blue (GEO-13 semantics); the six-key parsing is in the style module.
 impl Default for StyleRecord {
     fn default() -> Self {
         default_style()
@@ -84,11 +84,11 @@ pub struct StyleRecord {
     pub stroke_width_px: f32,
     pub marker_color: [f32; 4],
     pub radius_px: f32,
-    /// GEO-25：标签文本源（`"{prop}"` 剥壳=属性列名；裸串=常量文本；None=无标签）。
+    /// GEO-25: label text source (`"{prop}"` unwrapped = property column name; bare string = constant text; None = no label).
     pub text_field: Option<Box<str>>,
-    /// 标签字号 px（屏幕恒大小，默认 14）。
+    /// Label font size px (screen-constant size, default 14).
     pub text_size_px: f32,
-    /// 标签色（宿主 sRGB 面=GEO-12 同制；线性化住消费端咽喉）。
+    /// Label color (host sRGB face = same system as GEO-12; linearization lives at the consumer's chokepoint).
     pub text_color: [f32; 4],
 }
 
@@ -112,13 +112,13 @@ impl GeoDocument {
         &self.features
     }
 
-    /// 属性列集（GEO-17：行数与 features() 1:1 对齐）。
+    /// Attribute column set (GEO-17: row count aligns 1:1 with features()).
     #[must_use]
     pub fn attrs(&self) -> &AttrSet {
         &self.attrs
     }
 
-    /// 宿主查询口（行=feature 下标）。
+    /// Host query entry (row = feature index).
     #[must_use]
     pub fn attr_f64(&self, feature: usize, name: &str) -> Option<f64> {
         self.attrs.f64(feature, name)
@@ -134,7 +134,7 @@ impl GeoDocument {
         self.attrs.bool(feature, name)
     }
 
-    /// 全层 3857 bbox 并集（空层 None，GEO-05）。
+    /// The whole layer's union 3857 bbox (empty layer None, GEO-05).
     #[must_use]
     pub fn layer_bbox(&self) -> Option<[f64; 4]> {
         let mut it = self.features.iter().filter_map(|f| f.world_bbox);
@@ -150,7 +150,7 @@ impl GeoDocument {
     }
 }
 
-/// WGS84 经纬 → EPSG:3857 球面式（GEO-02/08；|φ|>85.0511° 发散域拒）。
+/// WGS84 lon/lat -> EPSG:3857 spherical formula (GEO-02/08; |phi| > 85.0511 deg rejected as a divergent domain).
 #[must_use]
 pub fn web_mercator(lon: f64, lat: f64) -> Option<[f64; 2]> {
     const R: f64 = 6378137.0;
@@ -164,7 +164,7 @@ pub fn web_mercator(lon: f64, lat: f64) -> Option<[f64; 2]> {
     ])
 }
 
-/// 默认样式（GEO-13；simplestyle 六键解析属 H2）。
+/// Default style (GEO-13; simplestyle six-key parsing belongs to H2).
 #[must_use]
 pub fn default_style() -> StyleRecord {
     StyleRecord {
@@ -216,7 +216,11 @@ fn kind_of(gj: &geojson::Geometry) -> Result<GeoKind, GeoError> {
         }
         geojson::GeometryValue::MultiLineString { coordinates } => match coordinates.as_slice() {
             [single] => GeoKind::Line(single.iter().map(pt).collect::<Result<_, _>>()?),
-            _ => return Err(bad("MultiLineString len>1 属 H2 拆分（多部件策略）")),
+            _ => {
+                return Err(bad(
+                    "MultiLineString len>1 belongs to the H2 split (multi-part strategy)",
+                ));
+            }
         },
         geojson::GeometryValue::Polygon { coordinates } => {
             let Some((ext, holes)) = coordinates.split_first() else {
@@ -230,11 +234,11 @@ fn kind_of(gj: &geojson::Geometry) -> Result<GeoKind, GeoError> {
                     .collect::<Result<_, _>>()?,
             }
         }
-        _ => return Err(bad("MultiPolygon/GC 在文档层处理")),
+        _ => return Err(bad("MultiPolygon/GC are handled at the document layer")),
     })
 }
 
-/// 几何→3857 bbox（feature 构造段拆出的纯函数，GEO-05 语义不变）。
+/// Geometry -> 3857 bbox (a pure function extracted from the feature construction segment, GEO-05 semantics unchanged).
 fn bbox_of(kind: &GeoKind) -> [f64; 4] {
     let mut mins = [f64::MAX; 2];
     let mut maxs = [f64::MIN; 2];
@@ -255,8 +259,8 @@ fn bbox_of(kind: &GeoKind) -> [f64; 4] {
     [mins[0], mins[1], maxs[0], maxs[1]]
 }
 
-/// JSON 标量属性入列（GEO-17 解析边界——serde_json 只在此处+文档层出现）。
-/// number/string/bool 入对应型列；null/object/array 跳过（失真不如缺席）。
+/// JSON scalar attributes into columns (the GEO-17 parsing boundary -- serde_json appears here and at the document layer only).
+/// number/string/bool go into the matching typed column; null/object/array are skipped (absence beats distortion).
 fn load_props(a: &mut AttrSet, row: usize, p: &serde_json::Map<String, serde_json::Value>) {
     use serde_json::Value;
     for (k, v) in p {
@@ -277,32 +281,32 @@ fn load_props(a: &mut AttrSet, row: usize, p: &serde_json::Map<String, serde_jso
     }
 }
 
-/// 修复策略（[E3D:A4] 移植）：FastFail=单件脏几何整文档 Err（既有契约）；
-/// Lenient=逐件丢弃+分型计数（GEO-15/16）。
+/// Repair policy ([E3D:A4] port): FastFail = one dirty piece of geometry rejects the whole document as Err (the existing contract);
+/// Lenient = per-piece discard with by-type counting (GEO-15/16).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RepairPolicy {
     Lenient,
     FastFail,
 }
 
-/// 宽松加载报告：丢弃原因的分型计数（GEO-15）。分类在产生点定死
-/// （typed GeoError 变体映射），不反解 reason 字符串。
+/// Lenient load report: by-type counts of discard reasons (GEO-15). Classification is fixed at the generation point
+/// (a typed GeoError variant mapping), never by parsing the reason string back.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LoadReport {
-    /// lon/lat 出 Web Mercator 域
+    /// lon/lat outside the Web Mercator domain
     pub dropped_out_of_bounds: u32,
-    /// 坐标分量 NaN/inf
+    /// coordinate component NaN/inf
     pub dropped_non_finite: u32,
-    /// MultiPolygon/多部件 MLS/空环等未就绪变体
+    /// not-ready variants such as MultiPolygon / multi-part MLS / empty ring
     pub dropped_unsupported: u32,
-    /// `geometry: null` 的 feature（Lenient 下不再静默）
+    /// features with `geometry: null` (no longer silently ignored under Lenient)
     pub dropped_null_geometry: u32,
-    /// GeometryCollection 嵌套 ≥2 层
+    /// GeometryCollection nested >= 2 levels
     pub dropped_nested_collection: u32,
 }
 
 impl LoadReport {
-    /// 丢弃总数（五类和）。
+    /// Total discards (sum of the five kinds).
     #[must_use]
     pub fn total_dropped(&self) -> u32 {
         self.dropped_out_of_bounds
@@ -318,13 +322,13 @@ impl LoadReport {
             GeoError::NonFinite => self.dropped_non_finite += 1,
             GeoError::Unsupported { .. } => self.dropped_unsupported += 1,
             GeoError::NestedCollection => self.dropped_nested_collection += 1,
-            // 文档级错误（语法/IO/NotFound）=整文件 Err，永不进丢弃计数
+            // document-level errors (syntax/IO/NotFound) = the whole file is Err, never entering the discard count
             GeoError::Parse { .. } | GeoError::Io { .. } | GeoError::NotFound { .. } => {}
         }
     }
 }
 
-/// feature 级传播/丢弃决策收敛器（属性列化 GEO-17 的行生产点）。
+/// The feature-level propagate/discard decision converger (the row production point of attribute columnization GEO-17).
 struct Collector {
     policy: RepairPolicy,
     features: Vec<GeoFeature>,
@@ -344,8 +348,8 @@ impl Collector {
         }
     }
 
-    /// 几何→feature 单管线（投影单点：kind_of 内 proj()，GEO-08 同路拒绝）。
-    /// kind_of 失败先于行追加——attrs 行与 features 恒对齐（GEO-17）。
+    /// Geometry -> feature single pipeline (projection single point: proj() inside kind_of, rejected on the same road as GEO-08).
+    /// kind_of failure precedes row appending -- attrs rows and features stay aligned forever (GEO-17).
     fn push_geom(
         &mut self,
         gj: &geojson::Geometry,
@@ -379,34 +383,34 @@ impl Collector {
             if self.policy == RepairPolicy::Lenient {
                 self.report.dropped_null_geometry += 1;
             }
-            return Ok(()); // null 几何：FastFail 维持旧静默跳过（GEO-16 契约位）
+            return Ok(()); // null geometry: FastFail keeps the old silent skip (GEO-16 contract position)
         };
         let props = f.properties.as_ref();
         if matches!(g.value, geojson::GeometryValue::GeometryCollection { .. }) {
             for sub in flatten_gc(g) {
-                // GC 子件共享 feature 级 name/props（每子件独立行，GEO-17）
+                // GC children share the feature-level name/props (each child an independent row, GEO-17)
                 let sub = sub.and_then(|g| self.push_geom(g, name.clone(), props));
                 self.accept(sub)?;
             }
             return Ok(());
         }
-        // 普通件也须经 accept 收敛（直返=绕过 Lenient 分类，GREEN 回归抓到）
+        // ordinary pieces must also route through the accept decision (returning directly = bypassing Lenient, caught in the GREEN regression)
         let r = self.push_geom(g, name, props);
         self.accept(r)
     }
 }
 
-/// 从字节解析（GEO-06/07/08 无文件入口；=FastFail 语义，GEO-16 契约位）。
+/// Parse from bytes (GEO-06/07/08 no-file entry; = FastFail semantics, GEO-16 contract position).
 pub fn parse_geojson(bytes: &[u8]) -> Result<GeoDocument, GeoError> {
     Ok(parse_impl(bytes, RepairPolicy::FastFail)?.0)
 }
 
-/// 宽松入口（GEO-15）：脏几何逐件丢弃+分型报告。
+/// The Lenient entry (GEO-15): dirty pieces are discarded per piece with by-type reporting.
 pub fn parse_geojson_lenient(bytes: &[u8]) -> Result<(GeoDocument, LoadReport), GeoError> {
     parse_impl(bytes, RepairPolicy::Lenient)
 }
 
-/// 策略显式入口（双口封装等价）。
+/// The policy-explicit entry (the two wrappers are equivalent).
 pub fn parse_geojson_with(
     bytes: &[u8],
     policy: RepairPolicy,
@@ -449,7 +453,7 @@ fn parse_impl(bytes: &[u8], policy: RepairPolicy) -> Result<(GeoDocument, LoadRe
     ))
 }
 
-/// GC 展平一层（借用输出，props 由调用方复制入各子件行）。
+/// GC flattening one level (borrowed output; props copied into each child row by the caller).
 fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<&geojson::Geometry, GeoError>> {
     let geojson::GeometryValue::GeometryCollection { geometries } = &g.value else {
         return vec![Ok(g)];
@@ -466,8 +470,8 @@ fn flatten_gc(g: &geojson::Geometry) -> Vec<Result<&geojson::Geometry, GeoError>
         .collect()
 }
 
-/// 从 JSON 对象字符串解析样式（测试/宿主便利口；非法回默认）。
-/// GEO-17 边界口：JSON→一次性 AttrSet→列读（与主管线同一实现）。
+/// Parse a style from a JSON object string (test/host convenience entry; falls back to default when invalid).
+/// The GEO-17 boundary entry: JSON -> one-shot AttrSet -> columnized reads (same implementation as the main pipeline).
 #[must_use]
 pub fn parse_style(props_json: &str) -> StyleRecord {
     let Ok(serde_json::Value::Object(m)) = serde_json::from_str(props_json) else {
@@ -479,7 +483,7 @@ pub fn parse_style(props_json: &str) -> StyleRecord {
     style::style_from_attrs(&a, r)
 }
 
-/// 解析 GeoJSON 文件。
+/// Parse a GeoJSON file.
 pub fn load_geojson(path: impl AsRef<std::path::Path>) -> Result<GeoDocument, GeoError> {
     let path = path.as_ref();
     let bytes = match std::fs::read(path) {

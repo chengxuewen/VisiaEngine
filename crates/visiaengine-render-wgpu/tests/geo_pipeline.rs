@@ -1,4 +1,4 @@
-//! WGPU-11：geo 全链路装配（解析→细分→D7 上传→离屏着色）——host 用法样板。
+//! WGPU-11: full geo pipeline assembly (parse -> tessellate -> D7 upload -> offscreen shading) -- the host usage template.
 
 use visiaengine_geo::{load_geojson, tessellate};
 use visiaengine_render::{
@@ -24,7 +24,7 @@ fn golden_geo_fill_hit() {
     );
     let doc = match load_geojson(path) {
         Ok(d) => d,
-        Err(e) => panic!("fixture 解析失败: {e}"),
+        Err(e) => panic!("fixture parse failed: {e}"),
     };
     let [x0, y0, x1, y1] = doc.layer_bbox().expect("layer bbox");
     let origin = [(x0 + x1) / 2.0, (y0 + y1) / 2.0, 0.0];
@@ -40,14 +40,14 @@ fn golden_geo_fill_hit() {
     let mut commands = vec![DrawCommand::ClearColor {
         rgba: [0.05, 0.07, 0.10, 1.0],
     }];
-    // buildingB（无六键色→默认蓝 [0,0.45,1,1]）质心
+    // buildingB (no six-key color -> default blue [0,0.45,1,1]) centroid
     let neg = [-origin[0], -origin[1]];
     for f in doc.features() {
         let parts = tessellate(&f.kind.shifted(neg), &f.style).unwrap();
         for gp in parts {
             let p = match gp {
                 visiaengine_geo::GeoPart::Fill(t) => t,
-                // WGPU-11 断言面=fill 命中；扩片族像素证据住 strokes.rs/points.rs
+                // the WGPU-11 assertion face = fill hit; the tile-expansion family's pixel evidence lives in strokes.rs/points.rs
                 _ => continue,
             };
             if p.positions.is_empty() {
@@ -99,7 +99,7 @@ fn golden_geo_fill_hit() {
     };
     let img = backend.render_to_pixels(&frame).expect("render");
 
-    // buildingB 中心世界坐标（web mercator 值由 fixture 经纬推出）
+    // buildingB center world coordinate (web mercator values derived from the fixture's lon/lat)
     let bc = visiaengine_geo::web_mercator(2.35035, 48.8500250).unwrap();
     let nx = (bc[0] - origin[0]) as f32 / zoom as f32;
     let ny = (bc[1] - origin[1]) as f32 / (zoom as f32 * H as f32 / W as f32);
@@ -109,7 +109,7 @@ fn golden_geo_fill_hit() {
     for y in (0..H).step_by(2) {
         for x in (0..W).step_by(2) {
             let p = px(&img, x, y);
-            // 默认蓝 [0,.45,1] 过方向光 ×0.625 → 期望 ~(0,72,160)
+            // default blue [0,.45,1] through the directional light x0.625 -> expected ~(0,72,160)
             if p[2] > 120 && p[2] as i16 - p[0] as i16 > 80 && p[1] < 120 {
                 blues.push((x, y));
             }
@@ -125,7 +125,10 @@ fn golden_geo_fill_hit() {
         "BLUE bbox {bbox:?} count {} expect {pxc},{pyc}",
         blues.len()
     );
-    assert!(!blues.is_empty(), "全图无默认蓝像素（geo 管线未出图）");
+    assert!(
+        !blues.is_empty(),
+        "no default-blue pixels in the whole image (the geo pipeline produced no image)"
+    );
 }
 
 // spec: GEO-20
@@ -152,7 +155,7 @@ fn golden_scalar_ramp_pixels() {
         for gp in parts {
             let p = match gp {
                 visiaengine_geo::GeoPart::Fill(t) => t,
-                // WGPU-11 断言面=fill 命中；扩片族像素证据住 strokes.rs/points.rs
+                // the WGPU-11 assertion face = fill hit; the tile-expansion family's pixel evidence lives in strokes.rs/points.rs
                 _ => continue,
             };
             if p.positions.is_empty() {
@@ -202,7 +205,7 @@ fn golden_scalar_ramp_pixels() {
         commands,
     };
     let img = backend.render_to_pixels(&frame).expect("render");
-    // 三色族像素分类计数（方向光 ×0.625 经验域，见 golden_geo_fill_hit 注释）
+    // three-color-family pixel classification counts (the directional-light x0.625 empirical domain, see the golden_geo_fill_hit comment)
     let (mut greenish, mut reddish, mut midyellow) = (0u32, 0u32, 0u32);
     for y in (0..H).step_by(2) {
         for x in (0..W).step_by(2) {
@@ -217,15 +220,24 @@ fn golden_scalar_ramp_pixels() {
             }
         }
     }
-    assert!(greenish > 20, "h0 纯低绿色族像素缺失: {greenish}");
-    assert!(reddish > 20, "h50 纯高红色族像素缺失: {reddish}");
-    assert!(midyellow > 20, "h25 中点黄族像素缺失: {midyellow}");
+    assert!(
+        greenish > 20,
+        "h0 pure-low green-family pixels missing: {greenish}"
+    );
+    assert!(
+        reddish > 20,
+        "h50 pure-high red-family pixels missing: {reddish}"
+    );
+    assert!(
+        midyellow > 20,
+        "h25 midpoint yellow-family pixels missing: {midyellow}"
+    );
 }
 
 // spec: WGPU-11
-/// E202 窗口路镜像像素门（2026-09-17 灰屏案根修随带，testing.md 视觉例双保险第 1 条）。
-/// 谓词三自证：①正例=拟合式机位必出楼；②canary=案发机位（target 世界原点外的 [0,0,0]）
-/// 必空帧——断死"画面来自机位正确"而非背景巧合；③阈=实测 23222 的 −48%。
+/// The E202 window-path mirror pixel gate (the gray-screen case root fix's carried guard of 2026-09-17, testing.md visual-case double insurance clause 1).
+/// Predicate triple self-proof: (1) positive = the fitted camera position must emit buildings; (2) canary = the incident camera position (target = the world-origin-external [0,0,0])
+/// must be an empty frame -- asserting "the picture comes from a correct camera position" rather than a background coincidence; (3) threshold = measured 23222 minus 48%.
 #[test]
 fn golden_geo_window_fit() {
     let path = concat!(
@@ -296,8 +308,8 @@ fn golden_geo_window_fit() {
         };
         be.render_to_pixels(&frame).expect("render")
     };
-    // canary：案发机位（E202 出生形，target=[0,0,0] 对世界 3857 系数据）必须全空帧。
-    // 参考底=空帧左上角像素（自标定：CORE-16 后 clear 字节受硬件舍入 ±1，钉死字面值脆）。
+    // canary: the incident camera position (E202's birth form, target = [0,0,0] against world 3857-frame data) must be a fully empty frame.
+    // reference floor = the empty frame's top-left pixel (self-calibrating: after CORE-16 the clear bytes carry hardware rounding +/- 1, pinning the literal value is brittle).
     let rig_broken = CameraRig::orbit([0.0; 3], 0.0, 1.5, 50.0, 60.0, 1.0, 0.1, 1000.0);
     let empty = render(&mut backend, &rig_broken);
     let bg = [empty.rgba[0], empty.rgba[1], empty.rgba[2]];
@@ -311,8 +323,12 @@ fn golden_geo_window_fit() {
             })
             .count() as u32
     };
-    assert_eq!(off_bg(&empty), 0, "案发机位意外出图——谓词没锁住灰屏案");
-    // 修复机位：E202 resumed() 装载期拟合式逐字镜像
+    assert_eq!(
+        off_bg(&empty),
+        0,
+        "the incident camera position unexpectedly produced an image -- the predicate did not lock the gray-screen case"
+    );
+    // fixed camera position: a verbatim mirror of the E202 resumed() load-time fitting formula
     let mut rig = rig_broken;
     let (hx, hy) = ((x1 - x0) / 2.0, (y1 - y0) / 2.0);
     let load_aspect = W as f64 / H.max(1) as f64;
@@ -322,5 +338,8 @@ fn golden_geo_window_fit() {
     rig.zoom = rig.dist * tan_h * load_aspect;
     let img = render(&mut backend, &rig);
     let nc = off_bg(&img);
-    assert!(nc > 12_000, "窗口拟合路 park 覆盖不足: {nc} px");
+    assert!(
+        nc > 12_000,
+        "the window-fit road's park coverage insufficient: {nc} px"
+    );
 }

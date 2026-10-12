@@ -1,7 +1,7 @@
-// E812_mesh_add · SDK 消费·C++ 程序化增删例（CAPI-15/16 活体门）。
-// 跑不通即 API 未完成 [E3D:D7]。
+// E812_mesh_add -- SDK consumption, C++ procedural add/delete example (the CAPI-15/16 living gate).
+// If it does not run, the API is unfinished [E3D:D7].
 //
-// 契约面：枚举域随增删伸缩 / 位形互异（含 slot0gen0=0 合法谱）/ 退化零提交 / 旧句柄再入拒。
+// Contract face: the enumeration domain stretches with adds/deletes / shapes mutually distinct (including the legal slot0gen0 = 0 scheme) / degenerate zero commit / old-handle re-entry rejected.
 #include <cstdint>
 #include <cstdio>
 #include <vector>
@@ -36,11 +36,11 @@ int main() {
         if (eng.add_mesh(d, &h1) != VE_OK) { puts("E812 FAIL add#1"); return 1; }
         if (eng.add_mesh(d, &h2) != VE_OK) { puts("E812 FAIL add#2"); return 1; }
     }
-    if (h1 == h2) { puts("E812 FAIL 位形撞车"); return 1; }
-    if (eng.entity_count() != 2) { puts("E812 FAIL 计数不随增"); return 1; }
+    if (h1 == h2) { puts("E812 FAIL shape collision"); return 1; }
+    if (eng.entity_count() != 2) { puts("E812 FAIL the count did not grow with the add"); return 1; }
     if (eng.render() != VE_OK) { puts("E812 FAIL render"); return 1; }
 
-    // 退化路：索引越界 = 拒绝且计数不动（零提交契约）
+    // degenerate road: index out of range = rejected with the count unmoved (the zero-commit contract)
     {
         const uint32_t oob[3] = {0, 9, 2};
         auto d = quad_desc(oob, 3);
@@ -48,15 +48,15 @@ int main() {
         d.origin = org;
         uint64_t sink = 42;
         if (eng.add_mesh(d, &sink) >= 0 || sink != 42) {
-            puts("E812 FAIL 退化污染 out/计数"); return 1;
+            puts("E812 FAIL degenerate polluted out/count"); return 1;
         }
     }
-    if (eng.entity_count() != 2) { puts("E812 FAIL 退化提交"); return 1; }
+    if (eng.entity_count() != 2) { puts("E812 FAIL degenerate committed"); return 1; }
 
     if (eng.remove_entity(h1) != VE_OK) { puts("E812 FAIL remove#1"); return 1; }
-    if (eng.remove_entity(h1) != VE_ERR_ARG) { puts("E812 FAIL 再入未拒"); return 1; }
+    if (eng.remove_entity(h1) != VE_ERR_ARG) { puts("E812 FAIL re-entry not rejected"); return 1; }
     if (eng.remove_entity(h2) != VE_OK) { puts("E812 FAIL remove#2"); return 1; }
-    if (eng.entity_count() != 0) { puts("E812 FAIL 计数不随删"); return 1; }
+    if (eng.entity_count() != 0) { puts("E812 FAIL the count did not shrink with the delete"); return 1; }
 
     puts("OK E812_mesh_add addremove=roundtrip");
     return 0;

@@ -1,9 +1,9 @@
-//! GEO-23：解析器全输入域无 panic（proptest 属性面，T1 层）。
+//! GEO-23: the parser panics on no input (the proptest property face, T1 layer).
 
 use proptest::prelude::*;
 use visiaengine_geo::{parse_geojson, parse_geojson_lenient, web_mercator};
 
-// 任意字节流：两策略皆不得 panic（Err 合法，panic 非法）
+// arbitrary byte streams: neither policy may panic (Err is legal, panic is illegal)
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(512))]
 
@@ -20,7 +20,7 @@ proptest! {
         x in any::<f64>(), y in any::<f64>(),
         x2 in any::<f64>(), y2 in any::<f64>(),
     ) {
-        // 全 f64 域（NaN/inf/极值）构造 GeoJSON 喂解析口
+        // build GeoJSON over the full f64 domain (NaN/inf/extremes) and feed the parsing entries
         let gj = format!(
             r#"{{"type":"FeatureCollection","features":[
               {{"type":"Feature","properties":{{}},
@@ -36,7 +36,7 @@ proptest! {
     fn lenient_fastfail_consistency_on_clean_input(
         lon in -180.0f64..180.0, lat in -85.0f64..85.0, r in 0.001f64..1.0
     ) {
-        // 干净域内两策略件数一致（RepairPolicy 语义面：无脏件时零差异）
+        // within the clean domain both policies yield equal counts (the RepairPolicy semantic face: zero divergence without dirty pieces)
         let gj = format!(
             r#"{{"type":"Feature","properties":{{}},
                "geometry":{{"type":"Polygon","coordinates":[[[{lon},{lat}],[{lon},{lat}],[{lon},{lat}],[{lon},{lat}]]]}}}}"#

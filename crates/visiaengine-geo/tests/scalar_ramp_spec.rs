@@ -1,7 +1,7 @@
-//! GEO-20：visia:color-* 扩展键 = 标量→色带（解析期物化，D9 边界外自有命名）。
-//! 机制修订注记：计划 v1.1 原文"256px LUT 纹理+WGSL 采样"按 ponytail 降档——
-//! GIS 属性着色的真实形态是 **per-feature 常量色**（楼高=每 feature 单值），
-//! CPU lerp 即完备；GPU LUT 纹理留待逐顶点场（DEM/点云）真需求（backlog）。
+//! GEO-20: the visia:color-* extension keys = scalar -> color ramp (materialized at parse time, own naming beyond the D9 boundary).
+//! Mechanism revision note: plan v1.1's original "256px LUT texture + WGSL sampling" was downgraded per ponytail --
+//! the real shape of GIS attribute coloring is **per-feature constant color** (building height = one value per feature),
+//! so a CPU lerp is complete; GPU LUT textures await the real per-vertex-field need (DEM/point cloud) (backlog).
 
 use visiaengine_geo::{load_geojson, parse_geojson_lenient};
 
@@ -13,25 +13,25 @@ fn scalar_lands_on_color_ramp() {
     let (doc, _) = parse_geojson_lenient(ONE.as_bytes()).unwrap();
     let s = &doc.features()[0].style;
     // t=(40-0)/50=0.8 → lerp(green,red,0.8)=(0.8,0.2,0)
-    assert!((s.fill[0] - 0.8).abs() < 1e-5, "红通道随 t 升");
-    assert!((s.fill[1] - 0.2).abs() < 1e-5, "绿通道随 t 降");
+    assert!((s.fill[0] - 0.8).abs() < 1e-5, "red channel rises with t");
+    assert!((s.fill[1] - 0.2).abs() < 1e-5, "green channel falls with t");
     assert_eq!(s.fill[3], 1.0);
-    // marker 同步（点件一致性）
+    // marker synced (point-piece consistency)
     assert_eq!(s.marker_color, s.fill);
 }
 
 // spec: GEO-20
 #[test]
 fn out_of_range_clamps_and_missing_column_falls_back() {
-    // 超上界 clamp 到纯高色
+    // beyond the upper bound clamps to the pure high color
     let hi = ONE.replace("\"height\":40", "\"height\":999");
     let (doc, _) = parse_geojson_lenient(hi.as_bytes()).unwrap();
     assert_eq!(doc.features()[0].style.fill, [1.0, 0.0, 0.0, 1.0]);
-    // 缺列（引用不存在属性）→ 回退六键/默认，无 panic 无声降
+    // missing column (referencing a nonexistent attribute) -> fall back to six-keys/default, no panic no silence-drop
     let miss = ONE.replace("\"height\":40,", "");
     let (doc, _) = parse_geojson_lenient(miss.as_bytes()).unwrap();
     assert_eq!(doc.features()[0].style.fill, [0.0, 0.45, 1.0, 1.0]);
-    // 无效区间（hi<=lo）→ 静默禁用
+    // invalid interval (hi <= lo) -> silently disabled
     let bad = ONE.replace("\"visia:color-hi\":50", "\"visia:color-hi\":0");
     let (doc, _) = parse_geojson_lenient(bad.as_bytes()).unwrap();
     assert_eq!(doc.features()[0].style.fill, [0.0, 0.45, 1.0, 1.0]);
@@ -46,13 +46,17 @@ fn fixture_file_end_to_end() {
     );
     let doc = load_geojson(path).unwrap();
     let fills: Vec<[f32; 4]> = doc.features().iter().map(|f| f.style.fill).collect();
-    assert_eq!(fills[0], [0.0, 1.0, 0.0, 1.0], "h0=纯低色");
-    assert_eq!(fills[1], [0.5, 0.5, 0.0, 1.0], "h25=中点");
-    assert_eq!(fills[2], [1.0, 0.0, 0.0, 1.0], "h50=纯高色");
-    assert_eq!(fills[3], [0.0, 0.45, 1.0, 1.0], "缺列件回默认蓝");
+    assert_eq!(fills[0], [0.0, 1.0, 0.0, 1.0], "h0 = pure low color");
+    assert_eq!(fills[1], [0.5, 0.5, 0.0, 1.0], "h25 = midpoint");
+    assert_eq!(fills[2], [1.0, 0.0, 0.0, 1.0], "h50 = pure high color");
+    assert_eq!(
+        fills[3],
+        [0.0, 0.45, 1.0, 1.0],
+        "missing-column piece falls back to default blue"
+    );
 }
 
-/// M0 暴露锁：ramp 是点云带（io-points 着色/E204）的复用底座——pub 面端点/单调钉。
+/// M0 exposure lock: the ramp is the reuse base of the point-cloud band (io-points coloring/E204) -- pub-face endpoints/monotonicity pinned.
 // spec: GEO-20
 #[test]
 fn ramp_helper_exposed_for_host_consumers() {
@@ -69,9 +73,21 @@ fn ramp_helper_exposed_for_host_consumers() {
         visiaengine_geo::apply_scalar_ramp(&a, r, &mut s);
         s.fill
     };
-    assert_eq!(fill_at(0.0), [0.0, 0.0, 0.0, 1.0], "下端点逐位");
-    assert_eq!(fill_at(10.0), [1.0, 1.0, 1.0, 1.0], "上端点逐位");
-    assert_eq!(fill_at(5.0), [0.5, 0.5, 0.5, 1.0], "中点 lerp");
-    assert!(fill_at(3.0)[0] < fill_at(7.0)[0], "单调");
-    assert_eq!(fill_at(99.0), [1.0, 1.0, 1.0, 1.0], "越界 clamp 面同锁");
+    assert_eq!(
+        fill_at(0.0),
+        [0.0, 0.0, 0.0, 1.0],
+        "lower endpoint bit-exact"
+    );
+    assert_eq!(
+        fill_at(10.0),
+        [1.0, 1.0, 1.0, 1.0],
+        "upper endpoint bit-exact"
+    );
+    assert_eq!(fill_at(5.0), [0.5, 0.5, 0.5, 1.0], "midpoint lerp");
+    assert!(fill_at(3.0)[0] < fill_at(7.0)[0], "monotonic");
+    assert_eq!(
+        fill_at(99.0),
+        [1.0, 1.0, 1.0, 1.0],
+        "out-of-range clamp face locked too"
+    );
 }

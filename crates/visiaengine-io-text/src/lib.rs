@@ -1,9 +1,9 @@
-//! visiaengine-io-text —— 文字标注装载（S2 带，档①引擎自管）。
+//! visiaengine-io-text -- text-label loading (S2 band, tier-1 engine self-managed).
 //!
-//! 三件纯 CPU 面：① [`FontFace`] fontdue 包装（宿主注入字节，IO-07）② [`GlyphCache`]
-//! R8 atlas shelf 缓存（IO-08）③ [`layout`] LTR 排布产 quad 列（IO-09）。
-//! GPU 态住 render-wgpu；LabelMark 表在 render IR（REND-33）。
-//! 非目标（挂账触发制）：halo / billboard 立牌 / 换行富文本 bidi / 标签避让。
+//! Three pure-CPU faces: (1) [`FontFace`] the fontdue wrapper (host-injected bytes, IO-07) (2) [`GlyphCache`]
+//! the R8 atlas shelf cache (IO-08) (3) [`layout`] LTR layout emitting quad lists (IO-09).
+//! GPU state lives in render-wgpu; the LabelMark table is in the render IR (REND-33).
+//! Non-goals (backlog on demand): halo / billboard strips / wrapping rich-text bidi / label collision avoidance.
 
 mod cache;
 mod face;

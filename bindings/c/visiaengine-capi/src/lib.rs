@@ -1,13 +1,13 @@
 //! # visiaengine-capi
 //!
-//! C ABI 面（批 2）：句柄表/线程亲和/panic 栅栏/输入单入口。
-//! 行为契约：`docs/sdd/capi.md`（CAPI-01..）。产物名 `libvisiaengine`（D6）。
-//! 双面口纪律（[FFI-R:BS-5]）：js 面与 ffi 面皆为 engine.rs 之上的薄叶。
+//! C ABI face (batch 2): handle table / thread affinity / panic fence / single input entry.
+//! Behavior contract: `docs/sdd/capi.md` (CAPI-01..). Artifact name `libvisiaengine` (D6).
+//! Dual-face entry discipline ([FFI-R:BS-5]): both the js face and the ffi face are thin leaves above engine.rs.
 
 mod engine;
 mod ffi;
 
-pub use engine::{Engine, Proj}; // wasm 桥 + N2.1 rs 测试面（morph 带 2026-09-28 去 cfg：native 侧测试/示例同需）
+pub use engine::{Engine, Proj}; // wasm bridge + N2.1 rs test face (the morph band dropped cfg on 2026-09-28: native-side tests/examples need it too)
 #[cfg(target_arch = "wasm32")]
 pub use ffi::enc_entity;
 pub use ffi::{
@@ -22,13 +22,13 @@ pub use ffi::{
     visiaengine_remove_entity, visiaengine_render, visiaengine_viewport,
 };
 
-/// CAPI-18/19 native 独占（wasm 面走 bytes 桥于 wasm  crate）。
+/// CAPI-18/19 native-only (the wasm face goes through the bytes bridge in the wasm crate).
 #[cfg(not(target_arch = "wasm32"))]
 pub use ffi::{
     VE_PCL_FASTFAIL, VE_PCL_LENIENT, VePclReport, visiaengine_add_points, visiaengine_load_pcl,
 };
 
-/// CAPI-17 native 独占（wasm32 无 C ABI 事件面——JS 闭包走 visiaengine-wasm 桥）。
+/// CAPI-17 native-only (wasm32 has no C ABI event face -- JS closures go through the visiaengine-wasm bridge).
 #[cfg(not(target_arch = "wasm32"))]
 pub use ffi::visiaengine_set_event_callback;
 pub use ffi::{VeCameraPose, visiaengine_fly_state, visiaengine_fly_to};

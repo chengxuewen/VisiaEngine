@@ -1,8 +1,8 @@
-/* E810 · SDK 消费·C 属性遍历 survey —— 数据带验收例（零新口：CAPI-04/10 族的宿主全景）。
- * 跑不通即 API 未完成 [E3D:D7]。
+/* E810 -- SDK consumption, C attribute-traversal survey -- the data-band acceptance example (zero new entries: the host panorama of the CAPI-04/10 family).
+ *  If it does not run, the API is unfinished [E3D:D7].
  *
- * park.geojson 逐实体：name(str) + fill-opacity(f64，D9 原始键) + 故意读缺失键（missing≠0 契约现场）。
- * ctest: example_E810_attr_survey（headless，仓根 WORKING_DIRECTORY 由注册宏担保）。 */
+ *  park.geojson per entity: name(str) + fill-opacity(f64, the D9 original key) + a deliberate read of a missing key (missing != 0, contract in the act).
+ *  ctest: example_E810_attr_survey (headless, the repo-root WORKING_DIRECTORY is guaranteed by the registration macro). */
 #include <stdio.h>
 #include <string.h>
 
@@ -25,11 +25,11 @@ int main(void) {
             double opacity = -1.0;
             int has_op = visiaengine_attr_f64(ve, ent, "fill-opacity", &opacity) == 1;
             if (has_op) ++opac;
-            /* 缺失≠零值契约：读不存在键，out 必须保持原值（此处哨兵 -1.0） */
+            /* missing != zero contract: read a nonexistent key, out must hold its original value (here the sentinel -1.0) */
             double sentinel = -1.0;
             if (visiaengine_attr_f64(ve, ent, "definitely_missing_key", &sentinel) != 0 ||
                 sentinel != -1.0) {
-                puts("E810 FAIL 缺失路污染 out");
+                puts("E810 FAIL the missing-key road polluted out");
                 return 1;
             }
             printf("ATTR i=%d name=%s fill-opacity=%s\n", i, name,
@@ -37,7 +37,7 @@ int main(void) {
         }
     }
     if (names < 2 || opac < 1) {
-        printf("E810 FAIL 属性面收缩 names=%d opac=%d / n=%d\n", names, opac, n);
+        printf("E810 FAIL attribute face shrunken names=%d opac=%d / n=%d\n", names, opac, n);
         return 1;
     }
     if (visiaengine_destroy(ve) != VE_OK) { puts("E810 FAIL destroy"); return 1; }

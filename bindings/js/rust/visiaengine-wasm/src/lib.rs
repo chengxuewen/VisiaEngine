@@ -1,7 +1,7 @@
-//! wasm32 独占 crate（native `cargo test --workspace` 编译空壳）。
-//! JS/wasm 面（批 7 路线 A）：Engine 之上的**纯编组薄叶**——任何策略逻辑
-//! 出现即违规（[FFI-R:BS-5] 双面口单源纪律）；常量/错误码 getter 皆为
-//! Rust 单源的 JS 镜像（CAPI-09 机器对账）。
+//! wasm32-exclusive crate (native `cargo test --workspace` compiles it as an empty shell).
+//! JS/wasm face (batch 7 route A): a **pure-marshaling thin leaf** above Engine -- any policy logic
+//! appearing there is a violation ([FFI-R:BS-5] dual-face single-source discipline); the constant/error-code getters are all
+//! JS mirrors of the Rust single source (CAPI-09 machine reconciliation).
 
 #![cfg(target_arch = "wasm32")]
 
@@ -13,7 +13,7 @@ use visiaengine::{
     VE_ERR_ARG, VE_ERR_IO, VE_ERR_PANIC, VE_ERR_SIZE, VE_ERR_STATE, visiaengine_abi_version,
 };
 
-/// 引擎 JS 句柄（GC 回收=Drop=析构；无 free 函数纪律 wasm 侧由生命周期天然担保）。
+/// Engine JS handle (GC reclaim = Drop = destruct; the no-free-function discipline is guaranteed naturally by the lifecycle on the wasm side).
 #[wasm_bindgen]
 pub struct VisiaEngine {
     inner: Engine,
@@ -21,8 +21,8 @@ pub struct VisiaEngine {
 
 #[wasm_bindgen]
 impl VisiaEngine {
-    /// 异步工厂：canvas 尺寸自带 attach（web GPU 构造无同步路径——Promise 原生
-    /// [FFI-R:v13-FEAS-2]）。失败（无 adapter）=null。
+    /// Async factory: the canvas size carries its own attach (Web GPU construction has no synchronous path -- Promise native
+    /// [FFI-R:v13-FEAS-2]). Failure (no adapter) = null.
     #[wasm_bindgen(js_name = fromCanvas)]
     pub async fn from_canvas(canvas: &web_sys::HtmlCanvasElement) -> Option<VisiaEngine> {
         Engine::new_canvas(canvas)
@@ -46,7 +46,7 @@ impl VisiaEngine {
         }
     }
 
-    /// 拉模型一帧（宿主 rAF 内调）。
+    /// Pull-model one frame (called inside the host rAF).
     pub fn render(&mut self) -> i32 {
         match self.inner.render() {
             Ok(()) => 0,
@@ -54,7 +54,7 @@ impl VisiaEngine {
         }
     }
 
-    /// 唯一输入口（扁平参数——VeInput 不过 wasm 界，struct_size 议题天然消解）。
+    /// The sole input entry (flat parameters -- VeInput never crosses the wasm boundary, the struct_size issue dissolves naturally).
     pub fn input(&mut self, kind: u32, px: f32, py: f32, wheel: f32) -> i32 {
         match self.inner.apply_input(kind, px, py, wheel) {
             Some(consumed) => i32::from(consumed),
@@ -85,7 +85,7 @@ impl VisiaEngine {
         0
     }
 
-    // ── B1 数据带镜像（CAPI-13..16 纯编组薄叶 [FFI-R:BS-5]）──
+    // -- B1 data band mirror (CAPI-13..16 pure-marshaling thin leaves [FFI-R:BS-5]) --
     #[wasm_bindgen(js_name = setEntityVisible)]
     pub fn set_entity_visible(&mut self, entity: u64, visible: bool) -> i32 {
         match self.inner.set_visible(entity, visible) {
@@ -104,8 +104,8 @@ impl VisiaEngine {
         }
     }
 
-    // ── B2 剖面带镜像（CAPI-20 纯编组薄叶 [FFI-R:BS-5]）──
-    /// 扁平 4n f64 系数面（[]=唯一清空形）；界/角不对齐/退化=-1=C 面同谱。
+    // -- B2 clip band mirror (CAPI-20 pure-marshaling thin leaf [FFI-R:BS-5]) --
+    /// Flat 4n f64 coefficient face ([] = the only clearing form); bounds/angle misalignment/degenerate = -1 = same scheme as the C face.
     #[wasm_bindgen(js_name = setClips)]
     pub fn set_clips(&mut self, planes: &[f64]) -> i32 {
         if planes.len() % 4 != 0 {
@@ -121,16 +121,16 @@ impl VisiaEngine {
         }
     }
 
-    /// 读回扁平 4n（归一化后单位形=C 面同谱）。
+    /// Read back flat 4n (post-normalization unit form = same scheme as the C face).
     #[must_use]
     #[wasm_bindgen(js_name = getClips)]
     pub fn get_clips(&self) -> Vec<f64> {
         self.inner.clips().into_iter().flatten().collect()
     }
 
-    // ── ⑤a 飞行带镜像（CAPI-23/24 薄叶）──
-    /// 起飞/改道：pose 扁平 8=[target3, yaw, pitch, dist, zoom, fov]；durMs=0 瞬移形。
-    /// 0=起飞，-1=域拒（同 C 面）。
+    // -- 5a flight band mirror (CAPI-23/24 thin leaves) --
+    /// Takeoff/reroute: pose flat 8 = [target3, yaw, pitch, dist, zoom, fov]; durMs = 0 is the teleport form.
+    /// 0 = takeoff, -1 = domain rejection (same as the C face).
     #[wasm_bindgen(js_name = flyTo)]
     pub fn fly_to(&mut self, pose: &[f64], dur_ms: u32) -> i32 {
         if pose.len() != 8 {
@@ -150,22 +150,22 @@ impl VisiaEngine {
         }
     }
 
-    /// 状态：1=done(含 idle) / 0=飞行中（C 面同谱；无句柄错误域）。
+    /// State: 1 = done (includes idle) / 0 = flying (same scheme as the C face; no handle error domain).
     #[must_use]
     #[wasm_bindgen(js_name = flyState)]
     pub fn fly_state(&self) -> i32 {
         if self.inner.fly_state_done() { 1 } else { 0 }
     }
 
-    /// 进度 [0,1]（done/idle=1.0 单主值域，与 C 面「done 不写 out」合并语义同谱）。
+    /// Progress [0,1] (done/idle = 1.0 single-master value domain, same scheme as the C face's merged "done does not write out" semantics).
     #[must_use]
     #[wasm_bindgen(js_name = flyProgress)]
     pub fn fly_progress(&self) -> f64 {
         self.inner.fly_progress().unwrap_or(1.0)
     }
 
-    // ── S2 文字带镜像（CAPI-21/22 薄叶）──
-    /// 注字体（bytes=TTF/OTF 全式；替换式）。0=成功，负=错误码（同 C 面）。
+    // -- S2 text band mirror (CAPI-21/22 thin leaves) --
+    /// Font injection (bytes = full TTF/OTF form; replacement-style). 0 = success, negative = error code (same as the C face).
     #[wasm_bindgen(js_name = loadFont)]
     pub fn load_font(&mut self, data: &[u8]) -> i32 {
         match self.inner.set_font(data) {
@@ -174,8 +174,8 @@ impl VisiaEngine {
         }
     }
 
-    /// 世界锚标签：pos3+srgb 色 4+utf8 文本；成功=位形 bigint（0 合法=CAPI-01 web 投影），
-    /// 拒/败=MISS(0xFFFF...)（addMesh 同谱）。
+    /// World-anchored label: pos3 + srgb color 4 + utf8 text; success = shape bigint (0 is legal = CAPI-01 web projection),
+    /// rejection/failure = MISS (0xFFFF...) same scheme as addMesh.
     #[must_use]
     #[wasm_bindgen(js_name = addLabel)]
     pub fn add_label(&mut self, pos: &[f64], color: &[f32], text: &str, size_px: f32) -> u64 {
@@ -191,8 +191,8 @@ impl VisiaEngine {
             Err(_) => crate::MISS,
         }
     }
-    // ── ⑤b 二波小地图镜像（CAPI-25..27 薄叶）──
-    /// CAPI-25 开小地图：比例表 fx/fy/fw/fh∈[0,1]（fw/fh>0）+zoom>0；0=开，-1=域拒。关闭用 clearMap()。
+    // -- 5b second wave minimap mirror (CAPI-25..27 thin leaves) --
+    /// CAPI-25 open the minimap: normalized rect fx/fy/fw/fh in [0,1] (fw/fh>0) + zoom>0; 0 = on, -1 = domain rejection. Close via clearMap().
     #[wasm_bindgen(js_name = setMap)]
     pub fn set_map(&mut self, fx: f32, fy: f32, fw: f32, fh: f32, zoom: f64) -> i32 {
         match self.inner.set_map(Some((fx, fy, fw, fh)), zoom) {
@@ -201,7 +201,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-25 关小地图（回旧单帧全幅路）。0=成功。
+    /// CAPI-25 close the minimap (back to the old single-frame full-face path). 0 = success.
     #[wasm_bindgen(js_name = clearMap)]
     pub fn clear_map(&mut self) -> i32 {
         match self.inner.set_map(None, 0.0) {
@@ -210,9 +210,9 @@ impl VisiaEngine {
         }
     }
 
-    // ── P1 瓦片镜像（CAPI-28/29 薄叶）──
-    /// CAPI-28 挂载 MVT 瓦片目录（wasm=路径语义受沙箱限；本地测试用）。
-    /// 返回=挂载瓦片数；负=拒。
+    // -- P1 tile mirror (CAPI-28/29 thin leaves) --
+    /// CAPI-28 mount an MVT tile directory (wasm = path semantics sandbox-limited; for local tests).
+    /// Return = mounted tile count; negative = rejected.
     #[wasm_bindgen(js_name = loadMvtDir)]
     pub fn load_mvt_dir(&mut self, path: &str, z: u32) -> i32 {
         match u8::try_from(z) {
@@ -267,7 +267,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-29 视口 bbox（3857 米）→ 调度器 visible→ensure。返回=可见数；负=拒。
+    /// CAPI-29 viewport bbox (3857 meters) -> scheduler visible->ensure. Return = visible count; negative = rejected.
     #[wasm_bindgen(js_name = setTileView)]
     pub fn set_tile_view(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> i32 {
         match self.inner.set_tile_view(min_x, min_y, max_x, max_y) {
@@ -276,8 +276,8 @@ impl VisiaEngine {
         }
     }
 
-    // ── R 带栅格镜像（CAPI-39/40 薄叶；平铺 quad=非地形）──
-    /// CAPI-39: 挂载 PNG 栅格瓦片目录。返回=挂载数；负=拒。
+    // -- R band raster mirror (CAPI-39/40 thin leaves; tiled quad = non-terrain) --
+    /// CAPI-39: mount a PNG raster tile directory. Return = mounted count; negative = rejected.
     #[wasm_bindgen(js_name = loadRasterDir)]
     pub fn load_raster_dir(&mut self, path: &str, z: u32) -> i32 {
         match u8::try_from(z) {
@@ -289,7 +289,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-40: 栅格层视口 bbox。返回=可见挂载瓦片数；负=拒。
+    /// CAPI-40: raster-layer viewport bbox. Return = visible mounted tile count; negative = rejected.
     #[wasm_bindgen(js_name = setRasterView)]
     pub fn set_raster_view(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> i32 {
         match self.inner.set_raster_view(min_x, min_y, max_x, max_y) {
@@ -298,7 +298,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-42: 节点局部变换写入（列主序 16 f64）。0=成功；负=拒。
+    /// CAPI-42: write the node-local transform (column-major 16 f64). 0 = success; negative = rejected.
     #[wasm_bindgen(js_name = setNodeTransform)]
     pub fn set_node_transform(&mut self, entity: u64, m: &[f64]) -> i32 {
         if m.len() != 16 {
@@ -329,7 +329,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-41: .hdr 环境装载（SH-9 辐照度；demo 级）。0=成功；负=拒。
+    /// CAPI-41: .hdr environment load (SH-9 irradiance; demo grade). 0 = success; negative = rejected.
     #[wasm_bindgen(js_name = loadEnvHdr)]
     pub fn load_env_hdr(&mut self, path: &str) -> i32 {
         match self.inner.load_env_hdr(path) {
@@ -338,8 +338,8 @@ impl VisiaEngine {
         }
     }
 
-    // ── 场景树镜像（CAPI-30..34 薄叶）──
-    /// CAPI-30: 创建组节点（返回 handle；0=err）。name=NULL 用空字符串代替。
+    // -- Scene-tree mirror (CAPI-30..34 thin leaves) --
+    /// CAPI-30: create a group node (returns the handle; 0 = err). name = NULL is passed as an empty string.
     #[wasm_bindgen(js_name = createGroup)]
     pub fn create_group(&mut self, name: &str) -> u64 {
         match self
@@ -351,7 +351,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-31: 重设父节点。parent=0 摘回根。0=成功，-1=拒。
+    /// CAPI-31: reparent. parent = 0 detaches back to root. 0 = success, -1 = rejected.
     #[wasm_bindgen(js_name = setParent)]
     pub fn set_parent(&mut self, child: u64, parent: u64) -> i32 {
         match self.inner.set_parent(child, parent) {
@@ -360,13 +360,13 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-32: 查父节点（0=根/err）。
+    /// CAPI-32: query the parent node (0 = root/err).
     #[wasm_bindgen(js_name = getParent)]
     pub fn get_parent(&self, entity: u64) -> u64 {
         self.inner.get_parent(entity).unwrap_or(0)
     }
 
-    /// CAPI-33: 设组偏移。0=成功，-1=拒。
+    /// CAPI-33: set the group offset. 0 = success, -1 = rejected.
     #[wasm_bindgen(js_name = setGroupOffset)]
     pub fn set_group_offset(&mut self, group: u64, dx: f64, dy: f64, dz: f64) -> i32 {
         match self.inner.set_group_offset(group, dx, dy, dz) {
@@ -375,7 +375,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-34: 读组偏移（返回 [dx,dy,dz]；失败返回 null）。
+    /// CAPI-34: read the group offset (returns [dx,dy,dz]; null on failure).
     #[wasm_bindgen(js_name = getGroupOffset)]
     pub fn get_group_offset(&self, group: u64) -> Option<wasm_bindgen::JsValue> {
         match self.inner.get_group_offset(group) {
@@ -391,7 +391,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-26 点击导航：顶视拾实体优先→地面兜底；主 rig 保角保距换 target；dur_ms=0 瞬移。
+    /// CAPI-26 click navigation: top view picks an entity first -> ground fallback; the main rig keeps angle and distance while swapping the target; dur_ms = 0 teleports.
     #[wasm_bindgen(js_name = navigateClick)]
     pub fn navigate_click(&mut self, px: f32, py: f32, dur_ms: u32) -> i32 {
         match self.inner.navigate_click(px, py, u64::from(dur_ms)) {
@@ -400,7 +400,7 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-27 主相机位姿读回：扁平 8=[target3, yaw, pitch, dist, zoom, fov]（flyTo 同形）。
+    /// CAPI-27 main camera pose readback: flat 8 = [target3, yaw, pitch, dist, zoom, fov] (same shape as flyTo).
     #[must_use]
     #[wasm_bindgen(js_name = getCameraPose)]
     pub fn get_camera_pose(&self) -> Vec<f64> {
@@ -417,7 +417,7 @@ impl VisiaEngine {
         ]
     }
 
-    /// 扁平三元组面（js 数组=调用期拷贝，bindgen 天然）；退化=0 哨兵与 C 面同谱。
+    /// Flat triple face (js arrays = call-time copy, bindgen native); degenerate = the 0 sentinel is not allowed, same scheme as the C face.
     #[must_use]
     #[allow(clippy::needless_pass_by_value)]
     #[wasm_bindgen(js_name = addMesh)]
@@ -452,7 +452,7 @@ impl VisiaEngine {
         };
         let col = [base_color[0], base_color[1], base_color[2], base_color[3]];
         let org = [origin[0], origin[1], origin[2]];
-        // js 面哨兵=MISS(MAX)：0 是合法位形不可占用（CAPI-01 分工的 web 投影）
+        // the js-face sentinel = MISS(MAX): 0 is a legal shape and cannot be occupied (the web projection of the CAPI-01 division)
         // N6: roughness<=0 → 1.0 dielectric default (C-face zero-init hosts same law)
         let rough = if roughness <= 0.0 { 1.0 } else { roughness };
         match self
@@ -464,8 +464,8 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-18 镜像：扁平点云阵（8 float/点=pos×3+radius_px+color×3，sRGB 宿主面）；
-    /// 退化/失败=MISS(MAX) 同 addMesh 谱（位形 0 合法禁占用——CAPI-01 web 投影）。
+    /// CAPI-18 mirror: flat point-cloud array (8 floats per point = pos x3 + radius_px + color x3, sRGB host face);
+    /// degenerate/failure = MISS(MAX) same scheme as addMesh (shape 0 is legal and must not be occupied -- CAPI-01 web projection).
     #[must_use]
     #[allow(clippy::needless_pass_by_value)]
     #[wasm_bindgen(js_name = addPoints)]
@@ -487,8 +487,8 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-17 镜像：JS 回调 `(event, a, b) => void`；null=摘除。u64 计数面在
-    /// progress 域 <2^53（要素数），f64 直传无损——bigint 纪律仅指句柄位形面。
+    /// CAPI-17 mirror: JS callback `(event, a, b) => void`; null = unregister. The u64 count face stays in the
+    /// progress domain below 2^53 (element counts), lossless as a direct f64 -- the bigint discipline refers only to handle shapes.
     #[wasm_bindgen(js_name = setEventCallback)]
     pub fn set_event_callback(&mut self, cb: Option<js_sys::Function>) {
         match cb {
@@ -504,8 +504,8 @@ impl VisiaEngine {
         }
     }
 
-    /// CAPI-19 镜像：bytes 形（path 穿不过 wasm——load_geojson_bytes 同款宿主侧读）。
-    /// report 暂不过界（v0 宿主以 kept==0 哨兵 MISS 判败因；d.ts 注记随镜像测）。
+    /// CAPI-19 mirror: bytes form (a path cannot cross wasm -- host-side reads like load_geojson_bytes).
+    /// The report does not cross the boundary for now (v0 hosts judge failure causes by the kept==0 sentinel MISS; the d.ts note rides the mirror test).
     #[must_use]
     #[allow(clippy::needless_pass_by_value)]
     #[wasm_bindgen(js_name = loadPclBytes)]
@@ -530,8 +530,8 @@ impl VisiaEngine {
     }
 }
 
-// ===== 常量镜像 getters（Rust 单源；CAPI-09 值对账锚点）=====
-// 普通 fn 导出（wasm-bindgen 不支持 const fn 属性宏——实测拒收，值仍为编译期常量引用，单源不变）
+// ===== Constant mirror getters (Rust single source; CAPI-09 value-reconciliation anchors) =====
+// Plain fn exports (wasm-bindgen does not support const fn attribute macros -- measured rejection; the values remain compile-time constant references, the single source unchanged)
 #[wasm_bindgen]
 #[must_use]
 pub fn kind_ptr_move() -> u32 {

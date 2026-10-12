@@ -1,4 +1,4 @@
-//! GEO-01..08 契约测试（fixture=resources/data/park.geojson 自产）。
+//! GEO-01..08 contract tests (fixture = self-made resources/data/park.geojson).
 
 use visiaengine_geo::{GeoKind, load_geojson, parse_geojson, web_mercator};
 

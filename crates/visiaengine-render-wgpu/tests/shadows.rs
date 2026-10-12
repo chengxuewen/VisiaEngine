@@ -1,8 +1,8 @@
-//! WGPU-19：shadow pre-pass + 接收端 PCF。行为锁 [PIT-8：先 probe 定阈再收紧]：
-//! ① 亮暗两态并存（非全黑全亮=PIT-5 深度域症状级死锁）；
-//! ② 影斑暗像素行质心在光反侧（+y 仰光→影向屏幕下）；
-//! ③ 远端地面小块 std 有界（自影 acne 高频大方差锁）；
-//! ④ None 位无暗斑（关闭位行为=现状）。逐位零回归=既有 golden 全集自证。
+//! WGPU-19: shadow pre-pass + receiver PCF. Behavior locks [PIT-8: probe the threshold first, then tighten]:
+//! (1) bright and dark states coexist (not all-black/all-bright = the PIT-5 depth-domain symptom-level deadlock);
+//! (2) the shadow-patch dark pixels' row centroid is on the anti-light side (+y tilted to the light -> shadow falls screen-down);
+//! (3) the far ground patch's std is bounded (the self-shadow acne high-frequency large-variance lock);
+//! (4) the None position has no dark patches (off-position behavior = the status quo). Bitwise zero regression = the existing golden full set self-proves.
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, Instance, InstanceDesc, MeshDesc, RenderBackend,
@@ -18,7 +18,7 @@ const T4: [[f64; 4]; 4] = [
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
-/// 世界光向（指向光源）：+y 仰、+z 高。
+/// The world light direction (pointing to the light source): +y tilt up, +z high.
 const LIGHT_DIR: [f32; 3] = [0.0, 0.42, 0.91];
 
 fn scene(with_shadow: Option<ShadowSetup>) -> visiaengine_render_wgpu::OffscreenFrame {
@@ -88,7 +88,7 @@ fn scene(with_shadow: Option<ShadowSetup>) -> visiaengine_render_wgpu::Offscreen
     b.render_to_pixels(&frame).expect("render")
 }
 
-/// 光源正交相机：沿光向 30 俯瞰（REND-31 构造契约：rig 路三元组）。
+/// The light's orthographic camera: 30 down along the light direction (the REND-31 construction contract: the rig-road triple).
 fn setup(size: f32) -> ShadowSetup {
     let n =
         (LIGHT_DIR[0] * LIGHT_DIR[0] + LIGHT_DIR[1] * LIGHT_DIR[1] + LIGHT_DIR[2] * LIGHT_DIR[2])
@@ -114,10 +114,10 @@ fn setup(size: f32) -> ShadowSetup {
     }
 }
 
-/// 地面灰判定（等通道、20..230 带——排除纯背景/直射立方侧面 255 高光）。
-/// CORE-16 域注：编码曲线抬升暗值——亮面 198/影核 84/半影 105..181（旧域 51 系）。
-/// N6 GGX 重探（2026-09-29）：亮面 198→223（shadow-on 光向 ndl 0.91 全带右移）、
-/// 影核 84 不动——窗口上界 205→230 适配新亮度真值（双侧带保持）。
+/// Ground-gray judgment (equal channels, the 20..230 band -- excluding the pure background / direct-lit cube side faces' 255 highlights).
+/// CORE-16 domain note: the encoding curve lifts dark values -- lit face 198 / shadow core 84 / penumbra 105..181 (the old 51 series).
+/// N6 GGX reprobe (2026-09-29): lit face 198->223 (shadow-on light direction ndl 0.91 shifts the whole band right),
+/// the shadow core 84 unmoved -- the window upper bound 205->230 adapted to the new brightness truth (the double-sided band kept).
 fn gray(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> Option<u8> {
     let i = ((y * W + x) * 4) as usize;
     let (r, g, bl) = (img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]);
@@ -142,7 +142,7 @@ fn shadow_exists_not_all_black_or_white() {
     }
     assert!(
         dark >= 30 && lit >= 300,
-        "亮暗两态失衡 dark={dark} lit={lit}"
+        "bright/dark two-state imbalance dark={dark} lit={lit}"
     );
 }
 
@@ -153,17 +153,20 @@ fn shadow_centroid_lies_anti_light_direction() {
     let (mut n, mut sum) = (0u64, 0u64);
     for y in 0..H {
         for x in 0..W {
-            // CORE-16 域重钉：影核 84+近侧半影带 ≤140（旧 r<70 域）——暗质心
-            // 反光学侧的物理事实不变，量化压缩后捕获带右移（实测 cy=49.9>48）
+            // CORE-16 domain re-pinned: shadow core 84 + near-side penumbra band <= 140 (the old r < 70 domain) -- the dark centroid
+            // sits on the anti-light physical fact unchanged, the capture band shifted right after quantization compression (measured cy = 49.9 > 48)
             if gray(&img, x, y).is_some_and(|r| r <= 140) {
                 n += 1;
                 sum += u64::from(y);
             }
         }
     }
-    assert!(n > 30, "无影斑可测");
+    assert!(n > 30, "no measurable shadow patch");
     let cy = sum as f64 / n as f64;
-    assert!(cy > f64::from(H) / 2.0, "暗质心行 {cy:.1} 不在光反侧（下）");
+    assert!(
+        cy > f64::from(H) / 2.0,
+        "the dark centroid row {cy:.1} is not on the anti-light side (below)"
+    );
 }
 
 // spec: WGPU-19
@@ -178,7 +181,11 @@ fn far_ground_patch_is_smooth() {
             }
         }
     }
-    assert!(vals.len() > 150, "远端地面样本不足 {}", vals.len());
+    assert!(
+        vals.len() > 150,
+        "the far-ground sample is insufficient {}",
+        vals.len()
+    );
     let mean = vals.iter().sum::<u32>() as f64 / vals.len() as f64;
     let var = vals
         .iter()
@@ -187,7 +194,7 @@ fn far_ground_patch_is_smooth() {
         / vals.len() as f64;
     assert!(
         var.sqrt() < 10.0,
-        "地面 patch std {:.1} 过大（acne）",
+        "the ground patch std {:.1} is too large (acne)",
         var.sqrt()
     );
 }
@@ -203,10 +210,10 @@ fn none_bit_produces_no_dark_patch() {
                 .count() as u32
         })
         .sum::<u32>();
-    assert!(dark < 10, "None 位产生暗斑 {dark}");
+    assert!(dark < 10, "the None position produced dark patches {dark}");
 }
 
-/// 半影带（地面窗内中间灰；CORE-16 域=96..=190，实测 hard=96/soft=3613）。
+/// The penumbra band (intermediate grays inside the ground window; the CORE-16 domain = 96..=190, measured hard = 96 / soft = 3613).
 fn penumbra_count(size: f32) -> u32 {
     let img = scene(Some(setup(size)));
     let mut mid = 0u32;
@@ -223,12 +230,15 @@ fn penumbra_count(size: f32) -> u32 {
 // spec: WGPU-20
 #[test]
 fn penumbra_grows_with_light_size() {
-    // PCSS [E3D:B3]：光源角尺寸↑ → 半影宽度↑（中间灰单调增）；且远小于实心带（有界）
+    // PCSS [E3D:B3]: the source angular size rises -> the penumbra width rises (intermediate grays monotonic increasing); and far below the solid band (bounded)
     let (hard, soft) = (penumbra_count(0.02), penumbra_count(1.5));
-    assert!(hard < 400, "近硬影中间灰过多 {hard}");
+    assert!(
+        hard < 400,
+        "the near-hard shadow has too many intermediate grays {hard}"
+    );
     assert!(
         soft > hard * 2,
-        "半影不随 size 扩展 hard={hard} soft={soft}"
+        "the penumbra does not expand with size hard={hard} soft={soft}"
     );
-    assert!(soft < 6000, "半影爆炸（clamp 缺位）{soft}");
+    assert!(soft < 6000, "the penumbra exploded (clamp missing) {soft}");
 }

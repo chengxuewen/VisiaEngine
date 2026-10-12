@@ -1,5 +1,5 @@
-//! CAPI-01/02/03：句柄世代 / panic 栅栏 / 线程亲和（计划 v1.4 §2-§4 I1）。
-//! rlib 直调 extern "C" 面（真 ABI 形状；产物级 nm 验证归 gate-abi/I2）。
+//! CAPI-01/02/03: handle generation / panic fence / thread affinity (plan v1.4 §2-§4 I1).
+//! rlib direct calls on the extern "C" face (true ABI shape; artifact-level nm verification belongs to gate-abi/I2).
 
 use visiaengine::{
     KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
@@ -20,8 +20,8 @@ use visiaengine::{
     visiaengine_set_tile_view, visiaengine_viewport,
 };
 
-/// 全入口对 stale/foreign 句柄必须 -1（17→22 谱随带扩，set_event_callback 门在 event_spec）（句柄校验先于状态校验；abi/last_error 无 ve 门）
-/// （extern "C" fn 不 coerce 安全 fn 指针——显式枚举门表，[rustc ABI 指针类型]）
+/// every entry must return -1 for stale/foreign handles (the 17->22 scheme carried and extended; the set_event_callback gate lives in event_spec) (handle validation precedes state validation; abi/last_error have no ve gate)
+/// (extern "C" fn does not coerce to a safe fn pointer -- enumerate the gate table explicitly, [rustc ABI pointer types])
 fn stale_doors(ve: u64) {
     assert_eq!(visiaengine_destroy(ve), VE_ERR_ARG);
     assert_eq!(visiaengine_attach(ve, 0, 0, 0), VE_ERR_ARG);
@@ -47,12 +47,12 @@ fn stale_doors(ve: u64) {
     assert_eq!(
         visiaengine_set_clips(ve, std::ptr::null(), 0),
         VE_ERR_ARG,
-        "CAPI-20 新口入 stale 谱"
+        "CAPI-20 new entry joins the stale scheme"
     );
     assert_eq!(
         visiaengine_load_font(ve, std::ptr::null(), 0),
         VE_ERR_ARG,
-        "CAPI-21 stale 谱"
+        "CAPI-21 stale scheme"
     );
     let lspec = VeLabelSpec {
         struct_size: std::mem::size_of::<VeLabelSpec>(),
@@ -64,44 +64,44 @@ fn stale_doors(ve: u64) {
     assert_eq!(
         visiaengine_add_label(ve, &lspec, std::ptr::null_mut()),
         VE_ERR_ARG,
-        "CAPI-22 stale 谱"
+        "CAPI-22 stale scheme"
     );
     assert_eq!(
         visiaengine_get_clips(ve, std::ptr::null_mut(), 0),
         VE_ERR_ARG,
-        "CAPI-20 读口同谱"
+        "CAPI-20 read entry same scheme"
     );
     assert_eq!(
         visiaengine_fly_to(ve, std::ptr::null(), 0),
         VE_ERR_ARG,
-        "CAPI-23 stale 谱"
+        "CAPI-23 stale scheme"
     );
     assert_eq!(
         visiaengine_fly_state(ve, std::ptr::null_mut()),
         VE_ERR_ARG,
-        "CAPI-24 stale 谱"
+        "CAPI-24 stale scheme"
     );
     assert_eq!(
         visiaengine_set_map(ve, std::ptr::null()),
         VE_ERR_ARG,
-        "CAPI-25 stale 谱"
+        "CAPI-25 stale scheme"
     );
     assert_eq!(
         visiaengine_navigate_click(ve, 1.0, 1.0, 0),
         VE_ERR_ARG,
-        "CAPI-26 stale 谱"
+        "CAPI-26 stale scheme"
     );
     assert_eq!(
         visiaengine_get_camera(ve, std::ptr::null_mut()),
         VE_ERR_ARG,
-        "CAPI-27 stale 谱"
+        "CAPI-27 stale scheme"
     );
     assert_eq!(visiaengine_entity_set_visible(ve, 0, 1), VE_ERR_ARG);
     assert_eq!(visiaengine_entity_visible(ve, 0), VE_ERR_ARG);
     assert_eq!(
         visiaengine_add_mesh(ve, std::ptr::null(), std::ptr::null_mut()),
         VE_ERR_ARG,
-        "stale 引擎门先于参数校验（返回码制，out 零写）"
+        "the stale engine gate precedes argument validation (return-code scheme, out written zero)"
     );
     assert_eq!(visiaengine_remove_entity(ve, 0), VE_ERR_ARG);
 }
@@ -118,66 +118,70 @@ fn input(kind: u32) -> VeInput {
         mods: 0,
     }
 }
-// 注：on_input/pick/entity_at/entity_count 校验签名不同形，单列断言（CAPI-01 下方）
+// note: on_input/pick/entity_at/entity_count validate differently-shaped signatures, asserted separately (under CAPI-01)
 
 // spec: CAPI-01
 #[test]
 fn handle_generation_slot_base1_stale_and_all_doors() {
-    // slot 基 1：首个句柄非 0（0=失败哨兵专用）
+    // slot base 1: the first handle is non-0 (0 is the failure sentinel's exclusive use)
     let ve = visiaengine_create_headless(64, 64);
-    assert_ne!(ve, 0, "slot 基 1：首 create 不得编码为 0");
-    // 全入口可用（非 -1/-2(线程)）：entity_count=0 空场景、pick miss 哨兵、on_input 消费性
+    assert_ne!(ve, 0, "slot base 1: the first create must not encode as 0");
+    // every entry usable (not -1/-2(thread)): entity_count=0 empty scene, pick miss sentinel, on_input consumability
     assert_eq!(visiaengine_entity_count(ve), 0);
     assert_eq!(
         visiaengine_pick(ve, 32.0, 32.0),
         u64::MAX,
-        "空场景未命中=UINT64_MAX"
+        "empty-scene miss = UINT64_MAX"
     );
     assert_eq!(
         visiaengine_entity_at(ve, 0),
         u64::MAX,
-        "越界 index=UINT64_MAX"
+        "out-of-range index = UINT64_MAX"
     );
     // spec: CAPI-05
-    // kind 非法（>5）→ 0 未消费（no-op 家族）；struct_size 过小 → -1（归因表 [FFI-R:CS-4]）
+    // illegal kind (>5) -> 0 not consumed (no-op family); struct_size too small -> -1 (attribution table [FFI-R:CS-4])
     assert_eq!(visiaengine_on_input(ve, &input(KIND_NO_SUCH)), 0);
-    let tiny = input(KIND_PTR_MOVE); // 复制后改 size
+    let tiny = input(KIND_PTR_MOVE); // copy, then shrink the size
     let mut tiny = tiny;
     tiny.struct_size = 1;
     assert_eq!(
         visiaengine_on_input(ve, &tiny),
         VE_ERR_ARG,
-        "struct_size=1 必须拒"
+        "struct_size=1 must reject"
     );
-    // foreign（表外 slot）
+    // foreign (slot outside the table)
     assert_eq!(
         visiaengine_viewport(ve, 0, 0),
         VE_ERR_SIZE,
-        "维度违规归 -5（CAPI-05 归因表；RED 期笔误纠）"
+        "dimension violation attributed to -5 (CAPI-05 attribution table; typo corrected during the RED period)"
     );
     assert_eq!(
         visiaengine_attach(ve, 0, 0, 9),
         VE_ERR_ARG,
-        "kind 越界=入口参数 -1"
+        "kind out of range = entry argument -1"
     );
-    // destroy 幂等 → 0；stale 后全门 -1
+    // destroy idempotent -> 0; after stale all gates -1
     assert_eq!(visiaengine_destroy(ve), 0);
-    // 语义修正（RED 期设计冲突裁决）：released 句柄再 destroy = -1——
-    // 双重销毁是宿主 bug 信号，不做幂等吞没（原"重复=0"与 doors 全 -1 不可共存）
+    // semantics correction (RED-period design-conflict ruling): re-destroy on a released handle = -1 --
+    // double destroy is a host bug signal, not swallowed by idempotence (the original "repeat = 0" cannot coexist with all-gates -1)
     assert_eq!(
         visiaengine_destroy(ve),
         VE_ERR_ARG,
-        "双 destroy 必须报 -1（不吞宿主 bug）"
+        "double destroy must report -1 (do not swallow the host bug)"
     );
-    assert_eq!(visiaengine_entity_count(ve), VE_ERR_ARG, "stale 句柄必 -1");
+    assert_eq!(
+        visiaengine_entity_count(ve),
+        VE_ERR_ARG,
+        "stale handle must be -1"
+    );
     assert_eq!(
         visiaengine_pick(ve, 0.0, 0.0),
         u64::MAX,
-        "stale pick=未命中哨兵"
+        "stale pick = the miss sentinel"
     );
     assert_eq!(visiaengine_load_gltf(ve, std::ptr::null()), VE_ERR_ARG);
-    stale_doors(ve); // 六门显式 -1（destroy 已含）
-    // 重 create：新句柄 ≠ 旧（世代前进）；两活实例并存
+    stale_doors(ve); // six gates explicitly -1 (destroy included)
+    // re-create: the new handle != the old (generation advanced); two live instances coexist
     let ve2 = visiaengine_create_headless(64, 64);
     assert_ne!(ve2, ve);
     assert_ne!(ve2, 0);
@@ -186,7 +190,7 @@ fn handle_generation_slot_base1_stale_and_all_doors() {
         (ve2 & 0xFFFF_FFFF_0000_0000) != (ve3 & 0xFFFF_FFFF_0000_0000)
             || (ve2 >> 32) != (ve3 >> 32)
     );
-    // I2 已实装：空场景 render=0（出图链行为断言归 CAPI-04/render_spec）
+    // I2 implemented: empty-scene render = 0 (image-chain behavior assertions belong to CAPI-04/render_spec)
     assert_eq!(visiaengine_render(ve3), 0);
     visiaengine_destroy(ve2);
     visiaengine_destroy(ve3);
@@ -195,15 +199,22 @@ fn handle_generation_slot_base1_stale_and_all_doors() {
 // spec: CAPI-02
 #[test]
 fn panic_fence_returns_minus4_with_message() {
-    // 栅栏宏行为（入口=同宏 100% 覆盖，grep 门另测）：注入 panic 的闭包
+    // fence macro behavior (entries = the same macro 100% coverage, a grep gate tests it separately): a closure injected with panic
     let code = visiaengine::test_util::guard_panic_probe();
-    assert_eq!(code, -4, "栅栏吞 panic 返回 VE_ERR_PANIC");
+    assert_eq!(
+        code, -4,
+        "the fence swallows panic and returns VE_ERR_PANIC"
+    );
     let ve = visiaengine_create_headless(64, 64);
-    assert_eq!(visiaengine_viewport(ve, 128, 128), 0, "栅栏不污染后续入口");
+    assert_eq!(
+        visiaengine_viewport(ve, 128, 128),
+        0,
+        "the fence does not pollute subsequent entries"
+    );
     assert_eq!(
         visiaengine_readback(ve, std::ptr::null_mut(), 0),
         VE_ERR_STATE,
-        "I1 无设备 readback=-2 状态语义"
+        "I1 readback without device = -2 state semantics"
     );
     visiaengine_destroy(ve);
 }
@@ -213,22 +224,30 @@ fn panic_fence_returns_minus4_with_message() {
 fn thread_affinity_owner_only_with_error_string() {
     let ve = visiaengine_create_headless(64, 64);
     let h = std::thread::spawn(move || {
-        // 非 owner 线程：入口 -2；last_error=线程违规语
-        assert_eq!(visiaengine_entity_count(ve), VE_ERR_STATE, "跨线程 -2");
+        // non-owner thread: entry -2; last_error = the thread-violation sentence
+        assert_eq!(
+            visiaengine_entity_count(ve),
+            VE_ERR_STATE,
+            "cross-thread -2"
+        );
         assert_eq!(
             visiaengine_destroy(ve),
             VE_ERR_STATE,
-            "destroy 跨线程拒（不销毁）"
+            "destroy rejected cross-thread (does not destroy)"
         );
         let s = unsafe { std::ffi::CStr::from_ptr(visiaengine_last_error(ve)).to_owned() };
         assert!(
             s.to_str().unwrap().contains("thread"),
-            "非 owner 错误串含 thread 指认: {s:?}"
+            "the non-owner error string names thread: {s:?}"
         );
         ve
     });
     let ve_back = h.join().unwrap();
-    assert_eq!(visiaengine_entity_count(ve_back), 0, "owner 线程句柄仍活");
+    assert_eq!(
+        visiaengine_entity_count(ve_back),
+        0,
+        "the handle stays alive on the owner thread"
+    );
     visiaengine_destroy(ve_back);
 }
 
@@ -236,45 +255,48 @@ fn thread_affinity_owner_only_with_error_string() {
 #[test]
 fn last_error_write_policy_success_never_clobbers() {
     let ve = visiaengine_create_headless(64, 64);
-    // 制造错误：载入不存在文件 → -3 且写串
+    // manufacture an error: load a nonexistent file -> -3 and a string written
     let bad = std::ffi::CString::new("no-such-file.glb").unwrap();
     assert_eq!(visiaengine_load_gltf(ve, bad.as_ptr()), VE_ERR_IO);
     let read = || unsafe { std::ffi::CStr::from_ptr(visiaengine_last_error(ve)).to_owned() };
     let first = read();
-    assert!(!first.to_str().unwrap().is_empty(), "错误分支必须写串");
+    assert!(
+        !first.to_str().unwrap().is_empty(),
+        "the error branch must write a string"
+    );
     assert!(
         first.to_str().unwrap().contains("no-such-file"),
-        "串要有诊断价值"
+        "the string must carry diagnostic value"
     );
-    // 写口径：成功入口（返回 0/正值）不得触碰串
+    // write standard: successful entries (returning 0/positive) must not touch the string
     assert_eq!(visiaengine_entity_count(ve), 0);
-    // 引擎策略口径：单 MOVE（未按下）不消费=0；PTR_DOWN 后的 MOVE 消费=1（orbit）
+    // engine policy standard: a lone MOVE (not pressed) is not consumed = 0; MOVE after PTR_DOWN is consumed = 1 (orbit)
     assert_eq!(
         visiaengine_on_input(ve, &input(KIND_PTR_MOVE)),
         0,
-        "未按下的移动=非本引擎事件，不消费"
+        "a move without prior press = not this engine's event, not consumed"
     );
     let _down = input(KIND_PTR_DOWN);
-    assert_eq!(visiaengine_on_input(ve, &_down), 1, "按下消费");
+    assert_eq!(visiaengine_on_input(ve, &_down), 1, "press consumed");
     assert_eq!(
         visiaengine_on_input(ve, &input(KIND_PTR_MOVE)),
         1,
-        "按下后移动=orbit 消费"
+        "move after press = orbit consumed"
     );
     assert_eq!(
         read().to_str().unwrap(),
         first.to_str().unwrap(),
-        "成功调用后串不变（SDL 警告面）"
+        "the string is unchanged after a successful call (the SDL warning face)"
     );
-    // 失效谓词：下一次错误覆盖
+    // voiding predicate: the next error overwrites
     assert_eq!(visiaengine_load_gltf(ve, bad.as_ptr()), VE_ERR_IO);
-    // 同路径同串则断"覆盖发生过"用不同路径
+    // if the same path yields the same string, use different paths to assert "an overwrite happened"
     let bad2 = std::ffi::CString::new("no-such-file2.glb").unwrap();
     assert_eq!(visiaengine_load_gltf(ve, bad2.as_ptr()), VE_ERR_IO);
     assert_ne!(
         read().to_str().unwrap(),
         first.to_str().unwrap(),
-        "新错误必覆盖旧串"
+        "a new error must overwrite the old string"
     );
     visiaengine_destroy(ve);
 }
@@ -298,10 +320,10 @@ fn abi_version_packed_and_never_thread_gated() {
 // spec: CAPI-02
 #[test]
 fn symbol_surface_grep_gate() {
-    // 入口=17 且风格统一（安全签名内部校验）：文件自扫（[FFI-R:FC-5]）
+    // entries = 17 with a uniform style (safe signatures validating internally): self-scan of the file ([FFI-R:FC-5])
     let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/ffi.rs")).unwrap();
-    // v1.3 风格演进：C ABI 导出 native-only cfg_attr（wasm 零 no_mangle——与
-    // wasm-bindgen 导出表冲突的根修，J1 链接期实锤）；grep 门随形
+    // v1.3 style evolution: C ABI exports are native-only cfg_attr (wasm has zero no_mangle -- the root fix for the
+    // clash with the wasm-bindgen export table, J1 link-time proof); the grep gate follows the form
     assert_eq!(
         src.lines()
             .filter(
@@ -314,15 +336,15 @@ fn symbol_surface_grep_gate() {
     assert_eq!(
         src.matches("pub unsafe extern").count(),
         0,
-        "禁 unsafe 签名（校验在体内）"
+        "unsafe signatures forbidden (validation lives in the body)"
     );
     assert!(
         src.contains("visiaengine_") && !src.contains("cbindgen"),
-        "手写头纪律"
+        "hand-written header discipline"
     );
 }
 
-// ── B1 数据带四口（RED 先行；门表/abi/计数为联动面）──
+// -- B1 data band, four entries (RED first; the gate table/abi/count are the linked face) --
 
 fn mesh_desc(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32]) -> VeMeshDesc {
     VeMeshDesc {
@@ -357,23 +379,31 @@ fn entity_visibility_ffi_roundtrip() {
     assert_ne!(ve, 0);
     load_twoprim(ve);
     let h0 = visiaengine_entity_at(ve, 0);
-    assert_eq!(visiaengine_entity_visible(ve, h0), 1, "默认可见");
+    assert_eq!(visiaengine_entity_visible(ve, h0), 1, "visible by default");
     assert_eq!(visiaengine_entity_set_visible(ve, h0, 0), VE_OK);
     assert_eq!(visiaengine_entity_visible(ve, h0), 0);
     assert_eq!(
         visiaengine_entity_set_visible(ve, h0, 2),
         VE_ERR_ARG,
-        "严格 0/1 入参"
+        "strict 0/1 arguments"
     );
     assert_eq!(visiaengine_entity_set_visible(ve, h0, -1), VE_ERR_ARG);
     assert_eq!(
         visiaengine_entity_set_visible(ve, 777, 1),
         VE_ERR_ARG,
-        "未知位形"
+        "unknown shape"
     );
     assert_eq!(visiaengine_entity_visible(ve, 777), VE_ERR_ARG);
-    assert_eq!(visiaengine_entity_set_visible(ve, h0, 1), VE_OK, "复原可见");
-    assert_eq!(visiaengine_entity_count(ve), 2, "显隐不动枚举域");
+    assert_eq!(
+        visiaengine_entity_set_visible(ve, h0, 1),
+        VE_OK,
+        "visibility restored"
+    );
+    assert_eq!(
+        visiaengine_entity_count(ve),
+        2,
+        "visibility does not move the enumeration domain"
+    );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
 
@@ -398,17 +428,17 @@ fn add_mesh_ffi_struct_contract() {
     assert_eq!(
         out,
         visiaengine_entity_at(ve, 0),
-        "位形=枚举域出口（可=0，禁按 0 判）"
+        "shape = the enumeration-domain exit (may be 0, do not judge by 0)"
     );
     assert_eq!(visiaengine_entity_count(ve), 1);
-    let h_ok = out; // 首成位形另存（下用——out 即将被重置为哨兵戏法）
-    out = u64::MAX; // 重置哨兵（上一成功写位形可=0，正是 CAPI-01 谱）
+    let h_ok = out; // keep the first-success shape separately (used below -- out is about to be reset as a sentinel trick)
+    out = u64::MAX; // reset the sentinel (the previous success may have written shape = 0, exactly the CAPI-01 scheme)
     assert_eq!(
         visiaengine_add_mesh(ve, std::ptr::null(), &mut out),
         VE_ERR_ARG,
-        "NULL desc=-1 且 out 不动"
+        "NULL desc = -1 with out untouched"
     );
-    assert_eq!(out, u64::MAX, "失败路零部分写");
+    assert_eq!(out, u64::MAX, "failure paths write zero partial");
     let small = VeMeshDesc {
         struct_size: 4,
         ..mesh_desc(&pos, &nrm, &idx)
@@ -416,25 +446,29 @@ fn add_mesh_ffi_struct_contract() {
     assert_eq!(
         visiaengine_add_mesh(ve, &small, &mut out),
         VE_ERR_ARG,
-        "struct_size 门=拒（前瞻纪律）"
+        "struct_size gate = reject (forward-compat discipline)"
     );
     let oob = [0u32, 9, 2];
     assert_eq!(
         visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &oob), &mut out),
         VE_ERR_ARG,
-        "索引越界=退化拒绝"
+        "index out of range = degenerate rejection"
     );
     assert_eq!(
         visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx), std::ptr::null_mut()),
         VE_ERR_ARG,
-        "坏 out 自守"
+        "bad out self-guards"
     );
-    assert_eq!(visiaengine_render(ve), VE_OK, "加入件即入帧命令流");
+    assert_eq!(
+        visiaengine_render(ve),
+        VE_OK,
+        "an added piece enters the frame command stream"
+    );
     assert_eq!(visiaengine_remove_entity(ve, h_ok), VE_OK);
     assert_eq!(
         visiaengine_entity_count(ve),
         0,
-        "退化/失败路零提交（计数全程可追溯）"
+        "degenerate/failure paths commit zero (the count stays traceable throughout)"
     );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
@@ -451,7 +485,7 @@ fn remove_entity_ffi_reentry_aba() {
     assert_eq!(
         visiaengine_remove_entity(ve, h0),
         VE_ERR_ARG,
-        "旧句柄再入=双销毁同谱"
+        "old handle re-entry = same scheme as double destroy"
     );
     assert_eq!(visiaengine_entity_visible(ve, h0), VE_ERR_ARG);
     let pos = [
@@ -467,17 +501,20 @@ fn remove_entity_ffi_reentry_aba() {
         visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx), &mut h_new),
         VE_OK
     );
-    assert_ne!(h_new, h0, "ABA：同槽新代际不撞旧位形");
+    assert_ne!(
+        h_new, h0,
+        "ABA: a new generation in the same slot does not collide with the old shape"
+    );
     assert_eq!(
         visiaengine_remove_entity(ve, h0),
         VE_ERR_ARG,
-        "新实体在场，旧句柄仍死"
+        "the new entity is present, the old handle stays dead"
     );
     assert_eq!(visiaengine_remove_entity(ve, h_new), VE_OK);
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
 
-/// CAPI-18 直通装载：值域表四锁（退化零提交/成功+out 可查/struct_size 门/非有限照收=宿主责任分工）。
+/// CAPI-18 passthrough load: four locks on the value-domain table (degenerate zero commit / success + out queryable / struct_size gate / non-finite accepted as-is = the host-responsibility division).
 // spec: CAPI-18
 #[test]
 fn add_points_domain_table() {
@@ -505,18 +542,18 @@ fn add_points_domain_table() {
         marks: marks.as_ptr(),
         count: 3,
     };
-    // ① 成功路：返回 0、out=位形可查（entity_count +1）
+    // (1) success road: returns 0, out = queryable shape (entity_count +1)
     assert_eq!(
         visiaengine_add_points(ve, &desc, &mut out),
         VE_OK,
-        "桩恒-5=RED 靶"
+        "stub always -5 = RED target"
     );
-    assert_ne!(out, u64::MAX, "成功必写 out");
-    // 渲染路真（extra_cmds 重放含点云）；位形不入 items 枚举域（v0 明账，geo marker 同谱）
+    assert_ne!(out, u64::MAX, "success must write out");
+    // the render road is real (extra_cmds replay includes the point cloud); the shape does not enter the items enumeration domain (v0 explicit account, same scheme as geo marker)
     assert_eq!(visiaengine_render(ve), VE_OK);
     assert_eq!(visiaengine_entity_count(ve), 0);
     let out1 = out;
-    // ② 退化零提交：count=0 / NULL marks → VE_ERR_ARG 且 out 不碰（哨兵复位戏法）
+    // (2) degenerate zero commit: count=0 / NULL marks -> VE_ERR_ARG with out untouched (sentinel-reset trick)
     let zero = VePointsDesc {
         struct_size: std::mem::size_of::<VePointsDesc>(),
         marks: marks.as_ptr(),
@@ -524,7 +561,7 @@ fn add_points_domain_table() {
     };
     out = u64::MAX;
     assert_eq!(visiaengine_add_points(ve, &zero, &mut out), VE_ERR_ARG);
-    assert_eq!(out, u64::MAX, "失败禁部分写");
+    assert_eq!(out, u64::MAX, "failure must not partially write");
     assert_eq!(
         visiaengine_add_points(ve, std::ptr::null(), &mut out),
         VE_ERR_ARG
@@ -533,14 +570,14 @@ fn add_points_domain_table() {
         visiaengine_add_points(ve, std::ptr::null(), std::ptr::null_mut()),
         VE_ERR_ARG
     );
-    // ③ struct_size 前瞻门（照 CAPI-15：小于所需=拒）
+    // (3) struct_size forward-compat gate (per CAPI-15: smaller than required = reject)
     let small = VePointsDesc {
         struct_size: 4,
         marks: marks.as_ptr(),
         count: 3,
     };
     assert_eq!(visiaengine_add_points(ve, &small, &mut out), VE_ERR_ARG);
-    // ④ 非有限照收=本口宿主责任（与 load 侧四分类明写分工）；位形 0 合法禁当哨兵（CAPI-01）
+    // (4) non-finite accepted as-is = host responsibility on this entry (with the load-side four-class division explicitly written); shape 0 is legal, do not treat it as a sentinel (CAPI-01)
     let nan = [VePointMark {
         pos: [f32::NAN, 0.0, 0.0],
         radius_px: 4.0,
@@ -554,16 +591,16 @@ fn add_points_domain_table() {
     assert_eq!(
         visiaengine_add_points(ve, &dnan, &mut out),
         VE_OK,
-        "非有限照收（load 侧才分类型丢弃）"
+        "non-finite accepted as-is (only the load side discards by type)"
     );
-    assert_ne!(out, out1, "二云位形互异");
-    assert_eq!(visiaengine_render(ve), VE_OK, "双云重放");
-    // ⑤ 句柄门同谱
+    assert_ne!(out, out1, "the two clouds have distinct shapes");
+    assert_eq!(visiaengine_render(ve), VE_OK, "both clouds replay");
+    // (5) handle gate same scheme
     assert_eq!(visiaengine_add_points(0, &desc, &mut out), VE_ERR_ARG);
     assert_eq!(visiaengine_destroy(ve), 0);
 }
 
-/// CAPI-19 装载域：成功路+meta 缀查+policy/NULL/句柄三门（桩恒 -3=RED 靶）。
+/// CAPI-19 load domain: success road + meta prefixed queries + three gates of policy/NULL/handle (stub always -3 = RED target).
 // spec: CAPI-19
 #[test]
 fn load_pcl_mount_meta_and_gates() {
@@ -585,17 +622,17 @@ fn load_pcl_mount_meta_and_gates() {
     assert_eq!(
         visiaengine_load_pcl(ve, path.as_ptr(), VE_PCL_LENIENT, &mut ent, &mut rep),
         VE_OK,
-        "桩恒-3=RED 靶（GREEN 片转 0）"
+        "stub always -3 = RED target (the GREEN slice turns to 0)"
     );
-    assert_ne!(ent, u64::MAX, "成功必写 out_entity");
-    assert_eq!(rep.kept, 4, "ascii 四净点");
+    assert_ne!(ent, u64::MAX, "success must write out_entity");
+    assert_eq!(rep.kept, 4, "ascii four clean points");
     assert_eq!(rep.dropped_non_finite, 0);
-    // 云级 meta 缀查（CAPI-19：pcl 位形走 attr 域，键不撞靠位形全局唯一）
+    // cloud-level meta prefixed queries (CAPI-19: pcl shapes go through the attr domain, keys collide nowhere thanks to global shape uniqueness)
     let mut pc = 0f64;
     assert_eq!(
         visiaengine_attr_f64(ve, ent, c"point_count".as_ptr(), &mut pc),
         1,
-        "point_count 可查（CAPI-10 值域：1=found 0=none——attr 面非 0=OK 谱）"
+        "point_count queryable (CAPI-10 value domain: 1 = found, 0 = none -- on the attr face, non-0 = OK scheme)"
     );
     assert_eq!(pc, 4.0);
     let mut buf = [0i8; 32];
@@ -608,10 +645,14 @@ fn load_pcl_mount_meta_and_gates() {
             buf.len() as u64
         ),
         1,
-        "format 可查（found=1 同谱）"
+        "format queryable (found = 1 same scheme)"
     );
-    assert_eq!(visiaengine_render(ve), VE_OK, "点云重放路真");
-    // 参数域三连
+    assert_eq!(
+        visiaengine_render(ve),
+        VE_OK,
+        "the point-cloud replay road is real"
+    );
+    // argument-domain triple
     assert_eq!(
         visiaengine_load_pcl(ve, path.as_ptr(), 9, &mut ent, &mut rep),
         VE_ERR_ARG
@@ -641,10 +682,10 @@ fn load_pcl_mount_meta_and_gates() {
 #[test]
 fn set_get_clips_full_domain_roundtrip_truncation() {
     let ve = visiaengine_create_headless(160, 120);
-    // 初始空；NULL+0=清空合法（唯一清除形）
+    // initially empty; NULL+0 = clearing is legal (the only clearing form)
     assert_eq!(visiaengine_get_clips(ve, std::ptr::null_mut(), 0), 0);
     assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 0), VE_OK);
-    // 值域拒：NULL∧n>0 / n>4 / 退化（零法向/非有限）
+    // value-domain rejection: NULL with n>0 / n>4 / degenerate (zero normal / non-finite)
     assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 1), VE_ERR_ARG);
     let p = VeClipPlane {
         nx: 0.0,
@@ -655,7 +696,7 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
     assert_eq!(
         visiaengine_set_clips(ve, &p, 5),
         VE_ERR_ARG,
-        "n>MAX 拒（读界先于解引用）"
+        "n>MAX rejected (read bounds precede dereference)"
     );
     let bad = VeClipPlane {
         nx: f64::NAN,
@@ -664,8 +705,11 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
         d: 0.0,
     };
     assert_eq!(visiaengine_set_clips(ve, &bad, 1), VE_ERR_ARG);
-    assert!(!visiaengine_last_error(ve).is_null(), "拒收路错误串在位");
-    // 往返逐位（单位入参）+ 归一化形（(0,2,0,d=2)→(0,1,0,d=1)）
+    assert!(
+        !visiaengine_last_error(ve).is_null(),
+        "the error string is in place on the rejection road"
+    );
+    // round-trip bit by bit (unit inputs) + normalized form ((0,2,0,d=2) -> (0,1,0,d=1))
     let planes = [
         VeClipPlane {
             nx: 0.0,
@@ -690,9 +734,9 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
     assert_eq!(
         visiaengine_get_clips(ve, std::ptr::null_mut(), 9),
         3,
-        "NULL buf=仅计数"
+        "NULL buf = count only"
     );
-    // 截断自证 [Momus-A2]：n=3, cap=2 → 返回 3 写 2，第 3 槽哨兵不动
+    // truncation self-proof [Momus-A2]: n=3, cap=2 -> return 3 write 2, the third slot's sentinel untouched
     let mut buf = [VeClipPlane {
         nx: -9.0,
         ny: -9.0,
@@ -707,12 +751,12 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
     assert_eq!(
         (buf[1].nx, buf[1].ny, buf[1].nz, buf[1].d),
         (0.0, 1.0, 0.0, 1.0),
-        "归一化同步 w"
+        "normalization syncs w"
     );
-    assert_eq!(buf[2].nx, -9.0, "cap 外零写");
-    // cap=0 ∧ buf≠NULL=纯计数路不报错（参数不侍二主）
+    assert_eq!(buf[2].nx, -9.0, "zero writes outside cap");
+    // cap=0 with buf!=NULL = the pure-count road, no error (one argument does not serve two masters)
     assert_eq!(visiaengine_get_clips(ve, buf.as_mut_ptr(), 0), 3);
-    // 清空复原
+    // clearing restores
     assert_eq!(visiaengine_set_clips(ve, std::ptr::null(), 0), VE_OK);
     assert_eq!(visiaengine_get_clips(ve, std::ptr::null_mut(), 0), 0);
     assert_eq!(visiaengine_destroy(ve), VE_OK);
@@ -738,7 +782,7 @@ fn load_font_and_add_label_domain_and_flow() {
     assert_eq!(
         visiaengine_add_label(ve, &spec, &mut out),
         VE_ERR_ARG,
-        "无字体拒"
+        "rejected without font"
     );
     assert_eq!(visiaengine_load_font(ve, std::ptr::null(), 0), VE_ERR_ARG);
     assert_eq!(visiaengine_load_font(ve, b"junk".as_ptr(), 4), VE_ERR_ARG);
@@ -748,15 +792,18 @@ fn load_font_and_add_label_domain_and_flow() {
     );
     let n0 = visiaengine_entity_count(ve);
     assert_eq!(visiaengine_add_label(ve, &spec, &mut out), VE_OK);
-    // B1 教训反用：位形 0 合法（CAPI-01 分工），成败轴=返回码；位形可辨轴=计数+互异
+    // B1 lesson used in reverse: shape 0 is legal (CAPI-01 division), the success axis = the return code; the shape-distinctness axis = count + mutual difference
     let mut out2 = 0u64;
     assert_eq!(visiaengine_add_label(ve, &spec, &mut out2), VE_OK);
-    assert_ne!(out, out2, "两次装载位形互异（ABA 免疫面）");
-    // items 外管理域（add_points CAPI-18 同谱）：不入 entity_count；位形互异即活体证
+    assert_ne!(
+        out, out2,
+        "the two loads have distinct shapes (the ABA-immunity face)"
+    );
+    // management domain outside items (same scheme as add_points CAPI-18): not in entity_count; distinct shapes are the living proof
     assert_eq!(
         visiaengine_entity_count(ve),
         n0,
-        "标签=items 外域（同 add_points 明账）"
+        "labels = the domain outside items (same explicit account as add_points)"
     );
     assert_eq!(
         visiaengine_add_label(ve, &spec, std::ptr::null_mut()),
@@ -772,7 +819,7 @@ fn load_font_and_add_label_domain_and_flow() {
     assert_eq!(
         visiaengine_add_label(ve, &empty, &mut out),
         VE_ERR_ARG,
-        "空文本拒零提交"
+        "empty text rejected with zero commit"
     );
     let badsz = VeLabelSpec {
         struct_size: std::mem::size_of::<VeLabelSpec>(),
@@ -784,7 +831,7 @@ fn load_font_and_add_label_domain_and_flow() {
     assert_eq!(
         visiaengine_add_label(ve, &badsz, &mut out),
         VE_ERR_ARG,
-        "size 域外拒"
+        "size out of domain rejected"
     );
     let tiny = VeLabelSpec {
         struct_size: 1,
@@ -796,7 +843,7 @@ fn load_font_and_add_label_domain_and_flow() {
     assert_eq!(
         visiaengine_add_label(ve, &tiny, &mut out),
         VE_ERR_ARG,
-        "struct_size 前瞻门"
+        "struct_size forward-compat gate"
     );
     assert_eq!(visiaengine_render(ve), VE_OK);
     assert_eq!(visiaengine_destroy(ve), VE_OK);
@@ -805,7 +852,7 @@ fn load_font_and_add_label_domain_and_flow() {
 // spec: CAPI-22
 #[test]
 fn add_label_returncode_axis_zero_commit_and_position() {
-    // 返回码=成败唯一轴；位形可 0（CAPI-01）；全拒形零提交（mark 计数不变）
+    // return code = the sole success axis; the shape may be 0 (CAPI-01); every rejection form commits zero (the mark count stays the same)
     let ve = visiaengine_create_headless(160, 120);
     assert_eq!(
         visiaengine_load_font(ve, DEJAVU.as_ptr(), DEJAVU.len()),
@@ -821,14 +868,14 @@ fn add_label_returncode_axis_zero_commit_and_position() {
     let mut out = 0u64;
     let before = {
         let _ = visiaengine_render(ve);
-        1i32 // 一次成功装载后 mark 存在；拒形后仍为 1（不增=零提交）
+        1i32 // after one successful load the mark exists; after a rejection form it is still 1 (no growth = zero commit)
     };
     assert_eq!(
         visiaengine_add_label(ve, &mk(c"A".as_ptr(), 12.0), &mut out),
         VE_OK
     );
     let _ = before;
-    // 拒形三连：NULL text / size 0 / 负 size——out 不得被写（哨兵预置判定）
+    // rejection-form triple: NULL text / size 0 / negative size -- out must not be written (sentinel pre-stamped judgment)
     for bad in [
         mk(std::ptr::null(), 12.0),
         mk(c"B".as_ptr(), 0.0),
@@ -836,14 +883,14 @@ fn add_label_returncode_axis_zero_commit_and_position() {
     ] {
         let mut sentinel = u64::MAX;
         assert_eq!(visiaengine_add_label(ve, &bad, &mut sentinel), VE_ERR_ARG);
-        assert_eq!(sentinel, u64::MAX, "拒形 out 零写");
+        assert_eq!(sentinel, u64::MAX, "rejection forms write out zero");
     }
-    // struct_size 前瞻门同零写
+    // struct_size forward-compat gate: same zero write
     let mut tiny = mk(c"C".as_ptr(), 12.0);
     tiny.struct_size = 8;
     let mut sentinel = u64::MAX;
     assert_eq!(visiaengine_add_label(ve, &tiny, &mut sentinel), VE_ERR_ARG);
-    assert_eq!(sentinel, u64::MAX, "门败 out 零写");
+    assert_eq!(sentinel, u64::MAX, "gate failure writes out zero");
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
 
@@ -851,7 +898,7 @@ fn add_label_returncode_axis_zero_commit_and_position() {
 #[test]
 fn fly_ports_domain_and_progress() {
     let ve = visiaengine_create_headless(160, 120);
-    // pose 域：NULL/struct_size 门/坏参
+    // pose domain: NULL / struct_size gate / bad parameters
     assert_eq!(visiaengine_fly_to(ve, std::ptr::null(), 100), VE_ERR_ARG);
     let mut pose = VeCameraPose {
         struct_size: std::mem::size_of::<VeCameraPose>(),
@@ -864,39 +911,61 @@ fn fly_ports_domain_and_progress() {
     };
     assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_OK);
     let mut t01 = -7.0f64;
-    assert_eq!(visiaengine_fly_state(ve, &mut t01), 0, "飞行中");
-    assert!((0.0..=1.0).contains(&{ t01 }), "out 飞中写 [0,1) got {t01}");
-    // 瞬移形：dur=0 → rc=0 且 state 立 done（done 路 out 不写=B1 零部分写谱）
+    assert_eq!(visiaengine_fly_state(ve, &mut t01), 0, "flying");
+    assert!(
+        (0.0..=1.0).contains(&{ t01 }),
+        "out written while flying [0,1) got {t01}"
+    );
+    // teleport form: dur=0 -> rc=0 and state immediately done (the done road does not write out = the B1 zero-partial-write scheme)
     assert_eq!(visiaengine_fly_to(ve, &pose, 0), VE_OK);
     let mut sentinel = -9.0f64;
-    assert_eq!(visiaengine_fly_state(ve, &mut sentinel), 1, "done 含 idle");
-    assert_eq!(sentinel, -9.0, "done 路 out 零写");
+    assert_eq!(
+        visiaengine_fly_state(ve, &mut sentinel),
+        1,
+        "done includes idle"
+    );
+    assert_eq!(sentinel, -9.0, "the done road writes out zero");
     assert_eq!(
         visiaengine_fly_state(ve, std::ptr::null_mut()),
         1,
-        "NULL out=仅状态"
+        "NULL out = state only"
     );
-    // 坏参域：dist/zoom/fov 非法
+    // bad-parameter domain: dist/zoom/fov illegal
     pose.dist = -1.0;
-    assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_ERR_ARG, "dist 域");
+    assert_eq!(
+        visiaengine_fly_to(ve, &pose, 100),
+        VE_ERR_ARG,
+        "dist domain"
+    );
     pose.dist = 30.0;
     pose.fov = 4.0;
-    assert_eq!(visiaengine_fly_to(ve, &pose, 100), VE_ERR_ARG, "fov<π 域");
+    assert_eq!(
+        visiaengine_fly_to(ve, &pose, 100),
+        VE_ERR_ARG,
+        "fov < pi domain"
+    );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
 
 // spec: CAPI-24
 #[test]
 fn fly_state_progress_zero_write_and_idle_done() {
-    // done/idle 合并单主：未起飞=done(1)、done 路 out 零写、NULL=仅状态
+    // merged single master of done/idle: never taken off = done(1), the done road writes out zero, NULL = state only
     let ve = visiaengine_create_headless(80, 80);
     let mut t = 123.0f64;
-    assert_eq!(visiaengine_fly_state(ve, &mut t), 1, "idle=done 单主");
-    assert_eq!(t, 123.0, "done 路 out 绝不可写 [B1 零部分写]");
+    assert_eq!(
+        visiaengine_fly_state(ve, &mut t),
+        1,
+        "idle = done single master"
+    );
+    assert_eq!(
+        t, 123.0,
+        "the done road must never write out [B1 zero partial write]"
+    );
     assert_eq!(
         visiaengine_fly_state(ve, std::ptr::null_mut()),
         1,
-        "NULL 仅状态"
+        "NULL = state only"
     );
     let pose = VeCameraPose {
         struct_size: std::mem::size_of::<VeCameraPose>(),
@@ -907,12 +976,15 @@ fn fly_state_progress_zero_write_and_idle_done() {
         zoom: 15.0,
         fov: 0.9,
     };
-    // 长飞行 → 飞中 out 写 [0,1) 且 progress>0（墙钟真走）
+    // long flight -> while flying out writes [0,1) with progress > 0 (the wall clock really runs)
     assert_eq!(visiaengine_fly_to(ve, &pose, 3000), VE_OK);
     let _ = visiaengine_render(ve);
     let mut tp = -1.0;
-    assert_eq!(visiaengine_fly_state(ve, &mut tp), 0, "飞行中");
-    assert!((0.0..1.0).contains(&tp), "飞中 out∈[0,1) got {tp}");
+    assert_eq!(visiaengine_fly_state(ve, &mut tp), 0, "flying");
+    assert!(
+        (0.0..1.0).contains(&tp),
+        "out in [0,1) while flying got {tp}"
+    );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
 
@@ -920,22 +992,30 @@ fn fly_state_progress_zero_write_and_idle_done() {
 #[test]
 fn map_nav_pose_ports_domain_matrix() {
     let ve = visiaengine_create_headless(200, 100);
-    // set_map NULL=关闭 OK（无图清也无错）
+    // set_map NULL = closing is OK (with no map, clearing raises no error either)
     assert_eq!(visiaengine_set_map(ve, std::ptr::null()), VE_OK);
     let bad = VeMapView {
         struct_size: std::mem::size_of::<VeMapView>(),
         fx: 0.7,
         fy: 0.0,
-        fw: 0.4, // 越界
+        fw: 0.4, // out of bounds
         fh: 0.4,
         zoom: 40.0,
     };
-    assert_eq!(visiaengine_set_map(ve, &bad), VE_ERR_ARG, "界和拒");
+    assert_eq!(
+        visiaengine_set_map(ve, &bad),
+        VE_ERR_ARG,
+        "bounds sum rejected"
+    );
     let tiny = VeMapView {
         struct_size: 8,
         ..bad
     };
-    assert_eq!(visiaengine_set_map(ve, &tiny), VE_ERR_ARG, "struct_size 门");
+    assert_eq!(
+        visiaengine_set_map(ve, &tiny),
+        VE_ERR_ARG,
+        "struct_size gate"
+    );
     let good = VeMapView {
         struct_size: std::mem::size_of::<VeMapView>(),
         fx: 0.72,
@@ -945,7 +1025,7 @@ fn map_nav_pose_ports_domain_matrix() {
         zoom: 30.0,
     };
     assert_eq!(visiaengine_set_map(ve, &good), VE_OK);
-    // get_camera：NULL/门/正常读；navigate：NaN 拒
+    // get_camera: NULL / gate / normal read; navigate: NaN rejected
     let mut pose = VeCameraPose {
         struct_size: 0,
         target: [0.0; 3],
@@ -962,43 +1042,50 @@ fn map_nav_pose_ports_domain_matrix() {
     assert_eq!(
         visiaengine_get_camera(ve, &mut tiny_p),
         VE_ERR_ARG,
-        "out 门先检"
+        "the out gate is checked first"
     );
     assert_eq!(
         visiaengine_get_camera(ve, &mut pose),
         VE_OK,
-        "预置 struct_size 正常读"
+        "normal read with pre-stamped struct_size"
     );
     assert!(pose.dist > 0.0 && pose.fov > 0.0 && pose.zoom > 0.0);
     assert_eq!(
         visiaengine_navigate_click(ve, f32::NAN, 3.0, 0),
         VE_ERR_ARG,
-        "NaN px 拒"
+        "NaN px rejected"
     );
     assert_eq!(
         visiaengine_navigate_click(ve, 10.0, 50.0, 0),
         VE_ERR_ARG,
-        "区外拒(主视区)"
+        "outside the region rejected (main viewport)"
     );
     assert_eq!(
         visiaengine_navigate_click(ve, 180.0, 50.0, 0),
         VE_OK,
-        "区内导航(地面兜底)"
+        "inside the region navigates (ground fallback)"
     );
     let mut pose2 = pose;
     pose2.struct_size = std::mem::size_of::<VeCameraPose>();
     assert_eq!(visiaengine_get_camera(ve, &mut pose2), VE_OK);
     assert!(
         (pose2.target[0] - pose.target[0]).abs() > 1.0,
-        "导航后 target 已变"
+        "target moved after navigation"
     );
-    assert!((pose2.dist - pose.dist).abs() < 1e-12, "保距 [裁决 e]");
+    assert!(
+        (pose2.dist - pose.dist).abs() < 1e-12,
+        "distance kept [ruling e]"
+    );
     assert_eq!(
         visiaengine_set_map(ve, std::ptr::null()),
         VE_OK,
-        "关图复原路"
+        "the restore road after closing the map"
     );
-    assert_eq!(visiaengine_render(ve), VE_OK, "关后旧单帧路通");
+    assert_eq!(
+        visiaengine_render(ve),
+        VE_OK,
+        "after closing, the old single-frame path works"
+    );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
 

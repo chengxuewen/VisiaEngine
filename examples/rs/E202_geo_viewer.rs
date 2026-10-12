@@ -1,5 +1,5 @@
-//! E202 · 数据装载·GeoJSON —— geo(解析/投影/细分/样式) × MeshCore(D7 上传) 合流，2D 鸟瞰 + 平移缩放。
-//! 用法: cargo run --example E202_geo_viewer [path.geojson] [--frames N]（smoke: N=3）
+//! E202 · data loading, GeoJSON —— geo (parse/project/tessellate/style) x MeshCore (D7 upload) confluence, 2D bird's-eye + pan-zoom.
+//! Usage: cargo run --example E202_geo_viewer [path.geojson] [--frames N] (smoke: N = 3)
 
 use examples::viewer::{Ctx, FormatPolicy};
 
@@ -12,7 +12,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::WindowId;
 
-/// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
+/// Upload-time decomposition record: mesh, material, world origin, origin-local pose (D7).
 type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
 
 const IDENT64: [[f64; 4]; 4] = [
@@ -29,8 +29,8 @@ struct App {
     core: Option<MeshCore>,
     dragging: Option<(f64, f64)>,
     rig: CameraRig,
-    statics: Vec<DrawRecord>, // mesh, material, origin, local 位姿（D7 分解）
-    extras: Vec<DrawCommand>, // 扩片族命令（GEO-24：表建一次性，逐帧重放）
+    statics: Vec<DrawRecord>, // mesh, material, origin, local pose (the D7 decomposition)
+    extras: Vec<DrawCommand>, // tile-expansion family commands (GEO-24: tables built once, replayed per frame)
     frames_left: Option<u32>,
     glb_path: String,
 }
@@ -87,7 +87,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E202 · GeoJSON（左键拖=平移轨道 滚轮=地图缩放 关窗退出）",
+            "VisiaEngine E202 · GeoJSON (left-drag = pan-orbit, wheel = map zoom, close to exit)",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -95,7 +95,7 @@ impl ApplicationHandler for App {
             event_loop.exit();
             return;
         };
-        // 场景上传：每个 glTF 实体 → mesh + material
+        // Scene upload: each glTF entity -> mesh + material
         let doc = match load_geojson(self.glb_path()) {
             Ok(d) => d,
             Err(e) => {
@@ -107,15 +107,15 @@ impl ApplicationHandler for App {
         let bbox = doc.layer_bbox().expect("non-empty layer");
         let origin = [(bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0, 0.0];
         let neg = [-origin[0], -origin[1]];
-        // 装载期取景拟合（E201 灰屏案 dc397ca 同族根修）：D7 契约下 DrawMesh 世界位形
-        // = origin+local，相机 target 必须对准世界层原点——[0,0,0] 机位对着距 park
-        // 数百万米的空处 = 全帧只剩清屏色。像素门见 geo_pipeline::golden_geo_window_fit。
+        // Load-time framing fit (the same root fix family as the E201 gray-screen case dc397ca): under the D7 contract DrawMesh world shapes
+        // = origin + local, so the camera target must aim at the world-space origin -- a [0,0,0] camera aimed at park
+        // data millions of meters away = every frame reduced to the clear color. The pixel gate is in geo_pipeline::golden_geo_window_fit.
         let (hx, hy) = ((bbox[2] - bbox[0]) / 2.0, (bbox[3] - bbox[1]) / 2.0);
         let load_aspect = ctx.config.width as f64 / ctx.config.height as f64;
         let tan_h = (self.rig.fov_y * 0.5).tan();
         self.rig.target = origin;
         self.rig.dist = (hx / (tan_h * load_aspect)).max(hy / tan_h) * 1.3;
-        // ortho 装饰位 + 描边宽度基准（REND-29）：目标深度处世界半宽 → px_world_scale 精确路
+        // ortho decorative pose + stroke-width baseline (REND-29): world half-width at the target depth -> the px_world_scale exact road
         self.rig.zoom = self.rig.dist * tan_h * load_aspect;
         for f in doc.features() {
             for gp in match tessellate(&f.kind.shifted(neg), &f.style) {
@@ -233,7 +233,7 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                // GeoJSON 地图语义：滚轮=ortho zoom 联动 dist（与 z/x 键同道）
+                // GeoJSON map semantics: wheel = ortho zoom interlock with dist (same channel as the z/x keys)
                 let d = match delta {
                     MouseScrollDelta::LineDelta(_, y) => -f64::from(y) * 40.0,
                     MouseScrollDelta::PixelDelta(p) => -p.y,
@@ -281,7 +281,7 @@ impl ApplicationHandler for App {
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
-                    // ortho 半宽=zoom → 世界宽 2·zoom 铺 width px（REND-29 精确路）
+                    // ortho half-width = zoom -> world width 2*zoom tiles the width px (the REND-29 exact road)
                     px_world_scale: 2.0 * self.rig.zoom as f32 / ctx.config.width.max(1) as f32,
                     shadow: None,
                     clip: None,

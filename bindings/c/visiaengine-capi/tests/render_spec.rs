@@ -1,4 +1,4 @@
-//! CAPI-04：headless 出图字节（I2）——装载→渲染→回读→像素断言全链过 C ABI。
+//! CAPI-04: headless image bytes (I2) -- load -> render -> readback -> pixel assertions, the whole chain through the C ABI.
 
 use std::ffi::CString;
 use visiaengine::{
@@ -13,7 +13,7 @@ use visiaengine_io_tiles::TileSource;
 fn repo_root() -> std::path::PathBuf {
     let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !p.join("Cargo.lock").exists() {
-        assert!(p.pop(), "Cargo.lock 上溯不中");
+        assert!(p.pop(), "walking up for Cargo.lock missed");
     }
     p
 }
@@ -27,7 +27,7 @@ fn fixture(name: &str) -> CString {
 fn headless_load_render_readback_pipeline() {
     let ve = visiaengine_create_headless(160, 120);
     assert_ne!(ve, 0);
-    // I1 占位语义已退场：装载实装 → 0
+    // the I1 placeholder semantics have retired: load is implemented -> 0
     assert_eq!(
         visiaengine_load_gltf(ve, fixture("twoprim.glb").as_ptr()),
         0
@@ -35,10 +35,10 @@ fn headless_load_render_readback_pipeline() {
     assert_eq!(
         visiaengine_entity_count(ve),
         2,
-        "twoprim=2 件（GLTF-01 家族事实）"
+        "twoprim = 2 pieces (GLTF-01 family fact)"
     );
     assert_eq!(visiaengine_render(ve), 0);
-    // 缓冲量值归因（CAPI-05 -5 专属运行时尺寸）
+    // buffer magnitude attribution (CAPI-05, -5 exclusively for runtime sizes)
     assert_eq!(
         visiaengine_readback(ve, std::ptr::null_mut(), 0),
         VE_ERR_SIZE
@@ -57,17 +57,17 @@ fn headless_load_render_readback_pipeline() {
     let lum = buf[mid] as u32 + buf[mid + 1] as u32 + buf[mid + 2] as u32;
     assert!(
         lum > 40,
-        "中心像素非背景，亮度={lum} rgba={:?}",
+        "center pixel is not background, luminance={lum} rgba={:?}",
         &buf[mid..mid + 4]
     );
-    // pick 经同一帧几何：中心命中实体句柄 ∈ entity_at 值域
+    // pick rides the same frame's geometry: the center-hit entity handle is in the entity_at value domain
     let hit = visiaengine_pick(ve, 80.0, 60.0);
-    assert_ne!(hit, MISS, "中心应命中");
+    assert_ne!(hit, MISS, "the center should hit");
     assert!(
         hit == visiaengine_entity_at(ve, 0) || hit == visiaengine_entity_at(ve, 1),
-        "命中句柄必等于载入序某件（代际稳定）"
+        "the hit handle must equal some loaded piece (generation stable)"
     );
-    // viewport 变更→重渲染出图尺寸合法
+    // viewport change -> re-render produces legal image dimensions
     assert_eq!(visiaengine_viewport(ve, 200, 150), 0);
     assert_eq!(visiaengine_render(ve), 0);
     let mut buf2 = vec![0u8; 200 * 150 * 4];
@@ -81,34 +81,38 @@ fn headless_load_render_readback_pipeline() {
 // spec: CAPI-04
 #[test]
 fn geo_ramp_scene_renders_colored_pixels() {
-    // heights.geojson（GEO-20 ramp 三件套）过 capi：三峰色族在像素面复现
+    // heights.geojson (the GEO-20 ramp trio) through capi: the three-peak color families reappear on the pixel face
     let ve = visiaengine_create_headless(256, 256);
     let geo = fixture("heights.geojson");
     assert_eq!(visiaengine_load_geojson(ve, geo.as_ptr()), 0);
-    assert_eq!(visiaengine_entity_count(ve), 4, "4 件（含无列回退件）");
+    assert_eq!(
+        visiaengine_entity_count(ve),
+        4,
+        "4 pieces (including the no-column fallback piece)"
+    );
     assert_eq!(visiaengine_render(ve), 0);
     let mut buf = vec![0u8; 256 * 256 * 4];
     assert_eq!(
         visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
         0
     );
-    // 非背景像素计数（ramp 着色的直接可见证据；逐像素色族断言归 WGPU 系 golden 域）
+    // non-background pixel count (direct visible evidence of ramp coloring; per-pixel color-family assertions belong to the WGPU golden domain)
     let fg = buf
         .as_chunks::<4>()
         .0
         .iter()
         .filter(|p| (p[0] as u32 + p[1] as u32 + p[2] as u32) > 60)
         .count();
-    assert!(fg > 2000, "geo 面片像素不足: {fg}");
+    assert!(fg > 2000, "geo face pixels insufficient: {fg}");
     visiaengine_destroy(ve);
 }
 
 // spec: CAPI-05
 #[test]
 fn wheel_zoom_changes_ortho_frame() {
-    // 行为路径选 geo ortho 场景：twoprim persp 相机位于 orbit 极点（pitch=90°
-    // →cp=0，yaw 退化）且 persp 投影不吃 zoom——换镜头几何会测到假阴性，
-    // 故用 zoom 真实驱动像素的 ortho 面（WHEEL=共享 zoom 乘性 [E3D:B6]）。
+    // the behavior path picks the geo ortho scene: the twoprim persp camera sits at an orbit pole (pitch=90 degrees
+    // -> cp=0, yaw degenerates) and the persp projection ignores zoom -- switching camera geometry would measure a false negative,
+    // hence the ortho face whose pixels zoom really drives (WHEEL = shared zoom multiplier [E3D:B6]).
     use visiaengine::{
         KIND_WHEEL, VE_ERR_ARG, VeInput, visiaengine_load_geojson, visiaengine_on_input,
     };
@@ -134,8 +138,11 @@ fn wheel_zoom_changes_ortho_frame() {
     let mut a = vec![0u8; 160 * 120 * 4];
     frame(&mut a);
     let before = fg_of(&a);
-    assert!(before > 1000, "geo 面应有前景，得 {before}");
-    // WHEEL 正=zoom×exp(+) 放大 → 前景增长
+    assert!(
+        before > 1000,
+        "the geo face should carry foreground, got {before}"
+    );
+    // WHEEL positive = zoom x exp(+) enlarges -> foreground grows
     let mk_wheel = |w: f32| VeInput {
         struct_size: std::mem::size_of::<VeInput>(),
         kind: KIND_WHEEL,
@@ -157,9 +164,15 @@ fn wheel_zoom_changes_ortho_frame() {
             (i16::from(*x) - i16::from(*y)).abs() > 8
         })
         .count();
-    assert!(diff > 3000, "zoom 后画面应显著变化，diff={diff}");
-    assert!(after != before, "前景像素应随 zoom 变（{before}→{after}）");
-    // 演进锚行为面：struct_size 过小的 WHEEL 被拒且不改状态
+    assert!(
+        diff > 3000,
+        "the picture should change markedly after zoom, diff={diff}"
+    );
+    assert!(
+        after != before,
+        "foreground pixels should follow zoom ({before}->{after})"
+    );
+    // the behavior face of the evolution anchor: a WHEEL with too-small struct_size is rejected and changes no state
     let mut tiny = mk_wheel(3.0);
     tiny.struct_size = 4;
     assert_eq!(visiaengine_on_input(ve, &tiny), VE_ERR_ARG);
@@ -169,9 +182,9 @@ fn wheel_zoom_changes_ortho_frame() {
 // spec: CAPI-04
 #[test]
 fn textured_glb_mount_renders_checker() {
-    // M3 链路复核：texquad.glb（4×4 棋盘 PNG + TEXCOORD_0 + baseColor 0.5,0.25,0.5）
-    // mount 后必须走 Textured 变体：棋盘红格（B≈0）与白格×base（紫：B≈R）双族并存。
-    // uv 断链（=&[] 零填）→ 全采 (0,0) 红格 → 紫族=0 即红。
+    // M3 chain re-check: texquad.glb (4x4 checkerboard PNG + TEXCOORD_0 + baseColor 0.5,0.25,0.5)
+    // after mount must ride the Textured variant: the checkerboard red cells (B about 0) and white cells x base (violet: B about R) families coexist.
+    // broken uv link (= &[] zero-fill) samples (0,0) everywhere -> all red cells -> violet family = 0 means red.
     let ve = visiaengine_create_headless(160, 120);
     assert_ne!(ve, 0);
     assert_eq!(
@@ -185,10 +198,10 @@ fn textured_glb_mount_renders_checker() {
         visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
         0
     );
-    // CORE-16 域重钉（实测 56/23px）：sRGB 纹理+LINEAR 滤波下纯格心并入混色带，
-    // 品红族按 **b 双峰**分治。N6 GGX 重探（2026-09-29）：r 恒定域 172→144
-    // （GGX (1-F)·intensity 链 + IBL-lite ambient），阈值 150→135 适配；
-    // b 分界 135→120（144 域下混色带右缘实测）。uv 断链=白族恒 0 canary 原样。
+    // CORE-16 domain re-nailed (measured 56/23px): with sRGB textures + LINEAR filtering, pure cell centers merge into the mixing band,
+    // the magenta family is divided by the **b bimodal**. N6 GGX reprobe (2026-09-29): the r-constant domain 172 -> 144
+    // (GGX (1-F) x intensity chain + IBL-lite ambient), threshold 150 -> 135 adapted;
+    // the b boundary 135 -> 120 (measured right edge of the mixing band in the 144 domain). The uv-broken = white-family-0 canary stands as-is.
     let (mut reds, mut violets) = (0u32, 0u32);
     for y in 40..80 {
         for x in 50..110 {
@@ -202,7 +215,7 @@ fn textured_glb_mount_renders_checker() {
     }
     assert!(
         reds > 30 && violets > 15,
-        "棋盘双族缺失 red={reds} violet={violets}"
+        "checkerboard dual families missing red={reds} violet={violets}"
     );
     assert_eq!(visiaengine_destroy(ve), 0);
 }
@@ -210,10 +223,10 @@ fn textured_glb_mount_renders_checker() {
 // spec: CAPI-04
 #[test]
 fn viewport_resize_reconfigures_frame_dims() {
-    // Qt 轮 Q1 行为锁：viewport(w,h) 即 resize 合同（headless 面=target 重建
-    // 且 MeshCore 驻留；窗口面 sw.resize 路径由 smoke-x11/Qt demo 人验）。
-    // 锁点：①换尺寸后新 dims readback 通过 ②旧尺寸缓冲=VE_ERR_SIZE（证 dims 真变了）
-    // ③换回旧 dims 复现（可逆，非一次性重建事故）。
+    // Qt round Q1 behavior lock: viewport(w,h) is the resize contract (on the headless face = target rebuild
+    // with MeshCore residency; on the window face the sw.resize path is human-verified by smoke-x11/Qt demo).
+    // Lock points: (1) after the size change, readback with the new dims passes; (2) a buffer with the old dims = VE_ERR_SIZE (proof dims really changed);
+    // (3) switching back to the old dims reproduces (reversible, not a one-off rebuild accident).
     let ve = visiaengine_create_headless(64, 48);
     assert_ne!(ve, 0);
     assert_eq!(
@@ -232,7 +245,7 @@ fn viewport_resize_reconfigures_frame_dims() {
     assert_eq!(
         visiaengine_readback(ve, old.as_mut_ptr(), old.len() as u64),
         VE_ERR_SIZE,
-        "换尺寸后旧 dims 必须被拒（合同真变）"
+        "after a size change the old dims must be rejected (the contract really changed)"
     );
     assert_eq!(visiaengine_viewport(ve, 64, 48), 0);
     assert_eq!(visiaengine_render(ve), 0);

@@ -1,10 +1,10 @@
-//! GLTF-11：uv/纹理/因子读取契约（builder fixture 程序化生成，零外部资产）。
-//! GLTF-10 覆盖延伸：image 段确定性篡改带（flip/truncate 均不得 panic）。
+//! GLTF-11: the uv/texture/factor read contract (builder fixture generated programmatically, zero external assets).
+//! GLTF-10 coverage extension: deterministic tampering band over the image section (flip/truncate must not panic).
 
 use image::ImageEncoder as _;
 use visiaengine_io_gltf::load_gltf_bytes;
 
-/// 4×4 RGBA 棋盘（偶=红，奇=白）。
+/// 4x4 RGBA checkerboard (even = red, odd = white).
 fn checker_png() -> Vec<u8> {
     let mut px = Vec::new();
     for j in 0..4u32 {
@@ -29,8 +29,8 @@ fn push_f32(v: &[f32], out: &mut Vec<u8>) {
     }
 }
 
-/// 程序化带纹理 quad GLB（R6/GLTF-11 教学件：chunk 4 字节垫 + byteOffset 对齐，
-/// 自检断言先于一切消费者断言）。
+/// Programmatic textured quad GLB (the R6/GLTF-11 teaching piece: chunk 4-byte padding + byteOffset alignment,
+/// self-check assertions precede all consumer assertions).
 fn build_textured_glb() -> Vec<u8> {
     let png = checker_png();
     let positions: Vec<f32> = vec![-1., -1., 0., 1., -1., 0., 1., 1., 0., -1., 1., 0.];
@@ -102,33 +102,38 @@ fn build_textured_glb() -> Vec<u8> {
 #[test]
 fn textured_glb_reads_uv_texture_factors() {
     let glb = build_textured_glb();
-    // R6 自检：builder 本身先过 gltf 验证（畸形=RED 迷惑调试，先行断言）
-    let doc = load_gltf_bytes(&glb).unwrap_or_else(|e| panic!("builder GLB 必须合法: {e}"));
+    // R6 self-check: the builder itself first passes gltf validation (malformed = RED confusing the debug, assert ahead)
+    let doc =
+        load_gltf_bytes(&glb).unwrap_or_else(|e| panic!("the builder GLB must be legal: {e}"));
     assert_eq!(doc.entities().len(), 1);
     let m = &doc.entities()[0].mesh;
     assert_eq!(m.positions.len(), 4);
-    assert_eq!(m.uv.len(), 4, "GLTF-11: TEXCOORD_0 读取");
+    assert_eq!(m.uv.len(), 4, "GLTF-11: TEXCOORD_0 read");
     assert_eq!(m.uv[3], [0.0, 1.0]);
-    assert_eq!(m.texture, Some(0), "baseColorTexture→image 槽位");
+    assert_eq!(m.texture, Some(0), "baseColorTexture -> image slot");
     assert!(
         (m.base_color[0] - 0.7354).abs() < 1e-3,
-        "IR 面=sRGB 约定（CORE-16）"
+        "the IR face = sRGB convention (CORE-16)"
     ); // linear_to_srgb(0.5)
     assert!(
         (m.metallic_factor - 0.2).abs() < 1e-6,
-        "因子收纳（mock-up 面 M2）"
+        "factor collection (the mock-up face M2)"
     );
     assert!((m.roughness_factor - 0.6).abs() < 1e-6);
     let t = &doc.textures()[0];
     assert_eq!((t.width, t.height), (4, 4));
-    assert_eq!(&t.rgba[0..4], &[255, 0, 0, 255], "棋盘首像素=红");
+    assert_eq!(
+        &t.rgba[0..4],
+        &[255, 0, 0, 255],
+        "checkerboard first pixel = red"
+    );
     assert_eq!(t.rgba.len(), 64);
 }
 
 // spec: GLTF-11
 #[test]
 fn no_texture_primitive_is_none_and_no_uv_empty() {
-    // 复用 GLTF-01 fixture（无 uv/纹理）：新字段零值不破坏既契约
+    // reuse the GLTF-01 fixture (no uv/texture): the new zero-value fields do not break the existing contract
     let bytes = std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../resources/data/tri-blue.glb"
@@ -148,12 +153,12 @@ fn image_segment_tampering_never_panics() {
     let pos = glb
         .windows(sig.len())
         .position(|w| w == sig)
-        .expect("builder 内嵌 PNG 签名");
-    // 截断带：PNG 数据逐段砍尾
+        .expect("the builder embedded PNG signature");
+    // truncation band: PNG data chopped tail-ward segment by segment
     for cut in [pos + 1, pos + 8, pos + 20, glb.len() - 1] {
         let _ = load_gltf_bytes(&glb[..cut.min(glb.len())]);
     }
-    // flip 带：IDAT 区逐 8 步翻字节（checksum/块结构损坏面）
+    // flip band: bytes toggled every 8 steps across the IDAT region (checksum/block-structure corruption face)
     for i in (pos + 12..glb.len()).step_by(8) {
         let mut v = glb.clone();
         v[i] ^= 0xA5;
@@ -161,10 +166,10 @@ fn image_segment_tampering_never_panics() {
     }
 }
 
-/// 真源注记：`resources/data/texquad.glb` = 本 builder 输出（capi/render_spec 纹理链路
-/// fixture 消费面）。重生：`cargo test -p visiaengine-io-gltf emit_textured_glb_fixture -- --ignored`
+/// True-source note: `resources/data/texquad.glb` = this builder's output (the capi/render_spec texture-chain
+/// fixture consumption face). Regenerate: `cargo test -p visiaengine-io-gltf emit_textured_glb_fixture -- --ignored`
 #[test]
-#[ignore = "fixture 生成（非验证）"]
+#[ignore = "fixture generation (not validation)"]
 fn emit_textured_glb_fixture() {
     let glb = build_textured_glb();
     let path = concat!(

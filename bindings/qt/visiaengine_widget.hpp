@@ -1,7 +1,7 @@
-// VisiaEngineWidget —— header-only Qt6 宿主（零 Q_OBJECT=零 moc；批 Qt 轮 v1.3/Q2）。
-// 合同四钉：① GUI 线程=引擎 owner（CAPI-03 零 marshal）；② attach 于 showEvent
-//（winId 已 realized；重复 show=重 attach，CAPI-06）；③ WA_PaintOnScreen+空 paint——
-// Qt 永不向引擎画布刷皮；④ 帧泵 QTimer(60Hz)→visiaengine_render（D8 触发器① 实证面）。
+// VisiaEngineWidget -- header-only Qt6 host (zero Q_OBJECT = zero moc; Qt round batch v1.3/Q2).
+// Four contract nails: (1) the GUI thread = the engine owner (CAPI-03, zero marshaling); (2) attach in showEvent
+// (winId already realized; repeated show = re-attach, CAPI-06); (3) WA_PaintOnScreen + empty paint --
+// Qt never paints over the engine canvas; (4) the frame pump QTimer(60Hz) -> visiaengine_render (D8 trigger (1) proof face).
 #pragma once
 
 #include <QtGlobal>
@@ -10,9 +10,9 @@
 #include <QWheelEvent>
 #include <QWidget>
 
-#include <X11/Xlib.h>  // conda qt6-main 未打包 QX11Application（x11extras 缺位实锤）——
-                       // Display* 由宿主自持（xid 跨连接合法：attach demo_x11 同机件实证；
-                       // 全 XCall 仅 XOpenDisplay/XSync，PIT-16 自杀面零触达）
+#include <X11/Xlib.h>  // conda qt6-main does not package QX11Application (the missing x11extras is proven) --
+                       // the host holds its own Display* (an xid across connections is legal: attach demo_x11 same-machine evidence;
+                       // the only X calls are XOpenDisplay/XSync, zero contact with the PIT-16 self-kill surface)
 
 #include "visiaengine.h"
 
@@ -20,14 +20,14 @@ class VisiaEngineWidget : public QWidget {
 public:
     explicit VisiaEngineWidget(uint64_t ve, QWidget* parent = nullptr) : QWidget(parent), ve_(ve) {
         setAttribute(Qt::WA_NativeWindow);
-        setAttribute(Qt::WA_PaintOnScreen);      // 引擎直绘，Qt  backingstore 旁路
-        setAttribute(Qt::WA_NoSystemBackground); // 首帧不刷白
+        setAttribute(Qt::WA_PaintOnScreen);      // the engine draws directly, Qt backingstore bypassed
+        setAttribute(Qt::WA_NoSystemBackground); // no white flash on the first frame
         setFocusPolicy(Qt::StrongFocus);
-        // 函数指针式 connect：无 moc 依赖
+        // function-pointer style connect: no moc dependency
         QObject::connect(&pump_, &QTimer::timeout, this, [this] { tick(); });
     }
 
-    /// max_frames<=0=交互无限；N>0 跑 N 帧后 quit（smoke 面）
+    /// max_frames <= 0 = interactive infinite; N > 0 quits after N frames (smoke face)
     void start(int max_frames) {
         max_frames_ = max_frames;
         pump_.start();
@@ -45,14 +45,14 @@ protected:
     void showEvent(QShowEvent* ev) override {
         QWidget::showEvent(ev);
         if (!dpy_) {
-            dpy_ = XOpenDisplay(nullptr);  // 与 Qt(xcb) 并行连接：xid 共享协议
+            dpy_ = XOpenDisplay(nullptr);  // a parallel connection with Qt(xcb): the xid shares the protocol
             if (!dpy_) {
-                qWarning("XOpenDisplay 失败（无 X？wayland 不装 [Qt 轮§1①]）");
+                qWarning("XOpenDisplay failed (no X? do not run under wayland [Qt round §1-i])");
                 return;
             }
         }
         Window xid = static_cast<Window>(winId());
-        XSync(dpy_, False);  // 让服务端认账窗口
+        XSync(dpy_, False);  // let the server acknowledge the window
         const int rc = visiaengine_attach(ve_, static_cast<uint64_t>(xid),
                                           reinterpret_cast<uint64_t>(dpy_),
                                           0 /* kind: x11 */);
@@ -61,7 +61,7 @@ protected:
         }
     }
 
-    void paintEvent(QPaintEvent*) override { /* 引擎自绘，Qt 空转 */ }
+    void paintEvent(QPaintEvent*) override { /* the engine self-draws, Qt idles */ }
 
     void mousePressEvent(QMouseEvent* e) override { send(2, e->position().x(), e->position().y(), 0, e->button()); }
     void mouseReleaseEvent(QMouseEvent* e) override { send(3, e->position().x(), e->position().y(), 0, e->button()); }
@@ -70,14 +70,14 @@ protected:
 
     void resizeEvent(QResizeEvent* e) override {
         (void)visiaengine_viewport(ve_, static_cast<uint32_t>(e->size().width()),
-                                   static_cast<uint32_t>(e->size().height())); // Q1 行为锁合同面
+                                   static_cast<uint32_t>(e->size().height())); // the Q1 behavior-lock contract face
     }
 
 private:
     void send(int kind, qreal x, qreal y, float wheel, Qt::MouseButton button) {
         VeInput in_{};
         in_.struct_size = sizeof(VeInput);
-        in_.kind = static_cast<uint32_t>(kind); // 1=move 2=down 3=up 4=wheel（engine.rs 实录）
+        in_.kind = static_cast<uint32_t>(kind); // 1=move 2=down 3=up 4=wheel (engine.rs as-recorded)
         in_.px = static_cast<float>(x);
         in_.py = static_cast<float>(y);
         in_.wheel = wheel;
@@ -92,12 +92,12 @@ private:
         }
         if (max_frames_ > 0 && ++frames_ >= max_frames_) {
             pump_.stop();
-            qApp->quit(); // smoke 出口：控制台断言由宿主进程打
+            qApp->quit(); // smoke exit: console assertions are printed by the host process
         }
     }
 
     uint64_t ve_ = 0;
-    Display* dpy_ = nullptr;  // 宿主自持 X 连接（attach 合同 display 必填，CAPI-06）
+    Display* dpy_ = nullptr;  // the host holds its own X connection (the attach contract requires display, CAPI-06)
     QTimer pump_;
     int max_frames_ = 0;
     int frames_ = 0;

@@ -1,4 +1,4 @@
-//! L1 离屏 golden（真 GPU/lavapipe 渲染回读；无适配器 SKIP——验证地点如实记录）。
+//! L1 offscreen golden (real GPU / lavapipe render readback; no adapter SKIP; the verification venue recorded truthfully).
 
 const W: u32 = 640;
 const H: u32 = 480;
@@ -111,14 +111,17 @@ fn golden_cube_silhouette_row() {
         run = if d { run + 1 } else { 0 };
         max_run = max_run.max(run);
     }
-    assert_eq!(transitions, 2, "凸体中线应恰 2 次清↔染跳变");
-    assert!(max_run > 100, "投影宽度不足: {max_run}");
+    assert_eq!(
+        transitions, 2,
+        "the convex body should jump exactly 2 times clean<->dyed along the midline"
+    );
+    assert!(max_run > 100, "projection width insufficient: {max_run}");
 }
 
 // spec: WGPU-09
 #[test]
 fn material_uniform_path_live() {
-    // 同几何同相机换绿 material：中心绿主导=uniform 值真实流经管线（非 SKIP 假绿）
+    // same geometry same camera with a green material swap: the center's green dominance = uniform values truly flowed through the pipeline (not a fake-green SKIP)
     let frame = skip_if_no_gpu!(visiaengine_render_wgpu::render_offscreen_cube([
         0.0, 1.0, 0.0, 1.0
     ]));
@@ -143,7 +146,7 @@ fn golden_far_origin_pixel_identity() {
         assert_eq!(
             px(&base, x, y),
             px(&far, x, y),
-            "({x},{y}) 像素不一致=D7 路径未闭环"
+            "({x},{y}) pixels inconsistent = the D7 path did not close the loop"
         );
     }
 }

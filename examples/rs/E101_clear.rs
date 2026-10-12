@@ -1,5 +1,5 @@
-//! E101 · 窗口与首帧 —— winit 0.30 + wgpu 30 清色循环（最小可运行窗口）。
-//! `--frames N` 自动退出（SDD render-wgpu.md L2 叙述条款；CI xvfb-run 以 N=3 跑）。
+//! E101 · window and first frame —— winit 0.30 + wgpu 30 clear-color loop (the minimal runnable window).
+//! `--frames N` auto-exit (the SDD render-wgpu.md L2 narrative clause; CI xvfb-run runs it with N=3).
 
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
@@ -25,7 +25,7 @@ impl Gfx {
     fn new(window: Arc<Window>) -> Option<Self> {
         let instance = visiaengine_render_wgpu::create_instance();
         let size = window.inner_size();
-        // Arc<Window>：rwh 0.6 对 Arc 有 blanket impl，'static 借用面由 Arc 生命周期担保
+        // Arc<Window>: rwh 0.6 has a blanket impl for Arc, the 'static borrow face is guaranteed by the Arc lifetime
         let surface = instance.create_surface(window).expect("create_surface");
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             compatible_surface: Some(&surface),
@@ -92,7 +92,7 @@ impl Gfx {
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 self.surface.configure(&self.device, &self.config);
             }
-            // Timeout/Occluded/Validation：跳帧即正确语义
+            // Timeout/Occluded/Validation: skipping the frame IS the correct semantics
             other => {
                 eprintln!("skipped frame: {other:?}");
             }
@@ -116,7 +116,7 @@ impl ApplicationHandler for App {
                 .create_window(
                     WindowAttributes::default()
                         .with_inner_size(winit::dpi::PhysicalSize::new(640, 480))
-                        .with_title("VisiaEngine E101 · 清色窗口（关窗退出）"),
+                        .with_title("VisiaEngine E101 · clear-color window (close to exit)"),
                 )
                 .expect("create_window"),
         );
@@ -185,7 +185,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         gfx: None,
         frames_left: frames,
     };
-    // 首帧自触发
+    // first-frame self-trigger
     event_loop.run_app(&mut app)?;
     Ok(())
 }

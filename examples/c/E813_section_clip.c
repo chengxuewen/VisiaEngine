@@ -1,7 +1,7 @@
-/* E813_section_clip · SDK 消费·C 剖面裁切（CAPI-20 宿主面验收）。
- * 无头证据身份（E811 同制）：readback 像素族计数三段=基线/半裁/复原，秒退。
- * 注：capi pick=positions×IDENTITY 帧（origin 住 render 路=既有事实）——
- * z 烘进 positions 令两帧合一，勿学成 bug。 */
+/* E813_section_clip -- SDK consumption, C section clipping (the CAPI-20 host-face acceptance).
+ *  Headless evidence identity (same system as E811): readback pixel-family counts in three acts = baseline / half-cut / restore, exits in seconds.
+ *  Note: capi pick = positions x IDENTITY frame (origin lives on the render path = established fact) --
+ *  z is baked into positions to merge the two frames, do not learn it as a bug. */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -25,7 +25,7 @@ static int fail(const char *what) {
 
 static int add_wall(uint64_t ve, const float *pos, const float *color, uint64_t *out) {
     VeMeshDesc d = {0};
-    double o0[3] = {0.0, 0.0, 0.0}; /* positions 已含 z（两帧合一）→ origin 恒零 */
+    double o0[3] = {0.0, 0.0, 0.0}; /* positions already carry z (two frames merged) -> origin stays zero */
     d.struct_size = sizeof(VeMeshDesc);
     d.positions = pos;
     d.normals = NRM;
@@ -57,44 +57,44 @@ int main(void) {
     uint8_t *img = malloc((size_t)VW * VH * 4);
     if (!img) return fail("oom");
 
-    /* 基线：前墙红铺中心；pick 中前 */
+    /* baseline: the front wall's red spreads the center; pick hits the front */
     if (visiaengine_render(ve) != VE_OK) return fail("render0");
     if (visiaengine_readback(ve, img, (size_t)VW * VH * 4) != VE_OK) return fail("readback0");
     long r0 = count_fam(img, 1);
-    if (r0 < 3000) return fail("红墙基线缺席");
-    if (visiaengine_pick(ve, 80.0f, 60.0f) != front) return fail("默认未中前墙");
+    if (r0 < 3000) return fail("the red-wall baseline is absent");
+    if (visiaengine_pick(ve, 80.0f, 60.0f) != front) return fail("the front wall not hit by default");
 
-    /* 半刀 z≤1：红全灭（z=2 整面弃片）、绿自若、pick 重试环中后墙 */
+    /* half knife z <= 1: red all dead (the z = 2 face discards whole patches), green unruffled, pick's retry loop hits the back wall */
     VeClipPlane p = {0.0, 0.0, -1.0, 1.0};
     if (visiaengine_set_clips(ve, &p, 1) != VE_OK) return fail("set_clips");
-    if (visiaengine_get_clips(ve, NULL, 0) != 1) return fail("读回计数");
+    if (visiaengine_get_clips(ve, NULL, 0) != 1) return fail("readback count");
     if (visiaengine_render(ve) != VE_OK) return fail("render1");
     if (visiaengine_readback(ve, img, (size_t)VW * VH * 4) != VE_OK) return fail("readback1");
-    if (count_fam(img, 1) != 0) return fail("裁侧红未灭");
-    if (count_fam(img, 0) < 3000) return fail("保留侧绿被误杀");
-    if (visiaengine_pick(ve, 80.0f, 60.0f) != back) return fail("重试环未中后墙");
+    if (count_fam(img, 1) != 0) return fail("the clipped-side red not dead");
+    if (count_fam(img, 0) < 3000) return fail("the kept-side green was mistaken-killed");
+    if (visiaengine_pick(ve, 80.0f, 60.0f) != back) return fail("the retry loop missed the back wall");
 
-    /* 三面 AND（x≥0 ∧ y≥0 ∧ z≤1）：绿≈四分之一；z 约束拆前墙遮蔽（二面形实测 g2=0
-       的真因=红四分之一同屏盖绿 [PIT-8 探针先行]） */
+    /* three-plane AND (x >= 0 and y >= 0 and z <= 1): green ~ quarter; the z constraint lifts the front-wall occlusion (the true cause
+       of the measured two-plane g2 = 0 = the red quarter covering green on the same screen [PIT-8 probe ahead]) */
     VeClipPlane corner[3] = {{0.0, 1.0, 0.0, 0.0}, {1.0, 0.0, 0.0, 0.0}, {0.0, 0.0, -1.0, 1.0}};
     if (visiaengine_set_clips(ve, corner, 3) != VE_OK) return fail("set corner");
     if (visiaengine_render(ve) != VE_OK) return fail("render2");
     if (visiaengine_readback(ve, img, (size_t)VW * VH * 4) != VE_OK) return fail("readback2");
     long g2 = count_fam(img, 0);
-    printf("PROBE g2=%ld\n", g2); /* 定着后保留（终端即人验面） */
-    if (g2 < 800 || g2 > 4000) return fail("角域绿族区间外");
+    printf("PROBE g2=%ld\n", g2); /* kept after settling (the terminal is the human-verified face) */
+    if (g2 < 800 || g2 > 4000) return fail("the corner-domain green family is out of interval");
 
-    /* 值域拒形：n>4 / NULL∧n>0 / 零法向（退化门） */
+    /* value-domain rejection forms: n > 4 / NULL with n > 0 / zero normal (the degenerate gate) */
     VeClipPlane five[5] = {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}};
-    if (visiaengine_set_clips(ve, five, 5) != VE_ERR_ARG) return fail("n>4 未拒");
-    if (visiaengine_set_clips(ve, NULL, 1) != VE_ERR_ARG) return fail("NULL∧n>0 未拒");
+    if (visiaengine_set_clips(ve, five, 5) != VE_ERR_ARG) return fail("n > 4 not rejected");
+    if (visiaengine_set_clips(ve, NULL, 1) != VE_ERR_ARG) return fail("NULL with n > 0 not rejected");
     VeClipPlane zero = {0.0, 0.0, 0.0, 1.0};
-    if (visiaengine_set_clips(ve, &zero, 1) != VE_ERR_ARG) return fail("零法向未拒");
+    if (visiaengine_set_clips(ve, &zero, 1) != VE_ERR_ARG) return fail("zero normal not rejected");
 
-    /* 唯一清空形 n=0：红墙复中 + get=0 */
+    /* the only clearing form n = 0: the red wall hits again + get = 0 */
     if (visiaengine_set_clips(ve, NULL, 0) != VE_OK) return fail("clear");
-    if (visiaengine_get_clips(ve, NULL, 0) != 0) return fail("clear 后未空");
-    if (visiaengine_pick(ve, 80.0f, 60.0f) != front) return fail("清空后未复原");
+    if (visiaengine_get_clips(ve, NULL, 0) != 0) return fail("not empty after clear");
+    if (visiaengine_pick(ve, 80.0f, 60.0f) != front) return fail("not restored after clearing");
     if (visiaengine_destroy(ve) != VE_OK) return fail("destroy");
     free(img);
     printf("OK e813 clip base_red=%ld corner_green=%ld domain=rejected\n", r0, g2);

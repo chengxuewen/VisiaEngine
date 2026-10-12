@@ -1,7 +1,7 @@
 //! # visiaengine-render
 //!
-//! 渲染抽象层：`RenderBackend` trait + 渲染指令 IR（纯数据）。
-//! 契约条款：`docs/sdd/render.md`（REND-01..05，S2 实装）。
+//! Render abstraction layer: the `RenderBackend` trait + the render command IR (pure data).
+//! Contract clauses: `docs/sdd/render.md` (REND-01..05, S2 implemented).
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 

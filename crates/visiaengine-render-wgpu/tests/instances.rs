@@ -1,7 +1,7 @@
-//! WGPU-16：Instanced 管线——storage 实例表、instance_index 寻址、
-//! `pos.z·h + offset` 底对齐挤出、base·inst.color·shade 乘法链。
-//! 谓词纪律 [PIT-8]：区域族统计+列高对比，不锁单像素；断链（let-else 静默跳过）
-//! 则三族计数恒 0——判别力保留。
+//! WGPU-16: the Instanced pipeline -- storage instance table, instance_index addressing,
+//! `pos.z*h + offset` bottom-aligned extrusion, the base*inst.color*shade multiply chain.
+//! Predicate discipline [PIT-8]: region-family statistics + column-height contrast, no single-pixel locks; a broken chain (let-else silent skip)
+//! would make the three-family counts always 0 -- the discriminative power is retained.
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, Instance, InstanceDesc, MeshDesc, RenderBackend,
@@ -24,7 +24,7 @@ fn px(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] 
     ]
 }
 
-/// 三栋楼：x=-2/0/+2，高 1/2/3，色 红/绿/蓝。返回渲染帧。
+/// Three buildings: x = -2/0/+2, heights 1/2/3, colors red/green/blue. Returns the rendered frame.
 fn city() -> visiaengine_render_wgpu::OffscreenFrame {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let (pos, nrm, idx) = unit_box_mesh();
@@ -98,14 +98,14 @@ fn three_instances_render_three_color_families() {
     }
     assert!(
         r > 20 && g > 20 && bl > 20,
-        "三色族缺失 r={r} g={g} b={bl}（静默跳过=全 0）"
+        "the three color families missing r={r} g={g} b={bl} (silent skip = all 0)"
     );
 }
 
 // spec: WGPU-16
 #[test]
 fn instance_height_extrudes_column_extent() {
-    // 底对齐挤出语义：同宽度三列的彩色列高 b > g > r（高度 3/2/1 的直接投影证据）。
+    // bottom-aligned extrusion semantics: three columns of the same width, the colored column heights b > g > r (direct projection evidence of heights 3/2/1).
     let img = city();
     let col_h = |fam: u8, x0: u32, x1: u32| -> u32 {
         let mut mx = 0u32;
@@ -127,7 +127,7 @@ fn instance_height_extrudes_column_extent() {
     let (hr, hg, hb) = (col_h(0, 8, 26), col_h(1, 24, 40), col_h(2, 38, 56));
     assert!(
         hr > 4 && hg > hr && hb > hg,
-        "列高序破坏 r={hr} g={hg} b={hb}"
+        "column-height order broken r={hr} g={hg} b={hb}"
     );
 }
 
@@ -137,7 +137,7 @@ fn empty_instance_table_rejected_on_create() {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     assert!(
         b.create_instances(&InstanceDesc { data: &[] }).is_err(),
-        "空表建期即拒（REND-28 闭合裁决）"
+        "empty table rejected at build (the REND-28 closed ruling)"
     );
 }
 
@@ -175,7 +175,7 @@ fn missing_instance_table_skips_not_panics() {
             DrawCommand::DrawInstances {
                 mesh,
                 material: mat,
-                instances: 9999, // 缺表
+                instances: 9999, // missing table
                 origin: [0.0; 3],
                 transform: [
                     [1.0, 0.0, 0.0, 0.0],
@@ -186,10 +186,12 @@ fn missing_instance_table_skips_not_panics() {
             },
         ],
     };
-    let img = b.render_to_pixels(&frame).expect("缺表不得 panic");
+    let img = b
+        .render_to_pixels(&frame)
+        .expect("a missing table must not panic");
     let p = px(&img, 32, 32);
     assert!(
         p[0] < 10 && p[1] < 10 && p[2] < 10,
-        "缺表=skip 非未定义 {p:?}"
+        "missing table = skip, not undefined {p:?}"
     );
 }

@@ -1,4 +1,4 @@
-//! GLTF-10：GLB 解码器全输入域无 panic（结构化 header 篡改 + 随机流两路）。
+//! GLTF-10: the GLB decoder panics on no input (structured header tampering + random stream, two roads).
 
 use proptest::prelude::*;
 use visiaengine_io_gltf::load_gltf_bytes;
@@ -29,7 +29,7 @@ proptest! {
     }
 }
 
-/// 真实合法 GLB 前缀 + 尾部截断/篡改（fixture 引导的边界带）
+/// Real legal GLB prefix + tail truncation/tampering (the fixture-guided boundary band)
 #[test]
 fn truncated_valid_glb_never_panic() {
     let full = std::fs::read(concat!(

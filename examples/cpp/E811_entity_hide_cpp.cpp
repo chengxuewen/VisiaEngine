@@ -1,5 +1,5 @@
-// E811_entity_hide_cpp · SDK 消费·C++ 显隐孪生（hpp 门面的 CAPI-13/14 验收面）。
-// 跑不通即 API 未完成 [E3D:D7]。孪生谱系：examples/c/E811_entity_hide_c.c（同题同码）。
+// E811_entity_hide_cpp -- SDK consumption, C++ visibility twin (the hpp facade's CAPI-13/14 acceptance face).
+// If it does not run, the API is unfinished [E3D:D7]. Twin lineage: examples/c/E811_entity_hide_c.c (same theme, same code).
 #include <cstdio>
 #include <cstdint>
 
@@ -13,16 +13,16 @@ int main() {
         return 1;
     }
     const uint64_t h = eng.pick(80.0f, 60.0f);
-    if (h == visiaengine::kMiss) { puts("E811cpp FAIL 中心无实体"); return 1; }
+    if (h == visiaengine::kMiss) { puts("E811cpp FAIL no entity at center"); return 1; }
 
-    if (eng.entity_visible(h) != 1) { puts("E811cpp FAIL 默认可见"); return 1; }
+    if (eng.entity_visible(h) != 1) { puts("E811cpp FAIL not visible by default"); return 1; }
     if (eng.set_visible(h, false) != VE_OK) { puts("E811cpp FAIL hide"); return 1; }
-    if (eng.entity_visible(h) != 0) { puts("E811cpp FAIL 查询滞后"); return 1; }
-    if (eng.pick(80.0f, 60.0f) == h) { puts("E811cpp FAIL 隐藏件命中自体"); return 1; }
-    if (eng.entity_count() != 2) { puts("E811cpp FAIL 枚举域漂移"); return 1; }
+    if (eng.entity_visible(h) != 0) { puts("E811cpp FAIL the query lags"); return 1; }
+    if (eng.pick(80.0f, 60.0f) == h) { puts("E811cpp FAIL hidden piece hits itself"); return 1; }
+    if (eng.entity_count() != 2) { puts("E811cpp FAIL enumeration domain drifted"); return 1; }
     if (eng.set_visible(h, true) != VE_OK) { puts("E811cpp FAIL show"); return 1; }
-    if (eng.pick(80.0f, 60.0f) != h) { puts("E811cpp FAIL 复原失败"); return 1; }
+    if (eng.pick(80.0f, 60.0f) != h) { puts("E811cpp FAIL restore failed"); return 1; }
 
     puts("OK E811_entity_hide_cpp visibility=roundtrip");
-    return 0;  // 析构自动 destroy（CAPI-03 RAII 投影；moved-from 双毁免疫在 hpp 层）
+    return 0;  // the destructor auto-destroys (the CAPI-03 RAII projection; moved-from double-destroy immunity lives in the hpp layer)
 }

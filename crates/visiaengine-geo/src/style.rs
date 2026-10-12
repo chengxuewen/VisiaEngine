@@ -1,10 +1,10 @@
-//! simplestyle-spec 六键子集（GEO-12/13/18）。未知键静默忽略、缺失回默认。
-//! GEO-18：样式判定经 AttrSet typed 列读取——本文件禁现 serde_json（解析边界
-//! 固定 lib.rs；grep 门禁=pixi run gate-style）。
+//! The simplestyle-spec six-key subset (GEO-12/13/18). Unknown keys silently ignored, missing keys fall back to defaults.
+//! GEO-18: style decisions read through AttrSet typed columns -- serde_json must never appear in this file (the parsing boundary is
+//! fixed at lib.rs; the grep gate = pixi run gate-style).
 
 use visiaengine_core::AttrSet;
 
-/// `#rrggbb` / `rgb(r,g,b)` 双格式；非法串 None（GEO-12 色格式面）。
+/// Dual format `#rrggbb` / `rgb(r,g,b)`; invalid strings are None (the GEO-12 color-format face).
 #[must_use]
 pub fn parse_color(raw: &str) -> Option<[f32; 4]> {
     if let Some(hex) = raw.strip_prefix('#') {
@@ -25,7 +25,7 @@ pub fn parse_color(raw: &str) -> Option<[f32; 4]> {
     Some([n(it.next()?)?, n(it.next()?)?, n(it.next()?)?, 1.0])
 }
 
-/// 键取：simplestyle 主键优先，v8 paint 别名回退（D9/GEO-19）。
+/// Key lookup: simplestyle primary keys first, v8 paint aliases as fallback (D9/GEO-19).
 fn str_first<'a>(a: &'a AttrSet, row: usize, primary: &str, alias: &str) -> Option<&'a str> {
     a.str_value(row, primary)
         .or_else(|| a.str_value(row, alias))
@@ -34,7 +34,7 @@ fn f64_first(a: &AttrSet, row: usize, primary: &str, alias: &str) -> Option<f64>
     a.f64(row, primary).or_else(|| a.f64(row, alias))
 }
 
-/// 经列读六键（typed，零 Value 匹配）。缺键=该列 None→默认值保持。
+/// Read the six keys through columns (typed, zero Value matching). A missing key = that column is None -> the default value holds.
 pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     let mut s = crate::StyleRecord::default();
     if let Some(c) = str_first(a, row, "fill", "fill-color").and_then(parse_color) {
@@ -47,7 +47,7 @@ pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
         s.stroke = c;
     }
     if let Some(v) = f64_first(a, row, "stroke-width", "line-width") {
-        // simplestyle/v8 语义均为屏幕 px；v0 粗映射 1px≈1m（屏幕空间线宽=相机片，GEO-11 以默认宽断言）
+        // both simplestyle/v8 semantics are screen px; v0 coarse mapping 1px~1m (screen-space line width = camera slice, GEO-11 asserts with the default width)
         s.stroke_width_px = (v as f32).max(0.5);
     }
     if let Some(c) = str_first(a, row, "marker-color", "circle-color").and_then(parse_color) {
@@ -56,7 +56,7 @@ pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     if let Some(v) = f64_first(a, row, "marker-radius", "circle-radius") {
         s.radius_px = v as f32;
     }
-    // GEO-25 三键（v8 layout 域主键；无 simplestyle 对应=主键即正本）
+    // GEO-25 three keys (the primary keys of the v8 layout domain; no simplestyle counterpart = the primary key is the canonical form)
     if let Some(v) = a.str_value(row, "text-field") {
         let owned = v.trim();
         let field = owned
@@ -77,10 +77,10 @@ pub(crate) fn style_from_attrs(a: &AttrSet, row: usize) -> crate::StyleRecord {
     s
 }
 
-/// 标量→色带（GEO-20/D9 边界外的 `visia:` 扩展键，解析期物化——
-/// tess/渲染管线零改动；GIS 属性着色真实形态=per-feature 常量色）。
-/// 任一前置缺失（引用列/区间/端色/hi<=lo）→ 静默禁用，六键结果保持。
-/// 标量→色带执行体（GEO-20）；pub=M0 暴露：点云带 io-points/E204 的复用底座
+/// Scalar -> color ramp (the `visia:` extension key beyond the GEO-20/D9 boundary, materialized at parse time --
+/// zero changes to tess/the render pipeline; the real GIS attribute-coloring shape = per-feature constant color).
+/// Any missing precondition (referenced column / interval / endpoint colors / hi <= lo) -> silently disabled, the six-key result holds.
+/// The scalar -> color ramp executor (GEO-20); pub = M0 exposure: the reuse base for the io-points/E204 point-cloud band
 pub fn apply_scalar_ramp(a: &AttrSet, row: usize, s: &mut crate::StyleRecord) {
     let (Some(col), Some(lo), Some(hi)) = (
         a.str_value(row, "visia:color-column"),
@@ -128,4 +128,4 @@ mod tests {
     }
 }
 
-// style.rs 依赖面契约（GEO-18 禁 serde_json）由 pixi run gate-style 机器把关。
+// The style.rs dependency-surface contract (GEO-18 forbids serde_json) is machine-gated by pixi run gate-style.

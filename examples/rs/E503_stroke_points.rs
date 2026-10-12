@@ -1,8 +1,8 @@
-//! E503 · 材质与光影·扩片族独立课 —— 屏幕空间线宽/真圆点的缩放恒宽秀（REND-29/30 卖点）。
-//! 三笔白色描边（横/纵/斜，1.5/4/10px 族）+ 四点半径梯度（4..12px）；滚轮/z/x 缩放
-//! 时**世界长宽剧变、屏幕粗细恒等**=px_world_scale 单字段驱动的重建零成本证明。
-//! 用法: cargo run --example E503_stroke_points [选项]（--frames N=ctest/xvfb 路）
-//! 交互：左键拖=转轨道 | 滚轮=远近 | z/x=地图缩放 | 关窗退出。
+//! E503 · materials and light, the tile-expansion family's standalone lesson -- the screen-space line-width / true round dots constant-thickness-under-zoom show (REND-29/30 selling points).
+//! Three white stroke strokes (horizontal/vertical/diagonal, the 1.5/4/10px family) + four dots with a radius gradient (4..12px); under wheel/z/x zoom
+//! **world length and width change drastically, screen thickness stays constant** = the zero-cost proof of reconstruction driven by the single px_world_scale field.
+//! Usage: cargo run --example E503_stroke_points [options] (--frames N = the ctest/xvfb road)
+//! Interaction: left-drag = orbit | wheel = distance | z/x = map zoom | close to exit.
 
 use std::sync::Arc;
 
@@ -26,7 +26,7 @@ const IDENT: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// 三笔线族（世界坐标，粗→细各一）与四点点族（半径梯度）。
+/// The three-stroke family (world coordinates, one each coarse -> fine) and the four-dot family (a radius gradient).
 fn segs() -> Vec<StrokeSeg> {
     let white = [0.92, 0.94, 0.96];
     let warm = [1.0, 0.75, 0.35];
@@ -76,7 +76,7 @@ impl ApplicationHandler for App {
                     WindowAttributes::default()
                         .with_inner_size(PhysicalSize::new(960u32, 600u32))
                         .with_title(
-                            "VisiaEngine E503 · 扩片族（缩放恒粗！拖=轨道 滚轮=远近 z/x=缩放 关窗退出）",
+                            "VisiaEngine E503 · tile-expansion family (thickness constant under zoom! drag = orbit, wheel = distance, z/x = zoom, close to exit)",
                         ),
                 )
                 .expect("create_window"),
@@ -239,7 +239,7 @@ impl ApplicationHandler for App {
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
-                    // 顶视 ortho 精确路（REND-29）：半宽=zoom → 2·zoom 世界铺 width 像素
+                    // the top-view ortho exact road (REND-29): half-width = zoom -> 2*zoom world spans the width pixels
                     px_world_scale: 2.0 * self.rig.zoom as f32 / config.width.max(1) as f32,
                     shadow: None,
                     clip: None,
@@ -307,7 +307,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: None,
         window: None,
         dragging: None,
-        // 顶视基（pitch=1.5≈正俯）：扩片族屏幕恒粗语义在透视/正交两态同真
+        // the top-view basis (pitch = 1.5 ~ straight overhead): the tile-expansion family's screen-constant-thickness semantics holds in both perspective and ortho states
         rig: CameraRig::orbit([0.0, 0.0, 0.0], 0.0, 1.5, 12.0, 2.6, 1.0, 0.1, 100.0),
         strokes: Vec::new(),
         points: Vec::new(),

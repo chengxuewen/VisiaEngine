@@ -1,6 +1,6 @@
-//! C ABI 面（CAPI-01/02/03/05）：句柄表、栅栏、线程亲和、错误串、输入口。
-//! 风格 [FFI-R:FC-5]：`#[unsafe(no_mangle)] pub extern "C"` 安全签名，
-//! 指针/参数校验在函数体内做（栅栏内），调用点无 unsafe 义务。
+//! C ABI face (CAPI-01/02/03/05): handle table, fence, thread affinity, error strings, input entry.
+//! Style [FFI-R:FC-5]: `#[unsafe(no_mangle)] pub extern "C"` safe signatures,
+//! pointer/argument validation done inside the function body (within the fence); call sites carry no unsafe duty.
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -11,7 +11,7 @@ use crate::engine::Engine;
 
 pub const VE_OK: i32 = 0;
 
-// ===== 返回码与 kind（Rust 单源，C 头/TS 皆镜像 [FFI-R:CS-M1/BS 纪律]）=====
+// ===== Return codes and kind (Rust single source, the C header/TS are both mirrors [FFI-R:CS-M1/BS discipline]) =====
 pub const VE_ERR_ARG: i32 = -1;
 pub const VE_ERR_STATE: i32 = -2;
 pub const VE_ERR_IO: i32 = -3;
@@ -22,11 +22,11 @@ pub const KIND_PTR_DOWN: u32 = 2;
 pub const KIND_PTR_UP: u32 = 3;
 pub const KIND_WHEEL: u32 = 4;
 pub const KIND_KEY: u32 = 5;
-/// 非法 kind 探测值（>5 未登记=非本引擎事件，不消费）
+/// Illegal kind probe value (>5 unregistered = not this engine's event, not consumed)
 pub const KIND_NO_SUCH: u32 = u32::MAX;
 pub const MISS: u64 = u64::MAX;
 
-/// 唯一过界结构体（CAPI-05/BS-1）：struct_size 首字段=self-describing 演进锚。
+/// The single crossing-structure (CAPI-05/BS-1): struct_size as first field = self-describing evolution anchor.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct VeInput {
@@ -39,15 +39,15 @@ pub struct VeInput {
     pub mods: u32,
 }
 
-// ===== 句柄表（CAPI-01：slot 基 1，世代回收前进）=====
+// ===== Handle table (CAPI-01: slot base 1, generation advances on recycle) =====
 struct Slot {
     generation: u32,
     engine: Option<Engine>,
     owner: Option<ThreadId>,
 }
-/// 槽表访问平台抽象：native=Mutex（引擎类型 Send 于 native 成立）；
-/// wasm=thread_local（wgpu web 后端 Rc 非 Send——浏览器单线程世界如实落地，
-/// 批 7 J1 编译期实锤 [FFI-R:v13-J1-1]）。
+/// Slot-table access platform abstraction: native = Mutex (engine types being Send holds on native);
+/// wasm = thread_local (the wgpu web backend's Rc is non-Send -- the browser single-thread world landed as-is,
+/// batch 7 J1 compile-time proof [FFI-R:v13-J1-1]).
 mod slots {
     use super::Slot;
 
@@ -87,16 +87,16 @@ const fn dec(ve: u64) -> (u32, u32) {
 }
 
 enum Gate {
-    Live(usize), // 表索引
+    Live(usize), // table index
     Arg,
     State,
 }
 
-/// 句柄解码 + 世代 + owner 校验（错误串按 CAPI-03 写调用线程 TLS）。
+/// Handle decode + generation + owner check (error string written per CAPI-03 to the calling thread's TLS).
 fn gate(ve: u64) -> Gate {
     let (slot, generation) = dec(ve);
     if slot == 0 {
-        return Gate::Arg; // slot 0 永不合法（含 ve==0）
+        return Gate::Arg; // slot 0 is never legal (ve==0 included)
     }
     let st = with_table(|t| match t.get(slot as usize) {
         Some(s) if s.generation == generation && s.engine.is_some() => {
@@ -116,7 +116,7 @@ fn gate(ve: u64) -> Gate {
     }
 }
 
-// ===== 错误串（线程绑定 TLS；仅 <0 分支写 [CAPI-03 写口径]）=====
+// ===== Error strings (thread-bound TLS; written on <0 branches only [CAPI-03 write standard]) =====
 static EMPTY: [u8; 1] = [0];
 thread_local! {
     static ERRPTR: std::cell::Cell<*const c_char> = const { std::cell::Cell::new(EMPTY.as_ptr().cast()) };
@@ -128,19 +128,19 @@ fn set_err(msg: String) {
     ERRPTR.with(|p| {
         let old = p.replace(fresh.cast_const());
         if !old.is_null() && !std::ptr::eq(old, EMPTY.as_ptr().cast()) {
-            // 契约：上次返回串至本次写前有效——此处释放的正是"已失效"的旧串
+            // contract: the previously returned string is valid until this write -- what is freed here is precisely the already-voided old string
             unsafe { drop(std::ffi::CString::from_raw(old.cast_mut())) };
         }
     });
 }
 
-/// 栅栏单宏（CAPI-02）：全 17 入口 + 实现体统一经此，panic 不外溢、写诊断。
+/// Single fence macro (CAPI-02): all 17 entries + the implementation bodies route through it; no panic escapes, diagnostics written.
 macro_rules! capi_guard {
     ($body:expr, $err_val:expr) => {{
         match std::panic::catch_unwind(AssertUnwindSafe(|| $body)) {
             Ok(v) => v,
             Err(p) => {
-                // 诊断升级：取 panic payload（&str/String）入 last_error，未知兜底原句
+                // diagnostic upgrade: take the panic payload (&str/String) into last_error, unknown falls back to the original sentence
                 let msg = p
                     .downcast_ref::<&str>()
                     .map(|s| (*s).to_string())
@@ -153,12 +153,12 @@ macro_rules! capi_guard {
     }};
 }
 
-/// CAPI-17：事件推送口类型与 id 域（条款体=docs/sdd/capi.md CAPI-17）。
+/// CAPI-17: event-push entry types and id domain (clause body = docs/sdd/capi.md CAPI-17).
 pub type VeEventCb = Option<unsafe extern "C" fn(*mut std::ffi::c_void, u32, u64, u64)>;
 pub const VE_EVT_LOAD_PROGRESS: u32 = 1;
 pub const VE_EVT_LOAD_ERROR: u32 = 2;
 
-// ===== C ABI 入口面 =====
+// ===== C ABI entry face =====
 
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_abi_version() -> u32 {
@@ -171,7 +171,7 @@ pub extern "C" fn visiaengine_create_headless(w: u32, h: u32) -> u64 {
         {
             if w == 0 || h == 0 {
                 set_err(format!("create size {w}x{h} invalid (use >0; -5 family)"));
-                return 0; // u64 面失败仅 0（诊断走 last_error(NULL 语义：无句柄读 TLS)
+                return 0; // the u64 face fails with 0 only (diagnostics via last_error, NULL semantics: no handle reads TLS)
             }
             let Some(engine) = Engine::new_headless(w, h) else {
                 set_err("create: no adapter/device available".to_string());
@@ -183,7 +183,7 @@ pub extern "C" fn visiaengine_create_headless(w: u32, h: u32) -> u64 {
                         generation: 0,
                         engine: None,
                         owner: None,
-                    }); // slot 0 永久占位
+                    }); // slot 0 permanently reserved
                 }
                 let owner = Some(std::thread::current().id());
                 let idx = match t
@@ -212,14 +212,14 @@ pub extern "C" fn visiaengine_create_headless(w: u32, h: u32) -> u64 {
     )
 }
 
-/// released/foreign/stale 再入一律 -1（双销毁不吞没）；非 owner=-2。
+/// released/foreign/stale re-entry is always -1 (double destroy not swallowed); non-owner = -2.
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_destroy(ve: u64) -> i32 {
     capi_guard!(
         {
             match gate(ve) {
                 Gate::Live(i) => {
-                    with_table(|t| t[i].engine = None); // 槽回收（gen 保持，再入 -1）
+                    with_table(|t| t[i].engine = None); // slot recycle (gen kept, re-entry -1)
                     0
                 }
                 Gate::State => VE_ERR_STATE,
@@ -244,7 +244,7 @@ pub extern "C" fn visiaengine_attach(ve: u64, win_ptr: u64, display_ptr: u64, ki
                     }
                     if kind == 0 && display_ptr == 0 {
                         set_err(
-                            "attach x11 requires display_ptr (Xlib 无 display 不可构面)"
+                            "attach x11 requires display_ptr (Xlib cannot build a surface without a display)"
                                 .to_string(),
                         );
                         return VE_ERR_ARG;
@@ -253,16 +253,16 @@ pub extern "C" fn visiaengine_attach(ve: u64, win_ptr: u64, display_ptr: u64, ki
                         AppKitWindowHandle, RawDisplayHandle, RawWindowHandle, Win32WindowHandle,
                         XlibDisplayHandle, XlibWindowHandle,
                     };
-                    // NonNull::new 的 Option 即非零担保（原 filter(is_null) 属
-                    // useless_ptr_null_checks lint 域，删）
+                    // NonNull::new's Option is the non-zero guarantee (the former filter(is_null) belonged to the
+                    // useless_ptr_null_checks lint domain, removed)
                     let nn = |p: u64| std::ptr::NonNull::new(p as *mut std::ffi::c_void);
-                    // ? 禁入（栅栏宏闭包返回 i32）——Option combinator 式构造
+                    // ? forbidden (the fence macro's closure returns i32) -- construct via Option combinators
                     let built: Option<(Option<RawDisplayHandle>, RawWindowHandle)> = match kind {
                         0 => nn(display_ptr).map(|d| {
                             (
                                 Some(RawDisplayHandle::Xlib(XlibDisplayHandle::new(Some(d), 0))),
-                                // rwh new(c_ulong)——target 变宽（x86_64=64/wasm32=32），
-                                // as _ 平台自推；XID 值域 32 位无损
+                                // rwh new(c_ulong) -- target widens (x86_64=64/wasm32=32),
+                                // as _ infers per platform; XID value range is lossless at 32 bits
                                 RawWindowHandle::Xlib(XlibWindowHandle::new(win_ptr as _)),
                             )
                         }),
@@ -293,7 +293,7 @@ pub extern "C" fn visiaengine_attach(ve: u64, win_ptr: u64, display_ptr: u64, ki
     )
 }
 
-/// 锁表执行（Live 索引来自 gate；引擎中途消失=Err 传播给调用入口的哨兵分支）。
+/// Locked table execution (the Live index comes from the gate; the engine vanishing mid-way = Err propagated to the calling entry's sentinel branch).
 fn with_engine<T>(
     idx: usize,
     f: impl FnOnce(&mut Engine) -> Result<T, String>,
@@ -304,7 +304,7 @@ fn with_engine<T>(
     })
 }
 
-/// 共用装载体（CAPI-04/05）：path null=-1；IO/解析失败=-3；成功=0（尺寸违规在 -5 族）。
+/// Shared load body (CAPI-04/05): null path = -1; IO/parse failure = -3; success = 0 (size violations live in the -5 family).
 fn load_impl(ve: u64, path: *const c_char, label: &str) -> i32 {
     match gate(ve) {
         Gate::Live(i) => {
@@ -325,7 +325,7 @@ fn load_impl(ve: u64, path: *const c_char, label: &str) -> i32 {
                 Ok(_) => VE_OK,
                 Err(msg) => {
                     set_err(format!("{label} '{p}': {msg}"));
-                    // CAPI-17：失败出口事件（a=返回码 signed 形；b=0）
+                    // CAPI-17: failure-exit event (a = return code in signed form; b = 0)
                     let _ = with_engine(i, |e| {
                         e.emit(VE_EVT_LOAD_ERROR, VE_ERR_IO as u64, 0);
                         Ok::<(), String>(())
@@ -348,9 +348,9 @@ pub extern "C" fn visiaengine_load_geojson(ve: u64, path: *const c_char) -> i32 
     capi_guard!(load_impl(ve, path, "load_geojson"), VE_ERR_PANIC)
 }
 
-/// 唯一输入口（CAPI-05）：struct_size 校验 + kind 口径；1=消费 0=非本引擎事件。
-// [FFI-R:FC-5] 风格裁决=安全签名（调用点无 unsafe 义务），指针解引用在栅栏内校验；
-// clippy 该 lint 针对"公开 safe fn 解引用"的一般场景，FFI 边界是既定例外（allow 在此=记录裁决而非绕lint）。
+/// The sole input entry (CAPI-05): struct_size validation + kind convention; 1 = consumed, 0 = not this engine's event.
+// [FFI-R:FC-5] style ruling = safe signature (call sites carry no unsafe duty), pointer dereference validated inside the fence;
+// this clippy lint targets the general scenario of "public safe fn dereferences", and the FFI boundary is a settled exception (the allow here = recording the ruling, not evading the lint).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_on_input(ve: u64, input: *const VeInput) -> i32 {
@@ -378,7 +378,7 @@ pub extern "C" fn visiaengine_on_input(ve: u64, input: *const VeInput) -> i32 {
                             .map(|e| e.apply_input(inp.kind, inp.px, inp.py, inp.wheel))
                         {
                             Some(Some(consumed)) => i32::from(consumed),
-                            Some(None) | None => 0, // 未登记 kind / 竞态消失：不消费
+                            Some(None) | None => 0, // unregistered kind / vanished in a race: not consumed
                         }
                     })
                 }
@@ -410,7 +410,7 @@ pub extern "C" fn visiaengine_render(ve: u64) -> i32 {
     )
 }
 
-/// [FFI-R:FC-5] 同 on_input：安全签名体内校验（allow=FFI 边界裁决记录）。
+/// [FFI-R:FC-5] same as on_input: safe signature with in-body validation (allow = FFI boundary ruling record).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_readback(ve: u64, buf: *mut u8, len: u64) -> i32 {
@@ -418,7 +418,7 @@ pub extern "C" fn visiaengine_readback(ve: u64, buf: *mut u8, len: u64) -> i32 {
         {
             match gate(ve) {
                 Gate::Live(i) => {
-                    // 无帧可读是硬前置（先于缓冲量值检查，CAPI-04）
+                    // no frame to read is a hard precondition (before the buffer magnitude check, CAPI-04)
                     let need = match with_engine(i, |e| {
                         e.frame_bytes()
                             .ok_or_else(|| "no frame; call render".to_string())
@@ -472,10 +472,10 @@ pub extern "C" fn visiaengine_viewport(ve: u64, w: u32, h: u32) -> i32 {
     )
 }
 
-/// 例外集成员：读调用线程 TLS（无句柄校验）；无错=空串静态。
+/// Exception-set member: reads the calling thread's TLS (no handle validation); no error = empty static string.
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_last_error(_ve: u64) -> *const c_char {
-    // 栅栏对指针返回意义有限（读 TLS 不 panic 面），仍统一裹持
+    // the fence's meaning for pointer returns is limited (reading TLS has no panic surface), still wrapped uniformly
     capi_guard!(
         ERRPTR.with(std::cell::Cell::get),
         std::ptr::addr_of!(EMPTY).cast()
@@ -504,16 +504,16 @@ pub extern "C" fn visiaengine_pick(ve: u64, px: f32, py: f32) -> u64 {
                 Gate::Live(i) => {
                     with_engine(i, |e| Ok(e.pick(px, py).map_or(MISS, enc_entity))).unwrap_or(MISS)
                 }
-                _ => MISS, // u64 面无错误码族：一切异常=未命中哨兵（CAPI-01/08）
+                _ => MISS, // the u64 face has no error-code family: every anomaly = the miss sentinel (CAPI-01/08)
             }
         },
         MISS
     )
 }
 
-/// 实体句柄编码（CAPI-08）：slot+gen 直译，无引擎侧基 1 偏置（**slot0gen0=0 合法**，
-/// 与引擎侧 0 哨兵的不对称是 CAPI-01 有意分工；宿主禁按 0 判实体句柄有效性，
-/// 有效性=枚举域/pick 出口谱）；miss=UINT64_MAX。
+/// Entity handle encoding (CAPI-08): slot+gen literal, no engine-side base-1 bias (**slot0gen0 = 0 is legal**,
+/// the asymmetry with the engine-side 0 sentinel is a deliberate CAPI-01 division; the host must not judge entity-handle validity by 0,
+/// validity = the enumeration domain / pick output scheme); miss = UINT64_MAX.
 pub fn enc_entity(id: visiaengine_core::EntityId) -> u64 {
     enc(id.slot(), id.generation())
 }
@@ -531,7 +531,7 @@ pub extern "C" fn visiaengine_entity_at(ve: u64, index: u32) -> u64 {
     )
 }
 
-/// CAPI-10 共用入参解析：null key/非 UTF-8 → None（调用方返 -1；错误串已写）。
+/// CAPI-10 shared argument parsing: null key / non-UTF-8 -> None (caller returns -1; the error string is already written).
 fn parse_attr_key<'a>(key: *const c_char) -> Option<&'a str> {
     if key.is_null() {
         set_err("attr: null key".to_string());
@@ -546,8 +546,8 @@ fn parse_attr_key<'a>(key: *const c_char) -> Option<&'a str> {
     }
 }
 
-/// CAPI-10：f64 属性读。1=命中（out 写）/ 0=缺失（out 不动，缺失≠零值）/ <0=错误。
-/// entity=宿主自 pick/entity_at 所得位形（键含代际，旧代句柄永不撞新代行）。
+/// CAPI-10: f64 attribute read. 1 = hit (out written) / 0 = absent (out untouched, absent != zero value) / <0 = error.
+/// entity = the shape the host obtained from pick/entity_at (the key carries the generation, an old-generation handle never collides into a new generation).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_attr_f64(
@@ -587,7 +587,7 @@ pub extern "C" fn visiaengine_attr_f64(
     )
 }
 
-/// CAPI-11：str 属性读。NUL 终止写 buf[cap]；1=命中 / 0=缺失 / -5=cap 不足（零部分写，无探长子模式）/ -1=空指针。
+/// CAPI-11: str attribute read. Writes NUL-terminated into buf[cap]; 1 = hit / 0 = absent / -5 = cap insufficient (zero partial write, no length-probe sub-mode) / -1 = null pointer.
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_attr_str(
@@ -637,7 +637,7 @@ pub extern "C" fn visiaengine_attr_str(
     )
 }
 
-/// CAPI-10：bool 属性读（out=0/1）；口径同 attr_f64。
+/// CAPI-10: bool attribute read (out = 0/1); same convention as attr_f64.
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_attr_bool(
@@ -790,7 +790,7 @@ pub extern "C" fn visiaengine_update_entity_attr_bool(
     )
 }
 
-/// CAPI-02 行为探针（Rust 侧集成测试用；非 extern，不进 ABI 面/nm 白名单）。
+/// CAPI-02 behavior probe (for Rust-side integration tests; not extern, stays off the ABI face / nm whitelist).
 pub mod test_util {
     use super::*;
     #[must_use]
@@ -799,25 +799,25 @@ pub mod test_util {
     }
 }
 
-// ── B1 数据带（CAPI-13..16）：显隐/查询/程序化增删；gate/with_engine/capi_guard 单源形 ═─
+// -- B1 data band (CAPI-13..16): visibility / query / procedural add-delete; gate/with_engine/capi_guard single-source form --
 
-/// CAPI-15 值结构（struct_size 前瞻门=VeInput 同谱；指针仅调用期读取，返回后宿主即可释放）。
+/// CAPI-15 value structure (struct_size forward-compat gate = same scheme as VeInput; pointers read during the call only, releasable by the host on return).
 #[repr(C)]
 pub struct VeMeshDesc {
     pub struct_size: usize,
     pub positions: *const f32, // [x,y,z] × n_positions
-    pub normals: *const f32,   // 可 NULL=引擎合成 +Z
+    pub normals: *const f32,   // may be NULL = engine synthesizes +Z
     pub indices: *const u32,
     pub n_positions: u64,
     pub n_indices: u64,
-    pub base_color: *const f32, // 4 元组
-    pub origin: *const f64,     // 3 元组
-    // N6 (REND-45): GGX PBR values (NOT pointers — struct_size 前瞻门 governs).
+    pub base_color: *const f32, // 4-tuple
+    pub origin: *const f64,     // 3-tuple
+    // N6 (REND-45): GGX PBR values (NOT pointers -- struct_size forward-compat gate governs).
     pub roughness: f32, // GGX perceptual roughness; 0=host-said-nothing → engine default 1.0
     pub metalness: f32, // metallic factor; 0 = dielectric
 }
 
-/// CAPI-13：owner 线程；严格 visible∈{0,1}；未知位形/越值=-1（VE_ERR_ARG），幂等重复=0。
+/// CAPI-13: owner thread; strict visible in {0,1}; unknown shape / out-of-range value = -1 (VE_ERR_ARG), idempotent repeat = 0.
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_entity_set_visible(ve: u64, entity: u64, visible: i32) -> i32 {
     capi_guard!(
@@ -843,7 +843,7 @@ pub extern "C" fn visiaengine_entity_set_visible(ve: u64, entity: u64, visible: 
     )
 }
 
-/// CAPI-14：owner 线程（last_error 例外集不在此列——纯读表）；1/0/未知=-1。
+/// CAPI-14: owner thread (the last_error exception set is not among these -- pure table read); 1/0/unknown = -1.
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_entity_visible(ve: u64, entity: u64) -> i32 {
     capi_guard!(
@@ -866,8 +866,8 @@ pub extern "C" fn visiaengine_entity_visible(ve: u64, entity: u64) -> i32 {
     )
 }
 
-/// CAPI-15：owner 线程；0=成功写 *out_entity（位形可=0，CAPI-01 谱），
-/// 退化/NULL/struct_size 门/坏 out=-1 且 out 零部分写（attr_str 纪律同谱）。
+/// CAPI-15: owner thread; 0 = success writing *out_entity (shape may = 0, CAPI-01 scheme),
+/// degenerate / NULL / struct_size gate / bad out = -1 with out zero-partial-write (same discipline as attr_str).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_add_mesh(
@@ -945,7 +945,7 @@ pub extern "C" fn visiaengine_add_mesh(
     )
 }
 
-/// CAPI-16：owner 线程；成功=0；未知位形/旧句柄再入=-1（双销毁同谱）。
+/// CAPI-16: owner thread; success = 0; unknown shape / old handle re-entry = -1 (same scheme as double destroy).
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_remove_entity(ve: u64, entity: u64) -> i32 {
     capi_guard!(
@@ -966,8 +966,8 @@ pub extern "C" fn visiaengine_remove_entity(ve: u64, entity: u64) -> i32 {
     )
 }
 
-/// CAPI-17：注册/替换/摘除（NULL）事件回调。native 独占（wasm32 无 C ABI 面，
-/// JS 闭包走 visiaengine-wasm 桥 set_event_fn；set_event_anchor 亦 native cfg）。
+/// CAPI-17: register/replace/unregister (NULL) the event callback. native-only (wasm32 has no C ABI face,
+/// JS closures go through the visiaengine-wasm bridge set_event_fn; set_event_anchor is also native cfg).
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 #[cfg(not(target_arch = "wasm32"))]
 pub extern "C" fn visiaengine_set_event_callback(
@@ -997,7 +997,7 @@ pub extern "C" fn visiaengine_set_event_callback(
     )
 }
 
-/// CAPI-18 点元（PointMark 32B Pod 的 C 镜像；引擎侧逐元 new() 构造，无 bytemuck 转译面）。
+/// CAPI-18 point element (the C mirror of the 32B PointMark Pod; built element by element with new() engine-side, no bytemuck translation face).
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct VePointMark {
@@ -1006,7 +1006,7 @@ pub struct VePointMark {
     pub color: [f32; 3],
 }
 
-/// CAPI-18 值结构（struct_size 前瞻门照 VeMeshDesc 同谱）。
+/// CAPI-18 value structure (struct_size forward-compat gate follows the VeMeshDesc scheme).
 #[repr(C)]
 pub struct VePointsDesc {
     pub struct_size: usize,
@@ -1014,7 +1014,7 @@ pub struct VePointsDesc {
     pub count: u64,
 }
 
-/// CAPI-19 报告结构（io-points PclReport 的 C 镜像；struct_size 前瞻门同谱）。
+/// CAPI-19 report structure (the C mirror of io-points PclReport; struct_size forward-compat gate same scheme).
 #[repr(C)]
 pub struct VePclReport {
     pub struct_size: usize,
@@ -1025,11 +1025,11 @@ pub struct VePclReport {
     pub kept: u64,
 }
 
-/// CAPI-19 装载策略。
+/// CAPI-19 load policy.
 pub const VE_PCL_FASTFAIL: u32 = 0;
 pub const VE_PCL_LENIENT: u32 = 1;
 
-/// CAPI-19：点云文件装载。RED 桩=门全真、行为恒 -3（成功路必红）。
+/// CAPI-19: point-cloud file load. RED stub = gates all real, behavior always -3 (the success road must be red).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_load_pcl(
@@ -1048,13 +1048,16 @@ pub extern "C" fn visiaengine_load_pcl(
                         || out_report.is_null()
                         || !matches!(policy, VE_PCL_FASTFAIL | VE_PCL_LENIENT)
                     {
-                        set_err("load_pcl: null out/policy 越界（零部分写）".to_string());
+                        set_err(
+                            "load_pcl: null out / policy out of range (zero partial write)"
+                                .to_string(),
+                        );
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: FFI 边界——struct_size 前瞻门先行（旧宿主新引擎形不变）
+                    // SAFETY: FFI boundary -- the struct_size forward-compat gate goes first (an old host's view of the new engine form is unchanged)
                     let want = unsafe { &*out_report };
                     if want.struct_size < std::mem::size_of::<VePclReport>() {
-                        set_err("load_pcl: report struct_size 过旧".to_string());
+                        set_err("load_pcl: report struct_size too old".to_string());
                         return VE_ERR_ARG;
                     }
                     let cstr = unsafe { std::ffi::CStr::from_ptr(path) };
@@ -1062,7 +1065,7 @@ pub extern "C" fn visiaengine_load_pcl(
                     let r = with_engine(i, |e| e.load_pcl(&p, policy == VE_PCL_LENIENT));
                     match r {
                         Ok((bits, rep)) => {
-                            // SAFETY: 非空已验；成功唯一写点（失败路径上面零触碰）
+                            // SAFETY: non-null verified; the single write point on success (upper faces untouched on failure paths)
                             unsafe {
                                 *out_entity = bits;
                                 *out_report = VePclReport {
@@ -1078,7 +1081,7 @@ pub extern "C" fn visiaengine_load_pcl(
                         }
                         Err(msg) => {
                             set_err(format!("load_pcl '{p}': {msg}"));
-                            // CAPI-17：装载失败出口事件（进度面在 mount 尾部 terminal 发）
+                            // CAPI-17: load-failure-exit event (the progress face fires at the mount tail terminal)
                             let _ = with_engine(i, |e| {
                                 e.emit(VE_EVT_LOAD_ERROR, VE_ERR_IO as i64 as u64, 0);
                                 Ok::<(), String>(())
@@ -1095,7 +1098,7 @@ pub extern "C" fn visiaengine_load_pcl(
     )
 }
 
-/// CAPI-18：点云直通装载（raw 解引用在栅栏内=FFI 边界既定例外，allow 系记录裁决）。
+/// CAPI-18: point-cloud passthrough load (raw dereference inside the fence = the settled FFI-boundary exception, the allow family records the ruling).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_add_points(
@@ -1111,20 +1114,20 @@ pub extern "C" fn visiaengine_add_points(
                         set_err("add_points: null desc/out".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: FFI 边界——非空已验，结构体按值读（返回后宿主即可释放）
+                    // SAFETY: FFI boundary -- non-null verified, the struct read by value (releasable by the host on return)
                     let d = unsafe { &*desc };
                     if d.struct_size < std::mem::size_of::<VePointsDesc>()
                         || d.count == 0
                         || d.marks.is_null()
                     {
-                        set_err("add_points: degenerate desc (零提交)".to_string());
+                        set_err("add_points: degenerate desc (zero commit)".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: marks[0..count] 由宿主保证有效（同 VeMeshDesc 契约）
+                    // SAFETY: marks[0..count] guaranteed valid by the host (same contract as VeMeshDesc)
                     let raw = unsafe { std::slice::from_raw_parts(d.marks, d.count as usize) };
                     match with_engine(i, |e| e.add_points(raw)) {
                         Ok(bits) => {
-                            // SAFETY: out_entity 非空已验；成功唯一写点
+                            // SAFETY: out_entity non-null verified; the single write point on success
                             unsafe { *out_entity = bits };
                             0
                         }
@@ -1142,9 +1145,9 @@ pub extern "C" fn visiaengine_add_points(
     )
 }
 
-// ── B2 剖面带（CAPI-20）：世界裁切面 set/get；gate/with_engine/capi_guard 单源形 ──
+// -- B2 clip band (CAPI-20): world cut planes set/get; gate/with_engine/capi_guard single-source form --
 
-/// CAPI-20 值结构（32B Pod，系数形 [n, d]；d=−⟨n,锚点⟩，归一化在引擎侧）。
+/// CAPI-20 value structure (32B Pod, coefficient form [n, d]; d = -<n, anchor>, normalization on the engine side).
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct VeClipPlane {
@@ -1154,9 +1157,9 @@ pub struct VeClipPlane {
     pub d: f64,
 }
 
-/// CAPI-20：设置裁切面（owner 线程同显隐口）。n∈[0,4]，**n=0=唯一清空形**；
-/// n>4 先拒后读（界检在解引用前）；NULL∧n>0/退化（零法向/非有限）=-1+错误串。
-/// 语义=法向指保留侧，`dot(n,P)+d ≥ 0` 保留（面上=保留）；多面 AND。
+/// CAPI-20: set the clip planes (owner thread, same as the visibility entry). n in [0,4], **n=0 = the only clear form**;
+/// n>4 reject-before-read (bounds check before dereference); NULL and n>0 / degenerate (zero normal / non-finite) = -1 + error string.
+/// Semantics = the normal points to the kept side, `dot(n,P)+d >= 0` keeps (on-plane = kept); multiple planes AND.
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_set_clips(ve: u64, planes: *const VeClipPlane, n: usize) -> i32 {
@@ -1181,7 +1184,7 @@ pub extern "C" fn visiaengine_set_clips(ve: u64, planes: *const VeClipPlane, n: 
                         set_err("set_clips: null planes with n>0".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: planes[0..n] 由宿主保证有效（同 VeMeshDesc 契约）；n≤4 界上已闸
+                    // SAFETY: planes[0..n] guaranteed valid by the host (same contract as VeMeshDesc); the n<=4 bound is gated above
                     let raw = unsafe { std::slice::from_raw_parts(planes, n) };
                     let arr: Vec<[f64; 4]> = raw.iter().map(|p| [p.nx, p.ny, p.nz, p.d]).collect();
                     match with_engine(i, |e| e.set_clips(&arr)) {
@@ -1200,9 +1203,9 @@ pub extern "C" fn visiaengine_set_clips(ve: u64, planes: *const VeClipPlane, n: 
     )
 }
 
-/// CAPI-20：读回。**返回≥0=当前面数**（错误专属负码，返回值不兼二主）；
-/// buf NULL=仅计数；cap 截断=写 min(cap,count) 而返回真数（n=3,cap=2→返 3 写 2）；
-/// cap=0∧buf≠NULL=合法纯计数路。
+/// CAPI-20: readback. **Return >=0 = current plane count** (errors exclusive to negative codes, the return value does not serve two masters);
+/// buf NULL = count only; cap truncation = write min(cap,count) while returning the true count (n=3, cap=2 -> return 3 write 2);
+/// cap=0 with buf!=NULL = a legal pure-count road.
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_get_clips(ve: u64, buf: *mut VeClipPlane, cap: usize) -> i32 {
@@ -1213,8 +1216,8 @@ pub extern "C" fn visiaengine_get_clips(ve: u64, buf: *mut VeClipPlane, cap: usi
                     Ok(cs) => {
                         let m = if buf.is_null() { 0 } else { cap.min(cs.len()) };
                         if m > 0 {
-                            // SAFETY: buf[0..m] 由宿主保证有效（m≤cap≤已验数组；
-                            // m=0 不构造切片——NULL+0 亦踩 from_raw_parts UB 前判 [debug 实锤]）
+                            // SAFETY: buf[0..m] guaranteed valid by the host (m<=cap<=a validated array;
+                            // m=0 builds no slice -- NULL+0 would trip from_raw_parts UB beforehand [debug proof])
                             unsafe {
                                 let dst = std::slice::from_raw_parts_mut(buf, m);
                                 for (slot, pl) in dst.iter_mut().zip(&cs) {
@@ -1242,8 +1245,8 @@ pub extern "C" fn visiaengine_get_clips(ve: u64, buf: *mut VeClipPlane, cap: usi
     )
 }
 
-/// CAPI-22 值结构（struct_size 前瞻门=VeMeshDesc 同谱；pos=世界 f64 [D7]，
-/// color=宿主 sRGB 面 [CORE-16]，text=NUL 终止 UTF-8）。
+/// CAPI-22 value structure (struct_size forward-compat gate = same scheme as VeMeshDesc; pos = world f64 [D7],
+/// color = host sRGB face [CORE-16], text = NUL-terminated UTF-8).
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct VeLabelSpec {
@@ -1254,7 +1257,7 @@ pub struct VeLabelSpec {
     pub text: *const std::ffi::c_char,
 }
 
-/// CAPI-21：装载/替换标注字体（owner 线程；NULL/0/非 TTF=-1+错误串，成功不动现存字体）。
+/// CAPI-21: load/replace the label font (owner thread; NULL/0/non-TTF = -1 + error string, a success leaves the existing font untouched).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_load_font(ve: u64, data: *const u8, len: usize) -> i32 {
@@ -1266,7 +1269,7 @@ pub extern "C" fn visiaengine_load_font(ve: u64, data: *const u8, len: usize) ->
                         set_err("load_font: null/empty".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: data[0..len] 由宿主保证有效（同 load_* 字节契约）
+                    // SAFETY: data[0..len] guaranteed valid by the host (same byte contract as load_*)
                     let bytes = unsafe { std::slice::from_raw_parts(data, len) };
                     match with_engine(i, |e| e.set_font(bytes)) {
                         Ok(()) => VE_OK,
@@ -1284,8 +1287,8 @@ pub extern "C" fn visiaengine_load_font(ve: u64, data: *const u8, len: usize) ->
     )
 }
 
-/// CAPI-22：世界锚单标签（owner 线程；无字体=拒 [时序门]；NULL spec/坏 out/struct_size
-/// 门/空文本/size 域外/坏 UTF-8=-1 零提交；成功=0 写 *out（位形可 0=15 谱 CAPI-01 同制））。
+/// CAPI-22: single world-anchored label (owner thread; no font = rejected [timing gate]; NULL spec / bad out / struct_size
+/// gate / empty text / size out of domain / bad UTF-8 = -1 zero commit; success = 0 writing *out (shape may be 0 = the 15 scheme, same system as CAPI-01)).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_add_label(
@@ -1301,7 +1304,7 @@ pub extern "C" fn visiaengine_add_label(
                         set_err("add_label: null spec".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: spec 非空已验；struct_size 门先于字段读 [FFI-R:CS-4]
+                    // SAFETY: spec non-null verified; the struct_size gate precedes field reads [FFI-R:CS-4]
                     let hdr = unsafe { *spec };
                     if hdr.struct_size < std::mem::size_of::<VeLabelSpec>() {
                         set_err("add_label: struct_size too small".to_string());
@@ -1315,7 +1318,7 @@ pub extern "C" fn visiaengine_add_label(
                         set_err("add_label: null out_entity".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: text 指针非空且 NUL 终止（宿主契约，同 path 口族）
+                    // SAFETY: the text pointer is non-null and NUL-terminated (host contract, same as the path entry family)
                     let text = match unsafe { std::ffi::CStr::from_ptr(hdr.text) }.to_str() {
                         Ok(t) => t,
                         Err(_) => {
@@ -1331,7 +1334,7 @@ pub extern "C" fn visiaengine_add_label(
                     }
                     match with_engine(i, |e| e.add_label(hdr.pos, text, hdr.color, hdr.size_px)) {
                         Ok(bits) => {
-                            // SAFETY: out_entity 非空已验；成功唯一写点
+                            // SAFETY: out_entity non-null verified; the single write point on success
                             unsafe { *out_entity = bits };
                             VE_OK
                         }
@@ -1349,10 +1352,10 @@ pub extern "C" fn visiaengine_add_label(
     )
 }
 
-// ── ⑤a 飞行带（CAPI-23/24）：墙钟推进器薄叶（分层=计划 T1）──
+// -- 5a flight band (CAPI-23/24): wall-clock thruster thin leaf (layering = plan T1) --
 
-/// CAPI-23 值结构（struct_size 前瞻门=VeMeshDesc 同谱；位姿六分量+fov，
-/// **near/far 不入 pose=恒 from 现值** [Momus-A1/PIT-5 连带]）。
+/// CAPI-23 value structure (struct_size forward-compat gate = same scheme as VeMeshDesc; pose six components + fov,
+/// **near/far stay out of pose = always the from values** [Momus-A1/PIT-5 linked]).
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct VeCameraPose {
@@ -1365,8 +1368,8 @@ pub struct VeCameraPose {
     pub fov: f64,
 }
 
-/// CAPI-23：起飞/改道（owner 线程门同族）。0=起飞（dur_ms=0=瞬移亦 0）；
-/// NULL/struct_size 门/域外=-1+错误串。飞行中重入合法（from=当前采样位姿）。
+/// CAPI-23: takeoff/reroute (same family as the owner-thread gate). 0 = takeoff (dur_ms=0 = teleport also 0);
+/// NULL / struct_size gate / out of domain = -1 + error string. Re-entry while flying is legal (from = current sampled pose).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_fly_to(ve: u64, pose: *const VeCameraPose, dur_ms: u64) -> i32 {
@@ -1378,7 +1381,7 @@ pub extern "C" fn visiaengine_fly_to(ve: u64, pose: *const VeCameraPose, dur_ms:
                         set_err("fly_to: null pose".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: 非空已验；64B Pod 直读（宿主保证 [addr,addr+size) 有效）
+                    // SAFETY: non-null verified; 64B Pod direct read (host guarantees [addr,addr+size) valid)
                     let p = unsafe { *pose };
                     if p.struct_size < std::mem::size_of::<VeCameraPose>() {
                         set_err("fly_to: struct_size too small".to_string());
@@ -1402,8 +1405,8 @@ pub extern "C" fn visiaengine_fly_to(ve: u64, pose: *const VeCameraPose, dur_ms:
     )
 }
 
-/// CAPI-24：飞行状态。返回 **1=done（含 idle/done 合并）/ 0=飞行中**；
-/// out_t01 仅飞中写 [0,1)（done 路零写=B1 谱），NULL=仅状态（get_clips 同制）。
+/// CAPI-24: flight state. Returns **1 = done (the merged idle/done) / 0 = flying**;
+/// out_t01 written only while flying [0,1) (the done path writes zero = B1 scheme), NULL = state only (same system as get_clips).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_fly_state(ve: u64, out_t01: *mut f64) -> i32 {
@@ -1415,12 +1418,12 @@ pub extern "C" fn visiaengine_fly_state(ve: u64, out_t01: *mut f64) -> i32 {
                         Ok((true, _)) => 1,
                         Ok((false, Some(t))) => {
                             if !out_t01.is_null() {
-                                // SAFETY: 非空已判；单 f64 写（仅飞中路）
+                                // SAFETY: non-null judged beforehand; single f64 write (the flying road only)
                                 unsafe { *out_t01 = t };
                             }
                             0
                         }
-                        Ok((false, None)) => 1, // 理论不可达（推进原子性），保守归 done
+                        Ok((false, None)) => 1, // theoretically unreachable (thruster atomicity), conservatively attributed to done
                         Err(msg) => {
                             set_err(msg);
                             VE_ERR_STATE
@@ -1435,9 +1438,9 @@ pub extern "C" fn visiaengine_fly_state(ve: u64, out_t01: *mut f64) -> i32 {
     )
 }
 
-// ── ⑤b 二波（CAPI-25..27）：小地图/导航/位姿读回 ──
+// -- 5b second wave (CAPI-25..27): minimap / navigation / pose readback --
 
-/// CAPI-25 值结构（比例表；NULL=关闭清空）。
+/// CAPI-25 value structure (normalized rect; NULL = disable and clear).
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct VeMapView {
@@ -1449,7 +1452,7 @@ pub struct VeMapView {
     pub zoom: f64,
 }
 
-/// CAPI-25：开/关小地图（NULL=关；域拒=-1 零副作用；resize 自动跟随）。
+/// CAPI-25: enable/disable the minimap (NULL = off; domain rejection = -1 zero side effects; auto-follows resize).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_set_map(ve: u64, cfg: *const VeMapView) -> i32 {
@@ -1466,7 +1469,7 @@ pub extern "C" fn visiaengine_set_map(ve: u64, cfg: *const VeMapView) -> i32 {
                             }
                         };
                     }
-                    // SAFETY: 非空已验；Pod 直读（宿主保证 [addr,size) 有效）
+                    // SAFETY: non-null verified; Pod direct read (host guarantees [addr,size) valid)
                     let m = unsafe { *cfg };
                     if m.struct_size < std::mem::size_of::<VeMapView>() {
                         set_err("set_map: struct_size too small".to_string());
@@ -1488,7 +1491,7 @@ pub extern "C" fn visiaengine_set_map(ve: u64, cfg: *const VeMapView) -> i32 {
     )
 }
 
-/// CAPI-26：小地图点击导航（区外/无图=拒无暗改道；命中实体优先地面兜底）。
+/// CAPI-26: minimap click navigation (outside region / no map = rejected with no covert reroute; entity hit first, ground fallback).
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_navigate_click(ve: u64, px: f32, py: f32, dur_ms: u64) -> i32 {
     capi_guard!(
@@ -1515,7 +1518,7 @@ pub extern "C" fn visiaengine_navigate_click(ve: u64, px: f32, py: f32, dur_ms: 
     )
 }
 
-/// CAPI-27：主相机位姿读回（out.struct_size 由宿主预置=门；NULL=拒）。
+/// CAPI-27: main camera pose readback (out.struct_size pre-stamped by the host = the gate; NULL = rejected).
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[cfg_attr(not(target_arch = "wasm32"), unsafe(no_mangle))]
 pub extern "C" fn visiaengine_get_camera(ve: u64, out: *mut VeCameraPose) -> i32 {
@@ -1527,7 +1530,7 @@ pub extern "C" fn visiaengine_get_camera(ve: u64, out: *mut VeCameraPose) -> i32
                         set_err("get_camera: null out".to_string());
                         return VE_ERR_ARG;
                     }
-                    // SAFETY: 非空已验；先读门字段再写（宿主预置 struct_size）
+                    // SAFETY: non-null verified; read the gate field before writing (the host pre-stamps struct_size)
                     let hdr = unsafe { *out };
                     if hdr.struct_size < std::mem::size_of::<VeCameraPose>() {
                         set_err("get_camera: struct_size too small".to_string());
@@ -1535,7 +1538,7 @@ pub extern "C" fn visiaengine_get_camera(ve: u64, out: *mut VeCameraPose) -> i32
                     }
                     match with_engine(i, |e| Ok(e.camera_pose())) {
                         Ok(rig) => {
-                            // SAFETY: 非空+门过；全字段一次写（Pod 无 Drop）
+                            // SAFETY: non-null + gate passed; all fields written at once (Pod has no Drop)
                             unsafe {
                                 *out = VeCameraPose {
                                     struct_size: hdr.struct_size,

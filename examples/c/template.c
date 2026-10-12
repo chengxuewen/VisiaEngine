@@ -1,6 +1,6 @@
-/* template.c —— 窗口例子·C 毛坯骨架（B8 裁决：骨架不是库——抄文件不继承，
- * 保 gate-abi 对例子的全 API 眼；新例出生 cp 本件改「主题区」，「骨架区」勿动）。
- * 复制后首行改写为 /* E8xx_name —— 标题 ... */ 保住三方锁（文件名=头注=索引）。 */
+/* template.c -- window example, C raw blank skeleton (B8 ruling: the skeleton is not a library -- copying a file inherits nothing,
+ *  keeping gate-abi's full-API eye on examples; when a new example is born, cp this file and edit the "theme zone", never touch the "skeleton zone").
+ *  after copying rewrite the first line as /* E8xx_name -- title ... */ to keep the triple lock (file name = header note = index). */
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,10 +8,10 @@
 
 #include "visiaengine.h"
 
-/* ── 骨架区：开窗→xid→attach→present 循环→收尾（合同=SDL_VIDEO_DRIVER=x11 + 无 DISPLAY=77）── */
+/* -- skeleton zone: open window -> xid -> attach -> present loop -> teardown (contract = SDL_VIDEO_DRIVER=x11 + no DISPLAY = 77) -- */
 int main(void) {
     if (getenv("DISPLAY") == NULL || getenv("DISPLAY")[0] == '\0') {
-        fputs("no DISPLAY（ctest Skipped 约定）\n", stderr);
+        fputs("no DISPLAY (ctest Skipped convention)\n", stderr);
         return 77;
     }
     setenv("SDL_VIDEO_DRIVER", "x11", 1);
@@ -25,7 +25,7 @@ int main(void) {
 
     VeEngine ve = visiaengine_create_headless(320, 240);
     if (!ve) return 1;
-    /* ── 主题区：装载数据 + attach + 帧循环（render 前完成输入注入）── */
+    /* -- theme zone: load data + attach + frame loop (finish input injection before render) -- */
     if (visiaengine_attach(ve, xid, (uint64_t)(uintptr_t)dpy, 0) != VE_OK) {
         printf("attach: %s\n", visiaengine_last_error(ve)); return 1;
     }
@@ -34,7 +34,7 @@ int main(void) {
         SDL_PumpEvents();
         SDL_Delay(80);
     }
-    /* ── 主题区 end ── */
+    /* -- theme zone end -- */
     visiaengine_destroy(ve);
     SDL_Quit();
     puts("OK E8xx_template");

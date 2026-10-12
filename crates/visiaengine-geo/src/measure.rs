@@ -1,10 +1,10 @@
-//! 地图平面量测（GEO-21/22）：3857 单位纯函数。
-//! 语义冻结：墨卡托平面距离/面积随纬度畸变（cos φ 因子）——大地测量学
-//! 语义属"坐标系完善"（README Alpha），本层不充胖子。
+//! Map-plane measurement (GEO-21/22): pure functions in 3857 units.
+//! Semantics frozen: Mercator plane distance/area distorts with latitude (the cos phi factor) -- geodesic
+//! semantics belong to "coordinate-system completeness" (README Alpha), this layer does not stretch beyond its coat.
 
 use visiaengine_core::Vec3;
 
-/// 折线平面长度（3857 米）。非有限点跳过不成段（NaN 传播防御）。
+/// Polyline plane length (3857 meters). Non-finite points are skipped, not segmented (NaN propagation defense).
 #[must_use]
 pub fn planar_distance(pts: &[Vec3]) -> f64 {
     let mut sum = 0.0;
@@ -18,8 +18,8 @@ pub fn planar_distance(pts: &[Vec3]) -> f64 {
     sum
 }
 
-/// 环面积（shoelace 绝对值，米²）。方向无关、闭合与否同值（GeoJSON 首尾
-/// 重复惯例自动成立）。任一非有限点 → 整环 0（不猜测残缺多边形）。
+/// Ring area (shoelace absolute value, sq meters). Orientation-agnostic, same value whether closed or not (GeoJSON's first-last
+/// duplication convention holds automatically). Any non-finite point -> whole ring 0 (no guessing at partial polygons).
 #[must_use]
 pub fn ring_area(ring: &[Vec3]) -> f64 {
     let Some(pts): Option<Vec<(f64, f64)>> = ring.iter().map(finite2).collect() else {

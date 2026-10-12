@@ -1,12 +1,12 @@
-//! E502 · 材质与光影·色彩标定 —— sRGB 全链往返「所见即所得」双模例（CORE-16 带 K2）。
-//! 四色板法向∥光向 → shade=1.0 → 读回字节应≈CSS 原值（后端线性化输入 + Srgb 目标
-//! 编码输出，8bit 量化内互逆）。色域错装=本例首现红。
-//! N6（WGPU-35 GGX）：非主色通道多 ~13–14 的 Fresnel 高光地板（dielectric F0=0.04
-//! × 粗糙漫反射散度，非量化误差）——容差 8→20 吸收该地板，中灰板仍是线性域错装判据
-//! （域错装位移 ~60 单位，留 3× 余量）。
-//! 双模式（E501/E801 同制）：
-//!   无参        = 常驻人验窗（IDE cargo-run_E502 路：四色板肉眼验收色彩链，关窗/Esc 退出）
-//!   --frames N  = headless 自断言快退（ctest 路；逐板字节比对，FAIL 非零退）
+//! E502 · materials and light, color calibration -- the sRGB full-chain round-trip "what you see is what you get" dual-mode example (CORE-16 band K2).
+//! Four color panels with normals parallel to the light -> shade = 1.0 -> readback bytes should ~ equal the original CSS values (the backend linearizes input
+//! + the Srgb target encodes output, reciprocal within 8-bit quantization). A mis-installed color domain = the first red this example produces.
+//! N6 (WGPU-35 GGX): the non-primary channels carry a ~13-14 Fresnel highlight floor (dielectric F0 = 0.04
+//! x rough-diffuse divergence, not quantization noise) -- tolerance 8->20 absorbs that floor, the mid-gray panel remains the linear-domain mis-install criterion
+//! (a domain-mis-install shift is ~60 units, keeping a 3x margin).
+//! Dual mode (same system as E501/E801):
+//!   no arguments      = resident human-verified window (the IDE cargo-run_E502 road: four panels eyeball-accept the color chain, close/Esc exits)
+//!   --frames N        = headless self-asserting fast exit (the ctest road; per-panel byte comparison, FAIL exits nonzero)
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -23,25 +23,25 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::WindowId;
 
-/// 四色板：CSS 原值（sRGB 域）。纯主色/中灰/白——中灰最能抓线性域错装。
+/// Four color panels: original CSS values (sRGB domain). Pure primaries / mid-gray / white -- mid-gray best catches a linear-domain mis-install.
 const SWATCHES: [(u8, u8, u8); 4] = [
     (255, 0, 0),
-    (128, 128, 128), // 错装=偏亮到 ~188，本案判据
+    (128, 128, 128), // mis-installed = brightens to ~188, this case's criterion
     (0, 0, 255),
     (255, 255, 255),
 ];
-const HEADLESS_W: u32 = 256; // 行 1024B=4×256 对齐（headless 读回路）
+const HEADLESS_W: u32 = 256; // the row is 1024B = 4x256 aligned (the headless readback road)
 const HEADLESS_H: u32 = 256;
 
-/// 光向（与后端 shadow-off dummy params 旧 LIGHT 同位型 normalize(0.5,0.7,0.4)）——
-/// 面元法向取此向 → ndl=1 → shade=0.35+0.65=1.0（色板满亮，色域纯判）。
+/// Light direction (the same position as the backend shadow-off dummy params' old LIGHT: normalize(0.5,0.7,0.4)) --
+/// the panel normals take this direction -> ndl = 1 -> shade = 0.35 + 0.65 = 1.0 (panels at full brightness, a pure color-domain judgment).
 fn light_dir() -> [f32; 3] {
     let (x, y, z) = (0.5f32, 0.7, 0.4);
     let l = (x * x + y * y + z * z).sqrt();
     [x / l, y / l, z / l]
 }
 
-/// 单色板几何数据（局部系 z=0，法向=light_dir；四角两三角）。cx=板心 x。
+/// Single-panel geometry data (local frame z = 0, normals = light_dir; four corners two triangles). cx = panel center x.
 fn swatch_quad(cx: f32) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let n = light_dir();
     let (x0, x1, y0, y1) = (cx - 0.5, cx + 0.5, -1.0, 1.0);
@@ -59,7 +59,7 @@ const IDENT: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// headless 自断言路（--frames N）：逐板中心像素 vs CSS 原值，容差 ±8。
+/// The headless self-asserting road (--frames N): per-panel center pixel vs the original CSS value, tolerance ± 8.
 fn prove_headless(frames: u32) {
     let Some(mut b) = HeadlessBackend::new(HEADLESS_W, HEADLESS_H) else {
         eprintln!("ERROR: no adapter");
@@ -106,19 +106,19 @@ fn prove_headless(frames: u32) {
         gallery::save_frame(&img, "E502_color_tuning");
         let mut bad = 0usize;
         for (i, (cr, cg, cb)) in SWATCHES.into_iter().enumerate() {
-            // 板心像素：ortho 半宽 2 → px=(0.5 + x/4)·256，板心 -1.5..1.5 → 32/96/160/224
+            // panel-center pixels: ortho half-width 2 -> px = (0.5 + x/4) * 256, panel centers -1.5..1.5 -> 32/96/160/224
             let px = ((0.5 + (-1.5 + i as f32) / 4.0) * HEADLESS_W as f32) as u32;
             let o = (((HEADLESS_H / 2) * HEADLESS_W + px) * 4) as usize;
             let (r, g, bl) = (img.rgba[o], img.rgba[o + 1], img.rgba[o + 2]);
-            // 容差 20：吸收 GGX Fresnel 地板（探针：红板 g/b=13、蓝板 r/g=14，非量化噪声）；
-            // 域错装位移 ~60（中灰 128→~188）→ 检测力留 3× 余量。
+            // tolerance 20: absorbs the GGX Fresnel floor (probe: red panel g/b = 13, blue panel r/g = 14, not quantization noise);
+            // the domain-mis-install shift is ~60 (mid-gray 128 -> ~188) -> a 3x detection margin remains.
             let ok = r.abs_diff(cr) <= 20 && g.abs_diff(cg) <= 20 && bl.abs_diff(cb) <= 20;
             if !ok {
                 bad += 1;
             }
             println!(
                 "SWATCH {i} css=({cr},{cg},{cb}) read=({r},{g},{bl}) {}",
-                if ok { "OK" } else { "✗ 色域漂移" }
+                if ok { "OK" } else { "✗ color-gamut drift" }
             );
         }
         if bad > 0 {
@@ -126,10 +126,12 @@ fn prove_headless(frames: u32) {
             std::process::exit(1);
         }
     }
-    println!("OK color tuning（sRGB 全链往返互逆·所见即所得）");
+    println!(
+        "OK color tuning (the sRGB full-chain round trip is reciprocal, what you see is what you get)"
+    );
 }
 
-// ────────────────────────── 常驻人验窗路（无参） ──────────────────────────
+// --------------------------- the resident human-verified window road (no arguments) -----------
 
 struct App {
     core: Option<MeshCore>,
@@ -147,7 +149,7 @@ impl ApplicationHandler for App {
         // byte-exact color round-trip needs an Srgb target format.
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E502 · 色彩标定人验窗：四板=纯红 | 中灰#808080(不发亮) | 纯蓝 | 白(不偏粉)",
+            "VisiaEngine E502 · color-calibration human window: four panels = pure red | mid-gray #808080 (must not brighten) | pure blue | white (no pink cast)",
             960,
             600,
             FormatPolicy::PreferSrgb,

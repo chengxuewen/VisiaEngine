@@ -1,12 +1,12 @@
-//! E403 · 交互·橡皮筋框选 —— 左键拖拽=矩形框选（框内实体全选）演示。
-//! 用法: cargo run --example E403_box_select [选项]
-//! 交互：左键拖拽=框选（5×5 采样射线判定框内实体，命中即选入）| 松开=提交选择
-//! 右键=清空 | R=清空 | 滚轮=远近 | 关窗=退出。
-//! --frames N：渲染预算退出（ctest/xvfb 路，注册表 argv 专属，C15）。
+//! E403 · interaction, rubber-band box select -- left-drag = rectangular box selection (select all entities inside the box) demo.
+//! Usage: cargo run --example E403_box_select [options]
+//! Interaction: left-drag = box select (a 5x5 sampling-ray grid decides the entities inside the box, a hit joins the selection) | release = commit the selection
+//! right button = clear | R = clear | wheel = distance | close window = exit.
+//! --frames N: render-budget exit (the ctest/xvfb road, the registry argv-exclusive, C15).
 //!
-//! 框选判定=采样射线复用（REND-21/23 pick 基建，零新数学）：矩形内 5×5 网格
-//! 点各发一条 pick 射线，命中的实体并入选择集。稀疏盒场景下与精确投影判定
-//! 等价；大场景升级路径=视锥体裁剪纯函数（票据制）。
+//! Box-select decision = sampling-ray reuse (the REND-21/23 pick base, zero new math): a 5x5 grid of points inside the rectangle
+//! each fires one pick ray, and the entities hit merge into the selection set. In sparse box scenes this is equivalent
+//! to the exact projection decision; the large-scene upgrade path = a frustum-cull pure function (ticket-based).
 
 use examples::viewer::{Ctx, FormatPolicy};
 
@@ -24,7 +24,7 @@ use winit::keyboard::{Key, NamedKey};
 use winit::window::WindowId;
 
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
-const SELECTED: [f32; 4] = [1.0, 0.83, 0.29, 1.0]; // 高亮黄（WGPU-12 色族）
+const SELECTED: [f32; 4] = [1.0, 0.83, 0.29, 1.0]; // highlight yellow (the WGPU-12 color family)
 
 fn placed(x: f64, y: f64, z: f64, s: f64) -> [[f64; 4]; 4] {
     [
@@ -53,7 +53,7 @@ struct App {
     mat_hl: Option<MaterialId>,
     mats: Vec<MaterialId>,
     cursor: (f64, f64),
-    /// 拖拽态：起点 + 当前点（橡皮筋对角）；None=未拖拽。
+    /// Drag state: start + current point (rubber-band diagonal); None = not dragging.
     band: Option<((f64, f64), (f64, f64))>,
     frames_left: Option<u32>,
 }
@@ -65,7 +65,7 @@ impl App {
         }
     }
 
-    /// 屏幕坐标 → 射线 → pick_meshes → 盒索引（E402 同款 pick 路）。
+    /// Screen coordinates -> ray -> pick_meshes -> box index (the same pick road as E402).
     fn pick_at(&self, x: f64, y: f64) -> Option<usize> {
         let Some(ctx) = &self.ctx else {
             return None;
@@ -94,7 +94,7 @@ impl App {
             .filter(|_| hit.t.is_finite())
     }
 
-    /// 橡皮筋矩形 → 5×5 采样射线 → 命中实体集（框选判定本体）。
+    /// Rubber-band rectangle -> 5x5 sampling rays -> the set of hit entities (the body of the box-select decision).
     fn select_band(&mut self, (x0, y0): (f64, f64), (x1, y1): (f64, f64)) {
         let (min_x, max_x) = (x0.min(x1), x0.max(x1));
         let (min_y, max_y) = (y0.min(y1), y0.max(y1));
@@ -147,7 +147,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E403 · 框选（左键拖拽=框内全选 右键/R=清空 滚轮=远近）",
+            "VisiaEngine E403 · box select (left-drag = select all inside, right/R = clear, wheel = distance)",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -164,7 +164,7 @@ impl ApplicationHandler for App {
                 uv: &[],
             })
             .expect("upload mesh");
-        // 6 盒 2×3 网格铺开（框选演示的密度感）。
+        // lay out a 6-box 2x3 grid (the density feel of the box-select demo).
         let palette = [
             [0.90, 0.25, 0.25, 1.0f32],
             [0.20, 0.75, 0.35, 1.0],

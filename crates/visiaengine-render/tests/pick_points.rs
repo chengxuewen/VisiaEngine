@@ -1,8 +1,8 @@
-//! REND-38/39 点云屏幕空间拾取（docs/sdd/render.md；super-band B2）。
+//! REND-38/39 point-cloud screen-space picking (docs/sdd/render.md; super-band B2).
 //!
-//! MVP 链与渲染同源：`compose_mvp(proj, view_rot, eye, origin, transform)`
-//! —— 测试直接复刻 engine.rs render() 的投影装配（ortho/persp 两形），
-//! 保证「拾取数学 = 渲染数学」单一事实源（WGPU-21 同族纪律）。
+//! The MVP chain shares its source with rendering: `compose_mvp(proj, view_rot, eye, origin, transform)`
+//! -- tests directly replicate the projection assembly of engine.rs render() (both ortho/persp forms),
+//! guaranteeing "picking math = rendering math" as the single source of truth (the WGPU-21 same-family discipline).
 
 #![allow(clippy::float_cmp)]
 
@@ -26,7 +26,7 @@ const IDENTITY: [[f64; 4]; 4] = [
 const W: f32 = 640.0;
 const H: f32 = 480.0;
 
-/// 渲染同款 ortho 装配（engine.rs:578-582 / 596 / 592 同构）。
+/// The same ortho assembly as rendering (isomorphic with engine.rs:578-582 / 596 / 592).
 fn ortho_mvp(rig: &CameraRig, origin: [f64; 3]) -> [[f32; 4]; 4] {
     let proj = rig
         .ortho_frame(rig.zoom as f32, W, H, 0.1, 1000.0)
@@ -34,7 +34,7 @@ fn ortho_mvp(rig: &CameraRig, origin: [f64; 3]) -> [[f32; 4]; 4] {
     compose_mvp(&proj, &rig.view_rotation(), &rig.eye(), &origin, &IDENTITY)
 }
 
-/// 渲染同款 persp 装配（engine.rs:569-577 同构）。
+/// The same persp assembly as rendering (isomorphic with engine.rs:569-577).
 fn persp_mvp(rig: &CameraRig, origin: [f64; 3]) -> [[f32; 4]; 4] {
     let proj = rig
         .perspective(rig.fov_y as f32, W / H, 0.1, 1000.0)
@@ -42,7 +42,7 @@ fn persp_mvp(rig: &CameraRig, origin: [f64; 3]) -> [[f32; 4]; 4] {
     compose_mvp(&proj, &rig.view_rotation(), &rig.eye(), &origin, &IDENTITY)
 }
 
-/// ortho 机位：自 +Z 俯视原点，zoom=10（世界半宽 10 → 640px / 20 世界单位 = 32 px/单位）。
+/// Ortho camera position: looking down at the origin from +Z, zoom = 10 (world half-width 10 -> 640px / 20 world units = 32 px/unit).
 fn rig_topdown() -> CameraRig {
     let mut r = CameraRig::look_at([0.0, 0.0, 50.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
     r.zoom = 10.0;

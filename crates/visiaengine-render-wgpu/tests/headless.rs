@@ -1,9 +1,9 @@
-//! L0 无头面测试（// spec: 标签入追溯门禁）。
+//! L0 headless-face tests (// spec: tags feed the traceability gate).
 
 // spec: WGPU-01
 #[test]
 fn instance_create_headless() {
-    // 不 panic 即通过；返回 Instance 无 Debug 面，构造成功性由类型系统担保
+    // no panic = pass; the returned Instance has no Debug face, construction success is guaranteed by the type system
     let _inst = visiaengine_render_wgpu::create_instance();
 }
 
@@ -11,6 +11,6 @@ fn instance_create_headless() {
 #[test]
 fn adapter_enumeration_typed() {
     let adapters: Vec<wgpu::AdapterInfo> = visiaengine_render_wgpu::available_adapters();
-    // 本机/lavapipe/无 GPU 均合法：仅断言不 panic + 类型面；len 不设下限
+    // this machine / lavapipe / no GPU are all legal: assert only no-panic + the type face; no lower bound on len
     let _ = adapters.len();
 }

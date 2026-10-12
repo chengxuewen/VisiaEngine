@@ -1,5 +1,5 @@
-//! CAPI-10/11/12 的 FFI 级锁（rlib 直调 extern 面，真 ABI 形状）：
-//! 位形键=宿主所得句柄直通 · 返回码三态（1/0/<0）· attr_str 零部分写 · 缺参表。
+//! FFI-level locks for CAPI-10/11/12 (direct rlib calls on the extern face, true ABI shape):
+//! shape key = the handle the host got passes straight through -- tri-state return codes (1/0/<0) -- attr_str zero partial write -- missing-parameter tables.
 
 use std::ffi::{CStr, CString, c_char};
 use std::fs;
@@ -57,19 +57,19 @@ fn ffi_attr_hit_miss_out_untouched() {
     let mut out = -777.0f64;
     assert_eq!(visiaengine_attr_f64(ve, a, k.as_ptr(), &mut out), 1);
     assert_eq!(out, 12.5);
-    // 缺失：out 不动（缺失≠零值的 C 投影）
+    // absent: out untouched (the C projection of absent != zero value)
     let no = CString::new("nope").unwrap();
     assert_eq!(visiaengine_attr_f64(ve, a, no.as_ptr(), &mut out), 0);
-    assert_eq!(out, 12.5, "miss 分支禁写 out");
-    // bool 命中 + 异型=miss（str 列问 bool）
+    assert_eq!(out, 12.5, "the miss branch must not write out");
+    // bool hit + type mismatch = miss (str column asked for bool)
     let kb = CString::new("active").unwrap();
     let mut bo = -3i32;
     assert_eq!(visiaengine_attr_bool(ve, a, kb.as_ptr(), &mut bo), 1);
     assert_eq!(bo, 1);
     let kn = CString::new("name").unwrap();
     assert_eq!(visiaengine_attr_bool(ve, a, kn.as_ptr(), &mut bo), 0);
-    assert_eq!(bo, 1, "bool 异型 miss 亦禁写");
-    // MISS 位形句柄=纯缺失
+    assert_eq!(bo, 1, "bool type-mismatch miss must not write either");
+    // a MISS shape handle = pure absence
     let mut o2 = 0.0;
     assert_eq!(visiaengine_attr_f64(ve, u64::MAX, k.as_ptr(), &mut o2), 0);
     assert_eq!(visiaengine_destroy(ve), 0);
@@ -90,14 +90,17 @@ fn ffi_attr_str_buffer_contract() {
         unsafe { CStr::from_ptr(buf.as_ptr()) }.to_str().unwrap(),
         "buildingA"
     );
-    // cap 不足 = -5 且零部分写（无探长子模式，C-2 裁决）
+    // cap insufficient = -5 with zero partial write (no length-probe sub-mode, C-2 ruling)
     let mut small = [0x5Ai8; 8];
     assert_eq!(
         visiaengine_attr_str(ve, a, kn.as_ptr(), small.as_mut_ptr(), 3),
         VE_ERR_SIZE
     );
-    assert!(small.iter().all(|&b| b == 0x5A), "cap 不足禁部分写");
-    // 缺失=0；参数表 null=-1
+    assert!(
+        small.iter().all(|&b| b == 0x5A),
+        "cap insufficient must not partially write"
+    );
+    // absent = 0; argument table null = -1
     let no = CString::new("nope").unwrap();
     assert_eq!(
         visiaengine_attr_str(ve, a, no.as_ptr(), buf.as_mut_ptr(), 256),
@@ -120,7 +123,7 @@ fn ffi_attr_gate_table() {
     let ve = loaded();
     let k = CString::new("height").unwrap();
     let mut out = 0.0;
-    // null key / null out = -1（合法句柄也要拒）
+    // null key / null out = -1 (even a legal handle must reject)
     assert_eq!(
         visiaengine_attr_f64(ve, 1, std::ptr::null(), &mut out),
         VE_ERR_ARG
@@ -129,7 +132,7 @@ fn ffi_attr_gate_table() {
         visiaengine_attr_f64(ve, 1, k.as_ptr(), std::ptr::null_mut()),
         VE_ERR_ARG
     );
-    // 无 geo 装载的引擎：任何 entity 位=纯缺失（保留面对 gltf 件零发布）
+    // an engine with no geo load: any entity bit = pure absence (the retention face publishes zero for gltf pieces)
     let bare = visiaengine_create_headless(8, 8);
     assert_eq!(visiaengine_attr_f64(bare, 7, k.as_ptr(), &mut out), 0);
     assert_eq!(visiaengine_destroy(bare), 0);
@@ -147,7 +150,7 @@ fn ffi_attr_multi_load_isolation() {
     );
     let k = CString::new("name").unwrap();
     let mut buf = [0i8; 256];
-    // 旧 entity 读旧 doc（行不漂）
+    // an old entity reads the old doc (rows do not drift)
     assert_eq!(
         visiaengine_attr_str(ve, old, k.as_ptr(), buf.as_mut_ptr(), 256),
         1
@@ -156,7 +159,7 @@ fn ffi_attr_multi_load_isolation() {
         unsafe { CStr::from_ptr(buf.as_ptr()) }.to_str().unwrap(),
         "buildingA"
     );
-    // 新 entity 读新 doc
+    // a new entity reads the new doc
     let c = visiaengine_entity_at(ve, 2);
     let kh = CString::new("height").unwrap();
     let mut h = 0.0;

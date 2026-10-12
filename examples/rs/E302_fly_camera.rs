@@ -1,6 +1,6 @@
-//! E302 · 相机飞行 —— 预设视角 flyTo 巡览（⑤a REND-34 交互面）。
-//! 双模（E501/E901 同制）：无参=常驻窗（1/2/3=预设视角 拖/滚轮=cancel+轨道 R=回家 Esc=退）；
-//! `--frames N`=确定性纯函数断言路（墙钟不进 CI 契约）。
+//! E302 · camera flight -- preset-viewpoint flyTo tour (5a REND-34 interaction face).
+//! Dual mode (same system as E501/E901): no args = resident window (1/2/3 = preset viewpoints, drag/wheel = cancel + orbit, R = go home, Esc = quit);
+//! `--frames N` = deterministic pure-function asserting road (the wall clock does not enter the CI contract).
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -54,7 +54,7 @@ fn city() -> Vec<Tower> {
         .collect()
 }
 
-/// 预设三元（头注/标题文案同源）：1 航拍 / 2 街景 / 3 最高塔顶。
+/// Preset triple (the header note / title wording share the source): 1 aerial / 2 street / 3 tallest-tower-top.
 fn presets() -> [CameraRig; 3] {
     let c = city();
     let tall = c
@@ -131,7 +131,7 @@ fn frame_of(rig: &CameraRig, commands: Vec<DrawCommand>, w: u32, h: u32) -> Fram
     }
 }
 
-/// 场景上传（双路同源脸，REND-33 Ctor 先例——本例两脸够用不升格 trait）。
+/// Scene upload (dual-road same-source face, the REND-33 Ctor precedent -- two faces suffice for this example, no trait promotion).
 macro_rules! upload_scene {
     ($b:expr) => {{
         let b = $b;
@@ -197,31 +197,31 @@ macro_rules! upload_scene {
     }};
 }
 
-// ── headless 路（确定性：纯函数断言，零墙钟）────────────────────────────────
+// -- headless road (determinism: pure-function assertions, zero wall clock) ----------------
 fn headless_run() {
     let p = presets();
     let [a, b, _c] = p;
-    // 端点精确（REND-16 同谱）+ 中点不重合
+    // endpoints exact (same scheme as REND-16) + midpoint does not coincide
     for e in [Easing::Linear, Easing::CubicInOut, Easing::CubicOut] {
         assert_eq!(CameraRig::fly_sample(&a, &b, 0.0, e).target, a.target);
         assert_eq!(CameraRig::fly_sample(&a, &b, 1.0, e).target, b.target);
         let m = CameraRig::fly_sample(&a, &b, 0.5, e);
         assert!(
             (m.dist - a.dist).abs() > 1.0 && (m.dist - b.dist).abs() > 1.0,
-            "中点漂浮 {e:?}"
+            "midpoint drift {e:?}"
         );
     }
-    // 大角飞行（航拍→街景 yaw 跨度大）走最短弧：中点 yaw 与线性均值两侧对比可证
+    // the wide-angle flight (aerial->street with a large yaw span) takes the shortest arc: provable by comparing the midpoint yaw against both sides of the linear mean
     let mut wide_b = b;
-    wide_b.yaw = a.yaw + 5.9; // |Δ|>π ⇒ 线性中点 ~a.yaw+2.95，最短弧中点 ~a.yaw-0.24
+    wide_b.yaw = a.yaw + 5.9; // |D| > pi => the linear midpoint ~ a.yaw + 2.95, the shortest-arc midpoint ~ a.yaw - 0.24
     let mid = CameraRig::fly_sample(&a, &wide_b, 0.5, Easing::Linear);
     assert!(
         (mid.yaw - (a.yaw - 0.23)).abs() < 0.2,
-        "wrap 未生效：mid yaw {0} 期望 ~{1}",
+        "wrap took no effect: mid yaw {0} expected ~{1}",
         mid.yaw,
         a.yaw - 0.23
     );
-    // 渲染路通（帧环消费 fly_sample 位姿=展示形与断言路同源）
+    // the render road works (the frame ring consumes fly_sample poses = the showcase form and the asserting road share the source)
     let mut backend = HeadlessBackend::new(W, H).expect("adapter");
     struct Face<'x>(&'x mut HeadlessBackend);
     impl Face<'_> {
@@ -247,11 +247,14 @@ fn headless_run() {
         .iter()
         .filter(|q| q[0] > 150 && q[1] > 150 && q[2] > 150)
         .count();
-    assert!(bright > 40, "飞行中景亮面缺席 {bright}"); // 实测 96 的 −58% 保守位（PIT-8）
+    assert!(
+        bright > 40,
+        "the flight mid-scene bright face absent {bright}"
+    ); // the conservative seat of measured 96 minus 58% (PIT-8)
     println!("OK fly_camera endpoints+wrap+mid-render bright={bright}");
 }
 
-// ── 交互路 ───────────────────────────────────────────────────────────────────
+// -- interactive road -----------------------------------------------------------------
 struct Flight {
     from: CameraRig,
     to: CameraRig,
@@ -289,7 +292,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "E302 相机飞行 · 1/2/3=预设 R=回家 拖/滚轮=中断接管 Esc=退出",
+            "E302 camera flight · 1/2/3 = presets, R = home, drag/wheel = interrupt and take over, Esc = exit",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -318,7 +321,7 @@ impl ApplicationHandler for App {
                 state,
                 ..
             } => {
-                // A 派中断：拖=取消飞行后接管（CAPI-23 语义同制）
+                // A-branch interrupt: dragging cancels the flight and takes over (same system as the CAPI-23 semantics)
                 if matches!(state, ElementState::Pressed) {
                     self.flight = None;
                 }
@@ -344,7 +347,7 @@ impl ApplicationHandler for App {
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {
-                // 墙钟推进（例内自配——rs 层消费者与 capi 引擎同形不同体）
+                // wall-clock advance (configured inside the example -- the rs-layer consumer and the capi engine share the form but not the body)
                 if let Some(f) = &self.flight {
                     let t = f.start.elapsed().as_secs_f64() / f.dur_s;
                     self.rig = if t >= 1.0 {

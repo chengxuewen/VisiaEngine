@@ -1,16 +1,16 @@
-//! 场景级拾取编排（REND-23/24）：候选 mesh 集 + 射线 → 最近命中。
-//! bbox **即算不常存**（[E3D:A5] 懒算语义；升级位=BVH，触发=bench 证据）。
-//! 几何查找闭包注入模式弃用——数据参数化（调用方持 scene↔mesh 关联，
-//! 引擎零新状态；Scene 现无几何组件，关联归宿主/几何组件片）。
-//! B2 补充：点云屏幕空间拾取（REND-38/39）——world→clip 投影最近点谓词。
-//! bbox **即算不常存**（[E3D:A5] 懒算语义；升级位=BVH，触发=bench 证据）。
-//! 几何查找闭包注入模式弃用——数据参数化（调用方持 scene↔mesh 关联，
-//! 引擎零新状态；Scene 现无几何组件，关联归宿主/几何组件片）。
+//! Scene-level picking orchestration (REND-23/24): candidate mesh set + ray -> nearest hit.
+//! bboxes **computed on demand, not stored** ([E3D:A5] lazy-compute semantics; upgrade slot = BVH, trigger = bench evidence).
+//! The geometry-lookup closure injection pattern is retired -- data-parameterized (the caller holds the scene-mesh association,
+//! the engine gains zero state; Scene currently has no geometry component, the association belongs to the host / geometry-component slice).
+//! B2 addition: point-cloud screen-space picking (REND-38/39) -- the world->clip projected nearest-point predicate.
+//! bboxes **computed on demand, not stored** ([E3D:A5] lazy-compute semantics; upgrade slot = BVH, trigger = bench evidence).
+//! The geometry-lookup closure injection pattern is retired -- data-parameterized (the caller holds the scene-mesh association,
+//! the engine gains zero state; Scene currently has no geometry component, the association belongs to the host / geometry-component slice).
 
 use crate::contract::StrokeSeg;
 use visiaengine_core::{EntityId, Ray, Vec3, ray_aabb, ray_triangle};
 
-/// 拾取候选：局部顶点 + 世界矩阵（`DrawMesh.transform` 同型列主序）。
+/// Pick candidate: local vertices + world matrix (`DrawMesh.transform`-shaped column-major).
 #[derive(Debug)]
 pub struct MeshCandidate<'a> {
     pub entity: EntityId,
@@ -19,7 +19,7 @@ pub struct MeshCandidate<'a> {
     pub world: &'a [[f64; 4]; 4],
 }
 
-/// 命中结果（三角索引 + 距离参数 + 世界命中点，D7 全程 f64）。
+/// Hit result (triangle index + distance parameter + world hit point, all the way f64 per D7).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PickHit {
     pub entity: EntityId,
@@ -37,7 +37,7 @@ fn xform(m: &[[f64; 4]; 4], v: [f64; 3]) -> [f64; 3] {
     ]
 }
 
-/// 局部 AABB → 8 角变换 → 保守世界 AABB（标准做法，误差可接受于剪除）。
+/// Local AABB -> transform 8 corners -> conservative world AABB (standard practice, the looseness acceptable for culling).
 #[must_use]
 fn world_bbox(c: &MeshCandidate) -> Option<([f64; 3], [f64; 3])> {
     if c.positions.is_empty() || c.indices.len() < 3 {
@@ -72,7 +72,7 @@ fn world_bbox(c: &MeshCandidate) -> Option<([f64; 3], [f64; 3])> {
     Some((wmin, wmax))
 }
 
-/// 集合最近命中（bbox 剪除 → 逐三角 MT 正面）。全旁路/空输入 None。
+/// Nearest hit of the set (bbox culling -> per-triangle MT front face). All-bypass / empty input -> None.
 #[must_use]
 pub fn pick_meshes(ray: Ray, cands: &[MeshCandidate]) -> Option<PickHit> {
     let ro = [ray.origin.x, ray.origin.y, ray.origin.z];
@@ -94,7 +94,7 @@ pub fn pick_meshes(ray: Ray, cands: &[MeshCandidate]) -> Option<PickHit> {
                 let p = c.positions[li];
                 *dst = xform(c.world, [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]);
             }
-            // 索引越界件的退化三角（零面积）由 MT 拒绝
+            // degenerate triangles of index-overrun pieces (zero area) are rejected by MT
             if let Some(t) = ray_triangle(ray, tri[0], tri[1], tri[2])
                 && (best.is_none() || t < best.map(|b| b.t).unwrap_or(f64::INFINITY))
             {
@@ -115,7 +115,7 @@ pub fn pick_meshes(ray: Ray, cands: &[MeshCandidate]) -> Option<PickHit> {
     best
 }
 
-/// 点云拾取候选（REND-38）：世界位形（origin+transform，DrawPoints 同谱）+ 留存位置。
+/// Point-cloud pick candidate (REND-38): world shape (origin + transform, same scheme as DrawPoints) + retained positions.
 pub struct PointCloudCandidate<'a> {
     pub entity: EntityId,
     pub origin: [f64; 3],
@@ -123,7 +123,7 @@ pub struct PointCloudCandidate<'a> {
     pub positions: &'a [[f32; 3]],
 }
 
-/// 点云命中（REND-38）：屏幕距离 + 视深 + 命中点下标（调用方 clip 逐点过滤用）。
+/// Point-cloud hit (REND-38): screen distance + view depth + hit point index (for the caller's per-point clip filtering).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PointHit {
     pub entity: EntityId,

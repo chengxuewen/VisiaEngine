@@ -1,4 +1,4 @@
-//! CAPI-17：事件推送口（进度/错误/摘除/句柄门）。
+//! CAPI-17: the event-push entry (progress / error / unregister / handle gate).
 
 use std::ffi::{CString, c_void};
 use visiaengine::{
@@ -22,7 +22,7 @@ struct Sink {
     ev: Vec<(u32, u64, u64)>,
 }
 extern "C" fn tap(user: *mut c_void, event: u32, a: u64, b: u64) {
-    // 同步语义=调用线程触发（条款声明的活体证明）；栈借转裸指针仅在本调用内使用
+    // synchronous semantics = fired on the calling thread (living proof of the clause declaration); borrowed-on-stack raw pointers are used only within this call
     if let Some(s) = unsafe { user.cast::<Sink>().as_mut() } {
         s.ev.push((event, a, b));
     }
@@ -44,22 +44,29 @@ fn progress_events_monotonic_terminal_and_removal() {
         .iter()
         .filter(|e| e.0 == VE_EVT_LOAD_PROGRESS)
         .collect();
-    assert!(!prog.is_empty(), "装载无进度事件=推送半边缺席");
+    assert!(
+        !prog.is_empty(),
+        "load with no progress event = half of the push missing"
+    );
     let mut prev = 0u64;
     for (_, a, _b) in prog.iter() {
-        assert!(*a > prev, "done 非单调: {a}≤{prev}");
+        assert!(*a > prev, "done not monotonic: {a} <= {prev}");
         prev = *a;
     }
     let (a, b) = (prog.last().unwrap().1, prog.last().unwrap().2);
-    assert_eq!(a, b, "终态 done≠total");
-    // 摘除后静默（替换不叠加面同谱：NULL 摘→再载零新事件）
+    assert_eq!(a, b, "terminal done != total");
+    // silence after unregister (same scheme as the replace-does-not-stack face: NULL unregister -> reload emits zero new events)
     assert_eq!(
         visiaengine_set_event_callback(ve, None, std::ptr::null_mut()),
         0
     );
     let n = sink.ev.len();
     assert_eq!(visiaengine_load_geojson(ve, geo_path().as_ptr()), 0);
-    assert_eq!(sink.ev.len(), n, "NULL 摘除后仍触发=叠加泄漏");
+    assert_eq!(
+        sink.ev.len(),
+        n,
+        "still firing after NULL unregister = stacking leak"
+    );
     assert_eq!(visiaengine_destroy(ve), 0);
 }
 
@@ -75,9 +82,9 @@ fn error_event_and_handle_gate() {
     assert_ne!(visiaengine_load_geojson(ve, missing().as_ptr()), 0);
     assert!(
         sink.ev.iter().any(|e| e.0 == VE_EVT_LOAD_ERROR),
-        "失败出口无 LOAD_ERROR 事件"
+        "failure exit has no LOAD_ERROR event"
     );
-    // 句柄门同族（stale/foreign 全 -1 谱，CAPI-03 分工不变）
+    // handle gate same family (stale/foreign all on the -1 scheme, the CAPI-03 division unchanged)
     assert_eq!(
         visiaengine_set_event_callback(0, None, std::ptr::null_mut()),
         VE_ERR_ARG

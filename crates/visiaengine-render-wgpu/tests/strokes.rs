@@ -1,5 +1,5 @@
-//! WGPU-17：Strokes 扩片管线——色/宽住表、px 语义、盖面 polygon-offset、退化兜底。
-//! 谓词纪律 [PIT-8]：窗口+区域族统计+位置主导（right/up 基向量正确性锁），不锁单像素。
+//! WGPU-17: the Strokes tile-expansion pipeline -- color/width live in the table, px semantics, cover-surface polygon-offset, degenerate fallback.
+//! Predicate discipline [PIT-8]: windows + region-family statistics + positional dominance (the right/up basis-vector correctness lock), no single-pixel locks.
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, StrokeSeg, StrokeTableDesc,
@@ -15,7 +15,7 @@ const T4: [[f64; 4]; 4] = [
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
-/// 眼 [0,-8,4]：目标面 ~0.16 世界/px（半高 5.16/64——宽度阶梯的量纲前提）
+/// eye [0,-8,4]: the target plane ~ 0.16 world/px (half-height 5.16/64 -- the unit premise of the width ladder)
 const PX_SCALE: f32 = 0.16;
 
 fn frame_with(commands: Vec<DrawCommand>) -> Frame {
@@ -63,7 +63,7 @@ fn px(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 4] 
     ]
 }
 
-/// 窗口内族计数。
+/// Family count inside a window.
 fn count(
     img: &visiaengine_render_wgpu::OffscreenFrame,
     x0: u32,
@@ -90,11 +90,11 @@ fn three_segments_color_families_with_positions() {
     let tid = upload(
         &mut b,
         &[
-            // 红色横线（下方）
+            // the red horizontal line (lower)
             StrokeSeg::new([-2.5, -1.6, 0.0], [2.5, -1.6, 0.0], [1.0, 0.0, 0.0], 4.0),
-            // 绿色竖线（左上）
+            // the green vertical line (upper-left)
             StrokeSeg::new([-2.2, 0.2, 0.0], [-2.2, 2.6, 0.0], [0.0, 1.0, 0.0], 4.0),
-            // 蓝色斜线（右上）
+            // the blue diagonal (upper-right)
             StrokeSeg::new([0.5, 0.2, 0.0], [2.4, 2.6, 0.0], [0.0, 0.0, 1.0], 4.0),
         ],
     );
@@ -102,16 +102,25 @@ fn three_segments_color_families_with_positions() {
     let red = |p: [u8; 4]| p[0] > 200 && p[1] < 40 && p[2] < 40;
     let green = |p: [u8; 4]| p[1] > 200 && p[0] < 40 && p[2] < 40;
     let blue = |p: [u8; 4]| p[2] > 200 && p[0] < 40 && p[1] < 40;
-    // 位置主导=right/up 基正确性锁（符号错→镜像→窗口断言翻）
-    // 窗口界=probe_map 实测（透视下世界 y=-1.6 投影在行 35-39，非底部带）
-    assert!(count(&img, 0, W, 33, 44, red) >= 30, "红横线缺席下方窗");
-    assert!(count(&img, 0, 32, 0, 44, green) >= 10, "绿竖线缺席左上窗");
-    assert!(count(&img, 32, W, 0, 44, blue) >= 10, "蓝斜线缺席右上窗");
-    // 全画布纯族（无混色泄漏进背景）
+    // positional dominance = the right/up basis correctness lock (a wrong sign mirrors -> the window assertion flips)
+    // window bounds = probe_map measured (under perspective the world y = -1.6 projects at rows 35-39, not the bottom band)
+    assert!(
+        count(&img, 0, W, 33, 44, red) >= 30,
+        "the red horizontal line is absent from the lower window"
+    );
+    assert!(
+        count(&img, 0, 32, 0, 44, green) >= 10,
+        "the green vertical line is absent from the upper-left window"
+    );
+    assert!(
+        count(&img, 32, W, 0, 44, blue) >= 10,
+        "the blue diagonal is absent from the upper-right window"
+    );
+    // canvas-pure family (no mixed-color leakage into the background)
     assert_eq!(
         count(&img, 0, 8, 0, 8, |p| { p[0] + p[1] + p[2] > 30 }),
         0,
-        "背景角落被污染"
+        "the background corner was polluted"
     );
 }
 
@@ -149,15 +158,18 @@ fn width_px_ladder_scales_with_table() {
         count(&thin, 0, W, 0, H, white),
         count(&thick, 0, W, 0, H, white),
     );
-    assert!(c1 > 10 && c2 > 40, "族量 {c1}/{c2}");
-    assert!(c2 * 10 > c1 * 25, "宽度阶梯失真 {c1}→{c2}");
+    assert!(c1 > 10 && c2 > 40, "family counts {c1}/{c2}");
+    assert!(
+        c2 * 10 > c1 * 25,
+        "the width ladder is distorted {c1}->{c2}"
+    );
 }
 
 // spec: WGPU-17
 #[test]
 fn stroke_over_coplanar_fill_wins_via_offset() {
-    // 同 z=0：fill 先画（灰），stroke 后画压其上——无 polygon-offset 时深度相等
-    // 严格 Less → 描边被吞（本条即 [E3D:B7③] 的回归锁）。
+    // same z = 0: the fill draws first (gray), the stroke draws after and rides on top -- with no polygon-offset the depths are equal and
+    // strict Less swallows the stroke (this clause is exactly the [E3D:B7-3] regression lock).
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let quad = MeshDesc {
         positions: &[
@@ -202,16 +214,19 @@ fn stroke_over_coplanar_fill_wins_via_offset() {
         count(&img, 16, 48, 24, 40, dark),
         count(&img, 16, 48, 24, 40, gray),
     );
-    assert!(g > 100, "fill 缺席（灰带 {g}）");
-    assert!(d >= 20, "描边被同深度 fill 吞噬（暗像素 {d}）");
+    assert!(g > 100, "fill absent (gray band {g})");
+    assert!(
+        d >= 20,
+        "the stroke was swallowed by the same-depth fill (dark pixels {d})"
+    );
 }
 
 // spec: WGPU-17
 #[test]
 fn view_parallel_segment_falls_back_no_nan() {
-    // R2 退化真义：段轴∥视向→cross=0→normalize(0)=NaN。该段投影本就退化为点
-    // （0 像素合法），关键=它的 NaN 不得污染同批其它段。测：退化红段 + 可见绿控制段，
-    // 断言绿段照常成片（若 perp 未兜底，NaN 顶点会弃掉整批→绿=0 即红）。
+    // The true meaning of R2 degeneracy: the segment axis parallel to the view direction -> cross = 0 -> normalize(0) = NaN. That segment's projection
+    // degenerates to a point anyway (0 pixels is legal); the key is that its NaN must not pollute the other segments in the same batch. Test: a degenerate red
+    // segment + a visible green control segment, assert the green segment still forms its sheet (were perp unguarded, NaN vertices would discard the whole batch -> green = 0 means red).
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let axis = [0.0f32, -0.89, 0.45];
     let tid = upload(
@@ -222,15 +237,15 @@ fn view_parallel_segment_falls_back_no_nan() {
                 [axis[0] * 6.0, axis[1] * 6.0, axis[2] * 6.0],
                 [1.0, 0.0, 0.0],
                 6.0,
-            ), // 退化（∥视向）
-            StrokeSeg::new([-2.0, -1.6, 0.0], [2.0, -1.6, 0.0], [0.0, 1.0, 0.0], 4.0), // 可见控制
+            ), // degenerate (parallel to the view direction)
+            StrokeSeg::new([-2.0, -1.6, 0.0], [2.0, -1.6, 0.0], [0.0, 1.0, 0.0], 4.0), // visible control
         ],
     );
     let img = b.render_to_pixels(&stroke_frame(tid)).expect("no panic");
     let green = |p: [u8; 4]| p[1] > 200 && p[0] < 40 && p[2] < 40;
     assert!(
         count(&img, 0, W, 0, H, green) >= 30,
-        "退化段 NaN 污染全批（绿控制段消失）"
+        "the degenerate segment's NaN polluted the whole batch (the green control segment vanished)"
     );
 }
 
@@ -264,7 +279,7 @@ fn probe_map() {
             .collect();
         println!("{y:2} {row}");
     }
-    // 退化段
+    // degenerate segments
     let mut b2 = HeadlessBackend::new(W, H).expect("adapter");
     let t2 = upload(
         &mut b2,
@@ -288,10 +303,10 @@ fn probe_map() {
 }
 
 // spec: WGPU-17
-/// E503 窗口路镜像（扩片族独立课随带门，REND-29 恒宽语义）：ortho 两档 zoom（4×
-/// 跨度）下**屏幕厚度恒定**——白线 10px / 绿点 φ24px 两档同值（世界厚度模型会 ×4）。
-/// 谓词三自证：①正例=恒宽 10/24；②世界宽假形必抓（zoom 档间比偏离 >2×）；
-/// ③背景纯黑不吃色值。
+/// The E503 window-path mirror (the gate carried by the tile-expansion family's standalone lesson, the REND-29 constant-width semantics): under ortho two zoom
+/// gears (a 4x span) the **screen thickness is constant** -- the white line 10px / the green dot diameter 24px keep the same value in both gears (a world-thickness model would multiply by 4).
+/// Predicate triple self-proof: (1) positive = constant widths 10/24; (2) a world-width fake form must catch it (the between-gear ratio deviates beyond 2x);
+/// (3) the pure-black background eats no color values.
 #[test]
 fn golden_zoom_width_invariant() {
     let Some(mut b) = HeadlessBackend::new(256, 256) else {
@@ -349,8 +364,8 @@ fn golden_zoom_width_invariant() {
             commands,
         };
         let img = b.render_to_pixels(&frame).unwrap();
-        // 白线竖向厚度：列 x=96（两档 zoom 下世界 x∈[-1.3,-0.325] 恒落线幅 [-2,2] 内，
-        // 且距绿点球径世界 ±0.24 远远的——列选择=与 zoom 无关的采样相位纪律）
+        // the white line's vertical thickness at column x = 96 (under both zoom gears the world x in [-1.3,-0.325] always falls inside the line span [-2,2],
+        // and stays far from the green sphere's world radius +/- 0.24 -- the column choice = a sampling-phase discipline independent of zoom)
         let thick: u32 = (0..256u32)
             .filter(|&y| {
                 let o = ((y * 256 + 96) * 4) as usize;
@@ -358,7 +373,7 @@ fn golden_zoom_width_invariant() {
                 p[0] > 200 && p[1] > 200 && p[2] > 200
             })
             .count() as u32;
-        // 绿点横向直径：过球心的扫描行（找最大绿族连续段，行不预设——球心随 zoom 换屏位）
+        // the green dot's transverse diameter: a scan row through the sphere center (find the longest continuous green-family run, the row not pre-assumed -- the sphere center moves with zoom)
         let mut diam = 0u32;
         for y in 0..256u32 {
             let run = (0..256u32)
@@ -376,14 +391,17 @@ fn golden_zoom_width_invariant() {
         }
         assert!(
             thick.abs_diff(10) <= 3,
-            "档{zi} zoom={zoom} 线屏厚={thick}≠恒宽 10（世界宽模型下必随 zoom 缩放）"
+            "gear {zi} zoom={zoom} line screen thickness = {thick} is not the constant width 10 (under a world-width model it must scale with zoom)"
         );
-        assert!(diam.abs_diff(24) <= 4, "档{zi} 点直径={diam}≠恒 φ24");
+        assert!(
+            diam.abs_diff(24) <= 4,
+            "gear {zi} dot diameter = {diam}, not the constant diameter 24"
+        );
         if zi == 1 {
-            // 两档厚度等值=恒宽的跨档锁（比 4× 世界模型分道扬镳）
+            // equal thickness across the two gears = the constant-width between-gear lock (the 4x world model diverges dramatically)
             assert!(
                 thick.abs_diff(thick_prev) <= 4 && thick_prev.abs_diff(10) <= 3,
-                "档间漂移 prev={thick_prev} now={thick}"
+                "between-gear drift prev={thick_prev} now={thick}"
             );
         }
         thick_prev = thick;

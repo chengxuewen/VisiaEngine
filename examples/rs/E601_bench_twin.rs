@@ -1,6 +1,6 @@
-//! E601 · 规模与性能 —— 10 万楼块实例化单 draw + [6b] `RESULT <name> <value> <unit>` 协议。
-//! 用法：`cargo run --release -p visiaengine-render-wgpu --example E601_bench_twin -- [--count N] [--frames N]`
-//! headless 形态（smoke-pick 同族免 xvfb）。**数字=本机 lavapipe 软光栅观测，非 CI 门禁** [6b]。
+//! E601 · scale and performance -- 100k building-block instanced single draw + the [6b] `RESULT <name> <value> <unit>` protocol.
+//! Usage: `cargo run --release -p visiaengine-render-wgpu --example E601_bench_twin -- [--count N] [--frames N]`
+//! headless form (the smoke-pick family, xvfb-free). **Numbers = this machine's lavapipe software-raster observations, not a CI gate** [6b].
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -16,7 +16,7 @@ use visiaengine_render_wgpu::{HeadlessBackend, unit_box_mesh};
 const W: u32 = 512;
 const H: u32 = 512;
 
-/// xorshift32——确定性伪随机（零 rand 依赖，同 seed 同城 [6b 可复现纪律]）
+/// xorshift32 -- deterministic pseudorandom (zero rand dependency, same seed same city [6b reproducibility discipline])
 struct Rng(u32);
 
 impl Rng {
@@ -76,7 +76,7 @@ fn main() {
         return;
     }
 
-    // ===== 上传段计时（CPU 生成 + 表上传，REND-27/WGPU-16 面）=====
+    // ===== upload-segment timing (CPU generation + table upload, the REND-27/WGPU-16 face) =====
     let t0 = Instant::now();
     let (pos, nrm, idx) = unit_box_mesh();
     let mesh = b
@@ -89,14 +89,14 @@ fn main() {
         .expect("box mesh");
     let mat = b.create_material([1.0, 1.0, 1.0, 1.0]).expect("white");
     let side = (f64::from(count).sqrt().ceil()) as u32;
-    let half = side as f32; // 间距 2 → 城市半径 ≈ side 单位
+    let half = side as f32; // spacing 2 -> city radius ~ side units
     let mut rng = Rng(0x9E37_79B9 ^ count);
     let table: Vec<Instance> = (0..count)
         .map(|i| {
             let x = (i % side) as f32 * 2.0 - half;
             let y = (i / side) as f32 * 2.0 - half;
             let h = 1.0 + rng.next01() * 7.0;
-            let g = 0.55 + h / 7.0 * 0.25; // 高度→亮带（白模的灰蓝渐变）
+            let g = 0.55 + h / 7.0 * 0.25; // height -> bright band (the gray-blue gradient of the white model)
             Instance::new([x, y, 0.0], h, [g * 0.9, g, g * 1.05])
         })
         .collect();
@@ -139,7 +139,7 @@ fn main() {
         ],
     };
 
-    // ===== 帧计时（首帧=预热除管线惰性建组，均值取后续 [6b]）=====
+    // ===== frame timing (the first frame = warmup excluding the pipeline's lazy bind-group builds, the mean takes the rest [6b]) =====
     let img = b.render_to_pixels(&frame).expect("warmup");
     let t1 = Instant::now();
     let mut last = img;
@@ -149,7 +149,7 @@ fn main() {
     }
     let frame_ms = t1.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
 
-    // ===== 出图诚实自检（非背景占比——跑通≠画对最低线，[PIT-8] 区域统计）=====
+    // ===== image honesty self-check (non-background ratio -- running through != drawing right, the minimum line, [PIT-8] region statistics) =====
     let lit = last
         .rgba
         .as_chunks::<4>()
@@ -158,7 +158,12 @@ fn main() {
         .filter(|p| p[0] as u32 + p[1] as u32 + p[2] as u32 > 60)
         .count();
     let total = (W * H) as usize;
-    assert!(lit * 10 > total, "城市出图非背景占比异常 {}/{}", lit, total);
+    assert!(
+        lit * 10 > total,
+        "the city image's non-background ratio is anomalous {}/{}",
+        lit,
+        total
+    );
 
     println!("RESULT bench_twin_upload {upload_ms:.3} ms");
     println!("RESULT bench_twin_frame {frame_ms:.3} ms");
@@ -171,7 +176,7 @@ fn main() {
     );
 }
 
-/// 点云帧成本档（G3 片，release-only 观测非门禁——裁决 D 输入；禁外推，实测说话）。
+/// The point-cloud frame-cost tier (the G3 slice, release-only observation and not a gate -- the ruling-D input; no extrapolation, measurements talk).
 fn bench_pcl(b: &mut HeadlessBackend, n: u32, frames: u32) {
     let t0 = Instant::now();
     let side = (f64::from(n).sqrt().ceil()) as u32;

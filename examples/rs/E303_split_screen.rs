@@ -1,7 +1,7 @@
-//! E303 · 分屏驾驶舱 —— 主透视 3D + 右栏正射顶视小地图（⑤b WGPU-26 活例）。
-//! 双模（E901/E302 同制）：无参=常驻窗（1/2/3=飞行 拖/滚轮=主视接管 R=回家 Esc=退）；
-//! `--frames N`=离屏断言快退（分区族计数+缝色+顶视覆盖，PIT-8 探针定阈）。
-//! 小地图 rig=target 跟随主相机（同批命令双投两相机=WGPU-26 安全形）。
+//! E303 · split-screen cockpit -- main perspective 3D + right-column orthographic top-view minimap (the 5b WGPU-26 living example).
+//! Dual mode (same system as E901/E302): no args = resident window (1/2/3 = flight, drag/wheel = main-view takeover, R = home, Esc = quit);
+//! `--frames N` = offscreen asserting fast exit (per-region family counts + seam color + top-view coverage, thresholds set by PIT-8 probes).
+//! The minimap rig = target following the main camera (one command batch projected through two cameras = the WGPU-26 safe form).
 
 use examples::viewer::{Ctx, FormatPolicy};
 
@@ -154,7 +154,7 @@ fn shadow_setup(w: u32, h: u32) -> ShadowSetup {
 }
 
 fn rects(sw: u32, sh: u32) -> (ViewportRect, ViewportRect) {
-    let side = (sh / 2).max(16); // 右上角正方形小窗（长条=构图错）
+    let side = (sh / 2).max(16); // the upper-right square corner window (an elongated strip = a composition mistake)
     (
         ViewportRect::new(0, 0, sw, sh),
         ViewportRect::new(sw - side, 0, side, side),
@@ -226,7 +226,7 @@ fn presets() -> [CameraRig; 3] {
     ]
 }
 
-// ── headless 路 ───────────────────────────────────────────────────────────────
+// -- headless road ---------------------------------------------------------------------
 fn headless_run() {
     const W: u32 = 96;
     const H: u32 = 64;
@@ -255,20 +255,28 @@ fn headless_run() {
     };
     let area_m = mr.width * mr.height;
     let is_sky = |p: [u8; 4]| p[2] as i32 - p[0] as i32 > 40 && p[2] > 180;
-    let is_roof = |p: [u8; 4]| p[0] > 148 && p[2] > 148; // 楼顶亮族（v≥0.78×shade 高段）
+    let is_roof = |p: [u8; 4]| p[0] > 148 && p[2] > 148; // the roof bright family (v >= 0.78 x shade, the high band)
     let non_sky = |r: &ViewportRect| -> u32 { r.width * r.height - fam(r, is_sky) };
     let (ns_m, ns_g) = (non_sky(&mr), non_sky(&map));
     let roofs = fam(&map, is_roof);
-    assert!(ns_m > area_m * 35 / 100, "主视地面主导不足 {ns_m}/{area_m}"); // 斜视天顶带合理（实测 51%）
+    assert!(
+        ns_m > area_m * 35 / 100,
+        "the main-view ground dominance insufficient {ns_m}/{area_m}"
+    ); // the oblique-view zenith band is reasonable (measured 51%)
     assert!(
         ns_g > map.width * map.height * 9 / 10,
-        "小地图应全幅地面（顶视构图）got {ns_g}"
+        "the minimap should be all ground (the top-view composition) got {ns_g}"
     );
-    assert!(roofs > 40, "小地图楼顶族缺席 {roofs}（城投达？）");
-    println!("OK split_screen nonsky={ns_m}+{ns_g} roofs={roofs}（双投分区现行）");
+    assert!(
+        roofs > 40,
+        "the minimap roof family absent {roofs} (city deliverable?)"
+    );
+    println!(
+        "OK split_screen nonsky={ns_m}+{ns_g} roofs={roofs} (the dual-projection per-region form runs live)"
+    );
 }
 
-// ── 交互路 ───────────────────────────────────────────────────────────────────
+// -- interactive road -------------------------------------------------------------------
 struct Flight {
     from: CameraRig,
     to: CameraRig,
@@ -294,7 +302,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "E303 分屏驾驶舱 · 主透视+右栏顶视 · 1/2/3 飞行 拖滚=接管 R=回家",
+            "E303 split-screen cockpit · main perspective + right-column top view · 1/2/3 flight, drag/wheel = take over, R = home",
             960,
             600,
             FormatPolicy::SurfaceDefault,

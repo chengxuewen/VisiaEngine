@@ -1,10 +1,10 @@
-//! E204 · 数据装载·点云 —— io-points(PLY)/add_points 直通 × splat 展示双模例（点云带 E 片）。
-//! 程序化螺旋点云自证 golden（确定性、不赌文件）；`--file` 走 load_pcl 装载路。
-//! 用法: cargo run --example E204_pcl_viewer [选项]
-//!   --frames N   headless 自断言快退（ctest/CI 路）
-//!   --file PATH  载入 PLY（ascii/binary_le；装载路验收）
+//! E204 · data loading, point cloud —— io-points (PLY) / add_points passthrough x splat showcase dual-mode example (the point-cloud band E slice).
+//! A programmatic spiral point cloud self-proves golden (deterministic, no bet on files); `--file` rides the load_pcl loading road.
+//! Usage: cargo run --example E204_pcl_viewer [options]
+//!   --frames N   headless self-asserting fast exit (the ctest/CI road)
+//!   --file PATH  load a PLY (ascii/binary_le; the loading-road acceptance)
 //!   --edl        enable the EDL post-pass (WGPU-33; None = legacy bit-identical path)
-//!   无参         常驻人验窗：左键拖=轨道 滚轮=远近+恒径 关窗/Esc 退出
+//!   no arguments  resident human-verified window: left-drag = orbit, wheel = distance + constant radius, close/Esc exits
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -30,7 +30,7 @@ const IDENT: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// 确定性螺旋点云（程序化=可断言，不赌 fixture）：n 点、半径域 [−4,4]、色=sRGB 宿主面。
+/// The deterministic spiral point cloud (programmatic = assertable, no fixture bet): n points, radius domain [-4,4], color = sRGB host face.
 fn helix_marks(n: u32) -> Vec<PointMark> {
     (0..n)
         .map(|i| {
@@ -46,10 +46,10 @@ fn helix_marks(n: u32) -> Vec<PointMark> {
         .collect()
 }
 
-/// 装载路（--file）：io-points → 与 mount_pcl 同构的例侧装配（演示 D7 origin 义务）。
+/// The loading road (--file): io-points -> the example-side assembly isomorphic with mount_pcl (demonstrating the D7 origin duty).
 fn load_file(path: &str) -> (Vec<PointMark>, [f64; 3], String) {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("read {path}: {e}"));
-    let cloud = visiaengine_io_points::parse_pcl(&bytes, true).expect("PLY 装载（Lenient）");
+    let cloud = visiaengine_io_points::parse_pcl(&bytes, true).expect("PLY load (Lenient)");
     let marks: Vec<PointMark> = cloud
         .positions
         .iter()
@@ -71,7 +71,7 @@ struct Scene {
     origin: [f64; 3],
 }
 
-/// headless 自断言路：非背景计数下界 + 上下半区各有覆盖（批量完整性微缩版）。
+/// The headless self-asserting road: a non-background count lower bound + coverage in both the upper and lower half-regions (the miniature batch-integrity version).
 fn prove(scene: &Scene, frames: u32, edl: bool) {
     const W: u32 = 256;
     const H: u32 = 256;
@@ -128,15 +128,21 @@ fn prove(scene: &Scene, frames: u32, edl: bool) {
             "FRAME {f} pcl points={} nonbg up={up} down={dn}",
             scene.marks.len()
         );
-        // 阈随点数量纲（radius 4px≈面积域 8px/点）：小样本 --file 与 600 点螺旋共用
+        // the threshold follows the point-count unit system (radius 4px ~ area domain 8px/point): the small --file sample and the 600-point spiral share it
         let floor = (scene.marks.len() * 4).max(8) as u32;
-        assert!(up + dn > floor / 2, "splat 覆盖异常（丢失/空帧）");
-        assert!(up > 2 && dn > 2, "上下半区覆盖失衡（表批量截断形）");
+        assert!(
+            up + dn > floor / 2,
+            "splat coverage anomaly (lost/empty frame)"
+        );
+        assert!(
+            up > 2 && dn > 2,
+            "upper/lower half-region coverage imbalance (table batch-truncation form)"
+        );
     }
-    println!("OK pcl viewer（{} 点自断言）", scene.marks.len());
+    println!("OK pcl viewer ({} points self-asserted)", scene.marks.len());
 }
 
-/// 常驻人验窗路（无参）。
+/// The resident human-verified window road (no arguments).
 struct App {
     ctx: Option<Ctx>,
     core: Option<MeshCore>,
@@ -155,7 +161,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E204 · 点云（拖=轨道 滚轮=远近·径恒定 关窗退出）",
+            "VisiaEngine E204 · point cloud (drag = orbit, wheel = distance, radius constant, close to exit)",
             960,
             600,
             FormatPolicy::PreferSrgb,
@@ -269,14 +275,14 @@ impl ApplicationHandler for App {
     }
 }
 
-/// 顶视 ortho（半宽=zoom，方像元 hh=zoom·h/w——REND-12 约定，恒径语义前提）。
+/// Top-view ortho (half-width = zoom, square pixels hh = zoom*h/w -- the REND-12 convention, the premise of constant-radius semantics).
 fn core_ortho(rig: &CameraRig, w: u32, h: u32, near: f32, far: f32) -> Option<[[f32; 4]; 4]> {
     rig.ortho_frame(rig.zoom as f32, w.max(1) as f32, h.max(1) as f32, near, far)
 }
 
-/// B2 点拾取自证（REND-38 argv 路，C15②：仅 argv 消费，零参窗路零触碰）。
-/// 与 --frames 同一投影装配（渲染数学=拾取数学单源）；三断言：
-/// ① 中心点命中 ② 半径外 miss ③ 同屏两点按视深最近者胜。
+/// The B2 point-pick self-proof (the REND-38 argv road, C15-2: argv consumed only, the zero-arg window untouched).
+/// The same projection assembly as --frames (render math = pick math, one source); three assertions:
+/// (1) the center point hits; (2) beyond the radius misses; (3) of two on-screen points the view-dearest wins.
 fn pick_check_run(scene: &Scene) {
     const W: f32 = 256.0;
     const H: f32 = 256.0;
@@ -353,7 +359,7 @@ fn pick_check_run(scene: &Scene) {
         .expect("pick_check: repeat query");
     assert_eq!(hit.view_z.to_bits(), h2.view_z.to_bits(), "deterministic");
     assert_eq!(hit.point_index, h2.point_index, "nearest-wins stable");
-    println!("OK pcl pick-check（REND-38 断言过）");
+    println!("OK pcl pick-check (REND-38 assertions passed)");
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

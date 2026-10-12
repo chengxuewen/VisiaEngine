@@ -1,10 +1,10 @@
-//! 例子注册壳：lib 面只放跨例共享小件（BBox 取景拟合）；例子本体见 ../E*_*.rs。
-//! 「空 lib 消灭 examples-only 条件分支」的出生预置裁决（v1.3 F4）即此文件；现承载共用件非意外。
+//! The example-registration shell: the lib face carries only the small pieces shared across examples (the BBox framing fit); example bodies are in ../E*_*.rs.
+//! The birth-preset ruling (v1.3 F4) of "eliminating examples-only conditional branches with an empty lib" is this file; it now really carries shared pieces.
 
 pub mod viewer;
 
-/// 世界系 AABB（行向量约定 `[p,1]·M`，平移在第 3 行——io-gltf/D7 同构）。
-/// 用途：窗口例装载期取景拟合——E201 灰屏案的根治（历史教训：交互相机参数从未被像素验证）。
+/// World-space AABB (row-vector convention `[p,1]*M`, translation in row 3 -- isomorphic with io-gltf/D7).
+/// Purpose: the window examples' load-time framing fit -- the root fix of the E201 gray-screen case (the historical lesson: interactive camera parameters were never pixel-verified).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct BBox {
     min: [f64; 3],
@@ -18,7 +18,7 @@ impl BBox {
         Self::default()
     }
 
-    /// 点经 world 4x4（行向量）变换后逐轴并入。
+    /// transform a point through the world 4x4 (row vectors), then merge per axis.
     pub fn push(&mut self, p: [f32; 3], world: &[[f64; 4]; 4]) {
         let mut q = [0f64; 3];
         for (j, qj) in q.iter_mut().enumerate() {
@@ -50,7 +50,7 @@ impl BBox {
         c
     }
 
-    /// 最大半轴（空盒回退 0.5，拟合系数恒安全）。
+    /// The largest half-axis (an empty box falls back to 0.5, the fit math stays valid).
     #[must_use]
     pub fn radius(&self) -> f64 {
         if !self.seen {
@@ -77,10 +77,10 @@ mod tests {
         let mut b = BBox::new();
         b.push([0.0, 0.0, 0.0], &I4);
         let mut moved = I4;
-        moved[3] = [2.0, 0.0, 1.0, 1.0]; // 平移住第 3 行（行向量约定）
+        moved[3] = [2.0, 0.0, 1.0, 1.0]; // translation lives in row 3 (the row-vector convention)
         b.push([1.0, 1.0, 0.0], &moved);
         assert_eq!(b.center(), [1.5, 0.5, 0.5]);
         assert!((b.radius() - 1.5).abs() < 1e-9);
-        assert_eq!(BBox::new().radius(), 0.5); // 空盒回退
+        assert_eq!(BBox::new().radius(), 0.5); // empty-box fallback
     }
 }

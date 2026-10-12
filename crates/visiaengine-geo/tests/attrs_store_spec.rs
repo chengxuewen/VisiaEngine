@@ -1,5 +1,5 @@
-//! GEO-17/18：feature 属性列化存储 + 样式经列读取（[E3D:A1/A5] 移植）。
-//! 核心承诺：解析后属性不再丢弃——宿主可按行查；样式热路径零 Value 匹配。
+//! GEO-17/18: feature attribute columnized storage + styles read through columns ([E3D:A1/A5] port).
+//! Core promise: attributes are no longer discarded after parsing -- the host can query by row; the style hot path has zero Value matching.
 
 use visiaengine_geo::{RepairPolicy, parse_geojson_with};
 
@@ -23,18 +23,18 @@ const MIXED: &str = r##"{
 #[test]
 fn scalar_props_land_in_columns_rows_align_features() {
     let (doc, _rep) = parse_geojson_with(MIXED.as_bytes(), RepairPolicy::Lenient).unwrap();
-    // 行对齐=feature 数（GC 按既有策略展平为每子件一行，GEO-06 语义）
+    // row alignment = feature count (GC flattens per the existing strategy into one row per child piece, GEO-06 semantics)
     assert_eq!(doc.features().len(), 4);
     assert_eq!(doc.attrs().len(), 4);
-    // 类型化宿主查询口
+    // typed host query entries
     assert_eq!(doc.attr_f64(0, "height"), Some(12.5));
     assert_eq!(doc.attr_bool(0, "active"), Some(true));
     assert_eq!(doc.attr_str(0, "name"), Some("Tower A"));
-    // 嵌套/数组/null 值不入列（跳过而非失真）
+    // nested/array/null values do not enter columns (skipped rather than distorted)
     assert_eq!(doc.attr_str(0, "tags"), None);
     assert_eq!(doc.attr_str(0, "meta"), None);
     assert_eq!(doc.attr_f64(0, "void"), None);
-    // 缺失键 ≠ 零值（GEO-17 语义核心；行 3=空 props feature）
+    // missing key != zero value (the GEO-17 semantic core; row 3 = the empty-props feature)
     assert_eq!(doc.attr_f64(3, "height"), None);
 }
 
@@ -42,9 +42,17 @@ fn scalar_props_land_in_columns_rows_align_features() {
 #[test]
 fn gc_children_inherit_feature_props() {
     let (doc, _) = parse_geojson_with(MIXED.as_bytes(), RepairPolicy::Lenient).unwrap();
-    // feature[1] 的 props 对其 GC 全部子件行复制（行 1/2 同为 "Block"）
-    assert_eq!(doc.features()[1].style.fill[1], 1.0, "#00ff00 存活于子件 0");
-    assert_eq!(doc.features()[2].style.fill[1], 1.0, "同 props 覆盖子件 1");
+    // feature[1]'s props are copied to all of its GC child rows (rows 1/2 are "Block" too)
+    assert_eq!(
+        doc.features()[1].style.fill[1],
+        1.0,
+        "#00ff00 survives on child piece 0"
+    );
+    assert_eq!(
+        doc.features()[2].style.fill[1],
+        1.0,
+        "same props covers child piece 1"
+    );
     assert_eq!(doc.attr_str(1, "name"), Some("Block"));
     assert_eq!(doc.attr_str(2, "name"), Some("Block"));
 }
@@ -54,23 +62,23 @@ fn gc_children_inherit_feature_props() {
 fn style_reads_through_columns_identical_to_legacy() {
     let (doc, _) = parse_geojson_with(MIXED.as_bytes(), RepairPolicy::Lenient).unwrap();
     let s0 = &doc.features()[0].style;
-    // 六键结果与迁移前逐项一致（fill hex→r=1.0；opacity clamp；未给键回默认）
+    // the six-key results match pre-migration item by item (fill hex -> r = 1.0; opacity clamp; absent keys fall back to defaults)
     assert!((s0.fill[0] - 1.0).abs() < 1e-6 && s0.fill[1] < 1e-6);
     assert!((s0.fill_opacity - 0.5).abs() < 1e-6);
     assert_eq!(
         s0.stroke,
         [1.0, 1.0, 1.0, 1.0],
-        "缺 stroke 回默认，非 height 干扰"
+        "missing stroke falls back to default, not height interference"
     );
-    // 样式键之外，其余标量属性保持可查（样式消费不再吞属性）
+    // beyond the style keys, the remaining scalar attributes stay queryable (style consumption no longer swallows attributes)
     assert_eq!(doc.attr_f64(0, "fill-opacity"), Some(0.5));
-    // park.geojson 回归族在 geo_spec/tess_style_spec（既有 14 条样式断言=迁移网）
+    // the park.geojson regression family lives in geo_spec/tess_style_spec (the existing 14 style assertions = the migration net)
 }
 
 // spec: GEO-19
 #[test]
 fn v8_paint_alias_keys_are_accepted_as_fallback() {
-    // D9：MapLibre v8 静态 paint 键别名；simplestyle 主键优先，别名回退
+    // D9: MapLibre v8 static paint key aliases; simplestyle primary keys take precedence, aliases as fallback
     let v8 = r##"{
       "type":"FeatureCollection",
       "features":[{"type":"Feature","properties":{
@@ -99,19 +107,19 @@ fn v8_paint_alias_keys_are_accepted_as_fallback() {
 // spec: GEO-19
 #[test]
 fn simplestyle_primary_wins_over_v8_alias() {
-    // 主键+别名并存 → 主键优先（优先级规则定死，杜绝行为歧义）
+    // primary key + alias coexist -> the primary key wins (the priority rule nailed down, eradicating behavioral ambiguity)
     let both = r##"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"fill":"#ff0000","fill-color":"#0000ff"},"geometry":{"type":"Point","coordinates":[10.0,50.0]}}]}"##;
     let (doc, _) = parse_geojson_with(both.as_bytes(), RepairPolicy::Lenient).unwrap();
     assert!(
         (doc.features()[0].style.fill[0] - 1.0).abs() < 1e-6,
-        "fill 主键胜 fill-color 别名"
+        "the fill primary key beats the fill-color alias"
     );
 }
 
 // spec: GEO-25
 #[test]
 fn text_style_keys_parsed_column_template_and_literal() {
-    // "{name}"=列引用模板；裸串=常量；缺键=None（默认不产标签）
+    // "{name}" = column-reference template; bare string = constant; missing key = None (no label by default)
     let fc = r##"{"type":"FeatureCollection","features":[
       {"type":"Feature","properties":{"text-field":"{name}","text-size":18,
         "text-color":"#112233","name":"Gate"},"geometry":
@@ -121,7 +129,11 @@ fn text_style_keys_parsed_column_template_and_literal() {
     ]}"##;
     let (doc, _) = parse_geojson_with(fc.as_bytes(), RepairPolicy::Lenient).unwrap();
     let s0 = &doc.features()[0].style;
-    assert_eq!(s0.text_field.as_deref(), Some("name"), "花括号剥壳=列名");
+    assert_eq!(
+        s0.text_field.as_deref(),
+        Some("name"),
+        "curly-brace unwrap = column name"
+    );
     assert!((s0.text_size_px - 18.0).abs() < 1e-6);
     assert_eq!(
         s0.text_color,
@@ -131,20 +143,23 @@ fn text_style_keys_parsed_column_template_and_literal() {
             0x33 as f32 / 255.0,
             1.0
         ],
-        "text-color 复用 parse_color（宿主 sRGB 面，GEO-12 同制）"
+        "text-color reuses parse_color (host sRGB face, same system as GEO-12)"
     );
     assert_eq!(
         doc.features()[1].style.text_field.as_deref(),
         Some("Static"),
-        "裸串=常量原样"
+        "bare string = constant as-is"
     );
     assert!(
         (doc.features()[1].style.text_size_px - 14.0).abs() < 1e-6,
-        "默认 14px"
+        "default 14px"
     );
-    // 无 text 键（既有全部 fixture 路）=None 零回归
+    // no text key (all existing fixture roads) = None, zero regression
     assert!(doc.features()[1].style.text_field.is_some());
     let plain = r##"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"fill":"#ff0000"},"geometry":{"type":"Point","coordinates":[1.0,2.0]}}]}"##;
     let (d2, _) = parse_geojson_with(plain.as_bytes(), RepairPolicy::Lenient).unwrap();
-    assert!(d2.features()[0].style.text_field.is_none(), "缺键=None");
+    assert!(
+        d2.features()[0].style.text_field.is_none(),
+        "missing key = None"
+    );
 }

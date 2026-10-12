@@ -1,5 +1,5 @@
-// C2 ctest 探针：伞合同全链闭环自证（解析→cargo-step→find_package→链接→运行），
-// 不依赖 Qt。跑不通即消费者合同未兑现（[E3D:D7] 精神的本仓内生版）。
+// C2 ctest probe: full-chain closed-loop self-proof of the umbrella contract (parse -> cargo-step -> find_package -> link -> run),
+// independent of Qt. If it does not run through, the consumer contract is unfulfilled (the in-repo native version of the [E3D:D7] spirit).
 #include <cstdio>
 #include "visiaengine.h"
 

@@ -1,12 +1,12 @@
-//! E306 · 相机·地图控制预设 —— pan/zoom/tilt 三件套的"地图语义"组合演示。
-//! 用法: cargo run --example E306_map_controls [选项]
-//! 交互：左键拖拽=平移(pan，拖地面) | 滚轮=缩放(zoom，正交半宽) | 右键拖拽=倾角(tilt
-//! +绕目标旋转) | R=复位 | 关窗=退出。
-//! --frames N：渲染预算退出（ctest/xvfb 路，注册表 argv 专属，C15）。
+//! E306 · camera map-control presets -- the "map semantics" combination demo of the pan/zoom/tilt trio.
+//! Usage: cargo run --example E306_map_controls [options]
+//! Interaction: left-drag = pan (drags the ground) | wheel = zoom (orthographic half-width) | right-drag = tilt
+//! + orbit around the target) | R = reset | close window = exit.
+//! --frames N: render-budget exit (the ctest/xvfb road, the registry argv-exclusive, C15).
 //!
-//! 纯消费组合（misc_controls_map 的同语义形）：零引擎改动——pan=rig.target 平移
-//! （屏幕位移×世界比），zoom=rig.zoom（正交 half-width），tilt=rig.pitch/orbit。
-//! 正交顶视起步（地图姿态），pitch 可压到斜视。
+//! A pure consumption combination (the same-semantics form as misc_controls_map): zero engine changes -- pan = a rig.target translation
+//! (screen displacement x world ratio), zoom = rig.zoom (orthographic half-width), tilt = rig.pitch/orbit.
+//! Starts in an orthographic top view (the map posture), pitch squeezable to an oblique view.
 
 use examples::viewer::{Ctx, FormatPolicy};
 
@@ -30,7 +30,7 @@ const T4: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// Upload seam（E304/E305 的 Up 形）。
+/// Upload seam (the Up form of E304/E305).
 trait Up {
     fn m(&mut self, d: &MeshDesc<'_>) -> u64;
     fn t(&mut self, d: &MaterialDesc) -> u64;
@@ -54,12 +54,12 @@ impl Up for MeshCore {
     }
 }
 
-/// 城区小景：地面 + 网格街道线块（地图语义的视觉锚）。
+/// A small city block scene: ground + gridded street line blocks (the visual anchors of map semantics).
 fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
     let mut commands = vec![DrawCommand::ClearColor {
         rgba: [0.05, 0.07, 0.10, 1.0],
     }];
-    // 地面。
+    // Ground.
     let ground = [
         [-8.0f32, -8.0, 0.0],
         [8.0, -8.0, 0.0],
@@ -86,7 +86,7 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
         origin: [0.0; 3],
         transform: T4,
     });
-    // 2×2 街区块（深色），间隙=街道。
+    // 2x2 street blocks (dark), the gaps = streets.
     for (x, y) in [(-2.5f32, -2.5), (2.5, -2.5), (-2.5, 2.5), (2.5, 2.5)] {
         let block = [
             [x - 1.5, y - 1.5, 0.05],
@@ -118,7 +118,7 @@ fn scene(up: &mut impl Up) -> Vec<DrawCommand> {
     commands
 }
 
-/// 正交顶视 Frame（地图姿态；rig 携 pan/zoom/tilt 后的位形）。
+/// The orthographic top-view Frame (map posture; the rig carries the pose after pan/zoom/tilt).
 fn map_frame(cmds: &[DrawCommand], rig: &CameraRig, w: u32, h: u32) -> Frame {
     let aspect = w as f32 / h.max(1) as f32;
     Frame {
@@ -138,36 +138,36 @@ fn map_frame(cmds: &[DrawCommand], rig: &CameraRig, w: u32, h: u32) -> Frame {
     }
 }
 
-/// 复位位形（顶视地图姿态）。
+/// The reset pose (the top-view map posture).
 fn home_rig() -> CameraRig {
     CameraRig::orbit([0.0, 0.0, 0.0], 0.0, 1.55, 14.0, 6.0, 1.0, 0.1, 2000.0)
 }
 
-// ── headless assert path：脚本化输入序列 → 断言 rig 位形变化 ─────────────────
+// -- headless assert path: scripted input sequence -> assert rig pose changes ----------
 fn prove() {
-    // 语义单测形：pan 改 target、zoom 改 zoom、tilt 改 pitch——纯函数级断言。
+    // The unit-test form of the semantics: pan changes target, zoom changes zoom, tilt changes pitch -- pure-function-level assertions.
     let mut rig = home_rig();
     let t0 = rig.target;
     let z0 = rig.zoom;
     let p0 = rig.pitch;
 
-    // pan：世界左移 1 单位（target.x-=1）。
+    // pan: the world shifts left by 1 unit (target.x -= 1).
     rig.target[0] -= 1.0;
     assert!(
         (rig.target[0] - (t0[0] - 1.0)).abs() < 1e-9,
         "pan moves target.x"
     );
-    // zoom：半宽减半 = 放大。
+    // zoom: half-width halved = zoom in.
     rig.zoom *= 0.5;
     assert!((rig.zoom - z0 * 0.5).abs() < 1e-9, "zoom halves half-width");
-    // tilt：pitch 从近顶视(1.55)压到斜视(0.9)。
+    // tilt: pitch squeezed from near-top-view (1.55) to oblique (0.9).
     rig.pitch = 0.9;
     assert!(
         rig.pitch < p0 && rig.pitch > 0.5,
         "tilt lowers pitch into oblique"
     );
 
-    // 渲染一帧确认非退化（变换后的 rig 出图有内容）。
+    // render one frame to confirm non-degeneracy (the transformed rig outputs content).
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let cmds = scene(&mut b);
     let img = b.render_to_pixels(&map_frame(&cmds, &rig, W, H)).unwrap();
@@ -205,7 +205,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "E306 map controls — 左键拖=平移 滚轮=缩放 右键拖=倾角 R=复位",
+            "E306 map controls -- left-drag = pan, wheel = zoom, right-drag = tilt, R = reset",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -259,17 +259,17 @@ impl ApplicationHandler for App {
             },
             WindowEvent::CursorMoved { position, .. } => {
                 let (x, y) = (position.x, position.y);
-                // pan：屏幕位移 → 世界位移（world-per-px = 2·zoom/h，正交精确定义）。
+                // pan: screen displacement -> world displacement (world-per-px = 2*zoom/h, the exact orthographic definition).
                 if let Some((lx, ly)) = self.pan {
                     let wpp = 2.0 * self.rig.zoom
                         / f64::from(self.ctx.as_ref().map_or(H, |c| c.config.height).max(1));
                     let (dx, dy) = (x - lx, y - ly);
                     self.rig.target[0] -= dx * wpp;
-                    self.rig.target[1] += dy * wpp; // 屏幕 y 向下 = 世界 y 向上反向
+                    self.rig.target[1] += dy * wpp; // screen y downward = the reversed world y upward
                     self.pan = Some((x, y));
                     self.redraw();
                 }
-                // tilt：右键垂直拖 = pitch（顶视 1.55 → 斜视 0.6），水平拖 = yaw。
+                // tilt: right-drag vertically = pitch (top view 1.55 -> oblique 0.6), horizontally = yaw.
                 if let Some((lx, ly)) = self.tilt_drag {
                     self.rig.pitch = (self.rig.pitch - (y - ly) * 0.006).clamp(0.35, 1.55);
                     self.rig.yaw += (x - lx) * 0.006;
@@ -293,7 +293,7 @@ impl ApplicationHandler for App {
 
 impl App {
     fn cursor_pos(&self) -> (f64, f64) {
-        // winit CursorMoved 之外无缓存口；App 自存（init=窗口中心）。
+        // no cached entry besides winit CursorMoved; the App stores it itself (init = window center).
         self.last_cursor
     }
     fn cursor_pos_set(&mut self, x: f64, y: f64) {
@@ -310,7 +310,7 @@ impl App {
         let frame = map_frame(&self.commands, &self.rig, config.width, config.height);
         window.set_title(
             format!(
-                "E306 map zoom={:.1} pitch={:.2} — 左键平移 滚轮缩放 右键倾角 R 复位",
+                "E306 map zoom={:.1} pitch={:.2} -- left-drag pan, wheel zoom, right-drag tilt, R reset",
                 self.rig.zoom, self.rig.pitch
             )
             .as_str(),

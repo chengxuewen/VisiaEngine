@@ -1,7 +1,7 @@
-//! E203 · 属性与量测 —— GeoJSON 平面量测 CLI（3857 米，GEO-21/22 消费样板）。
-//! 编号注记：3.5e 预占 E403 → 批 5 归带 E203（交互段让位 E4xx）。
-//! 用法：cargo run -p visiaengine-geo --example E203_measure_cli [path]
-//! 非渲染 CLI——输出行 MEASURE 可被 grep 断言。
+//! E203 · attributes and measurement —— the GeoJSON plane-measurement CLI (3857 meters, the GEO-21/22 consumption template).
+//! Numbering note: 3.5e pre-allocated E403 -> batch 5 assigned band E203 (the interaction segment yields to E4xx).
+//! Usage: cargo run -p visiaengine-geo --example E203_measure_cli [path]
+//! A non-rendering CLI -- the output lines MEASURE can be asserted by grep.
 
 use visiaengine_core::Vec3;
 use visiaengine_geo::{GeoKind, load_geojson, planar_distance, ring_area};

@@ -1,4 +1,4 @@
-//! GEO-09..14：细分 + 样式（docs/sdd/geo.md）。
+//! GEO-09..14: subdivision + style (docs/sdd/geo.md).
 
 use visiaengine_core::Vec3;
 use visiaengine_geo::{GeoKind, StyleRecord, load_geojson, tessellate};
@@ -6,7 +6,7 @@ use visiaengine_geo::{GeoKind, StyleRecord, load_geojson, tessellate};
 fn fill_positions(gp: &visiaengine_geo::GeoPart) -> &Vec<[f32; 3]> {
     match gp {
         visiaengine_geo::GeoPart::Fill(t) => &t.positions,
-        _ => panic!("期望 fill"),
+        _ => panic!("expected fill"),
     }
 }
 
@@ -35,7 +35,7 @@ fn total_area_and_inside(parts: &[visiaengine_geo::GeoPart], p: (f64, f64)) -> (
             let (a, b, c) = (t[0], t[1], t[2]);
             let ar = ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) as f64 / 2.0;
             area += ar.abs();
-            // 同侧法点内测试（三边同号，绕向不敏感，含 0 容差）
+            // same-side-rule inside test (all three edges share the sign, winding-insensitive, tolerant of 0)
             let pt = (p.0 as f32, p.1 as f32);
             let cr = |u: [f32; 3], v: [f32; 3]| {
                 (v[0] - u[0]) * (pt.1 - u[1]) - (v[1] - u[1]) * (pt.0 - u[0])
@@ -58,7 +58,7 @@ fn fill_area_matches_polygon() {
     let parts = tessellate(&poly(square(1.0), vec![]), &st).unwrap();
     let (area, inside) = total_area_and_inside(&parts, (0.0, 0.0));
     assert!((area - 4.0).abs() / 4.0 < 0.05, "area={area}");
-    assert!(inside, "重心必须被填充覆盖");
+    assert!(inside, "the centroid must be covered by the fill");
 }
 
 // spec: GEO-10
@@ -67,13 +67,13 @@ fn hole_interior_uncovered() {
     let st = StyleRecord::default();
     let parts = tessellate(&poly(square(1.0), vec![square(0.2)]), &st).unwrap();
     let (_, inside) = total_area_and_inside(&parts, (0.0, 0.0));
-    assert!(!inside, "洞内点被覆盖=洞丢失");
+    assert!(!inside, "a point inside the hole covered = hole lost");
 }
 
 // spec: GEO-11
 #[test]
 fn stroke_emits_linestrip_with_width_px() {
-    // GEO-24：线不再 CPU 扩条带；输出 LineStrip（位形 + width_px，扩片住 GPU）
+    // GEO-24: lines no longer expand CPU ribbons; output LineStrip (shape + width_px, expansion lives on the GPU)
     let line = GeoKind::Line(vec![Vec3::new(0.0, 0.0, 0.0), Vec3::new(10.0, 0.0, 0.0)]);
     let st2 = StyleRecord {
         stroke_width_px: 2.0,
@@ -82,11 +82,14 @@ fn stroke_emits_linestrip_with_width_px() {
     let parts = tessellate(&line, &st2).unwrap();
     let strip = match &parts[0] {
         visiaengine_geo::GeoPart::Strokes(s) => &s[0],
-        _ => panic!("期望 Strokes part"),
+        _ => panic!("expected a Strokes part"),
     };
-    assert_eq!(strip.width_px, 2.0, "px 语义收纳");
-    assert_eq!(strip.pts.len(), 2, "中心线位形保序");
-    assert!((strip.pts[1][0] - 10.0).abs() < 1e-3, "长度住位形非几何");
+    assert_eq!(strip.width_px, 2.0, "px semantics collected");
+    assert_eq!(strip.pts.len(), 2, "centerline shape order kept");
+    assert!(
+        (strip.pts[1][0] - 10.0).abs() < 1e-3,
+        "length lives in the shape not the geometry"
+    );
 }
 
 // spec: GEO-12
@@ -119,7 +122,7 @@ fn missing_props_default_style() {
         "/../../resources/data/park.geojson"
     ))
     .unwrap();
-    // buildingB 的 "color" 非六键 → 全默认；grove 无 props → 默认
+    // buildingB's "color" is not a six-key -> all defaults; grove has no props -> defaults
     assert_eq!(doc.features()[1].style, StyleRecord::default());
     assert_eq!(doc.features()[3].style, StyleRecord::default());
 }
@@ -139,7 +142,7 @@ fn tessellate_input_is_origin_local() {
         for k in 0..2 {
             assert!(
                 (x[k] - y[k]).abs() < 1e-3,
-                "平移不变性破坏 {:?} vs {:?}",
+                "translation invariance broken {:?} vs {:?}",
                 x,
                 y
             );
@@ -150,17 +153,21 @@ fn tessellate_input_is_origin_local() {
 // spec: GEO-24
 #[test]
 fn geopart_units_and_closure_semantics() {
-    // ① px 默认值（1.5/4.0——单位重释纠案的本体断言）
+    // (1) px default values (1.5/4.0 -- the body assertion of the unit-reinterpretation correction case)
     let st = StyleRecord::default();
     assert_eq!(st.stroke_width_px, 1.5);
     assert_eq!(st.radius_px, 4.0);
-    // ② 环输出闭合（首尾同点——消费者 windows(2) 展开的最后一段依赖）
+    // (2) ring output closed (first = last point -- the last segment of the consumer windows(2) expansion depends on it)
     let parts = tessellate(&poly(square(1.0), vec![]), &st).unwrap();
     let visiaengine_geo::GeoPart::Strokes(strips) = &parts[1] else {
-        panic!("poly 默认样式必出 Strokes")
+        panic!("a poly default style must emit Strokes")
     };
-    assert_eq!(strips[0].pts[0], *strips[0].pts.last().unwrap(), "环未闭合");
-    // ③ width=0 关描边 → 无 Strokes part
+    assert_eq!(
+        strips[0].pts[0],
+        *strips[0].pts.last().unwrap(),
+        "ring not closed"
+    );
+    // (3) width=0 disables the stroke -> no Strokes part
     let st0 = StyleRecord {
         stroke_width_px: 0.0,
         ..StyleRecord::default()
@@ -170,16 +177,16 @@ fn geopart_units_and_closure_semantics() {
         !parts0
             .iter()
             .any(|p| matches!(p, visiaengine_geo::GeoPart::Strokes(_))),
-        "width=0 仍出 strokes"
+        "width=0 still emits strokes"
     );
-    // ④ Point → Markers（真圆点的路：位形+px，无方块三角）
+    // (4) Point -> Markers (the true round-dot road: shape + px, no square triangles)
     let pm = tessellate(
         &GeoKind::Point(Vec3::new(0.5, 0.5, 0.0)),
         &StyleRecord::default(),
     )
     .unwrap();
     let visiaengine_geo::GeoPart::Markers(ms) = &pm[0] else {
-        panic!("point 必出 Markers")
+        panic!("a point must emit Markers")
     };
     assert_eq!(ms[0].radius_px, 4.0);
     assert_eq!(ms[0].pos, [0.5, 0.5]);
@@ -188,7 +195,7 @@ fn geopart_units_and_closure_semantics() {
 // spec: GEO-26
 #[test]
 fn fill_opacity_flows_to_part_color_alpha() {
-    // ④ 透明族判源链首段：fill-opacity→part 材质 a（GEO-12 域钳 [0,1] 已在）
+    // (4) head of the transparency-family decision chain: fill-opacity -> part material a (the GEO-12 domain clamp [0,1] already applies)
     let style = visiaengine_geo::StyleRecord {
         fill: [1.0, 0.0, 0.0, 1.0],
         fill_opacity: 0.8,
@@ -199,11 +206,11 @@ fn fill_opacity_flows_to_part_color_alpha() {
         if let visiaengine_geo::GeoPart::Fill(t) = gp {
             assert!(
                 (t.color[3] - 0.8).abs() < 1e-6,
-                "part alpha 必须是 0.8  got {:?}",
+                "part alpha must be 0.8  got {:?}",
                 t.color
             );
             return;
         }
     }
-    panic!("无 fill part");
+    panic!("no fill part");
 }

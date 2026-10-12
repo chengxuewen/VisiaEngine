@@ -1,10 +1,10 @@
-// visiaengine.hpp —— C++ header-only RAII 门面（17 口薄壳，S4；B9 裁决：不开 SDD 账）。
-// 三条壳语义（本注释即合同，语义本体锚在 CAPI-nn）：
-//   ① no-throw：方法逐一转发 C ABI 返回码（VE_OK/VE_ERR_*），异常零存在——
-//      -fno-exceptions 宿主可用；诊断经 last_error()（线程绑定语义同 C 侧，禁作分支判据）。
-//   ② move-only：Engine 独占 VeEngine 句柄；析构自动 destroy（released 再入按 CAPI-03 返回 -1，
-//      静默——RAII 面不吞错也不双毁：moved-from 置空不再析构）。
-//   ③ attach 时序：create 之后、首帧 render 之前（CAPI-06 合同不因壳变形）。
+// visiaengine.hpp -- C++ header-only RAII facade (a thin shell over the 17 entries, S4; B9 ruling: no SDD account opened).
+// Three shell semantics (this comment IS the contract, the semantic bodies are anchored at CAPI-nn):
+//   (1) no-throw: methods forward the C ABI return codes one by one (VE_OK/VE_ERR_*), exceptions have zero presence --
+//       usable by -fno-exceptions hosts; diagnostics go through last_error() (thread-bound semantics same as the C side, must not be used as branch criteria).
+//   (2) move-only: Engine owns the VeEngine handle exclusively; the destructor auto-destroys (re-entry on released returns -1 per CAPI-03,
+//       silently -- the RAII face neither swallows errors nor double-destroys: moved-from is nulled and no longer destructs).
+//   (3) attach ordering: after create, before the first render (the CAPI-06 contract does not deform through the shell).
 #ifndef VISIAENGINE_HPP
 #define VISIAENGINE_HPP
 
@@ -16,9 +16,9 @@
 
 namespace visiaengine {
 
-// 非拥有位形转发（VeInput/VeMeshDesc/错误码直接穿壳）
+// non-owning shape forwarding (VeInput/VeMeshDesc/error codes pass straight through the shell)
 using Input = VeInput;
-using MeshDesc = VeMeshDesc;  // CAPI-15 值结构（C 头 typedef 别名入命名空间）
+using MeshDesc = VeMeshDesc;  // CAPI-15 value structure (the C header typedef alias brought into the namespace)
 inline constexpr uint64_t kMiss = VE_MISS;
 
 class Engine {
@@ -33,7 +33,7 @@ public:
     }
     ~Engine() { destroy_now(); }
 
-    /// headless 引擎（离屏尺寸=初 viewport）；失败返回 !valid()，诊断读 last_error()
+    /// headless engine (offscreen size = initial viewport); on failure returns !valid(), read diagnostics from last_error()
     [[nodiscard]] static Engine create_headless(std::uint32_t w, std::uint32_t h) {
         return Engine{visiaengine_create_headless(w, h)};
     }
@@ -47,12 +47,12 @@ public:
     int32_t load_geojson(const char *path) { return visiaengine_load_geojson(h_, path); }
     int32_t on_input(const Input &in) { return visiaengine_on_input(h_, &in); }
 
-    // ── B1 数据带（CAPI-13..16 薄转发；位形 0 合法=CAPI-01 分工）──
+    // -- B1 data band (CAPI-13..16 thin forwarding; shape 0 is legal = CAPI-01 division) --
     int32_t set_visible(std::uint64_t entity, bool visible) {
         return visiaengine_entity_set_visible(h_, entity, visible ? 1 : 0);
     }
     int32_t entity_visible(std::uint64_t entity) { return visiaengine_entity_visible(h_, entity); }
-    // CAPI-23/24 相机飞行（B9 薄转发；pose 域校验住引擎）
+    // CAPI-23/24 camera flight (B9 thin forwarding; pose domain validation lives in the engine)
     int32_t fly_to(const VeCameraPose &pose, std::uint64_t dur_ms) {
         return visiaengine_fly_to(h_, &pose, dur_ms);
     }
@@ -60,11 +60,11 @@ public:
         return visiaengine_fly_state(h_, out_t01);
     }
 
-    // ── ⑤b 二波小地图（CAPI-25..27 薄转发；VeMapView=头 POD 直用，cfg=nullptr=关图）──
+    // -- 5b second wave minimap (CAPI-25..27 thin forwarding; VeMapView = header POD used directly, cfg = nullptr closes the map) --
     int32_t set_map(const VeMapView *cfg) { return visiaengine_set_map(h_, cfg); }
-    /* CAPI-28/29：瓦片层（MVT 目录挂载 + 视口 bbox 喂给调度器）。薄转发。 */
+    /* CAPI-28/29: tile layer (MVT directory mount + viewport bbox fed to the scheduler). Thin forwarding. */
     int32_t load_mvt_dir(const char *path, uint32_t z) { return visiaengine_load_mvt_dir(h_, path, z); }
-    /* CAPI-30..34: 场景树薄转发。 */
+    /* CAPI-30..34: scene-tree thin forwarding. */
     uint64_t create_group(const char *name = nullptr) {
         uint64_t out = 0;
         return visiaengine_create_group(h_, name, &out) == 0 ? out : 0;
@@ -123,8 +123,8 @@ public:
         return visiaengine_get_camera(h_, &pose);
     }
 
-    // CAPI-20 剖面裁切（B9 薄转发不开 SDD 账；VeClipPlane=头 POD 直用）
-    // CAPI-21/22 文字标注（薄转发；VeLabelSpec 头 POD 直用）
+    // CAPI-20 section clipping (B9 thin forwarding, no SDD account; VeClipPlane = header POD used directly)
+    // CAPI-21/22 text labels (thin forwarding; VeLabelSpec header POD used directly)
     int32_t load_font(const std::uint8_t *data, std::size_t len) {
         return visiaengine_load_font(h_, data, len);
     }
@@ -143,17 +143,17 @@ public:
         return visiaengine_add_mesh(h_, &desc, out_entity);
     }
     int32_t remove_entity(std::uint64_t entity) { return visiaengine_remove_entity(h_, entity); }
-    // CAPI-18 薄转发（out 位形合法可 0 禁当哨兵——CAPI-01；退化 desc 在 C 门已拒）
+    // CAPI-18 thin forwarding (the out shape may legally be 0, do not treat it as a sentinel -- CAPI-01; degenerate desc already rejected at the C gate)
     int32_t add_points(const VePointMark *marks, std::uint64_t count, std::uint64_t *out_entity) {
         const VePointsDesc d{sizeof(VePointsDesc), marks, count};
         return visiaengine_add_points(h_, &d, out_entity);
     }
-    // CAPI-19 薄转发（report 出参引用；struct_size 由壳代填）
+    // CAPI-19 thin forwarding (report out-parameter by reference; struct_size stamped by the shell)
     int32_t load_pcl(const char *path, VePclPolicy policy, std::uint64_t *out_entity, VePclReport *report) {
         report->struct_size = sizeof(VePclReport);
         return visiaengine_load_pcl(h_, path, policy, out_entity, report);
     }
-    // CAPI-17 薄转发（回调生命周期由宿主担保：引擎不拥有 cb；三壳语义住头注释）
+    // CAPI-17 thin forwarding (the callback lifetime is guaranteed by the host: the engine does not own cb; the three shell semantics live in the header comment)
     int32_t set_event_callback(VeEventCb cb, void *user) {
         return visiaengine_set_event_callback(h_, cb, user);
     }

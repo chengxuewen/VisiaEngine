@@ -1,5 +1,5 @@
-//! GEO-21/22：地图平面量测（3857 单位，交互片 [E3D:4xx]；geodesic 属 D9 后
-//! "坐标系完善"域，本条冻结平面语义——3857 距离=墨卡托畸变值，文档化）。
+//! GEO-21/22: map-plane measurement (3857 units, the interaction slice [E3D:4xx]; geodesic belongs to the post-D9
+//! "coordinate-system completeness" domain; this clause freezes the plane semantics -- 3857 distance = the Mercator distorted value, documented).
 
 use visiaengine_core::Vec3;
 use visiaengine_geo::{planar_distance, ring_area};
@@ -12,15 +12,15 @@ fn p(x: f64, y: f64) -> Vec3 {
 // spec: GEO-21
 #[test]
 fn distance_is_planar_polyline_sum() {
-    // 3-4-5 直角（3857 米域单位）
+    // 3-4-5 right triangle (unit on the 3857-meter domain)
     assert!((planar_distance(&[p(0.0, 0.0), p(300.0, 400.0)]) - 500.0).abs() < 1e-9);
-    // 折线和
+    // polyline sum
     let line = [p(0.0, 0.0), p(300.0, 400.0), p(300.0, 400.0)];
     assert!((planar_distance(&line) - 500.0).abs() < 1e-9);
-    // 退化：空/单点=0
+    // degenerate: empty / single point = 0
     assert_eq!(planar_distance(&[]), 0.0);
     assert_eq!(planar_distance(&[p(1.0, 1.0)]), 0.0);
-    // 非有限点跳过不成段（3857 大坐标下 NaN 传播防御）
+    // non-finite points skipped, not segmented (NaN propagation defense on 3857 large coordinates)
     let bad = [p(0.0, 0.0), p(f64::NAN, 0.0), p(300.0, 400.0)];
     assert!((planar_distance(&bad) - 500.0).abs() < 1e-9);
 }
@@ -30,14 +30,14 @@ fn distance_is_planar_polyline_sum() {
 fn area_is_shoelace_absolute_and_orientation_free() {
     let square = [p(0.0, 0.0), p(2.0, 0.0), p(2.0, 2.0), p(0.0, 2.0)];
     assert!((ring_area(&square) - 4.0).abs() < 1e-9);
-    // 反向环同值（abs 语义，GeoJSON 外环顺时针/逆时针双俗）
+    // reversed ring, same value
     let rev: Vec<Vec3> = square.iter().rev().copied().collect();
     assert!((ring_area(&rev) - 4.0).abs() < 1e-9);
-    // 闭合重复点输入与不闭合输入同面积（GeoJSON 惯例首尾重复）
+    // closed duplicated-point input and unclosed input share the area (the GeoJSON first-last duplication convention)
     let mut c2 = square.to_vec();
     c2.push(square[0]);
     assert!((ring_area(&c2) - ring_area(&square)).abs() < 1e-9);
-    // 退化：共线<3 顶点=0；含非有限点整环=0（无意义不猜测）
+    // degenerate: collinear < 3 vertices = 0; a ring with any non-finite point = 0 (no guessing at the meaningless)
     assert_eq!(ring_area(&[p(0.0, 0.0), p(1.0, 0.0), p(2.0, 0.0)]), 0.0);
     assert_eq!(ring_area(&[p(0.0, 0.0), p(1.0, 0.0)]), 0.0);
     assert_eq!(ring_area(&[]), 0.0);

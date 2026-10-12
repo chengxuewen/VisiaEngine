@@ -1,10 +1,10 @@
-//! E201 装载取景像素门（补窗口例无像素断言的历史盲区；BBox 拟合参数的回归锁）。
+//! The E201 load-framing pixel gate (filling the historical blind spot of window examples lacking pixel assertions; the regression lock on the BBox fitting parameters).
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, Viewport,
 };
 use visiaengine_render_wgpu::HeadlessBackend;
 
-/// BBox 逻辑镜像（正源 examples/rs/src/lib.rs；同包异引用即循环依赖，此处独立复算 + 断言同值）
+/// The BBox logic mirror (the true source examples/rs/src/lib.rs; a same-package cross reference would be a circular dependency, so recompute independently here + assert equal values)
 #[derive(Default)]
 struct LocalBox {
     min: [f64; 3],
@@ -60,7 +60,7 @@ fn e201_framed_scene_renders_red_and_green() {
     let mut commands = vec![DrawCommand::ClearColor {
         rgba: [0.05, 0.07, 0.10, 1.0],
     }];
-    let mut bbox = LocalBox::new(); // 本地副本（examples lib 依赖本 crate，不可反向引用）
+    let mut bbox = LocalBox::new(); // a local copy (the examples lib depends on this crate, no reverse reference allowed)
     for e in doc.entities() {
         for pt in &e.mesh.positions {
             bbox.push(*pt, &e.world);
@@ -87,7 +87,7 @@ fn e201_framed_scene_renders_red_and_green() {
             transform: local,
         });
     }
-    // 镜像 E201 装载期拟合：target=center、dist=r*2.8、pitch≥0.85
+    // mirror the E201 load-time fitting: target = center, dist = r*2.8, pitch >= 0.85
     assert_eq!(bbox.center(), [1.5, 0.5, 0.0]);
     assert!((bbox.radius() - 1.5).abs() < 1e-9);
     let rig = CameraRig::orbit(
@@ -129,7 +129,10 @@ fn e201_framed_scene_renders_red_and_green() {
         }
     }
     println!("red={red} green={green} / {}", W * H);
-    // 基线实测 red=884 green=1931（斜视+保守饱和分类器）；阈=基线−40%，专捕回归事故（旧病 red=123）
-    assert!(red > 500, "红面应成景 red={red}");
-    assert!(green > 1200, "绿面应成景 green={green}");
+    // baseline measured red=884 green=1931 (oblique view + conservative saturation classifier); threshold = baseline minus 40%, specially catching regression accidents (the old disease red=123)
+    assert!(red > 500, "the red face should form scenery red={red}");
+    assert!(
+        green > 1200,
+        "the green face should form scenery green={green}"
+    );
 }

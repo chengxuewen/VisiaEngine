@@ -1,11 +1,11 @@
-//! 场景图 v0：Vec+free-list slab handle + 代际 + 脏标记（架构③"slab 起步不上 ECS"）。
+//! Scene graph v0: Vec + free-list slab handle + generation + dirty marks (architecture 3 "start on a slab, no ECS").
 
 use thiserror::Error;
 
 /// Maximum scene-tree depth (cycle guard upper bound; 16 levels is far beyond any real GIS hierarchy).
 const MAX_TREE_DEPTH: usize = 16;
 
-/// 槽位 + 代际的实体 handle（COPY 语义，失效由代际判定）。
+/// Slot + generation entity handle (COPY semantics, invalidation judged by generation).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct EntityId {
     slot: u32,
@@ -33,16 +33,16 @@ impl EntityId {
 
 #[derive(Error, Debug, PartialEq)]
 pub enum CoreError {
-    #[error("实体 {entity:?} 不存在或已删除")]
+    #[error("entity {entity:?} does not exist or was deleted")]
     NotFound { entity: EntityId },
-    #[error("实体 {entity:?} 无组件 {component}")]
+    #[error("entity {entity:?} has no component {component}")]
     MissingComponent {
         entity: EntityId,
         component: &'static str,
     },
 }
 
-/// f64 三维坐标（CORE-08：大坐标零损耗；RTC 重基策略留 P1）。
+/// f64 three-dimensional coordinate (CORE-08: zero loss on large coordinates; RTC rebasing strategy deferred to P1).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Vec3 {
     pub x: f64,
@@ -102,7 +102,7 @@ struct Slot {
     offset: [f64; 3],
 }
 
-/// 场景存储：槽向量 + 空闲栈。O(1) 分配/回收，代际防悬垂。
+/// Scene storage: slot vector + free stack. O(1) alloc/recycle, generations prevent dangling.
 #[derive(Debug, Default)]
 pub struct Scene {
     slots: Vec<Slot>,
@@ -115,7 +115,7 @@ impl Scene {
         Self::default()
     }
 
-    /// 分配实体（优先复用回收槽，代际+1）。
+    /// Allocate an entity (reuses recycled slots first, generation +1).
     pub fn spawn(&mut self) -> EntityId {
         if let Some(slot) = self.free.pop() {
             let s = &mut self.slots[slot as usize];
@@ -169,7 +169,7 @@ impl Scene {
         self.slot_of(id).is_ok()
     }
 
-    /// 挂载/替换组件（CORE-10 替换语义）。
+    /// Attach/replace a component (CORE-10 replace semantics).
     pub fn insert(&mut self, id: EntityId, component: Component) -> Result<(), CoreError> {
         self.slot_of_mut(id)?.component = Some(component);
         Ok(())
@@ -184,7 +184,7 @@ impl Scene {
         })
     }
 
-    /// 全部存活实体（含无组件者）。
+    /// All live entities (including those without components).
     #[must_use]
     pub fn alive_ids(&self) -> Vec<EntityId> {
         self.slots
@@ -198,13 +198,13 @@ impl Scene {
             .collect()
     }
 
-    /// 标脏：同帧重复标记合并（CORE-06）。
+    /// Mark dirty: repeated marks within one frame coalesce (CORE-06).
     pub fn mark_dirty(&mut self, id: EntityId) -> Result<(), CoreError> {
         self.slot_of_mut(id)?.dirty = true;
         Ok(())
     }
 
-    /// 取脏清单并清空（CORE-07）。
+    /// Take the dirty list and clear it (CORE-07).
     pub fn take_dirty(&mut self) -> Vec<EntityId> {
         let mut out = Vec::new();
         for (i, s) in self.slots.iter_mut().enumerate() {
@@ -396,11 +396,11 @@ mod tests {
             .insert(old, Component::Transform(Transform::identity()))
             .unwrap();
         scene.despawn(old).unwrap();
-        let fresh = scene.spawn(); // 复用同槽，新代际
+        let fresh = scene.spawn(); // reuses the same slot, new generation
         assert_eq!(
             scene.get(old),
             Err(CoreError::NotFound { entity: old }),
-            "旧 handle 不得读到新主数据"
+            "an old handle must not read the new owner's data"
         );
         assert!(matches!(
             scene.get(fresh),
@@ -415,8 +415,8 @@ mod tests {
         let a = scene.spawn();
         scene.despawn(a).unwrap();
         let b = scene.spawn();
-        assert_eq!(a.slot(), b.slot(), "回收槽必须复用");
-        assert_eq!(b.generation(), a.generation() + 1, "代际严格+1");
+        assert_eq!(a.slot(), b.slot(), "recycled slots must be reused");
+        assert_eq!(b.generation(), a.generation() + 1, "generation strictly +1");
     }
 
     // spec: CORE-05
@@ -440,7 +440,11 @@ mod tests {
         scene.mark_dirty(e).unwrap();
         scene.mark_dirty(e).unwrap();
         scene.mark_dirty(e).unwrap();
-        assert_eq!(scene.take_dirty(), vec![e], "同帧重复标脏只记一次");
+        assert_eq!(
+            scene.take_dirty(),
+            vec![e],
+            "repeated dirty marks within one frame record once"
+        );
     }
 
     // spec: CORE-07
@@ -450,7 +454,7 @@ mod tests {
         let e = scene.spawn();
         scene.mark_dirty(e).unwrap();
         assert_eq!(scene.take_dirty(), vec![e]);
-        assert!(scene.take_dirty().is_empty(), "取后即清");
+        assert!(scene.take_dirty().is_empty(), "clears right after taking");
     }
 
     // spec: CORE-08
@@ -473,7 +477,7 @@ mod tests {
             position: far,
             scale: 0.25,
         });
-        // f64 PartialEq 对非特殊值即位比较；往返损耗会在此暴露
+        // f64 PartialEq on special values compares bit by bit; round-trip loss would show here
         assert_eq!(got, expected);
     }
 
@@ -506,10 +510,10 @@ mod tests {
         assert_eq!(scene.get(e).unwrap(), Component::Transform(second));
     }
 
-    /// spike-2（architecture.md 开工清单）：10 万实体遍历+抽脏预算。
-    /// 非门禁——`#[ignore]`，release 人肉跑一次记录 evidence；机器噪声大不设断言。
+    /// spike-2 (the architecture.md to-do checklist): 100k-entity traversal + dirty-extraction budget.
+    /// Not a gate -- `#[ignore]`, run manually once in release to record evidence; no assertions set because machine noise is large.
     #[test]
-    #[ignore = "spike：release 手动跑，见 docs/reference/evidence/"]
+    #[ignore = "spike: run manually in release, see docs/reference/evidence/"]
     fn spike_slab_iter_100k_budget() {
         use std::time::Instant;
         let mut scene = Scene::new();

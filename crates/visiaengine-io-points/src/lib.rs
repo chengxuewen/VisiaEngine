@@ -1,17 +1,17 @@
 //! # visiaengine-io-points
-//! 点云（PLY ascii/binary_little_endian）→ CPU 侧数据。零渲染依赖（io-* 族纪律，架构②）。
-//! 行为契约：`docs/sdd/io-points.md`（IO-01..06）。色=sRGB 宿主面（CORE-16）；
-//! 坐标=origin-local f32 + f64 origin（D7：先 f64 求差再转 f32）。
+//! Point clouds (PLY ascii/binary_little_endian) -> CPU-side data. Zero render dependency (io-* family discipline, architecture 2).
+//! Behavior contract: `docs/sdd/io-points.md` (IO-01..06). Color = sRGB host face (CORE-16);
+//! coordinates = origin-local f32 + f64 origin (D7: take the difference in f64 first, then convert to f32).
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
 use thiserror::Error;
 use visiaengine_core::AttrSet;
 
-/// IO-05 容量守卫（本带唯一点数门；add_points 不受——CAPI-18 宿主自带账）。
+/// IO-05 capacity guard (the sole point-count gate in this band; add_points is exempt -- the host keeps its own book per CAPI-18).
 pub const MAX_POINTS_CAP: u64 = 4_000_000;
 
-/// IO-03 四类分型报告（重复点不成类=无 dup 字段，IO-03 注记）。
+/// IO-03 four-class typed report (duplicate points form no class = no dup field, IO-03 note).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PclReport {
     pub dropped_non_finite: u32,
@@ -21,7 +21,7 @@ pub struct PclReport {
     pub kept: u64,
 }
 
-/// IO-06 产物（origin-local f32 + f64 origin；色=sRGB 面；meta=云级单行 AttrSet）。
+/// IO-06 products (origin-local f32 + f64 origin; color = sRGB face; meta = cloud-level single-row AttrSet).
 #[derive(Clone, Debug)]
 pub struct PclCloud {
     pub positions: Vec<[f32; 3]>,
@@ -34,15 +34,15 @@ pub struct PclCloud {
 
 #[derive(Error, Debug)]
 pub enum PclError {
-    #[error("非 PLY/头非法: {0}")]
+    #[error("not PLY / illegal header: {0}")]
     Malformed(String),
-    #[error("格式不支持（v0=ascii+bin_le；be/其余=文件级拒）: {0}")]
+    #[error("unsupported format (v0 = ascii + bin_le; be/others = file-level rejection): {0}")]
     UnsupportedFormat(String),
-    #[error("截断且 FastFail: 声明 {declared} 完整 {complete}")]
+    #[error("truncated with FastFail: declared {declared}, complete {complete}")]
     Truncated { declared: u64, complete: u64 },
-    #[error("超容量帽: declared {declared} > cap {cap}")]
+    #[error("capacity cap exceeded: declared {declared} > cap {cap}")]
     OverCapacity { declared: u64, cap: u64 },
-    #[error("脏数据且 FastFail: {0} 点被丢弃")]
+    #[error("dirty data with FastFail: {0} points discarded")]
     Dirty(u32),
 }
 
@@ -75,7 +75,7 @@ impl Pty {
             Self::I64 | Self::U64 | Self::F64 => 8,
         }
     }
-    /// 消费列（IO-01 属性面）：坐标=任意数值宽度，色=U8/F32/F64。
+    /// Consumed columns (IO-01 attribute face): coordinates = any numeric width, color = U8/F32/F64.
     const fn consumable(self) -> bool {
         matches!(self, Self::F32 | Self::F64 | Self::U8)
     }
@@ -86,7 +86,7 @@ const CONSUMED: [&str; 6] = ["x", "y", "z", "red", "green", "blue"];
 struct Prop {
     name: String,
     ty: Pty,
-    /// 非消费列（未知名/未知型/list 外者）：计 dropped_unsupported，bin 仍占 stride。
+    /// Non-consumed columns (unknown name/type/outside list): counted in dropped_unsupported, the bin still occupies its stride.
     skip: bool,
 }
 
@@ -96,18 +96,22 @@ struct Element {
     props: Vec<Prop>,
 }
 
-/// IO-01..05 统一入口（bytes 形）。lenient=false=FastFail：**点级**丢弃/截断整文件拒；
-/// 列与元素级 unsupported 只计数不触发（IO-03 落点澄清，双模式同权）。
+/// The unified IO-01..05 entry (bytes form). lenient=false = FastFail: **point-level** discard/truncation rejects the whole file;
+/// column- and element-level unsupported only counts, never triggers it (IO-03 landing clarified, both modes equal).
 pub fn parse_pcl(bytes: &[u8], lenient: bool) -> Result<PclCloud, PclError> {
     let (fmt, elements) = parse_head(bytes)?;
     let vertex = elements
         .iter()
         .find(|e| e.name == "vertex")
-        .ok_or_else(|| PclError::Malformed("缺 element vertex".into()))?;
+        .ok_or_else(|| PclError::Malformed("missing element vertex".into()))?;
     for req in ["x", "y", "z"] {
         match vertex.props.iter().find(|p| p.name == req) {
             Some(p) if !p.skip => {}
-            _ => return Err(PclError::Malformed(format!("vertex 缺必需消费属性 {req}"))),
+            _ => {
+                return Err(PclError::Malformed(format!(
+                    "vertex missing required consumed attribute {req}"
+                )));
+            }
         }
     }
     let declared = vertex.count;
@@ -178,7 +182,7 @@ fn parse_head(bytes: &[u8]) -> Result<(Fmt, Vec<Element>), PclError> {
             Some("format") => {
                 let (f, v) = (w.next(), w.next());
                 if v != Some("1.0") {
-                    return Err(PclError::Malformed("format 版本".into()));
+                    return Err(PclError::Malformed("format version".into()));
                 }
                 fmt = Some(match f {
                     Some("ascii") => Fmt::Ascii,
@@ -186,14 +190,14 @@ fn parse_head(bytes: &[u8]) -> Result<(Fmt, Vec<Element>), PclError> {
                     Some("binary_big_endian") => {
                         return Err(PclError::UnsupportedFormat("binary_big_endian".into()));
                     }
-                    _ => return Err(PclError::Malformed("format 词".into())),
+                    _ => return Err(PclError::Malformed("format token".into())),
                 });
             }
             Some("element") => {
                 let (Some(name), Some(n)) =
                     (w.next(), w.next().and_then(|v| v.parse::<u64>().ok()))
                 else {
-                    return Err(PclError::Malformed("element 头".into()));
+                    return Err(PclError::Malformed("element header".into()));
                 };
                 elements.push(Element {
                     name: name.to_string(),
@@ -203,15 +207,15 @@ fn parse_head(bytes: &[u8]) -> Result<(Fmt, Vec<Element>), PclError> {
             }
             Some("property") => {
                 let Some(e) = elements.last_mut() else {
-                    return Err(PclError::Malformed("property 先于 element".into()));
+                    return Err(PclError::Malformed("property precedes element".into()));
                 };
                 let (Some(ty), Some(name)) = (w.next(), w.next()) else {
-                    return Err(PclError::Malformed("property 字段".into()));
+                    return Err(PclError::Malformed("property fields".into()));
                 };
                 if ty == "list" {
-                    // vertex list=不可读（IO-01）；非 vertex 元素整类计弃。
+                    // vertex list = unreadable (IO-01); non-vertex elements are discarded wholesale by class.
                     if e.name == "vertex" {
-                        return Err(PclError::Malformed("vertex 含 list 属性".into()));
+                        return Err(PclError::Malformed("vertex carries list properties".into()));
                     }
                     continue;
                 }
@@ -233,7 +237,7 @@ fn parse_head(bytes: &[u8]) -> Result<(Fmt, Vec<Element>), PclError> {
                         continue;
                     }
                     _ => {
-                        return Err(PclError::Malformed(format!("未知属性类型 {ty}")));
+                        return Err(PclError::Malformed(format!("unknown property type {ty}")));
                     }
                 };
                 let skip = !CONSUMED.contains(&name) || !pt.consumable();
@@ -243,14 +247,14 @@ fn parse_head(bytes: &[u8]) -> Result<(Fmt, Vec<Element>), PclError> {
                     skip,
                 });
             }
-            _ => return Err(PclError::Malformed(format!("未知头行: {line}"))),
+            _ => return Err(PclError::Malformed(format!("unknown header line: {line}"))),
         }
     }
-    let fmt = fmt.ok_or_else(|| PclError::Malformed("无 format 行".into()))?;
+    let fmt = fmt.ok_or_else(|| PclError::Malformed("no format line".into()))?;
     Ok((fmt, elements))
 }
 
-/// ascii 逐行：token 序=属性序；尾行缺 token=截断（IO-04，EOF 前完整行保留）。
+/// ascii line by line: token order = property order; a tail line missing tokens = truncation (IO-04, complete lines before EOF kept).
 fn parse_ascii(
     body: &[u8],
     vertex: &Element,
@@ -279,7 +283,7 @@ fn parse_ascii(
         let (ix, iy, iz) = (pos("x"), pos("y"), pos("z"));
         let p = match (ix, iy, iz) {
             (Some(a), Some(b), Some(c)) => [vals[a], vals[b], vals[c]],
-            _ => return Err(PclError::Malformed("xyz 定位".into())),
+            _ => return Err(PclError::Malformed("xyz placement".into())),
         };
         if !p[0].is_finite() || !p[1].is_finite() || !p[2].is_finite() {
             rep.dropped_non_finite += 1;
@@ -294,7 +298,7 @@ fn parse_ascii(
     Ok(())
 }
 
-/// 色对：uchar(宽=1)/255 归一，float 直传；缺/非消费=默认灰（finalize 侧）。
+/// Color pairs: uchar (width = 1) / 255 normalized, float passed directly; missing/non-consumed = default gray (finalize side).
 fn ascii_rgb(
     vals: &[f64],
     vertex: &Element,
@@ -315,7 +319,7 @@ fn rgb_from(mut val: impl FnMut(&str) -> Option<f64>, narrow: bool) -> Option<[f
     Some([f(r), f(g), f(b)])
 }
 
-/// binary_le：显式端序逐列 from_le_bytes（IO-02；宽度=0 属性=头已拦）。
+/// binary_le: explicit-endian per-column from_le_bytes (IO-02; width = 0 properties = already blocked at the header).
 fn parse_bin_le(
     body: &[u8],
     vertex: &Element,
@@ -371,7 +375,7 @@ fn parse_bin_le(
         let row = &body[r * stride..(r + 1) * stride];
         let (ix, iy, iz) = match (pos("x"), pos("y"), pos("z")) {
             (Some(a), Some(b), Some(c)) => (a, b, c),
-            _ => return Err(PclError::Malformed("xyz 定位".into())),
+            _ => return Err(PclError::Malformed("xyz placement".into())),
         };
         let p = match (rd(row, ix), rd(row, iy), rd(row, iz)) {
             (Some(a), Some(b), Some(c)) => [a, b, c],
@@ -404,7 +408,7 @@ fn parse_bin_le(
     Ok(())
 }
 
-/// IO-06：origin=bbox 中心 f64；positions=f64 先求差再转 f32；meta 云级单行 8 列。
+/// IO-06: origin = bbox center in f64; positions = take the difference in f64 first then convert to f32; meta = cloud-level single row of 8 columns.
 fn finalize(
     pts: Vec<([f64; 3], Option<[f32; 3]>)>,
     report: PclReport,

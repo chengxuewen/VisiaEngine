@@ -1,6 +1,6 @@
 //! # visiaengine-io-gltf
-//! glTF(GLB) → CPU 侧实体数据。零渲染依赖（io-* 族纪律，架构②）。
-//! 行为契约：docs/sdd/io-gltf.md（GLTF-01..08）。
+//! glTF (GLB) -> CPU-side entity data. Zero render dependency (the io-* family discipline, architecture 2).
+//! Behavior contract: docs/sdd/io-gltf.md (GLTF-01..08).
 
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 
@@ -9,13 +9,15 @@ use visiaengine_core::linear_to_srgb;
 
 #[derive(Error, Debug)]
 pub enum IoError {
-    #[error("文件不存在: {path}")]
+    #[error("file does not exist: {path}")]
     NotFound { path: String },
-    #[error("GLB/JSON 解析失败: {reason}")]
+    #[error("GLB/JSON parse failed: {reason}")]
     Parse { reason: String },
-    #[error("v0 仅支持 GLB 容器（.gltf+外链资源后续片支持）")]
+    #[error(
+        "v0 supports the GLB container only (.gltf + external resources supported in a later slice)"
+    )]
     UnsupportedFormat,
-    #[error("IO 失败: {source}")]
+    #[error("IO failure: {source}")]
     Io {
         #[from]
         source: std::io::Error,
@@ -28,17 +30,17 @@ pub struct GltfMesh {
     pub normals: Vec<[f32; 3]>,
     pub indices: Vec<u32>,
     pub base_color: [f32; 4],
-    /// GLTF-11：TEXCOORD_0（缺省=空，等长由 GLTF-03 同款占位纪律免——不填充）。
+    /// GLTF-11: TEXCOORD_0 (default = empty; equal-length needs no same-style placeholder discipline as GLTF-03 -- no padding).
     pub uv: Vec<[f32; 2]>,
-    /// baseColorTexture 解析后的 **image 槽位**（textures() 下标）；无纹理/
-    /// texCoord≠0（v0 只支持第一套 UV）/uri 图= None。
+    /// The **image slot** (textures() index) after resolving baseColorTexture; no texture /
+    /// texCoord != 0 (v0 supports the first UV set only) / uri image = None.
     pub texture: Option<usize>,
-    /// PBR 因子收纳（render IR 的 specular 组合住 M2；io 层零换算）。
+    /// PBR factor collection (the specular composition of the render IR lives at M2; the io layer converts nothing).
     pub metallic_factor: f32,
     pub roughness_factor: f32,
 }
 
-/// GLTF-11：embedded 纹理 CPU 解码产物（RGBA8 全展开——GPU 压缩格式=真 PBR 轮）。
+/// GLTF-11: CPU-decoded products of embedded textures (RGBA8 fully expanded -- GPU compressed formats = the real PBR round).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextureDesc {
     pub rgba: Vec<u8>,
@@ -50,7 +52,7 @@ pub struct TextureDesc {
 pub struct GltfEntity {
     pub name: Option<String>,
     pub mesh: GltfMesh,
-    /// 世界变换，列主序（平移=m[3]，GLTF-02/08）。
+    /// World transform, column-major (translation = m[3], GLTF-02/08).
     pub world: [[f64; 4]; 4],
     /// V2.2: node-LOCAL TRS (GLTF-08 direct, un-multiplied) — the animation
     /// face writes this per-frame; parent chain composes engine-side.
@@ -72,7 +74,7 @@ impl GltfDocument {
         &self.entities
     }
 
-    /// images[] 槽位序的解码纹理（GLTF-11）。
+    /// Decoded textures in images[] slot order (GLTF-11).
     #[must_use]
     pub fn textures(&self) -> &[TextureDesc] {
         &self.textures
@@ -81,7 +83,7 @@ impl GltfDocument {
 
 type GetBuf<'a, 'b> = &'b dyn Fn(gltf::buffer::Buffer<'a>) -> Option<&'a [u8]>;
 
-/// 列主序 4x4 乘法：(a·b)。
+/// Column-major 4x4 multiplication: (a * b).
 fn mul(a: &[[f64; 4]; 4], b: &[[f64; 4]; 4]) -> [[f64; 4]; 4] {
     let mut out = [[0.0f64; 4]; 4];
     for (c, col) in out.iter_mut().enumerate() {
@@ -98,14 +100,14 @@ fn mat4_f64(m: [[f32; 4]; 4]) -> [[f64; 4]; 4] {
 
 fn read_v3<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<[f32; 3]> {
     use gltf::accessor::{DataType, Dimensions};
-    // 预检类型再精确构造（Iter::new 对类型不合者在 debug 构建 debug_assert panic——不得探测）
+    // pre-check the type then construct precisely (Iter::new debug_assert-panics on type mismatch in debug builds -- must not probe)
     if acc.data_type() != DataType::F32 || acc.dimensions() != Dimensions::Vec3 {
         return Vec::new();
     }
     gltf::accessor::util::Iter::<[f32; 3]>::new(acc, get).map_or(Vec::new(), |it| it.collect())
 }
 
-/// 索引按 u32→u16→u8 源类型降级读取（真实资产多为 u16/u8）。
+/// Indices read downgraded by source type u32 -> u16 -> u8 (real assets are mostly u16/u8).
 fn read_v2<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<[f32; 2]> {
     use gltf::accessor::{DataType, Dimensions};
     if acc.data_type() != DataType::F32 || acc.dimensions() != Dimensions::Vec2 {
@@ -114,9 +116,9 @@ fn read_v2<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<[f32; 2]> {
     gltf::accessor::util::Iter::<[f32; 2]>::new(acc, get).map_or(Vec::new(), |it| it.collect())
 }
 
-/// 解码全部 embedded images 为 RGBA8 槽位（GLTF-11）。uri/data:URI 图=
-/// UnsupportedFormat 级 Err（v0 禁 data:URI 契约）；解码失败=Parse（FastFail
-/// 一致，不静默丢纹理）。零 gltf feature 改动[FFI-R:Momus-B2]：走 json 根。
+/// Decode all embedded images into RGBA8 slots (GLTF-11). uri/data:URI images =
+/// UnsupportedFormat-grade Err (the v0 contract forbids data:URI); decode failure = Parse (consistent with FastFail,
+/// no silent texture loss). Zero gltf feature changes [FFI-R:Momus-B2]: goes through the json root.
 fn decode_images(root: &gltf::json::Root, blob: &[u8]) -> Result<Vec<TextureDesc>, IoError> {
     root.images
         .iter()
@@ -126,25 +128,25 @@ fn decode_images(root: &gltf::json::Root, blob: &[u8]) -> Result<Vec<TextureDesc
                 return Err(IoError::UnsupportedFormat);
             };
             let bv = &root.buffer_views[bv_index.value()];
-            // USize64(pub u64)：端口径统一走 u64→usize try_from
+            // USize64(pub u64): ported units unify through u64 -> usize try_from
             let start =
                 usize::try_from(bv.byte_offset.map_or(0, |o| o.0)).map_err(|_| IoError::Parse {
-                    reason: format!("image[{i}] byte_offset 越界"),
+                    reason: format!("image[{i}] byte_offset out of bounds"),
                 })?;
             let len = usize::try_from(bv.byte_length.0).map_err(|_| IoError::Parse {
-                reason: format!("image[{i}] byte_length 越界"),
+                reason: format!("image[{i}] byte_length out of bounds"),
             })?;
             let bytes = blob
                 .get(
                     start..start.checked_add(len).ok_or_else(|| IoError::Parse {
-                        reason: format!("image[{i}] 区间溢出"),
+                        reason: format!("image[{i}] range overflow"),
                     })?,
                 )
                 .ok_or_else(|| IoError::Parse {
-                    reason: format!("image[{i}] 出 blob 范围"),
+                    reason: format!("image[{i}] outside the blob range"),
                 })?;
             let img = image::load_from_memory(bytes).map_err(|e| IoError::Parse {
-                reason: format!("image[{i}] 解码失败: {e}"),
+                reason: format!("image[{i}] decode failed: {e}"),
             })?;
             let (width, height) = (img.width(), img.height());
             Ok(TextureDesc {
@@ -161,7 +163,7 @@ fn read_indices<'a>(get: GetBuf<'a, '_>, acc: gltf::Accessor<'a>) -> Vec<u32> {
     if acc.dimensions() != Dimensions::Scalar {
         return Vec::new();
     }
-    // 索引源类型 u32/u16/u8 精确分派（真实资产多为 u16/u8）
+    // index source types u32/u16/u8 dispatched precisely (real assets are mostly u16/u8)
     match acc.data_type() {
         DataType::U32 => {
             gltf::accessor::util::Iter::<u32>::new(acc, get).map(|it| it.collect::<Vec<u32>>())
@@ -183,7 +185,7 @@ fn read_mesh<'a>(
     let positions = prim
         .get(&gltf::Semantic::Positions)
         .map_or(Vec::new(), |acc| read_v3(get, acc));
-    // GLTF-03：缺法线/长度不齐 → 等长零占位（着色端兜底信号）
+    // GLTF-03: missing normals / length mismatch -> equal-length zero placeholders (the fallback signal at the shading end)
     let normals = match prim.get(&gltf::Semantic::Normals) {
         Some(acc) => {
             let n = read_v3(get, acc);
@@ -199,8 +201,8 @@ fn read_mesh<'a>(
         .indices()
         .map_or(Vec::new(), |acc| read_indices(get, acc));
     let pbr = prim.material().pbr_metallic_roughness();
-    // GLTF-11：baseColorTexture→image 槽位；texCoord≠0（v0 只支持第一套 UV）
-    // 与缺纹理= None（材质保留，纹理丢弃——契约注记）
+    // GLTF-11: baseColorTexture -> image slot; texCoord != 0 (v0 supports the first UV set only)
+    // and missing texture = None (material kept, texture dropped -- contract note)
     let texture = pbr
         .base_color_texture()
         .filter(|info| info.tex_coord() == 0)
@@ -212,7 +214,7 @@ fn read_mesh<'a>(
         positions,
         normals,
         indices,
-        base_color: linear_to_srgb(pbr.base_color_factor()), // glTF factor=线性(规范)；IR 面=sRGB 约定，反变换一次归位
+        base_color: linear_to_srgb(pbr.base_color_factor()), // glTF factor = linear (spec); the IR face = sRGB convention, one inverse transform back home
         uv,
         texture,
         metallic_factor: pbr.metallic_factor(),
@@ -230,12 +232,12 @@ fn walk<'a>(
     tex_slot: &dyn Fn(usize) -> Option<usize>,
     parent: Option<usize>,
 ) {
-    // Transform 合成由 crate 完成（T·R·S 或原样 Matrix），本侧仅 f64 升位+层级乘（GLTF-08 直通）
+    // Transform composition is done by the crate (T*R*S or the Matrix verbatim); this side only widens to f64 + multiplies the hierarchy (GLTF-08 passthrough)
     let world = mul(parent_world, &mat4_f64(node.transform().matrix()));
     let first_entity = out.len(); // V2.2: index children will parent to
     if let Some(mesh) = node.mesh() {
         for prim in mesh.primitives() {
-            // GLTF-09：模式过滤（曾以假三角混入）+ 空 positions 跳过
+            // GLTF-09: mode filter (once smuggled in as fake triangles) + skip empty positions
             if prim.mode() != gltf::mesh::Mode::Triangles {
                 rep.skipped_non_triangle += 1;
                 continue;
@@ -267,43 +269,43 @@ fn walk<'a>(
     }
 }
 
-/// primitive 级跳过报告（GLTF-09，[E3D:A4] 移植）。
+/// Primitive-level skip report (GLTF-09, [E3D:A4] port).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LoadReport {
-    /// mode ≠ Triangles（POINTS/LINES 不得以假三角混入管线）
+    /// mode != Triangles (POINTS/LINES must not smuggle into the pipeline as fake triangles)
     pub skipped_non_triangle: u32,
-    /// POSITION 缺失/类型不合/空读取
+    /// POSITION missing / wrong type / empty read
     pub skipped_unreadable_positions: u32,
 }
 
 impl LoadReport {
-    /// 跳过总数。
+    /// Skip total.
     #[must_use]
     pub fn total_skipped(&self) -> u32 {
         self.skipped_non_triangle + self.skipped_unreadable_positions
     }
 }
 
-/// 解析 GLB 文件为实体列表（场景根遍历+世界变换烘焙，primitive 级拆分）。
-/// GLTF-09：非 TRIANGLES 原语与空 positions 原语始终过滤（正确性），
-/// 报告需显式入口 [`load_gltf_with_report`]。
+/// Parse a GLB file into an entity list (scene-root traversal + world transform baking, split at primitive level).
+/// GLTF-09: non-TRIANGLES primitives and empty-positions primitives are always filtered (correctness);
+/// the report needs the explicit entry [`load_gltf_with_report`].
 pub fn load_gltf(path: impl AsRef<std::path::Path>) -> Result<GltfDocument, IoError> {
     Ok(load_gltf_with_report(path)?.0)
 }
 
-/// GLB 字节解析（无文件系统——批 7 wasm 传输的 bytes-first 主体口 [FFI-R:EP-附]；
-/// GLTF-09 过滤/报告与 path 口同源）。
+/// GLB bytes parsing (no filesystem -- the bytes-first main entry for batch 7 wasm transport [FFI-R:EP-附];
+/// the GLTF-09 filter/report shares its source with the path entry).
 pub fn load_gltf_bytes(data: &[u8]) -> Result<GltfDocument, IoError> {
     Ok(load_gltf_bytes_with_report(data)?.0)
 }
 
-/// 字节面的带报告入口（GLTF-09 主体）。
+/// The bytes-face entry with a report (the GLTF-09 main body).
 pub fn load_gltf_bytes_with_report(bytes: &[u8]) -> Result<(GltfDocument, LoadReport), IoError> {
     let gltf = gltf::Gltf::from_slice(bytes).map_err(|e| IoError::Parse {
         reason: e.to_string(),
     })?;
     let doc = &gltf.document;
-    // v0 边界：外链 buffer uri 拒解析（GLB 内嵌 blob 是唯一数据源）
+    // v0 boundary: external buffer uri refuses parsing (the GLB embedded blob is the only data source)
     if doc
         .buffers()
         .any(|b| !matches!(b.source(), gltf::buffer::Source::Bin))
@@ -333,7 +335,7 @@ pub fn load_gltf_bytes_with_report(bytes: &[u8]) -> Result<(GltfDocument, LoadRe
     Ok((GltfDocument { entities, textures }, rep))
 }
 
-/// 带跳过报告的 path 入口（GLTF-09；NotFound/IO 语义在此层，GLTF-05 契约位）。
+/// The path entry with a skip report (GLTF-09; the NotFound/IO semantics live at this layer, the GLTF-05 contract position).
 pub fn load_gltf_with_report(
     path: impl AsRef<std::path::Path>,
 ) -> Result<(GltfDocument, LoadReport), IoError> {

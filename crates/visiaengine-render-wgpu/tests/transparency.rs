@@ -1,5 +1,5 @@
-//! REND-36/WGPU-27/28：半透明带五门（①=V0 混合域裁决门——预言翻=停带重呈）。
-//! 顶视 ortho 精确路；期望值=线性域混合+硬件编码链（CORE-16 自洽预言）。
+//! REND-36/WGPU-27/28: the five gates of the transparency band ((1) = the V0 blending-domain ruling gate -- prediction flips = halt the band for re-presentation).
+//! The top-view ortho exact road; expected values = linear-domain blending + hardware encoding chain (the CORE-16 self-consistent prediction).
 
 use visiaengine_io_text::{FontFace, GLYPH_ATLAS_PX, GlyphCache, layout};
 use visiaengine_render::{
@@ -65,7 +65,7 @@ fn at(img: &visiaengine_render_wgpu::OffscreenFrame, x: u32, y: u32) -> [u8; 3] 
     px(img, x, y)
 }
 
-/// ① V0 裁决门：黑底不透明板 + 50% 红板 → 线性域=(188,0,0)；编码域=(128,0,0)。
+/// (1) The V0 ruling gate: a black-background opaque plate + a 50% red plate -> linear domain = (188,0,0); encoding domain = (128,0,0).
 #[test]
 // spec: WGPU-27
 fn blend_domain_verdict_and_linear_mix() {
@@ -95,15 +95,15 @@ fn blend_domain_verdict_and_linear_mix() {
         ]))
         .expect("render");
     let c = at(&img, 32, 32);
-    // 线性域预言=encode(0.5·lin(1)·shade0.627)=151；编码域=83（差 68 单值判案）
-    println!("V0 VERDICT center={c:?} 线性预言=(151,0,0) 编码预言=(83,0,0)");
+    // the linear-domain prediction = encode(0.5*lin(1)*shade0.627) = 151; the encoding domain = 83 (a single-value gap of 68 decides the case)
+    println!("V0 VERDICT center={c:?} linear-prediction=(151,0,0) encoding-prediction=(83,0,0)");
     assert!(
         near(c[0], 151, 8) && c[1] < 16 && c[2] < 16,
-        "混合域预言双双落空：{c:?}（翻案=停带重呈）"
+        "the blending-domain predictions both missed: {c:?} (overturn = halt the band for re-presentation)"
     );
 }
 
-/// ② 排序活性双向：深度互换→结果翻转；提交互换→结果不翻。
+/// (2) Sort activity bidirectionally: depth swap -> result flips; submission swap -> result does not flip.
 #[test]
 // spec: WGPU-28
 fn painter_order_alive_both_directions() {
@@ -120,7 +120,7 @@ fn painter_order_alive_both_directions() {
         origin: [0.0, 0.0, z],
         transform: T4,
     };
-    // 构型 A：相机 z=50 俯视 → z7=近/红 z5=远 → 绿(近)后画 = (110,151,0)
+    // configuration A: camera z = 50 looking down -> z7 = near/red, z5 = far -> green (near) drawn later = (110,151,0)
     let a = b
         .render_to_pixels(&top_frame(vec![
             DrawCommand::ClearColor {
@@ -131,7 +131,7 @@ fn painter_order_alive_both_directions() {
             dm(r_f, red, 5.0),
         ]))
         .expect("A");
-    // 构型 B：深度互换（绿近红远）
+    // configuration B: depths swapped (green near, red far)
     let bb = b
         .render_to_pixels(&top_frame(vec![
             DrawCommand::ClearColor {
@@ -142,7 +142,7 @@ fn painter_order_alive_both_directions() {
             dm(g_f, green, 5.0),
         ]))
         .expect("B");
-    // 构型 C：A 提交互换（先红后绿，深度不变）
+    // configuration C: A's submission swapped (red first then green, depths unchanged)
     let c = b
         .render_to_pixels(&top_frame(vec![
             DrawCommand::ClearColor {
@@ -154,19 +154,22 @@ fn painter_order_alive_both_directions() {
         ]))
         .expect("C");
     let (ca, cb, cc) = (at(&a, 32, 32), at(&bb, 32, 32), at(&c, 32, 32));
-    println!("ORDER A(红近)={ca:?} B(绿近)={cb:?} C(提交换)={cc:?}");
+    println!("ORDER A(red-near)={ca:?} B(green-near)={cb:?} C(submit-swap)={cc:?}");
     assert!(
         near(ca[0], 110, 10) && near(ca[1], 151, 10),
-        "A 期望 (110,151,0) got {ca:?}"
+        "A expected (110,151,0) got {ca:?}"
     );
     assert!(
         near(cb[0], 151, 10) && near(cb[1], 110, 10),
-        "B 深度互换必翻 (151,110,0) got {cb:?}"
+        "B must flip on depth swap to (151,110,0) got {cb:?}"
     );
-    assert_eq!(ca, cc, "提交互换必不翻（排序真锁深度序）");
+    assert_eq!(
+        ca, cc,
+        "a submission swap must not flip (the sort truly locks the depth order)"
+    );
 }
 
-/// ③ 不写深度锁：同深双灰板=互见（write ON 则后件被 Less 拒→单层）。
+/// (3) The no-depth-write lock: two gray plates at the same depth see each other (write ON would reject the later piece via Less -> single layer).
 #[test]
 // spec: WGPU-27
 fn transparent_does_not_write_depth() {
@@ -193,15 +196,15 @@ fn transparent_does_not_write_depth() {
         ]))
         .expect("render");
     let c = at(&img, 32, 32);
-    // 含 shade 预言：双层=encode(0.5·L+0.5·(0.5L))=89；write-ON 单层=encode(0.5L)=73
-    println!("DEPTHWRITE-OFF center={c:?}（双层=89 单层对照=73）");
+    // the prediction including shade: two layers = encode(0.5*L + 0.5*(0.5L)) = 89; write-ON single layer = encode(0.5L) = 73
+    println!("DEPTHWRITE-OFF center={c:?} (two layers = 89, the single-layer control = 73)");
     assert!(
         c[0] > 84 && c[0] < 95,
-        "双层互见缺席=透明管线在写深度：{c:?}"
+        "the two-layer mutual visibility absent = the transparent pipeline is writing depth: {c:?}"
     );
 }
 
-/// ④ 材质 a==1 canary：走旧路纯覆盖（无混合痕）+分拣零触。
+/// (4) The material a == 1 canary: rides the old path pure overlay (no blending trace) + zero touched by the sort.
 #[test]
 // spec: REND-36
 fn opaque_material_pure_overwrite() {
@@ -230,18 +233,18 @@ fn opaque_material_pure_overwrite() {
         ]))
         .expect("render");
     let c = at(&img, 32, 32);
-    // a==1 纯覆盖=不透明管线现值（混合痕=对半以下必辨）。
-    // N6 GGX 重探（2026-09-29）：207→198（GGX 漫反射 (1-F)·intensity 链 + IBL-lite
-    // ambient 重定亮度；双侧带 ±8 保持）。g/b 上限 10→20：介电质镜面 F0=0.04 灰色
-    // 高光在 g/b 通道带 ~14 的物理性白光泄漏（PBR 正确行为，非混合痕——混合痕判别
-    // 仍由 r 带 ±8 独立把守）。
+    // a == 1 pure overlay = the opaque pipeline's current values (blending traces must be distinguishable below half).
+    // N6 GGX reprobe (2026-09-29): 207->198 (the GGX diffuse (1-F)*intensity chain + the IBL-lite
+    // ambient re-set the brightness; the double-sided band +/- 8 kept). The g/b upper bound 10->20: dielectric specular F0 = 0.04 gray
+    // highlight leaks physically white light in the g/b channel band ~ 14 (correct PBR behavior).
+    // is still guarded independently by the r-band +/- 8).
     assert!(
         near(c[0], 198, 8) && c[1] <= 20 && c[2] <= 20,
-        "a==1 必须纯覆盖无混合痕：{c:?}"
+        "a==1 must be a pure overlay with no blending trace: {c:?}"
     );
 }
 
-/// ⑤ Labels 恒顶收尾：水板之中标签像素不被稀释。
+/// (5) Labels always end on top: the label pixels inside the water plate are not diluted.
 #[test]
 // spec: WGPU-28
 fn labels_persist_on_top_of_water() {
@@ -301,8 +304,11 @@ fn labels_persist_on_top_of_water() {
             c[0] > 245 && c[1] > 245 && c[2] > 245
         })
         .count();
-    assert!(white > 30, "恒顶白标水墨中仍在场 got {white}");
-    // 顶心像素=纯白（未与红水混合）
+    assert!(
+        white > 30,
+        "the always-top white label is still present amid the ink water, got {white}"
+    );
+    // the top-center pixel = pure white (not mixed with the red water)
     let mut hit = 0;
     'outer: for y in 0..H {
         for x in 0..W {
@@ -314,5 +320,8 @@ fn labels_persist_on_top_of_water() {
             }
         }
     }
-    assert!(hit > 5, "标签白芯必达 255（Always+末序=不被稀释）");
+    assert!(
+        hit > 5,
+        "the label white core must reach 255 (Always + last order = never diluted)"
+    );
 }

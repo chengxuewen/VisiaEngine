@@ -1,5 +1,5 @@
-//! WGPU-26 多视口分屏：clear 语义裁决门 + 互不侵犯 + 单投 canary 逐位等 + depth/shadow 共享。
-//! 谓词纪律 [PIT-8]：阈=探针实测定数；裁决门断言两形预言的分歧点（本机 wgpu30 真值）。
+//! WGPU-26 multi-viewport splitting: the clear-semantics ruling gate + mutual non-aggression + single-projection canary bitwise equality + depth/shadow sharing.
+//! Predicate discipline [PIT-8]: thresholds = probe-measured numbers; the ruling gate asserts the divergence point of the two forms' predictions (this machine's wgpu30 truth).
 
 use visiaengine_render::{
     Camera, CameraRig, DrawCommand, Frame, MeshDesc, RenderBackend, ShadowSetup, Viewport,
@@ -16,7 +16,7 @@ const ID64: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// 大色板（world ±60，任意 ≤120 视野 rect 顶视必全覆盖）
+/// The big palette (world +/- 60, any top-view rect with width <= 120 must cover it fully)
 fn slab(b: &mut HeadlessBackend) -> u64 {
     b.create_mesh(&MeshDesc {
         positions: &[
@@ -36,10 +36,10 @@ fn mat(b: &mut HeadlessBackend, col: [f32; 4]) -> u64 {
     b.create_material(col).expect("mat")
 }
 
-/// 顶视 ortho 帧（zoom=半宽 world；px 精确路）
+/// The top-view ortho frame (zoom = half-width world; the px exact road)
 fn ortho_frame(commands: Vec<DrawCommand>, rect: &ViewportRect, z: f64) -> Frame {
     let rig = CameraRig::look_at([0.0, 0.0, 50.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-    let zw = z * (rect.height as f64 / rect.width as f64); // 竖半高（方 rect=同 z）
+    let zw = z * (rect.height as f64 / rect.width as f64); // vertical half-height (square rect = same z)
     Frame {
         viewport: Viewport::new(rect.width, rect.height, 1.0),
         camera: Camera::ortho(z as f32, zw as f32, 0.5, 500.0),
@@ -91,10 +91,10 @@ fn ra() -> ViewportRect {
 }
 fn rb() -> ViewportRect {
     ViewportRect::new(54, 0, 50, 64)
-} // 缝 x∈[50,54)∪[104,128)
+} // seams x in [50,54) and [104,128)
 
-/// 裁决门 ① + 互不侵犯 ②：safe 形下红蓝各区自守、缝=全幅 clear 色；
-/// AllClear 形（pass2 也 Clear）红区必被灭 —— 分歧点两形各自可失败。
+/// Ruling gate (1) + non-aggression (2): under the safe form red and blue each hold their own region, the seam = the full-frame clear color;
+/// under the AllClear form (pass2 also Clears) the red region must be dead -- the divergence point is independently falsifiable in both forms.
 #[test]
 // spec: WGPU-26
 fn clear_semantics_verdict_and_non_erasure() {
@@ -119,7 +119,7 @@ fn clear_semantics_verdict_and_non_erasure() {
     };
     let fa = ortho_frame(mk(sr, red), &ra(), 20.0);
     let fb = ortho_frame(mk(sb, blue), &rb(), 20.0);
-    // safe 形（首 Clear 后 Load）
+    // the safe form (first Clear, then Load)
     let img = b
         .render_to_pixels_rects(
             &[(fa.clone(), ra()), (fb.clone(), rb())],
@@ -131,30 +131,30 @@ fn clear_semantics_verdict_and_non_erasure() {
     println!("PROBE safe: redA={red_a} blueB={blue_b} bleed redB={red_b} blueA={blue_a}");
     assert!(
         red_a > 1500 && blue_b > 1500,
-        "两区自家色必在场 red={red_a} blue={blue_b}"
+        "both regions' own colors must be present red={red_a} blue={blue_b}"
     );
-    assert_eq!(red_b, 0, "红不得越界蓝区");
-    assert_eq!(blue_a, 0, "蓝不得越界红区");
+    assert_eq!(red_b, 0, "red must not cross into the blue region");
+    assert_eq!(blue_a, 0, "blue must not cross into the red region");
     let gutter = ViewportRect::new(104, 0, 24, 64);
     assert!(
         count(&img, &gutter, is_black) >= gutter.width * gutter.height - 4,
-        "右缝必=全幅 clear 底色"
+        "the right seam must = the full-frame clear background color"
     );
-    // 裁决形（pass2 也 Clear=若 clear respects area 则红存；若 clear 全幅则红灭）
+    // the ruling form (pass2 also Clears: if Clear respects area red survives; if Clear spans the whole attachment red dies)
     let img2 = b
         .render_to_pixels_rects(&[(fa, ra()), (fb, rb())], MultiClearPolicy::AllClear)
         .expect("allclear multi");
     let red_a2 = count(&img2, &ra(), is_red);
     println!(
-        "PROBE allclear: redA={red_a2}（0=wgpu Clear 作用全 attachment ⇒ 探针 A 定论成立，首清后 Load 为唯一安全形）"
+        "PROBE allclear: redA={red_a2} (0 = wgpu Clear acts on the whole attachment => probe A's verdict holds, first-Clear-then-Load is the only safe form)"
     );
     assert_eq!(
         red_a2, 0,
-        "裁决分歧：wgpu30 本机实测 Clear 非全区形——与计划地基定论相反，停带重呈"
+        "ruling divergence: wgpu30 on this machine measures Clear as not-the-whole-region form -- contrary to the plan's foundation verdict, the band halts for re-presentation"
     );
 }
 
-/// canary ②：单 full-rect 多视口路 == 旧全屏路逐字节等（存量零回归锁）。
+/// Canary (2): a single full-rect multi-viewport road == the old full-screen road byte by byte (the zero-regression lock on the existing form).
 #[test]
 // spec: WGPU-26
 fn single_rect_equals_legacy_bitwise() {
@@ -182,10 +182,13 @@ fn single_rect_equals_legacy_bitwise() {
             MultiClearPolicy::FirstClearRestLoad,
         )
         .expect("multi");
-    assert_eq!(legacy.rgba, multi.rgba, "单投必逐字节=旧路");
+    assert_eq!(
+        legacy.rgba, multi.rgba,
+        "a single projection must be byte-identical to the old road"
+    );
 }
 
-/// 深度共享 ③：蓝区两叠板（近覆远）序正确 + 与红区残留深度互不干涉（scissor 圈栅格）。
+/// Depth sharing (3): two stacked plates in the blue region (near covers far) with the correct order + no interference with the red region's residual depth (scissor-locked raster).
 #[test]
 // spec: WGPU-26
 fn shared_depth_scissor_fenced_order() {
@@ -225,7 +228,7 @@ fn shared_depth_scissor_fenced_order() {
         &ra(),
         20.0,
     );
-    // 蓝区顶视：绿大板在下、蓝小板在上（近→远序=画序反，深度定胜负）
+    // blue region top view: the big green plate below, the small blue plate above (near->far order = reversed draw order, depth decides the bout)
     let fb = ortho_frame(
         vec![
             DrawCommand::ClearColor {
@@ -269,15 +272,18 @@ fn shared_depth_scissor_fenced_order() {
             .collect();
         println!("ROW{y:02} {row}");
     }
-    let blue_c = count(&img, &rb(), is_blue); // 蓝区全域（dump 定形：小板 ~64px 量级）
+    let blue_c = count(&img, &rb(), is_blue); // the blue region in full (dump-fixed form: the small plate ~64px magnitude)
     assert!(
         blue_c > 100,
-        "近板必覆远板（深度共享+scissor 圈栅格失效则红/绿渗底）got {blue_c}"
+        "the near plate must cover the far one (depth sharing + scissor-locked raster failing would bleed red/green) got {blue_c}"
     );
-    assert!(count(&img, &ra(), is_red) > 1500, "红区自守");
+    assert!(
+        count(&img, &ra(), is_red) > 1500,
+        "the red region holds its own"
+    );
 }
 
-/// shadow 共享 ④：caster 一趟双视口同 map——两区各自见影斑（若双投各跑一遍才可能重复，共享省税）。
+/// Shadow sharing (4): one caster run serves both viewports on the same map -- each region sees its own shadow patches (duplicate cost only if each projection ran its own; sharing saves the tax).
 #[test]
 // spec: WGPU-26
 fn caster_once_both_views_have_shadow() {
@@ -393,6 +399,6 @@ fn caster_once_both_views_have_shadow() {
     println!("PROBE shadow: darkA={d_a} darkB={d_b}");
     assert!(
         d_a > 30 && d_b > 30,
-        "双区各自见影（共享 caster map 双投成立）A={d_a} B={d_b}"
+        "both regions each see shadow (the shared caster map serves both projections) A={d_a} B={d_b}"
     );
 }

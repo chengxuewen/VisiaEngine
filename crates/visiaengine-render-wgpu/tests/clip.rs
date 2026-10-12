@@ -1,5 +1,5 @@
-//! WGPU-21/22/23：剖面裁切管线——fs discard（mesh 族/扩片族/caster 一致性）。
-//! 谓词纪律 [PIT-8]：族计数+区间，canary 逐位形（不误杀锁）。
+//! WGPU-21/22/23: section-clip pipeline -- fs discard (mesh family / tile-expansion family / caster consistency).
+//! Predicate discipline [PIT-8]: family counts + intervals, canary bitwise form (no-mistaken-kill lock).
 
 use visiaengine_render::{
     Camera, CameraRig, ClipSetup, DrawCommand, Frame, MeshDesc, PointMark, PointTableDesc,
@@ -16,7 +16,7 @@ const T4: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-// ── 顶视墙场景：z=0 红墙 32×32，相机正俯视=半切精确半区形 ──────────────────
+// -- top-view wall scene: z = 0 red wall 32x32, camera straight top view = the half-cut exact half-region form --
 
 fn wall_mesh(b: &mut HeadlessBackend) -> u64 {
     b.create_mesh(&MeshDesc {
@@ -95,38 +95,55 @@ fn count_red(img: &OffscreenFrame) -> u32 {
         .sum()
 }
 
-/// 三自证①canary=不误杀逐位形 + ②半切骤降 + None/EMPTY 等价 + AND 角域。
+/// Triple self-proof (1) canary = no-mistaken-kill bitwise form + (2) half-cut sharp drop + None/EMPTY equivalence + AND corner domain.
 #[test]
 // spec: WGPU-21
 fn wall_canary_halfcut_empty_and_corner() {
     let mut b = HeadlessBackend::new(W, H).expect("adapter");
     let base = render_wall(&mut b, None);
     let n0 = count_red(&base);
-    assert!(n0 > 3500, "墙应铺满视口 got {n0}");
-    // ① canary：保留全部的面 → 逐字节等（谓词不误杀 + None 位零回归双重锁）
-    let keep_all = ClipSetup::new(&[[0.0, -1.0, 0.0, 50.0]]).expect("y≤50 保留");
+    assert!(n0 > 3500, "the wall should tile the viewport got {n0}");
+    // (1) canary: a plane keeping everything -> byte-identical (dual lock: the predicate's no-mistaken-kill + the None position's zero regression)
+    let keep_all = ClipSetup::new(&[[0.0, -1.0, 0.0, 50.0]]).expect("keeps y <= 50");
     let img_k = render_wall(&mut b, Some(keep_all));
-    assert_eq!(base.rgba, img_k.rgba, "canary 面下逐字节必等");
-    // None ≡ Some(EMPTY)（逐字节）
+    assert_eq!(
+        base.rgba, img_k.rgba,
+        "must be byte-identical under the canary plane"
+    );
+    // None = Some(EMPTY) (byte by byte)
     let img_e = render_wall(&mut b, Some(ClipSetup::EMPTY));
-    assert_eq!(base.rgba, img_e.rgba, "EMPTY 必须逐字节=无裁切");
-    // ② 半切 y≥0：红族≈半（实测定阈=PIT-8；区间=半区±8px 边行容差）
-    let half = ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0]]).expect("y≥0 保留");
+    assert_eq!(
+        base.rgba, img_e.rgba,
+        "EMPTY must be byte-identical to no clipping"
+    );
+    // (2) half-cut y >= 0: the red family ~ half (threshold set by measurement = PIT-8; interval = half-region +/- 8px edge-row tolerance)
+    let half = ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0]]).expect("keeps y >= 0");
     let img_h = render_wall(&mut b, Some(half));
     let nh = count_red(&img_h);
-    assert!((nh * 2).abs_diff(n0) <= 260, "半切应≈对半 n0={n0} nh={nh}");
-    // 全切：面在墙外另一侧 → 红=0（正杀形，防 canary 假绿双向）
-    let cut_all = ClipSetup::new(&[[0.0, 1.0, 0.0, -50.0]]).expect("y≥50 保留");
+    assert!(
+        (nh * 2).abs_diff(n0) <= 260,
+        "half cut should ~ half n0={n0} nh={nh}"
+    );
+    // full cut: the plane on the other side of the wall -> red = 0 (the positive-kill form, guarding canary false-green bidirectionally)
+    let cut_all = ClipSetup::new(&[[0.0, 1.0, 0.0, -50.0]]).expect("keeps y >= 50");
     let img_a = render_wall(&mut b, Some(cut_all));
-    assert_eq!(count_red(&img_a), 0, "全切必须清零（正杀对照）");
-    // ③ AND 角域 y≥0 ∧ x≥0 → ≈四分之一
-    let corner = ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0]]).expect("角域");
+    assert_eq!(
+        count_red(&img_a),
+        0,
+        "a full cut must zero out (positive-kill control)"
+    );
+    // (3) AND corner domain y >= 0 and x >= 0 -> ~ one quarter
+    let corner =
+        ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0]]).expect("corner domain");
     let img_c = render_wall(&mut b, Some(corner));
     let nc = count_red(&img_c);
-    assert!((nc * 4).abs_diff(n0) <= 260, "AND 角域应≈¼ n0={n0} nc={nc}");
+    assert!(
+        (nc * 4).abs_diff(n0) <= 260,
+        "the AND corner domain should ~ 1/4 n0={n0} nc={nc}"
+    );
 }
 
-/// 远原点逐位同谓词 [REND-32 精度纪律的管线兑现]：origin=1e7 园区系 ≡ 原点系逐字节。
+/// Far-origin bitwise-same predicate [the pipeline delivery of the REND-32 precision discipline]: origin = 1e7 campus frame = origin frame byte by byte.
 #[test]
 // spec: WGPU-21
 fn far_origin_clip_bitwise_identity() {
@@ -155,23 +172,26 @@ fn far_origin_clip_bitwise_identity() {
             transform: T4,
         },
     ];
-    // 面：原点系 y≥0 ≡ 大坐标系 y≥-2e6（世界系数 f64 锚定，d=+2e6）
+    // plane: origin-frame y >= 0 = large-coordinate-frame y >= -2e6 (world coefficients f64-anchored, d = +2e6)
     let clip_small = ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0]]).expect("c1");
     let clip_big = ClipSetup::new(&[[0.0, 1.0, 0.0, 2.0e6]]).expect("c2");
     let img_small = b
         .render_to_pixels(&top_frame(cmds_small, Some(clip_small)))
         .expect("r1");
-    // 大坐标版相机/光源整体平移 origin（D7 眼位差=同 local）：eye 同步 +big
+    // the large-coordinate version shifts camera/light wholesale by origin (D7 eye difference = same local): eye shifts +big in sync
     let mut f_big = top_frame(cmds_big, Some(clip_big));
     f_big.eye = [big[0], big[1], 20.0];
     let rig = CameraRig::look_at(f_big.eye, [big[0], big[1], 0.0], [0.0, 1.0, 0.0]);
     f_big.view_rot = rig.view_rotation();
     let img_big = b.render_to_pixels(&f_big).expect("r2");
-    assert_eq!(img_small.rgba, img_big.rgba, "远原点同几何必须逐字节等");
-    assert!(count_red(&img_small) > 1000, "非空场景自证");
+    assert_eq!(
+        img_small.rgba, img_big.rgba,
+        "the same geometry at a far origin must be byte-identical"
+    );
+    assert!(count_red(&img_small) > 1000, "non-empty scene self-proof");
 }
 
-/// 扩片族 [WGPU-23]：黄线半裁=骤降；绿盘（保留侧）逐位不动；蓝盘（裁侧）清零。
+/// The tile-expansion family [WGPU-23]: half-clipped yellow line = sharp drop; green disc (kept side) bitwise unmoved; blue disc (clipped side) zeroed.
 #[test]
 // spec: WGPU-23
 fn stroke_and_point_families_clipped() {
@@ -233,7 +253,7 @@ fn stroke_and_point_families_clipped() {
     );
     assert!(
         y0 > 60 && g0 > 40 && b0 > 40,
-        "三族在场自证 y={y0} g={g0} b={b0}"
+        "three-family presence self-proof y={y0} g={g0} b={b0}"
     );
     let half = ClipSetup::new(&[[0.0, 1.0, 0.0, 0.0]]).expect("y≥0");
     let cut = b.render_to_pixels(&mk(Some(half))).expect("r1");
@@ -242,12 +262,18 @@ fn stroke_and_point_families_clipped() {
         fam(&cut, is_green),
         fam(&cut, is_blue),
     );
-    assert_eq!(b1, 0, "侧外点盘必须清零 got {b1}");
-    assert!(y1 * 2 <= y0 && y1 > 10, "线段半裁≈对半 y0={y0} y1={y1}");
-    assert_eq!(g0, g1, "保留侧盘逐位不动（族计数）g0={g0} g1={g1}");
+    assert_eq!(b1, 0, "the disc outside the side must zero out got {b1}");
+    assert!(
+        y1 * 2 <= y0 && y1 > 10,
+        "the line's half cut ~ half y0={y0} y1={y1}"
+    );
+    assert_eq!(
+        g0, g1,
+        "the kept-side disc stays bitwise unmoved (family counts) g0={g0} g1={g1}"
+    );
 }
 
-/// caster 一致性 [WGPU-22]：8×8 实例城同裁 → 影斑族崩塌（先探针实测定阈 [PIT-8]）。
+/// Caster consistency [WGPU-22]: an 8x8 instance city clipped the same -> the shadow-patch family collapses (probe-measured threshold first [PIT-8]).
 #[test]
 // spec: WGPU-22
 fn shadow_caster_respects_clip() {
@@ -355,7 +381,7 @@ fn shadow_caster_respects_clip() {
     };
     let full = b.render_to_pixels(&mk(None)).expect("r0");
     let d_full = dark(&full);
-    // 实例 z∈[0,4..8]；裁面 z≤0.5 → 塔身灭、0.5m 基座留（薄影残余）
+    // instances z in [0,4..8]; the clip plane z <= 0.5 -> tower bodies dead, 0.5m bases kept (thin shadow residue)
     let kill = ClipSetup::new(&[[0.0, 0.0, -1.0, 0.5]]).expect("z≤0.5");
     let cut = b.render_to_pixels(&mk(Some(kill))).expect("r1");
     let d_cut = dark(&cut);
@@ -363,10 +389,13 @@ fn shadow_caster_respects_clip() {
         .map(|y| (0..W).filter(|&x| is_neutral(px(&cut, x, y))).count() as u32)
         .sum::<u32>();
     println!("PROBE d_full={d_full} d_cut={d_cut} ground={ground_left}");
-    assert!(d_full > 100, "城影基线 d_full={d_full}");
+    assert!(d_full > 100, "city-shadow baseline d_full={d_full}");
     assert!(
         d_cut * 3 < d_full,
-        "caster 同裁影斑崩塌 full={d_full} cut={d_cut}"
+        "the caster clipped the same, shadow patches collapse full={d_full} cut={d_cut}"
     );
-    assert!(ground_left > 200, "地面存活对照 got {ground_left}");
+    assert!(
+        ground_left > 200,
+        "ground survival control got {ground_left}"
+    );
 }

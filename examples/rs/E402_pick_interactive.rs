@@ -1,7 +1,7 @@
-//! E402 · 交互·hover/多选窗 —— 光标射线悬停预高亮 + 左键点选多选（toggle）全链演示。
-//! 用法: cargo run --example E402_pick_interactive [选项]
-//! 交互：左键按住拖=轨道旋转 | 松开未移动=点选(toggle 多选) | R=清空选择 | 滚轮=远近
-//! 关窗=退出。--frames N：渲染预算退出（ctest/xvfb 路，注册表 argv 专属，C15）。
+//! E402 · interaction, hover/multi-select window -- cursor-ray hover pre-highlight + left-click multi-select (toggle) full-chain demo.
+//! Usage: cargo run --example E402_pick_interactive [options]
+//! Interaction: left-hold drag = orbit rotation | release without movement = click select (toggle multi-select) | R = clear selection | wheel = distance
+//! close window = exit. --frames N: render-budget exit (the ctest/xvfb road, the registry argv-exclusive, C15).
 
 use examples::viewer::{Ctx, FormatPolicy};
 
@@ -19,11 +19,11 @@ use winit::keyboard::{Key, NamedKey};
 use winit::window::WindowId;
 
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
-const SELECTED: [f32; 4] = [1.0, 0.83, 0.29, 1.0]; // 高亮黄（WGPU-12 色族）
-const HOVER: [f32; 4] = [1.0, 0.6, 0.2, 1.0]; // 悬停橙（选中态之下档，同族可辨）
+const SELECTED: [f32; 4] = [1.0, 0.83, 0.29, 1.0]; // highlight yellow (the WGPU-12 color family)
+const HOVER: [f32; 4] = [1.0, 0.6, 0.2, 1.0]; // hover orange (one notch below the selected state, distinguishable within the family)
 
-/// 世界平移 ×缩放 s 的刚体位形（行向量约定；pick world 与 render transform 同源单份——
-/// E401 双份烘移离轴 64px 教训的构造性根除）。
+/// The rigid pose of a world translation x scale s (row-vector convention; pick world and render transform share one source --
+/// the constructive eradication of the E401 double-bake 64px off-axis lesson).
 fn placed(x: f64, y: f64, z: f64, s: f64) -> [[f64; 4]; 4] {
     [
         [s, 0.0, 0.0, 0.0],
@@ -64,7 +64,7 @@ impl App {
         }
     }
 
-    /// 屏幕坐标 → 透视射线 → pick_meshes → 命中盒索引（REND-21/23 路，f64 全程）。
+    /// Screen coordinates -> perspective ray -> pick_meshes -> hit box index (the REND-21/23 road, all f64).
     fn pick_at(&self, x: f64, y: f64) -> Option<usize> {
         let Some(ctx) = &self.ctx else {
             return None;
@@ -131,7 +131,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E402 · hover/多选（左键点选=黄 悬停=橙 拖=轨道 R=清空 关窗退出）",
+            "VisiaEngine E402 · hover/multi-select (left-click = yellow, hover = orange, drag = orbit, R = clear, close to exit)",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -229,7 +229,7 @@ impl ApplicationHandler for App {
                     }
                     self.request_redraw();
                 } else {
-                    // 悬停预览：每动一次一次射线（≤3 盒场景零成本；大场景升级=节流，见注）
+                    // hover preview: one ray per cursor move (zero cost in a <=3-box scene; large-scene upgrade = throttling, see the note)
                     let h = self.pick_at(x, y);
                     if h != self.hover {
                         self.hover = h;
@@ -286,7 +286,7 @@ impl ApplicationHandler for App {
                     view_rot: self.rig.view_rotation(),
                     eye: self.rig.eye(),
                     proj,
-                    px_world_scale: 1.0, // 三角系不读（REND-29 消费面=扩片族）
+                    px_world_scale: 1.0, // the triangle families do not read it (the REND-29 consumption face = tile-expansion families)
                     shadow: None,
                     clip: None,
                     edl: None,

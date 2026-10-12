@@ -1,6 +1,6 @@
-//! E301 · 相机与视图 —— 透视↔正交无级切换（mix_rig 插值，2D/2.5D/3D 三态演示）。
-//! 用法: cargo run --example E301_switch_camera [path.glb] [--frames N]（smoke: N=3）
-//! 头注纠偏：本件头注释自 G3 起系 load_gltf 复制粘贴残留（批 5 T1 发现即修）。
+//! E301 · camera and views -- stepless perspective<->orthographic switching (mix_rig interpolation, the 2D/2.5D/3D tri-state demo).
+//! Usage: cargo run --example E301_switch_camera [path.glb] [--frames N] (smoke: N = 3)
+//! Header correction note: this file's header comment was load_gltf copy-paste residue since G3 (discovered and fixed in batch 5 T1).
 
 use examples::viewer::{Ctx, FormatPolicy};
 
@@ -13,7 +13,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::WindowId;
 
-/// 上传期分解记录：mesh、material、世界 origin、origin-local 位姿（D7）。
+/// Upload-time decomposition record: mesh, material, world origin, origin-local pose (D7).
 type DrawRecord = (MeshId, MeshId, [f64; 3], [[f64; 4]; 4]);
 
 const CLEAR: [f32; 4] = [0.05, 0.07, 0.10, 1.0];
@@ -22,7 +22,7 @@ struct App {
     ctx: Option<Ctx>,
     core: Option<MeshCore>,
     dragging: Option<(f64, f64)>,
-    statics: Vec<DrawRecord>, // mesh, material(复用 id), world
+    statics: Vec<DrawRecord>, // mesh, material (reused id), world
     frames_left: Option<u32>,
     glb_path: String,
     rig_a: CameraRig,
@@ -38,8 +38,8 @@ impl App {
 }
 
 impl App {
-    /// 输入统一路由（E301 病根）：渲染相机 = mix_rig(rig_a, rig_b, t)——
-    /// 旧件写 self.rig = 每帧被 mix 覆盖，键盘与鼠标同一条死路（拟合亦走双端）。
+    /// Unified input routing (the E301 root disease): the render camera = mix_rig(rig_a, rig_b, t) --
+    /// an old piece writing self.rig = overwritten by mix every frame, keyboard and mouse on the same dead road (the fit also rides both ends).
     fn orbit_view(&mut self, dyaw: f64, dpitch: f64) {
         for r in [&mut self.rig_a, &mut self.rig_b] {
             r.orbit_delta(dyaw, dpitch);
@@ -84,7 +84,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E301 · 2D↔3D（Tab 切态 左键拖=轨道 滚轮=缩放 关窗退出）",
+            "VisiaEngine E301 · 2D<->3D (Tab switches, left-drag = orbit, wheel = zoom, close to exit)",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -92,7 +92,7 @@ impl ApplicationHandler for App {
             event_loop.exit();
             return;
         };
-        // 场景上传：每个 glTF 实体 → mesh + material
+        // Scene upload: each glTF entity -> mesh + material
         let doc = match load_gltf(self.glb_path()) {
             Ok(d) => d,
             Err(e) => {
@@ -124,7 +124,7 @@ impl ApplicationHandler for App {
             self.statics.push((mesh, mat, origin, local));
         }
         println!("loaded {} entities", self.statics.len());
-        // 装载期取景拟合（BBox 门）：三 rig 共 target；2D 正交 zoom=半径×1.35，3D 透视 dist=×2.6
+        // Load-time framing fit (the BBox gate): three rigs share the target; 2D orthographic zoom = radius x 1.35, 3D perspective dist = x2.6
         let r = bbox.radius();
         for rig in [&mut self.rig_a, &mut self.rig_b] {
             rig.target = bbox.center();
@@ -192,7 +192,7 @@ impl ApplicationHandler for App {
                 let rig = CameraRig::mix_rig(&self.rig_a, &self.rig_b, self.t);
                 let aspect = ctx.config.width as f32 / ctx.config.height.max(1) as f32;
                 let (near, far) = ((rig.dist * 0.01) as f32, (rig.dist * 30.0) as f32);
-                // 投影型 t=0.5 处切换（rig 参数连续过渡；矩阵级连续混合属后续相机片）
+                // the projection type switches at t = 0.5 (rig parameters interpolate continuously; matrix-level blending belongs to a later camera slice)
                 let (camera, proj) = if self.t < 0.5 {
                     let hw = rig.zoom as f32;
                     (

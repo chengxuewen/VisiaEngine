@@ -1,7 +1,7 @@
-//! E501 · 材质与光影 —— instanced 楼块群 + 方向光 PCSS 软影（批 4 光影成果面）。
-//! 双模式：`--frames N` = headless 单帧 + dark 断言（CI/ctest 契约，pixi smoke-shadow-demo）；
-//! 无参数 = 交互窗口（左键拖=轨道、滚轮=远近、关窗退出）——cargo-run_E501 人工检验光影效果面。
-//! 用法：`cargo run --example E501_shadow_demo [-- --frames 1]`
+//! E501 · materials and light -- an instanced block-of-buildings + directional-light PCSS soft shadows (the batch-4 lighting outcome face).
+//! Dual mode: `--frames N` = headless single frame + dark assertion (the CI/ctest contract, pixi smoke-shadow-demo);
+//! no arguments = interactive window (left-drag = orbit, wheel = distance, close to exit) -- the cargo-run_E501 human light-check face.
+//! Usage: `cargo run --example E501_shadow_demo [-- --frames 1]`
 
 #[path = "gallery.rs"]
 mod gallery;
@@ -21,7 +21,7 @@ use winit::window::WindowId;
 
 const W: u32 = 256;
 const H: u32 = 256;
-const SIDE: usize = 16; // 16×16=256 楼块
+const SIDE: usize = 16; // 16x16 = 256 blocks
 const IDENTITY: [[f64; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
@@ -29,13 +29,13 @@ const IDENTITY: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// 确定性城市：单 draw instanced，高差=素数哈希（headless/window 两路同源）
+/// The deterministic city: a single instanced draw, height variance = prime hash (headless/window roads share the source)
 fn city() -> Vec<Instance> {
     (0..SIDE)
         .flat_map(|gy| {
             (0..SIDE).map(move |gx| {
                 let i = gx + gy * SIDE;
-                let h = 1.5 + (i * 7919 % 13) as f32 * 0.6; // 确定性高差
+                let h = 1.5 + (i * 7919 % 13) as f32 * 0.6; // deterministic height variance
                 Instance::new(
                     [
                         (gx as f32 - SIDE as f32 / 2.0) * 2.2,
@@ -64,7 +64,7 @@ fn ground_desc() -> MeshDesc<'static> {
     }
 }
 
-/// 光源相机（REND-31 构造契约：rig 路）：西南高角度太阳，参数与批 4 逐位一致
+/// Light camera (the REND-31 construction contract: the rig road): a south-west high-angle sun, parameters bitwise identical to batch 4
 fn shadow_setup() -> ShadowSetup {
     let ld = [0.35f32, 0.5, 0.79];
     let nn = (ld[0] * ld[0] + ld[1] * ld[1] + ld[2] * ld[2]).sqrt();
@@ -81,7 +81,7 @@ fn shadow_setup() -> ShadowSetup {
         view_rot: lrig.view_rotation(),
         eye: lrig.eye(),
         light_dir: ld,
-        size: 0.5, // 软半影
+        size: 0.5, // soft penumbra
         bias: ShadowBias {
             constant: -1.2,
             slope: -1.5,
@@ -116,9 +116,10 @@ fn scene_commands(
     ]
 }
 
-// ── headless 路（CI 契约原样：单帧 + dark>800 断言 + OK 行）──────────────────
+// -- headless road (CI contract as-is: single frame + dark > 800 assertion + OK line) ------
 fn headless_run() {
-    let mut b = HeadlessBackend::new(W, H).expect("adapter（无 GPU 环境如实报错）");
+    let mut b = HeadlessBackend::new(W, H)
+        .expect("adapter (report honestly when there is no GPU environment)");
     let ground = b.create_mesh(&ground_desc()).expect("ground");
     let gmat = b
         .create_material([0.75, 0.75, 0.78, 1.0])
@@ -161,8 +162,8 @@ fn headless_run() {
     let mut groundish = 0u32;
     for p in img.rgba.as_chunks::<4>().0.iter() {
         let (r, g, bl) = (p[0], p[1], p[2]);
-        // CORE-16 域重钉：地面亮面 r≈130..137 / 影斑 r≈112..127 双峰（编码域），
-        // 分界 128（旧域 lum<260 的线性阈在编码域失效）；阈 4000=实测 ~10k 的 −60%
+        // CORE-16 domain re-pinned: ground bright faces r ~ 130..137 / shadow patches r ~ 112..127 bimodal (encoding domain),
+        // boundary 128 (the old domain's lum < 260 linear threshold fails in the encoding domain); threshold 4000 = measured ~10k minus 60%
         if r.abs_diff(g) < 18 && r.abs_diff(bl) < 26 && (40..200).contains(&r) {
             groundish += 1;
             if r < 129 {
@@ -170,7 +171,10 @@ fn headless_run() {
             }
         }
     }
-    assert!(dark > 4000, "影斑不足（城市应投影成片）dark={dark}");
+    assert!(
+        dark > 4000,
+        "shadow patches insufficient (a city should project sheets) dark={dark}"
+    );
     println!(
         "OK shadow demo dark={}/{} buildings={}",
         dark,
@@ -179,7 +183,7 @@ fn headless_run() {
     );
 }
 
-// ── 交互路（人工检验面：MeshCore 直渲 surface，同场景同阴影）─────────────────
+// -- interactive road (human verification face: MeshCore renders straight to the surface, same scene same shadows) --
 struct App {
     ctx: Option<Ctx>,
     core: Option<MeshCore>,
@@ -195,7 +199,7 @@ impl ApplicationHandler for App {
         }
         let Some((ctx, mut core)) = Ctx::new(
             event_loop,
-            "VisiaEngine E501 shadow · 左键拖=轨道 滚轮=远近 关窗退出",
+            "VisiaEngine E501 shadow · left-drag = orbit, wheel = distance, close to exit",
             960,
             600,
             FormatPolicy::SurfaceDefault,
@@ -203,7 +207,7 @@ impl ApplicationHandler for App {
             event_loop.exit();
             return;
         };
-        // 场景上传（与 headless 路同源参数）
+        // scene upload (same-source parameters as the headless road)
         let ground = core.upload_mesh(&ground_desc()).expect("ground");
         let gmat = core
             .upload_material([0.75, 0.75, 0.78, 1.0])
@@ -315,7 +319,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     if frames.is_some() {
-        headless_run(); // CI 路：单帧断言即退（N 在 smoke 语境=单帧契约）
+        headless_run(); // the CI road: a single-frame assertion then exit (N in the smoke context = the single-frame contract)
         return Ok(());
     }
     let event_loop = EventLoop::new()?;
