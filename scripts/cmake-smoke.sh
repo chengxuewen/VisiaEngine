@@ -67,6 +67,16 @@ if ! grep -q "submodule update --init" <<<"$out"; then
     echo "CMAKE-SMOKE ✗ the PolyOrch-absent message lost its remediation pointer (the shim's fix guidance is gone)"; exit 1
 fi
 
+# Negative path 4: master-switch contradiction (VISIAENGINE_USE_PIXI=OFF + VISIAENGINE_RUST_SDK=PIXI)
+# must FATAL with the contradiction message (T-B1 2026-10-10). Own build dir (negative-path-1
+# cache discipline); phrase grep survives cmake line wrapping.
+rm -rf "$B-neg4"
+out=$("$CM" -S . -B "$B-neg4" -G Ninja -DVISIAENGINE_QT=OFF -DVISIAENGINE_USE_PIXI=OFF \
+    -DVISIAENGINE_RUST_SDK=PIXI 2>&1); rc4=$?
+rm -rf "$B-neg4"
+[ "$rc4" -ne 0 ] && grep -q "Contradiction" <<<"$out" \
+    || { echo "CMAKE-SMOKE ✗ the master-switch contradiction did not go loud (rc=$rc4)"; exit 1; }
+
 # Negative path 2: the prebuilt escape hatch with a missing artifact = hard error (environment-independent determinism)
 out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT=OFF -DVISIAENGINE_ARTIFACT_PATH=/tmp/ve-nope 2>&1)
 [ $? -ne 0 ] && grep -q "no capi artifact" <<<"$out" \
@@ -143,4 +153,4 @@ else
     DISPLAY_NOTE="display family not executed (no Xvfb -- not a pass)"
 fi
 
-echo "CMAKE-SMOKE ✓ (full bare chain + two negative-path messages + the bare-PATH triple anchor + ${TREE_NOTE} + ${DISPLAY_NOTE})"
+echo "CMAKE-SMOKE ✓ (full bare chain + three negative-path messages + the bare-PATH triple anchor + ${TREE_NOTE} + ${DISPLAY_NOTE})"
