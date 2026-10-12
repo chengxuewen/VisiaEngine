@@ -37,9 +37,10 @@ RN=$(grep -oE 'ctest unified example registry \([0-9]+ entries' README.md | grep
 # Fourth state: the bare-PATH triple anchor (the IDE direct-invocation shape guard; B1 adjudication: configure probe + double build anchor, no fallback added after the Rust example family changed shape)
 # (2026-09-15, measured: the pixi run wrapper masked it; the user's IDE /usr/bin/cmake direct call blew up with "could not execute rustc")
 SYS_CM=$(command -v /usr/bin/cmake || true); [ -n "$SYS_CM" ] || SYS_CM="$CM"  # the probe = the user's real IDE shape (system cmake; machines without a system cmake fall back to the conda binary)
+VE_CONDA_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.pixi/envs/default/bin"  # the conda toolchain anchor, ABSOLUTE (a relative CXX path fails project()'s compiler probe -- measured); the D5 environment is the single source for the prefix
 # Pinning the compiler to absolute paths keeps the probe focused on cargo's self-sufficiency (host reality: no system g++; all C++ lives on the conda side; the real IDE shape is covered separately by state ①)
 env PATH=/usr/bin:/bin "$SYS_CM" -S . -B "$B-negconf" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT=OFF \
-    -DCMAKE_C_COMPILER=/usr/bin/gcc "-DCMAKE_CXX_COMPILER=$(dirname "$CM")/x86_64-conda-linux-gnu-c++" \
+    -DCMAKE_C_COMPILER=/usr/bin/gcc "-DCMAKE_CXX_COMPILER=${VE_CONDA_BIN}/x86_64-conda-linux-gnu-c++" \
     >/dev/null 2>&1 \
     || { echo "CMAKE-SMOKE ✗ bare-PATH configure (SDK/cargo self-sufficiency broken -- the .pixi fallback snap)"; exit 1; }
 rm -rf "$B-negconf"

@@ -35,6 +35,12 @@ audit = "cargo deny check"
 [feature.ide.dependencies]
 rust-analyzer = "*"
 rust-src = ">=1.98,<2"
+# T-G4 (2026-10-12): the wasm lane's IDE face builds from the default env
+# (cmake-build*), so the default toolchain must carry the wasm std -- the
+# conda rustc on PATH otherwise answers cargo's rustc resolution WITHOUT
+# wasm32 std and the build dies on E0463 (measured). Pin discipline is the
+# wasm feature's row above [FFI-R:env-B1]; both spellings must move together.
+rust-std-wasm32-unknown-unknown = "=1.98.0"
 
 [feature.host.target.linux-64.dependencies]
 # [FFI-R:FC-M1] This host has no bare nm/gcc (measured) -- gate-abi/demo use the conda binaries; package names verified via pixi search.
