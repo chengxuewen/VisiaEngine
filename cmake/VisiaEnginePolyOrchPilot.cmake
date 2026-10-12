@@ -20,9 +20,28 @@ function(visiaengine_polyorch_pilot)
     message(STATUS "PolyOrch pilot: rust face not available (sentinel/skip path) -- pilot off")
     return()
   endif()
+  # T-B follow-through (user question 2026-10-12): full verb set for the pilot.
+  # Shape constraint (measured twice): visiaengine-geo is a PLAIN rlib -- cargo
+  # emits libvisiaengine_geo.rlib (underscore), which matches NO PolyOrch artifact
+  # kind (bin/static/shared/example); a default-pair build() call registers
+  # -static/-shared handles whose staging copies chase files cargo never writes.
+  # The honest verb set is therefore: test (drives lib+deps compilation through
+  # the wrapper -- cargo test builds the lib first) + clean, scoped to a
+  # DEDICATED BASE_DIR so the clean cannot wipe the capi/examples shared cache
+  # (polyorch_rust_clean rm -rf's the whole target dir it is given).
+  if(NOT POLYORCH_RUST_FOUND)
+    return()
+  endif()
+  set(_geo_manifest "${CMAKE_SOURCE_DIR}/crates/visiaengine-geo/Cargo.toml")
+  set(_geo_dir "${CMAKE_BINARY_DIR}/.cargo-target-geo")
   polyorch_rust_test(
-    PACKAGE visiaengine-geo
-    NAME    visiaengine-geo-rusttest
-    MANIFEST "${CMAKE_SOURCE_DIR}/crates/visiaengine-geo/Cargo.toml"
-    FOLDER "crates/visiaengine-geo")
+      PACKAGE visiaengine-geo
+      NAME    visiaengine-geo-rusttest
+      MANIFEST "${_geo_manifest}"
+      BASE_DIR "${_geo_dir}"
+      FOLDER "crates/visiaengine-geo")
+  polyorch_rust_clean(
+      NAME visiaengine-geo-clean
+      BASE_DIR "${_geo_dir}"
+      FOLDER "crates/visiaengine-geo")
 endfunction()
