@@ -21,6 +21,8 @@ visiaengine_setup_cargo()  # cargo step + the visiaengine::capi umbrella + the f
 include(cmake/VisiaEnginePolyOrch.cmake)
 visiaengine_ensure_polyorch()  # D39 sentinel reuse/self-embed (first-wins; if the superbuild added it first, reuse its copy)
 visiaengine_ensure_polyorch_rust()  # T-B1: USE_PIXI translation -> polyorch_rust_setup(FROM pixi|system)
+include(cmake/VisiaEnginePolyOrchPilot.cmake)
+visiaengine_polyorch_pilot()  # T-B: geo pilot (polyorch_rust_test drives the first non-native target)
 
 # enable_testing() must run before ALL add_subdirectory calls (a late add_test in the Qt dir is silently dropped -- measured)
 enable_testing()
