@@ -1,233 +1,233 @@
-# VisiaEngine 架构决策记录
+# VisiaEngine Architecture Decision Record
 
-> 记录影响接口、数据流、依赖方向或构建形态的决策。每条含编号、日期、决策内容、原因、影响。方案对比的呈现格式遵循 C1（优缺点/来源/影响/推荐四要素）。被推翻的决策标注 SUPERSEDED 与新编号，不删除条目。
+> Records decisions that affect interfaces, data flow, dependency direction, or build shape. Each entry carries a number, date, decision content, rationale, and impact. Option-comparison presentation follows C1 (pros-cons / source / impact / recommendation, four elements). Overturned decisions are marked SUPERSEDED with the new number; entries are never deleted.
 
-## 格式示例
+## Format example
 
-## D<N>: <决策标题> (YYYY-MM-DD)
-- **背景**: <为什么需要这个决策>
-- **决策**: <选了什么，弃了什么>
-- **原因**: <关键理由，含来源/参考实践>
-- **影响**: <波及的模块、约定、后续开发>
+## D<N>: <decision title> (YYYY-MM-DD)
+- **Background**: <why this decision was needed>
+- **Decision**: <what was chosen, what was dropped>
+- **Rationale**: <key reasoning, including sources/referenced practices>
+- **Impact**: <modules, conventions, and follow-on development affected>
 
-<!-- 自此往下追加真实条目。前项目 MediaServo 决策史见 .refinfo 归档。 -->
+<!-- Real entries append below. The predecessor MediaServo decision history is in the .refinfo archive. -->
 
-## D1: 移植配置中性化（MediaServo → VisiaEngine 全新起点） (2026-09-03)
-- **背景**: 仓内 .agents/.opencode/.omo 整体移植自已完成项目 MediaServo（Rust WebRTC），3437 行旧项目记忆 + 14 个硬引用技能会误导新项目。
-- **决策**: 定位为全新项目→记忆清零为模板（仅沉淀 C1/C9/C14 三条通用方法论，保留原编号防悬空引用）；14 技能原地中性化改写不删除；rules 定点通用化 + platform.md 删除；instructions 去 docker/platform/rust（栈未定不预载语言规则）。
-- **原因**: 旧项目历史已完整归档于 .refinfo/MediaServo（gitignore，本机），覆盖/删除零丢失。
-- **影响**: 每轮会话加载的配置不再包含 MediaServo 架构；技术栈选定后按占位处回填（见 status.md 下一步）。验证：双 grep 门禁通过。
+## D1: Ported-config neutralization (MediaServo → VisiaEngine, fresh start) (2026-09-03)
+- **Background**: the repo's .agents/.opencode/.omo were ported wholesale from the completed project MediaServo (Rust WebRTC); 3437 lines of old-project memory + 14 hard-referencing skills would mislead the new project.
+- **Decision**: position as a brand-new project → memory zeroed to templates (keeping only the three general methodology entries C1/C9/C14, original numbering retained to avoid dangling references); the 14 skills neutralized in place, not deleted; rules spot-generalized + platform.md deleted; instructions dropped docker/platform/rust (stack undecided → no preload of language rules).
+- **Rationale**: the old project's history is fully archived at .refinfo/MediaServo (gitignored, on this machine); overwrite/delete loses nothing.
+- **Impact**: the config loaded each turn no longer contains MediaServo architecture; once the stack is chosen, backfill at the placeholders (see status.md next steps). Verification: dual grep gates passed.
 
-## D2: 技术栈与产品形态定案（白皮书 v0.1.0 初稿） (2026-09-03)
+## D2: Tech stack and product form settled (whitepaper v0.1.0 first draft) (2026-09-03)
 
-> **更新**：本条 impact ④ 的渲染后端终审已由 **D4** 取代（采纳 wgpu 直用自研）。
-- **背景**: 用户提交《VisiaEngine 白皮书》初稿，定位多维空间可视化引擎（2D/2.5D/3D 统一视口，面向 GIS/数字孪生/AV 仿真/BIM），明确非游戏引擎。
-- **决策**: Rust 内核（`visia-core` 场景图/坐标系/空间索引 + `visia-render` 抽象层）；渲染基于 wgpu（Vulkan/Metal/DX12/WebGPU），白皮书暂定 Bevy 为默认后端（`visia-render-bevy`）；C API 为唯一稳定 FFI 边界，交付 SDK 形态不绑架宿主主循环；Open Core：核心永久 MIT/Apache-2.0，商业产品 = Visia Studio 编辑器 + 企业插件/支持；启动体积目标 ≤10MB。
-- **原因**: 填补游戏引擎（重、GIS 弱）与 GIS/Web 库（难嵌原生桌面、2D/3D 不同核）之间的空档；对标先例：Cesium（统一视口但 JS 为主）、MapLibre（纯地图）、Three.js（无空间数据层）。
-- **影响**: ① 栈=确定，rules/rust 回填 instructions 解锁待执行；② crate 命名 visia-* 定，与前项目 MediaServo 完全无关（仅移植了工具链配置）；③ 白皮书 §3.2"原生解析 ODR/OSC"与 §6.2"Beta 插件"承诺级别矛盾，发布前须统一；④ **Bevy 绑定方式为未终审承重决策**（bevy_render 深度 ECS 耦合，"解耦 ECS 用其渲染框架"现实上近不可行）；⑤ 白皮书全文当前仅存于会话，待裁决入库位置。
+> **Update**: this entry's impact ④ — the render-backend final ruling — has been superseded by **D4** (wgpu direct use, self-built pipeline adopted).
+- **Background**: the user submitted the《VisiaEngine whitepaper》first draft, positioning a multi-dimensional spatial visualization engine (unified 2D/2.5D/3D viewport, for GIS / digital twin / AV simulation / BIM), explicitly not a game engine.
+- **Decision**: Rust core (`visia-core` scene graph / coordinate systems / spatial index + `visia-render` abstraction); rendering on wgpu (Vulkan/Metal/DX12/WebGPU), whitepaper tentatively Bevy as default backend (`visia-render-bevy`); the C API is the sole stable FFI boundary, shipping SDK form without hijacking the host main loop; Open Core: the core stays MIT/Apache-2.0 forever, commercial product = Visia Studio editor + enterprise plugins/support; startup size target ≤10MB.
+- **Rationale**: fills the gap between game engines (heavy, weak GIS) and GIS/web libraries (hard to embed in native desktop, 2D/3D on different cores); benchmark precedents: Cesium (unified viewport but JS-first), MapLibre (map-only), Three.js (no spatial-data layer).
+- **Impact**: ① stack = settled, rules/rust backfill into instructions unlocks, pending execution; ② crate naming visia-* settled, wholly unrelated to the predecessor MediaServo (only the toolchain config was ported); ③ whitepaper §3.2 "native ODR/OSC parsing" contradicts §6.2 "Beta plugin" in commitment level — must be unified before release; ④ **the Bevy binding approach is a load-bearing undecided decision** (bevy_render is deeply ECS-coupled; "decouple ECS, use its renderer" is practically near-infeasible); ⑤ the whitepaper's full text currently exists only in the session — its landing location awaits adjudication.
 
-## D3: 白皮书 v0.1.0 入库与措辞修订 (2026-09-03)
-- **决策**: 用户白皮书初稿经审修后入库 docs/whitepaper.md + README.md 摘要版。修订范围（用户批准）：①§4 去除"Bevy 默认后端"承诺，改为"wgpu 基座 + 后端两候选待终审"，架构图后端框改 visia-render-<backend>；②§3.2/§5 ODR/OSC 由"原生解析"降为"官方插件（Beta）"，与路线图对齐；⑤§1.1 对 Cesium 的批评改为精确表述（跨维度场景语义不同一、原生嵌入代价），避免事实性硬伤；⑥日期改 2026-09、license 补"已发布版本不可撤销、不追溯闭源"承诺、Visia 词源改为诚实的"vision 语族造词"。未修订：§3.3 10MB 数字与投影范围表述（未列入批准，随 D4 后端终审一并复核）。
-- **原因**: 白皮书是对外稳定承诺的载体，凡与工程现实/事实冲突处先修再入库；后端终审属未决事项，文档不得先行锁死。
-- **影响**: 白皮书成为项目定位一手事实源（AGENTS.md 已指向）；D4（后端终审）产出后 §4 需二次回填。
+## D3: Whitepaper v0.1.0 committed with wording revisions (2026-09-03)
+- **Decision**: the user's whitepaper first draft, after review and edits, was committed to docs/whitepaper.md + a condensed README.md. Revision scope (user-approved): ① §4 dropped the "Bevy default backend" promise, replaced with "wgpu base + two backend candidates pending final ruling", architecture-diagram backend box renamed visia-render-<backend>; ② §3.2/§5 ODR/OSC downgraded from "native parsing" to "official plugin (Beta)", aligned with the roadmap; ⑤ §1.1's critique of Cesium rewritten precisely (cross-dimensional scene semantics differ, native-embedding cost), avoiding factual errors; ⑥ date changed to 2026-09, license gained the "released versions are irrevocable, no retroactive closing" promise, Visia etymology revised to the honest "vision-family coinage". Not revised: §3.3's 10MB figure and projection-range wording (not in the approval list; to be re-checked together with the D4 backend ruling).
+- **Rationale**: the whitepaper carries externally stable promises; anything conflicting with engineering reality/facts gets fixed before commit; the backend ruling is undecided and must not be pre-locked by the docs.
+- **Impact**: the whitepaper becomes the project's first-hand positioning source (AGENTS.md already points to it); after D4 (backend ruling), §4 needs a second backfill.
 
-## D4: 渲染后端终裁 = wgpu 直用自研管线（B 案） (2026-09-03)
-- **背景**: 白皮书 §4 曾暂定"默认后端 Bevy"，D2 impact ④ 挂起终审。四路调研交付（evidence/2026-09-03-wgpu-direct / -bevy-embed / -angle-integration / legacy-platforms.md，全 2026-09-03 实时引用）。
-- **决策**: **B 案采纳**——基于 wgpu 直用自研渲染管线，默认后端 crate 更名 **`visia-render-wgpu`**；`visia-render-bevy` 不立项。A 案（复用 Bevy 栈）否决；C 案（先 A 后 B）否决（最贵层写两遍 + C ABI 泄漏）。
-- **原因**（A 否决点逐条有证据）: bevy_render 与 App/ECS 不可分且 0.19 加深（RenderGraph 删除实测）；宿主窗口内渲染零先例（godot-bevy 弃渲染器旁证）；无 1.0 承诺+单版 120 破坏+生态锁步实案，与"稳定 C API SDK"冲突；wgpu 直用则主循环/体积/兼容 tier 全自持。B 成本已知：frame graph/管线缓存/GPU 剔除/3D Tiles 流式四无成熟件（永归自持），MVP 15-27 人月合成估计。
-- **legacy 一并裁定**: XP 撤出一切对外文本（ANGLE D3D9 已移除 + Rust MSVC=Win10 底线）；Win7 = 非官方 best-effort（不进承诺）；Android 底线 API 24（系统 GLES/Vulkan 双路，ANGLE 无关）；RK3588(Valhall G610)= Panvk 或厂商 libmali blob，**发布二进制锁一种驱动栈**。§3.3 措辞升级：一等 = Vulkan/Metal/DX12/WebGPU，降级档 = GL 3.3+/GLES 3.0+/WebGL2（"一致的是 API 面与 tier 语义，非一致画质"）。
-- **影响**: 白皮书 §3.3/§4.1/§4.2/§6.2 回填（同日完成）；README 架构行更新；AGENTS.md CODE MAP 规划 crate 变更；MVP 期风险自测项：10 万 entity 帧预算、wgpu 季度破坏性 pin 策略、cosmic-text CJK 图集质量。
-- **SUPERSEDED 声明**: 本决策取代 D2 中"白皮书暂定 Bevy 默认后端（待终审）"表述；D2 其余内容（栈=Rust/SDK 形态/Open Core）继续有效。
+## D4: Render-backend final ruling = wgpu direct use, self-built pipeline (Option B) (2026-09-03)
+- **Background**: whitepaper §4 had tentatively "default backend Bevy"; D2 impact ④ held the final ruling. Four research lanes delivered (evidence/2026-09-03-wgpu-direct / -bevy-embed / -angle-integration / legacy-platforms.md, all live-cited 2026-09-03).
+- **Decision**: **Option B adopted** — self-built render pipeline directly on wgpu; default-backend crate renamed **`visia-render-wgpu`**; `visia-render-bevy` not started. Option A (reuse the Bevy stack) rejected; Option C (A first, then B) rejected (the costliest layer written twice + C ABI leakage).
+- **Rationale** (each Option-A rejection point has evidence): bevy_render is inseparable from App/ECS and 0.19 deepened it (RenderGraph removal measured); rendering inside a host window has zero precedent (godot-bevy abandoning the renderer is circumstantial evidence); no 1.0 promise + 120 breaking changes per release + ecosystem lockstep cases — conflicts with "stable C API SDK"; wgpu direct keeps main loop / size / compat tier fully self-held. Known B costs: frame graph / pipeline cache / GPU culling / 3D Tiles streaming — none has a mature piece (permanently self-held); MVP 15-27 person-month composite estimate.
+- **legacy ruled together**: XP withdrawn from all external text (ANGLE D3D9 already removed + Rust MSVC = Win10 floor); Win7 = unofficial best-effort (not in promises); Android floor API 24 (system GLES/Vulkan dual path, ANGLE irrelevant); RK3588 (Valhall G610) = Panvk or vendor libmali blob, **released binaries lock one driver stack**. §3.3 wording upgraded: first-class = Vulkan/Metal/DX12/WebGPU, degraded tiers = GL 3.3+/GLES 3.0+/WebGL2 ("what is consistent is the API surface and tier semantics, not identical image quality").
+- **Impact**: whitepaper §3.3/§4.1/§4.2/§6.2 backfilled (same day); README architecture row updated; AGENTS.md CODE MAP planned crate changes; MVP-period self-risk items: 100k-entity frame budget, wgpu quarterly breaking-change pin strategy, cosmic-text CJK atlas quality.
+- **SUPERSEDED statement**: this decision supersedes D2's "whitepaper tentatively Bevy default backend (pending final ruling)" wording; D2's remaining content (stack = Rust / SDK form / Open Core) stays valid.
 
-## D5: 开发环境全 pixi 统一管理，rust 工具链含在内（2026-09-03）
-- **决策**: 开发环境以 pixi（conda-forge 单源）统一管理，**rust 工具链亦由 conda-forge 提供**；不采用 rustup 主路径。新机器唯一先决 = `source bootstrap.sh`（自动装 pixi → 一切从 lock 来）。
-- **原因**: 实测 conda-forge Rust 全家桶完整（rust 1.98 月内跟版 + rustfmt/clippy/rust-src/rust-analyzer + `rust-std-wasm32-unknown-unknown`/android + cargo-deny/wasm-bindgen-cli/cargo-binstall）；单 lockfile、国内 conda 镜像成熟、心智模型唯一。前身项目日常主力开发全程跑在 conda rust 上，其踩坑集中于交叉/厂商栈场景（非 conda rust 装不动）。曾评估"pixi 外壳+rustup 工具链"混合方案（C），因 wasm/交叉 std 论据被探测推翻而降级。
-- **条款（边界）**:
-  1. Windows 逃生舱：win-64 入 platforms；若 win conda rust 摩擦超标，单机 rustup+MSVC 覆盖，不污染主线。
-  2. 嵌入式交叉（RK3588/Jetson 类厂商设备）一律 Docker/厂商工具链，conda rust 只做 host 编译——前项目 PIT-85（conda rust 注入 `CARGO_TARGET_*_LINKER` 优先级高于 `.cargo/config.toml`）的边界化处理。
-  3. conda 无包的 cargo 工具（tarpaulin/cbindgen 等）统一经 cargo-binstall（conda 有包）获取预编译二进制。
-  4. CI 钉死 pixi-version，锁漂移用 `--frozen` 把关。
-  5. `pixi.lock` 与 `Cargo.lock` 同纪律必入库。
-- **影响**: 动工日生成 pixi.toml / bootstrap.{sh,bat} / pixi.{sh,bat} / docs/env.md；`rules/common/constraints.md` 增补环境纪律；机器上永不出现 rustup（除条款①逃生场景）。
+## D5: Development environment fully managed by pixi, rust toolchain included (2026-09-03)
+- **Decision**: the development environment is managed uniformly by pixi (conda-forge single source); **the rust toolchain is also provided by conda-forge**; the rustup main path is not adopted. The only prerequisite on a new machine = `source bootstrap.sh` (auto-installs pixi → everything comes from the lock).
+- **Rationale**: measured conda-forge Rust family is complete (rust 1.98 tracks monthly + rustfmt/clippy/rust-src/rust-analyzer + `rust-std-wasm32-unknown-unknown`/android + cargo-deny/wasm-bindgen-cli/cargo-binstall); single lockfile, mature domestic conda mirrors, one mental model. The predecessor project's daily main development ran entirely on conda rust; its pitfalls concentrated in cross/vendor-stack scenarios (not things conda rust couldn't install). The "pixi shell + rustup toolchain" hybrid (C) was evaluated and demoted after its wasm/cross-std arguments were overturned by probing.
+- **Clauses (boundaries)**:
+  1. Windows escape hatch: win-64 enters platforms; if win conda rust friction exceeds the bar, per-machine rustup+MSVC overrides without polluting the mainline.
+  2. Embedded cross (vendor devices of the RK3588/Jetson class) always goes Docker/vendor toolchains; conda rust does host builds only — the boundary-handling of predecessor PIT-85 (conda rust injects `CARGO_TARGET_*_LINKER` priority above `.cargo/config.toml`).
+  3. cargo tools with no conda package (tarpaulin/cbindgen etc.) are obtained as prebuilt binaries via cargo-binstall (conda has the package).
+  4. CI pins pixi-version; lock drift is gated with `--frozen`.
+  5. `pixi.lock` must be committed with the same discipline as `Cargo.lock`.
+- **Impact**: on the work-start day, generate pixi.toml / bootstrap.{sh,bat} / pixi.{sh,bat} / docs/env.md; `rules/common/constraints.md` gains the environment discipline addendum; rustup never appears on the machine (except clause ①'s escape scenario).
 
-## D6: 技术命名空间统一为 visiaengine-*（2026-09-03，用户裁决）
-- **决策**: 品牌名 = **VisiaEngine / 维视引擎**（PascalCase，文档/UI/正式称谓）；技术前缀 = **`visiaengine-`**（小写全品牌名：crate 包名/lib 下划线名/workspace 路径/CI 与门禁引用全链）。C ABI 层：符号 `visiaengine_*`、头文件 `visiaengine.h`、库名 `libvisiaengine.{so,dylib,dll}`（capi 片兑现）。环境变量前缀预留 `VISIAENGINE_`。分层例外：**产品称谓保持原样**（编辑器 "Visia Studio" 非技术命名空间）。
-- **修订面**: D4 历史条目中 crate 名表述按史实保留不改写；自本条起现在时文档全用新名。SDD 条款号（CORE/REND/WGPU-*）独立于 crate 命名，零改动。
-- **原因**: ①"visia" 非官方产品称谓，全名三位一体（仓名=品牌=前缀）检索独占零歧义；②实测无障碍——crates.io 两候选命名空间均空闲、GitHub C 符号 `visia_` 零使用；③前项目 D209→D221 两次全量改名税的终态教训：一次到位=品牌小写全名；④原反对案"C ABI 短前缀双轨"论据经用户质询推翻（C 前缀可同步改，长前缀 gdk_pixbuf_* 有 C 惯例先例）。
-- **影响**: 单笔原子改名（3 crate 目录+包名+引用+CI+现时文档，`pixi run ci` 与 golden 三测全绿后提交）；历史面（decisions/pitfalls 旧条目、docs/reference 快照、commit 史）不改写。未来品牌若再演化，重蹈改名税的成本由"发布前定死"纪律兜底。
+## D6: Technical namespace unified to visiaengine-* (2026-09-03, user ruling)
+- **Decision**: brand name = **VisiaEngine / 维视引擎** (PascalCase, docs/UI/formal address); technical prefix = **`visiaengine-`** (lowercase full brand name: crate package names / lib underscore names / workspace paths / CI and gate references, full chain). C ABI layer: symbols `visiaengine_*`, header `visiaengine.h`, library `libvisiaengine.{so,dylib,dll}` (capi slice delivers it). Environment-variable prefix reserved: `VISIAENGINE_`. Layering exception: **product names keep their own form** (the editor "Visia Studio" is not a technical namespace).
+- **Revision surface**: crate-name wording in D4's historical entry stays as historical fact, not rewritten; from this entry forward, all present-tense docs use the new names. SDD clause numbers (CORE/REND/WGPU-*) are independent of crate naming — zero change.
+- **Rationale**: ① "visia" is not the official product address; the full name is trinity (repo name = brand = prefix) with search monopoly and zero ambiguity; ② measured obstacle-free — both candidate namespaces free on crates.io, GitHub shows zero C-symbol use of `visia_`; ③ the end-state lesson of the predecessor's D209→D221 double full-rename tax: get it right once = brand lowercase full name; ④ the original counter-proposal "C ABI short-prefix dual track" was overturned on user challenge (the C prefix can be changed in sync; long prefixes like gdk_pixbuf_* have C-idiom precedent).
+- **Impact**: one atomic rename commit (3 crate dirs + package names + references + CI + present docs, committed only after `pixi run ci` and the three golden tests all green); the historical surface (old entries in decisions/pitfalls, docs/reference snapshots, commit history) is not rewritten. If the brand ever evolves again, the rename-tax cost of relapse is backstopped by the "settle it before release" discipline.
 
-## D7: P1 裁决——RTC 采用分层 origin 方案（viewer-origin rebase，2026-09-03 用户裁决）
-- **决策**: 坐标精度机制定死三层合体：①core 世界=**f64 全局**（ECEF/投影域数值，语义归属 io 数据源侧，与本题正交）；②顶点存储=**局部 f32**（相对 model/tile 级 origin；local ≤64km 下 f32 保 mm）；③draw uniform 平移=**f64 `origin−eye` 后降 f32**（每帧/相机动阈值，v0 每帧）。不采 CesiumJS 全局绝对顶点+high/low 拆分（那是其历史包袱的补偿）；不采 shader f64（WebGPU 禁）；不采每帧重写顶点（大模型 VBO churn=死）。
-- **原因**: 四方独立收敛（3D Tiles tile transform / MapLibre tile-local+u_matrix / deck.gl layer origin / UE5 LWC——其 per-component 特化方案在 5.0 被废弃回退，即"过度分层 origin"的反面教材）；Cesium `czm_translateRelativeToEye.glsl` 源码实证 viewer-origin rebase 语义；本方案纯 f32 上传面 → **Web SDK 路线零额外工作**；顺带显式化 G2 遗留的 `model f64→f32` 大坐标步长债（1e7 m 级步长约 1m）。
-- **影响**: 实施时机=**GeoJSON 片**（glTF demo 坐标小，现路径兼容零改动）；core SDD 届时补 CORE-11/12 重基行为断言；tile 切分粒度（地图级子毫米需求时）=io-geo 自决，引擎机制不变；极端远程精度需求预留 Cesium 式 high/low 为升级路径（不默认实现）。architecture.md ④/未决点表同步销账。
-- **证据**: `docs/reference/evidence/2026-09-03-rtc-hierarchy.md`
-- **追加勘误（2026-09-03 规划轮）**：'core SDD 补 CORE-11/12'归属错——rebase 组合数学主场在 render（core 无矩阵/wgpu 语义），实际编号=REND-19/20；CORE 命名空间本链无新增。
+## D7: P1 adjudication — RTC adopts the layered origin scheme (viewer-origin rebase, 2026-09-03 user ruling)
+- **Decision**: the coordinate-precision mechanism is fixed as a three-layer union: ① core world = **f64 global** (ECEF/projected-domain numbers, semantic ownership on the io data-source side, orthogonal to this issue); ② vertex storage = **local f32** (relative to model/tile-level origin; at local ≤64km f32 keeps mm); ③ draw-uniform translation = **f64 `origin−eye` then drop to f32** (per frame / on camera motion threshold, v0 every frame). CesiumJS global-absolute vertices + high/low split are not adopted (that compensates its legacy baggage); shader f64 not adopted (banned on WebGPU); per-frame vertex rewrite not adopted (big-model VBO churn = death).
+- **Rationale**: four independent convergences (3D Tiles tile transform / MapLibre tile-local+u_matrix / deck.gl layer origin / UE5 LWC — whose per-component specialization was deprecated and reverted in 5.0, the cautionary tale against "over-layered origin"); Cesium `czm_translateRelativeToEye.glsl` source-proves viewer-origin rebase semantics; this scheme's pure-f32 upload surface → **the Web SDK route needs zero extra work**; incidentally makes explicit the G2 leftover `model f64→f32` large-coordinate step-size debt (1e7 m level step ≈ 1 m).
+- **Impact**: implementation timing = **GeoJSON slice** (glTF demo coordinates are small, current path compatible, zero change); core SDD will add CORE-11/12 rebase-behavior assertions at that time; tile-split granularity (when map-level sub-mm needs arise) = io-geo decides, engine mechanism unchanged; for extreme remote-precision needs, a Cesium-style high/low path is reserved as the upgrade route (not implemented by default). architecture.md ④/open-points table synchronized and closed.
+- **Evidence**: `docs/reference/evidence/2026-09-03-rtc-hierarchy.md`
+- **Erratum added (2026-09-03 planning round)**: "core SDD adds CORE-11/12" was mis-attributed — the rebase combination math lives in render (core has no matrices/wgpu semantics); actual numbers = REND-19/20; the CORE namespace gains nothing on this chain.
 
-## D8: 宿主嵌入面规范（2026-09-11 批准转正；预登记 2026-09-03）
-- **来源**: Easy3D 嵌入域调研 [E3D:C1/C2/C5]（docs/reference/easy3d.md），其 Qt 集成靠 QApplication::notify 私有 hack、ImGui 版丢鼠标坐标、GLFW 指针泄进 public ABI、绑定自动全扫——四坑全为我方反证。
-- **预登记内容**: ①引擎零事件 API：宿主统一经 `visiaengine_on_input(ev)` 注入，出向仅 `frame_requested`/`redraw_needed` 回调，永不要求宿主子类化/事件 poll；②渲染契约面（render trait + IR）禁携带任何窗口/surface 后端类型，rwh handle 只在 capi 边界出现（Easy3D renderer 模块 glfw 零引用实证该纯度可达）；③C ABI 首版=6 行 demo 证通最小集（create 即渲染就绪，零多阶段 init），未绑定项入 graveyard 流程，禁 GLOB 式全量扫绑。
-- **转正增补（批 2 I0-I4 全清，2026-09-11）**：① 句柄=u64 (slot<<32|gen)、slot 基 1、C 头零位布局外露；② 线程例外集={abi_version,last_error}，destroy 跨线程拒销毁、released 再入 -1（双销毁不吞没）；③ **frame_requested/set_callbacks 被否**（拉模型 ve_render+宿主 rAF/paint 自决；SDL3 双层先例在案，重评触发=Qt 动画轮）；④ attach 原子性（失败保 headless 现目标）+ x11 display 必填/win32 hinstance 0=自动；⑤ **wasm 面 C ABI 整体 cfg 出局**（no_mangle 与 bindgen 导出表 wasm-ld 互斥实测）——JS=独立 crate visiaengine-wasm，C 符号图零侵蚀。
-- **验证锚**：gate-abi（14 符号白名单+demo 编译运行）· SMOKE-X11 'OK capi x11' 真窗三帧 · 'OK capi headless input+pick' · CAPI-01..09 十五条款全带测试。
+## D8: Host embedding surface spec (approved 2026-09-11 as final; pre-registered 2026-09-03)
+- **Source**: Easy3D embedding-domain research [E3D:C1/C2/C5] (docs/reference/easy3d.md); its Qt integration relies on a QApplication::notify private hack, the ImGui version loses mouse coordinates, GLFW pointers leaked into the public ABI, bindings were auto-scanned wholesale — all four pits are counter-evidence for us.
+- **Pre-registered content**: ① engine zero-event API: hosts inject uniformly via `visiaengine_on_input(ev)`, outbound only `frame_requested`/`redraw_needed` callbacks; never require host subclassing or event polling; ② the rendering contract surface (render trait + IR) must carry no window/surface backend types; the rwh handle appears only at the capi boundary (Easy3D's renderer module with zero glfw references proves this purity attainable); ③ C ABI first version = a 6-line demo proving the minimal set (create → ready to render, zero multi-stage init), unbound items go through the graveyard process; GLOB-style full-set binding scans forbidden.
+- **Finalization addendum (batch 2, I0-I4 all cleared, 2026-09-11)**: ① handle = u64 (slot<<32|gen), slot base 1, C header exposes zero bit-layout; ② thread exception set = {abi_version,last_error}, destroy rejects cross-thread destruction, re-entering a released handle returns -1 (double destroy not swallowed); ③ **frame_requested/set_callbacks rejected** (pull model ve_render + host rAF/paint decides for itself; the SDL3 two-tier precedent on record; re-evaluation trigger = Qt animation round); ④ attach atomicity (on failure the headless current target is preserved) + x11 display mandatory / win32 hinstance 0 = automatic; ⑤ **the whole wasm-side C ABI is cfg'd out** (no_mangle and the bindgen export table are mutually exclusive under wasm-ld, measured) — JS = the separate crate visiaengine-wasm, zero erosion of the C symbol graph.
+- **Verification anchors**: gate-abi (14-symbol whitelist + demo compile-run) · SMOKE-X11 'OK capi x11' real window three frames · 'OK capi headless input+pick' · CAPI-01..09 all fifteen clauses carry tests.
 
-## D9: P2 裁决——样式 spec 采 MapLibre v8 paint 别名子集（2026-09-03，用户裁决 B 案）
-- **决策**: 在既有 simplestyle 六键之上，接受 MapLibre v8 style spec 的**静态 paint 布局键别名**：`fill-color`→fill、`line-color`→stroke、`line-width`→stroke-width、`circle-color`→marker-color、`circle-radius`→marker-radius（`fill-opacity` 同名）。**不采** v8 的 expressions / zoom stops / source-layer / data-driven（那是 Visia Studio 商业面 + 完整 spec 轮）。simplestyle 主键优先，别名回退。
-- **原因**: GIS 行业现成样式资产多为 v8 格式（MapTiler/OSM thisdir 生态）；别名映射 ~30 LoC 即吃下兼容面，为 SDK 嵌入门槛降低；完整 v8 表达式引擎 3-4 周且侵蚀商业层（Open Core 边界），故取"静态别名子集"这一最小兼容切面。
-- **参考**: C1 四案对比（A 维持/B 别名子集/C 完整/D 自有），B 案 = docs/reference/maplibre.md 活标杆生态兼容 + three-js.md 库形态先例；否决 D（自造=零生态+隐性锁定）。
-- **影响**: geo::style 增别名表（GEO-19）；值格式复用 GEO-12 色解析（#hex/rgb()）；样式系统商业面（Visia Studio 表达式/图层编排）边界清晰上移至未决 P4 邻近。后续 3b 标量→LUT 建在此样式口上。
+## D9: P2 adjudication — style spec adopts the MapLibre v8 paint-alias subset (2026-09-03, user ruling, Option B)
+- **Decision**: on top of the existing six simplestyle keys, accept **static paint-layout key aliases** of the MapLibre v8 style spec: `fill-color`→fill, `line-color`→stroke, `line-width`→stroke-width, `circle-color`→marker-color, `circle-radius`→marker-radius (`fill-opacity` keeps its name). v8's expressions / zoom stops / source-layer / data-driven are **not adopted** (that belongs to the Visia Studio commercial surface + full-spec round). simplestyle primary keys take precedence, aliases as fallback.
+- **Rationale**: off-the-shelf GIS style assets are mostly v8 format (MapTiler/OSM thisdir ecosystems); the alias mapping is ~30 LoC and takes the whole compatibility surface, lowering the SDK-embedding barrier; the full v8 expression engine costs 3-4 weeks and erodes the commercial layer (Open Core boundary), so we take the minimal-compatibility cross-section that is the "static alias subset".
+- **Reference**: C1 four-option comparison (A keep / B alias subset / C full / D custom), Option B = docs/reference/maplibre.md live-benchmark ecosystem compatibility + three-js.md library-form precedent; D rejected (home-grown = zero ecosystem + hidden lock-in).
+- **Impact**: geo::style gains an alias table (GEO-19); value formats reuse GEO-12 color parsing (#hex/rgb()); the style system's commercial surface (Visia Studio expressions/layer orchestration) is clearly lifted toward the undecided P4 neighborhood. The later 3b scalar→LUT builds on this style surface.
 
-## D10: Web/wasm 绑定=路线 A（双面口单源）（2026-09-11 J1-J3 落地转正）
-- **预登记内容**: ① 浏览器面=capi crate 的 `wasm` feature，js.rs 与 ffi.rs 双叶共 engine.rs（单 crate 双面，非 per-repo——单厂商全控面下更懒且免疫 MapLibre 式"同名异核"）；② 薄口纪律：js.rs 只限编组/生命周期/常量再导出/错误翻译，语义唯一住 engine.rs；常量 Rust pub const 单源进 .d.ts 与 C 头（镜像 CAPI-09 机器守卫）；③ 无 free 函数纪律维持（borrowed + caller-alloc 两式，SQLite/[MS] 双派实证）；④ emscripten 路线否决（语言匹配律：C/C++ 核心→emscripten，Rust 核心→wasm-bindgen，三例全合）；⑤ u64≡BigInt、异步工厂（web GPU 交互无同步路径，wgpu 30 Future 实证）。
-- **转正增补（J1-J3）**：① js 面冻结清单=类 VisiaEngine（fromCanvas 异步工厂/扁平 input/pick→bigint）+11 常量 getter+abiVersion 静态；.d.ts 为锁定档（web-mirror.mjs 编译面断言守卫）；② **修订面（被否路线记录）**：wasm-pack 未死但 D5 无包直用 CLI；`visiaengine_input_struct_size()` 导出否决（14 符号面）；playwright CI 自动化归 M2（本机 timebox 放弃实录）；③ 尺寸实录 **raw 733KB/gz 294KB**（wgpu web 全家，≤10MB 目标的 web 半边提前达标）；④ 隔离终形：capi(native C ABI)+visiaengine-wasm(bindgen) 两 crate，**单源=Engine**，CAPI-09 机器对账。证据链 docs/reference/ffi-patterns.md [FFI-R:BS-5/6/7, v13-FEAS-2/7]。
+## D10: Web/wasm binding = route A (dual-surface single-source) (2026-09-11 J1-J3 landed, final)
+- **Pre-registered content**: ① browser surface = the capi crate's `wasm` feature; js.rs and ffi.rs are two leaves sharing engine.rs (single crate, dual surfaces — not per-repo: lazier under full single-vendor control and immune to MapLibre-style "same name, different core"); ② thin-surface discipline: js.rs limited to marshaling/lifecycle/constant re-export/error translation; semantics reside uniquely in engine.rs; constants flow from Rust pub const single source into .d.ts and the C header (mirrors the CAPI-09 machine guard); ③ the no-free-functions discipline is kept (borrowed + caller-alloc two forms, SQLite/[MS] two schools both evidenced); ④ the emscripten route rejected (language-match law: C/C++ core→emscripten, Rust core→wasm-bindgen; three cases all conform); ⑤ u64≡BigInt, async factories (web GPU interaction has no synchronous path, wgpu's 30 Futures evidenced).
+- **Finalization addendum (J1-J3)**: ① js-surface frozen list = class VisiaEngine (fromCanvas async factory / flat input / pick→bigint) + 11 constant getters + abiVersion static; the .d.ts is the lock file (guarded by web-mirror.mjs compile-surface assertions); ② **revision surface (rejected routes recorded)**: wasm-pack not dead but D5 uses its CLI directly without a package; the `visiaengine_input_struct_size()` export rejected (the 14-symbol surface); playwright CI automation belongs to M2 (timebox abandonment on this machine, logged); ③ size record **raw 733KB/gz 294KB** (the whole wgpu web family; the web half of the ≤10MB target hits the bar early); ④ final isolation shape: capi (native C ABI) + visiaengine-wasm (bindgen), two crates, **single source = Engine**, CAPI-09 machine reconciliation. Evidence chain docs/reference/ffi-patterns.md [FFI-R:BS-5/6/7, v13-FEAS-2/7].
 
 
-**D8 触发器①复评（2026-09-14，Qt 轮 Q3 真窗实证）**：frame_requested 帧跳过协商口——QTimer 60Hz 拉模型经 V1 真窗 6 帧无帧率痛点，**维持挂起**；再触发条件=视频/解码帧对齐类宿主（拉模型跟不上外部时钟时才复议）。
+**D8 trigger-① re-evaluation (2026-09-14, Qt round Q3 real-window evidence)**: the frame_requested frame-skip negotiation port — the QTimer 60Hz pull model hit a no-frame-rate pain over 6 frames on V1's real window; **maintain suspension**; next trigger = video/decoded-frame-aligned hosts (revisit only when the pull model can't follow an external clock).
 
-## D11: Qt 轮 demo 构建集成=薄自管 CMake（B 案）（2026-09-14）
+## D11: Qt-round demo build integration = thin self-managed CMake (Option B) (2026-09-14)
 
-**决策**：Qt widget 轮的宿主消费面用 iceoryx2 形薄自管 CMake（~60 行）：`add_custom_target` cargo 步 + `RUST_BUILD_ARTIFACT_PATH` 逃生舱 + INTERFACE 伞 `visiaengine::capi`（BUILD/INSTALL 双 genex）+ 树内假 Config 花招（find_package 消费代码树内/装后同文）；`visiaengineConfig.cmake.in` 模板随写但 install 树/.pc/SOVERSION 不做。g++ 脚本案（A）与 corrosion 直上案（C）弃。
-**理由**：demo 必被真实宿主以 cmake 消费——现在写一次 vs 打包轮重写+重验证两次；find_package 冒烟由 demo 天然承担（前作头号教训：cmake 包从未被编译过）。依据=团队调研四案对比（docs/reference/cmake-integration-patterns.md，iceoryx2 :153-205/:38-78/install.cmake:17-21、slint :16-26 及其 corrosion 坑 :427-466 实证）。
-**影响**：Qt 轮 +1 文件级增量；capi Cargo.toml 顺手加 `links = "visiaengine_c"`（重复静态链防呆）。
-**落地续（同日）**：B 案承接地=CMake 工程化层（.omo/plans/visiaengine-cmake-project.md C1-C3 已落，Qt 轮 v1.3 起为纯消费方）；links 账不立（cargo 硬校验无 build script）由 gate-abi nm 集继续覆盖。
-**复评触发器（打包轮议题）**：转 corrosion 或维持薄自管——触发=第二 C++ 消费者 / Windows 矩阵 / install-tree 真需求；corrosion 转正需先立「conda 无包→cargo-binstall/GitHub 镜像 vendor」D5 例外账（FetchContent configure 期联网与离线纪律相抵）。伞接口 `visiaengine::capi` 为稳定合同，届时换内核消费面零改动。
+**Decision**: the host consumption surface of the Qt widget round uses the iceoryx2-shaped thin self-managed CMake (~60 lines): `add_custom_target` cargo step + `RUST_BUILD_ARTIFACT_PATH` escape hatch + INTERFACE umbrella `visiaengine::capi` (BUILD/INSTALL dual genex) + in-tree fake-Config trick (find_package consumption code identical in-tree/post-install); the `visiaengineConfig.cmake.in` template is written but install tree/.pc/SOVERSION are not done. Option A (g++ script) and Option C (straight corrosion) dropped.
+**Rationale**: the demo must be consumed by a real host via cmake — write once now vs rewrite+revalidate twice at the packaging round; the find_package smoke is naturally carried by the demo (the predecessor's headline lesson: the cmake package was never compiled). Basis = team research, four-option comparison (docs/reference/cmake-integration-patterns.md, iceoryx2 :153-205/:38-78/install.cmake:17-21, slint :16-26 and its corrosion pitfalls :427-466, evidenced).
+**Impact**: Qt round +1 file-level increment; capi Cargo.toml gains `links = "visiaengine_c"` in passing (duplicate static-link foolproof).
+**Landing continuation (same day)**: Option B's landing surface = the CMake engineering layer (.omo/plans/visiaengine-cmake-project.md C1-C3 landed; the Qt round v1.3 onward is a pure consumer); the links account is not opened (cargo hard-validates build-script absence) and is still covered by the gate-abi nm set.
+**Re-evaluation trigger (packaging-round agenda)**: convert to corrosion or keep thin self-managed — trigger = a second C++ consumer / Windows matrix / real install-tree need; corrosion's promotion requires first opening the D5 exception account "conda has no package → cargo-binstall/GitHub-mirror vendor" (FetchContent network at configure time conflicts with the offline discipline). The umbrella interface `visiaengine::capi` is the stable contract — swapping the kernel under it changes the consumption surface zero.
 
-## D12: CMake 示例入口工程=stub launcher + 契约表 + ctest 同源（2026-09-15 落地转正）
-- **背景**: 11 件 E 系 example 对 CMake 透明，IDE 无运行入口；CWD 数据路径（7 件）与 DISPLAY（5 件）两合同破裂面大。
-- **决策**: A=launcher stub（~40 行 C++ 单源）承载 IDE Run 真身：chdir 仓根 + 显示族 DISPLAY 预检 exit 77 + argv 透传；注册=契约表（glob⇄表双向校验，缺项 configure 硬错）；ctest example_* 与 target 同源。弃 B=仅 custom target+ctest（CLion 无 Run 按钮）。
-- **原因**: CLion Run 只认常规可执行目标（imported/custom 不出运行配置）；Easy3D 实证「名=目录=标题」零维护（探针 A file:line）；77=ctest SKIP 原生约定（SKIP_RETURN_CODE 需 ≥3.24）。G8 修订：gate-abi/smoke-x11 的手工 cc 路=纯 C 消费者可编译性门禁属性，非冗余平行，保留。
-- **影响**: 新增 example 义务三处（源文件入盘 / 契约表登记 / tutorials.md 索引）；examples 族需 CMake ≥3.24；三方锁面扩到 cmake 入口（configure 即门，不另立 gate-docs⑥）。
+## D12: CMake example-entry engineering = stub launcher + contract table + ctest single-source (2026-09-15 landed, final)
+- **Background**: the 11 E-series examples are opaque to CMake; IDEs have no run entry; two contracts are badly broken — CWD data paths (7 items) and DISPLAY (5 items).
+- **Decision**: A = launcher stub (~40 lines of single C++ source) carrying the real IDE Run body: chdir to repo root + display-family DISPLAY precheck exit 77 + argv passthrough; registration = contract table (glob⇄table dual validation, missing item = hard configure error); ctest example_* and the targets share one source. B (custom targets + ctest only) dropped — CLion has no Run button.
+- **Rationale**: CLion Run only recognizes regular executable targets (imported/custom produce no run config); Easy3D evidence "name = directory = title" needs zero maintenance (probe A file:line); 77 = the ctest SKIP native convention (SKIP_RETURN_CODE needs ≥3.24). G8 revision: the manual-cc route in gate-abi/smoke-x11 = a pure-C-consumer compilability gate property, not a redundant parallel — kept.
+- **Impact**: new-example duty in three places (source file on disk / contract-table registration / tutorials.md index); the examples family needs CMake ≥3.24; the third lock surface extends to the cmake entry (configure is the gate; no separate gate-docs⑥).
 
-## D13: ABI 属性读三口 14→17（裁决链闭环，2026-09-15）
-- **背景**: 宿主面属性查询缺失（capi 14 口零读口，探针实锤）；缺口表荐「AttrSet 属性例」。
-- **决策**: 用户方向批准（问题呈「第 15 口」字样）→ 计划显式摊牌容量差 → C-1 终审=**3 typed 口 14→17**；C-2 str 无探长（cap 不足=-5 零部分写，256B 文档约定）；C-3 E701 追加段不新开 E 号；点云独立例**跳过**（与 E202 重叠且无专有数据源）。
-- **原因**: 三型镜像 CORE-12 闭合口，宿主一次学全；单变体型口 C 侧丑（型双关）；键=enc_entity 位形直通（零解码、ABA 免疫=代际在键内）。
-- **影响**: D6「14 入口」锁正式改写（CAPI-01/02 条款修订句 + 十二处连带面清单已销）；后续扩口先例=**必须先摊容量差再请批**；wasm 面维持常量镜像（函数不镜像现状）；`attr_of` 保留面为批 7 js 属性口预留同构形状。
+## D13: ABI attribute-read trio 14→17 (adjudication chain closed, 2026-09-15)
+- **Background**: the host-facing attribute query was missing (capi had 14 entry points, zero read ports, probe-proven); the gap table recommended an "AttrSet attribute example".
+- **Decision**: user direction approved (the issue was presented with "the 15th port" wording) → the plan explicitly laid out the capacity delta → C-1 final = **3 typed ports 14→17**; C-2 str has no probe-length (cap insufficient = -5, zero partial write, 256B doc convention); C-3 the E701 appended section does not open a new E number; the standalone point-cloud example is **skipped** (overlaps E202 with no dedicated data source).
+- **Rationale**: the three-type mirror closes CORE-12; the host learns it all at once; a single variant-type port is ugly on the C side (type double-entendre); key = enc_entity pose pass-through (zero decode, ABA-immune = generation inside the key).
+- **Impact**: D6's "14 entry points" lock formally rewritten (CAPI-01/02 clause revision sentences + the twelve-item dependent-surface checklist already cleared); the precedent for future port expansion = **lay the capacity delta out before asking for approval**; the wasm surface keeps mirroring constants (functions are not mirrored, status quo); the `attr_of` kept-surface reserves an isomorphic shape for batch 7's js attribute port.
 
-## D14: 根 examples 目录法 + c+ 统一例子面 + stub 体系退役（supersede D12，2026-09-16 v1.3 落地）
-- **背景**: 用户判 CMake 工程混乱（目录/target/例子三诉）；红队两轮 27+10 项实证：stub launcher=「例子是假的」病根、corrosion 导例进 IDE 主流零先例（slint/iceoryx2 例子皆留 cargo 世界）且自带八税（cargo-build_* 假名/always-dirty #624/双缓存/conda 首蟹/无 CTest #13 拖 2018 至今）。
-- **决策**: ①launcher+189 行契约表+旧 ctest example_* 全废；②根 `examples/{rs,c,cpp,qt}/` 按语言分层，Rust 例保 **cargo example 语义**（[[example]] 显式块，不 bin 化——bin 吃不了 dev-deps 的 v1.1 死结随之消解）；③Rust 例进 IDE 经 **c+**：`cargo-build_*/cargo-run_*` 自写步骤（R10 采纳 corrosion 命名文法、零依赖）+ ctest `example_<茎>` 统一清单，pixi smoke 九条降转发壳（argv 单源=R9 注册表）；④corrosion 议题挂打包轮（引入日=自写步骤整批退场日，同名绊线）。
-- **原因**: 主流形态+税单实测；c+ 体验 90%/成本 19 行，b 路线招牌被其价目表自贬。逐项裁决全程用户过目（含「说人话」四轮收束）。
-- **影响**: cmake-smoke 三态三锚（裸 PATH configure 探+双构建锚——B1「守卫别跟着裁丢」）；D11 复评同步刷新（conda 有 corrosion 包=当初「无包」判据系误，本轮仍弃于税表）；RA Run 降辅助轨。
+## D14: Root examples directory law + unified c+ example surface + stub system retired (supersedes D12, 2026-09-16 v1.3 landed)
+- **Background**: the user judged the CMake engineering messy (three complaints: directories/targets/examples); two red-team rounds with 27+10 evidenced items: the stub launcher = the root of "the examples are fake", and corrosion's IDE import of examples has zero mainstream precedent (slint/iceoryx2 keep examples in the cargo world) while carrying its own eight taxes (cargo-build_* fake names / always-dirty #624 / dual caches / conda first-crab / no CTest #13 open since 2018).
+- **Decision**: ① launcher + 189-line contract table + old ctest example_* all abolished; ② root `examples/{rs,c,cpp,qt}/` layered by language; Rust examples keep **cargo example semantics** (explicit [[example]] blocks, not bin-ified — the v1.1 deadlock that bins can't eat dev-deps dissolves with it); ③ Rust examples enter the IDE via **c+**: self-written `cargo-build_*/cargo-run_*` steps (R10 adopted corrosion's naming grammar, zero dependency) + the unified ctest `example_<stem>` list; the nine pixi smoke entries demoted to forwarding shells (argv single source = R9 registry); ④ the corrosion question is parked at the packaging round (its adoption day = the bulk retirement day of the self-written steps, same-name tripwire).
+- **Rationale**: mainstream shapes + a measured tax bill; the c+ experience is 90% at a cost of 19 lines, while the b-route's signboard self-discounts by its price list. The item-by-item adjudication ran entirely under user eyes (including four "speak plainly" rounds).
+- **Impact**: cmake-smoke tri-state tri-anchor (bare-PATH configure probe + dual build anchors — B1 "don't let the guard get pruned away too"); D11's re-evaluation refreshed in sync (conda has a corrosion package = the original "no package" criterion was wrong; this round still drops it for the tax table); RA Run demoted to an auxiliary track.
 
-## D15: bindings 一窝同栖 + SDL3 窗口宿主 + E8xx/孪生编号法（2026-09-16 v1.3 落地）
-- **背景**: MediaServo 形采纳裁「全盘一窝同栖」；窗口例宿主需跨平台件；E8xx 新带需编号法。
-- **决策**: ①`crates/`=纯核心 5 库；capi→`bindings/c/visiaengine-capi`（src+手写头+tests 同栖，probe 同级），wasm→`bindings/js/rust/`（实测路径引用=0，仅 members+一行 path 地雷），`bindings/cpp`(hpp)/`bindings/qt`(widget.hpp)/`bindings/js/demo`；目录法一句话：examples/=教学例、bindings/=实现+头+验收+包壳。②宿主三分：headless 主力（readback 断言）+ **SDL3**（conda 3.4.16，xid 属性=attach 合同同构，S0 双态实证）+ Qt 专带演示；FetchContent 兜底不建（D5 单源）。③C/C++ SDK 例=**E8xx 带**；孪生共号 `.c/.cpp` 分家（目标名 `_c/_cpp` 尾）；资产逃生口=目录名=文件茎。④hpp 不开 SDD 账（widget.hpp 先例；三壳语义住头注释、活体锚 CAPI-nn；触发器=壳长新行为时建 cpp.md+扩 spec-trace 双正则，30 分钟无利息）。⑤install 树=S-c β：本轮仅 fail-loud 守卫，树+树外演练=打包轮硬债（模板钉 §7）。
-- **原因**: 主流六仓实测（iceoryx2/slint/SDL3/Vulkan-Hpp/Sascha/filament）+ 红队 G 组缺口全收编；examples 中心化=6/6 主流一致，「tests 栖绑定价、examples 集中」两分法。
-- **影响**: 例子门禁=可 ctest 枚举单源；toolchain 批（compile_commands/.clang-format/.vscode presets always+.gitignore L56 negation 死锁修复）；PIT-19（pixi clobber→conda Xvfb XKB 死）入账。
+## D15: bindings as one nest + SDL3 window host + E8xx/twin numbering law (2026-09-16 v1.3 landed)
+- **Background**: the MediaServo shape was adopted with the ruling "everything in one nest"; window examples need a cross-platform host piece; the new E8xx band needed a numbering law.
+- **Decision**: ① `crates/` = the pure core, 5 libraries; capi → `bindings/c/visiaengine-capi` (src + handwritten header + tests cohabiting, probe at the same level), wasm → `bindings/js/rust/` (measured path references = 0; members + one path line); `bindings/cpp` (hpp) / `bindings/qt` (widget.hpp) / `bindings/js/demo`; the directory law in one sentence: examples/ = teaching examples, bindings/ = implementation + headers + acceptance + packaging shell. ② Host trinity: headless main force (readback assertions) + **SDL3** (conda 3.4.16, xid property = the attach contract's isomorph, S0 dual-state evidenced) + a dedicated Qt demo band; no FetchContent fallback (D5 single source). ③ C/C++ SDK examples = **the E8xx band**; twin shared-number `.c/.cpp` separated (target names suffixed `_c/_cpp`); asset escape hatch = directory name = file stem. ④ hpp opens no SDD account (widget.hpp precedent; the three shells' semantics live in header comments, the living anchor is CAPI-nn; trigger = when shell growth carries new behavior, open cpp.md + extend spec-trace's dual regex, 30 minutes, no interest). ⑤ install tree = S-c β: this round only a fail-loud guard; tree + out-of-tree rehearsal = hard debt of the packaging round (template nailed at §7).
+- **Rationale**: six mainstream repos measured (iceoryx2/slint/SDL3/Vulkan-Hpp/Sascha/filament) + the red-team G-group gaps all absorbed; examples centralization = 6/6 mainstream agreement; the dichotomy "tests co-locate with bindings, examples centralize".
+- **Impact**: example gate = a ctest-enumerable single source; the toolchain batch (compile_commands/.clang-format/.vscode presets always + .gitignore L56 negation deadlock fixed); PIT-19 (pixi clobber → conda Xvfb XKB death) booked.
 
-## D16: 点云带范围裁决（2026-09-17，hyperplan 三回合对抗 + 用户「按推荐」）
-- **范围**: M0 ramp 暴露 + M1 add_points 直通 + M2 io-points(PLY ascii/bin_le) 同带；**LAS=二带**（判据：AV/测绘客户先行演示单，本机无证据；las crate 0.11.1 MIT 已核可入）；拾取族整块后置（触发=交互需求 ∧ bench>16ms）；法向/简化/EDL/逐点查询全部非目标。
-- **命名**: 新前缀 `IO-*`（io-* 族律=命名跟随 crate），spec-trace **第三检机器锁**同 commit（白名单外前缀=红；正/负例自证在册）——把「扩前缀漏正则双侧静默失明」降维成门禁问题。
-- **数据模型**: 云=单实体单 DrawPoints，origin=f64 bbox 中心+local f32（mount_geo 同构，D7 零新数学）；云级 meta 走 attr_* 缀查（零新查询口）；逐点属性/查询口随拾取族一并后置。
-- **容量**: cap=4M（声明先拒非半收）；release 实测 1M=upload 127ms/frame 914ms（lavapipe，bench_pcl json 在册），改数窗=一次（常量+条款+测试三处同 commit）。
-- **过程账**: 红队攻出的价值——「S 档纯 CPU 预着色=不可交付」并入 M；「ray_aabb 复用云级 pick」被四家打穿后置；bench.sh 恒真绿（PIT-25）由 G3 顺带根修。
+## D16: Point-cloud band scope ruling (2026-09-17, hyperplan three adversarial rounds + user "follow the recommendation")
+- **Scope**: M0 ramp exposure + M1 add_points pass-through + M2 io-points(PLY ascii/bin_le) in one band; **LAS = second band** (criteria: AV/surveying clients' lead demo list, no evidence on this machine; the las crate 0.11.1 MIT verified, may enter); the whole picking family deferred (trigger = interaction demand ∧ bench >16ms); normals/simplification/EDL/per-point queries all non-goals.
+- **Naming**: new prefix `IO-*` (io-* family law = naming follows the crate), spec-trace's **third-check machine lock** in the same commit (a prefix outside the whitelist = red; positive/negative self-proofs on record) — reducing "missed prefix, both regex sides silently blind" to a gating problem.
+- **Data model**: cloud = single entity, single DrawPoints; origin = f64 bbox center + local f32 (isomorphic to mount_geo, D7 adds zero new math); cloud-level meta via attr_* prefixed queries (zero new query ports); per-point attributes/query ports defer with the picking family.
+- **Capacity**: cap = 4M (declaration rejects first, no half-acceptance); release measured 1M = upload 127ms / frame 914ms (lavapipe, bench_pcl json on record); the number-change window = one (constant + clause + test, three places in one commit).
+- **Process ledger**: value wrung out by the red team — "S-tier pure-CPU preshading = not deliverable" merged into M; "ray_aabb reuse of cloud-level pick" was beaten down by four lanes and deferred; bench.sh's always-true green (PIT-25) was incidentally root-fixed by G3.
 
-## D17: 剖面裁切带八裁决点（2026-09-17，B2 计划轮探针对抗 + 用户「按推荐全带开工」）
-- **a 路线**：fs discard 单路——wgpu 30 硬件 CLIP_DISTANCES 实核存在（docs.rs）但
-  DX12 后端未在列 + feature-gate 需双路分叉；复评触发=discard 边缘质量真疼（客户投诉锯齿）。
-- **b 面数**：≤4 AND（单面/角剖/三轴盒档）；六面盒/OR-union（three.js 双组形）=非目标，
-  升 6 仅 MAX_PLANES 一处（定长 Pod 布局锁）。
-- **c 盖帽**：不做（剖开见空心如实文档）；stencil cap 触发=BIM 内腔演示单。
-- **d 精度**：世界系数 f64（n 指保留侧+面上=保留闭区间），shader 走 model-space 恒等式
-  `n_m=Mᵀn, d_m=d+n·(o+t_M)`（f64 相乘后降 f32）——实施中自查根修两处（Mᵀ/平移列），
-  教训：列主序下「法向乘矩阵」方向必以恒等式推导，勿凭直觉。
-- **e 受裁族**：全绘制族（mesh/inst/stroke/point 逐像素）——「裁世界不裁类型」。
-- **f 阴影**：caster 同 discard（剖掉的楼不留整块影；three.js clipShadows 默认 false
-  是历史包袱非理由）。
-- **g 拾取**：命中点 keeps 负侧→排除重试环（剖开可见者必可拾）；capi pick=positions×
-  IDENTITY 既有事实以「两帧合一」注记，不顺手扩 origin 域（独立缺口独立立项）。
-- **h 面**：E813 C 单例无头活体门；交互剖切滑杆挂账（E901 键控=演示需求触发）。
-- **红利记录**：View 块扩段方案（origin+transform 已在 view_block 签名）使本带
-  **零新 binding/绑组/缓冲**——比探针预估的独立 binding9 省一整层施工；
-  「先查数据通路再定挂点」纪律（think-before-act）实证。
+## D17: Cross-section clipping band, eight adjudication points (2026-09-17, B2 planning-round probe adversarials + user "full band per recommendation")
+- **a route**: fs discard single path — wgpu 30's hardware CLIP_DISTANCES verified to exist (docs.rs) but
+  the DX12 backend is not in the list + feature-gate needs dual-path branching; re-evaluation trigger = discard edge quality genuinely hurts (customer jaggedness complaints).
+- **b face count**: ≤4 AND (single-face / corner-cut / three-axis box tiers); six-face box / OR-union (three.js's two-group shape) = non-goal;
+  raising to 6 touches only MAX_PLANES in one place (fixed-layout Pod lock).
+- **c caps**: not done (hollow interiors after cutting are honestly documented); stencil cap trigger = BIM interior demo list.
+- **d precision**: world coefficients f64 (n points to the kept side + on-plane = kept closed interval), shader uses the model-space identity
+  `n_m=Mᵀn, d_m=d+n·(o+t_M)` (multiply in f64, then drop to f32) — two self-caught root fixes during implementation (Mᵀ / translation column);
+  lesson: under column-major order the "normal times matrix" direction must be derived via the identity, never by intuition.
+- **e clipped family**: every drawing family (mesh/inst/stroke/point, per-pixel) — "clip the world, not the types".
+- **f shadows**: casters discard identically (a cut-away building leaves no whole shadow; three.js's clipShadows defaulting false
+  is a legacy habit, not a reason).
+- **g picking**: hit points on the negative side of keeps → excluded, retry loop (what is visible after cutting must be pickable); capi pick = positions ×
+  IDENTITY is existing fact, noted as "two frames merged"; not incidentally widened into the origin domain (independent gap, separate entry).
+- **h surfaces**: E813 C single example, headless living gate; interactive clip sliders booked (E901 key control = triggered by demo demand).
+- **Bonus record**: the View-block extension scheme (origin + transform already in the view_block signature) made this band
+  **cost zero new bindings/bindings-groups/buffers** — a full construction layer cheaper than the probe's independent binding9 estimate;
+  the "check the data path before choosing the mount point" discipline (think-before-act), evidenced.
 
-## D18: S2 文字面带八裁决点（2026-09-18，探针 A/B 对抗 + 用户「档①引擎自管·全带开工」）
-- **a 档位/方案**：档①最小可用 + 方案 I（引擎自管 fontdue 栅格）——用户三选一明裁；
-  非宿主自管（SDK 价值折半）、非标准档（swash 触 R2）。MSDF 路线否（Rust 生态≈0，msdf-font 1★）。
-- **b 依赖锁形**：fontdue `default-features=false, features=["hashbrown"]`——
-  关 SIMD（wasm 陷阱 #25/#72）保 hashbrown（no_std 下 std/hashbrown 二选一 [docs 实测，
-  探针报告未点出，N0 冒烟补正]）；ttf-parser RUSTSEC-2026-0192 deny-ignore
-  （unmaintained 非漏洞；攻击面=宿主注入自有资产+panic 栅栏；ab_glyph 同依=换无效；
-  三复评触发入 deny 注释）。
-- **c 新 crate 落点**：`crates/visiaengine-io-text`（第 9 crate，纯 CPU：face/cache/layout），
-  GPU 态住 render-wgpu；接口隔离使 swash 升级非破坏。
-- **d 命名空间**：复用 IO 前缀（IO-07..09，白名单已含=第三检零改动）非新立 TEXT-。
-- **e 标签坐标**：世界锚定 + 屏幕恒大小（ortho 精确路 assert_eq 跨 zoom 逐像素等锁）；
-  色=线性域直传（sRGB 咽喉 label 表=core::srgb_to_linear，咽喉六）；center 对齐落 dx 域
-  （PIT-28：pen 是 px 不可进 anchor 世界坐标）。恒顶：depth write=false/Always + 命令序末位。
-- **f atlas**：R8 单槽 512² + shelf 装箱 + 1px 缝（采样渗色防）；满则全清重烘透明降级
-  （[ponytail] 逐字 LRU 待 profile）；set_glyph_atlas 全量替换（io-text dirty 驱动）。
-- **g 受裁**：标签走 WGPU-21 clipped() 同一判据（锚点 model-space，REND-33 表域）；
-  caster 不投（无投影面续不装②）。
-- **h 双口镜像**：CAPI-21 load_font + CAPI-22 add_label（26→28，abi minor=7 非 8）；
-  三面镜像全带（头 POD 直用/hpp 薄转发/wasm loadFont+addLabel→bigint+MISS）；
-  管理域=items 外（add_points 同谱，不入 entity_count/remove）。
-- **R2 体积战果**：wasm gz 429401→490967 = **+14.3%（阈 15% 内过线，零余量如实记）**；
-  探针预估 +6% 偏乐观（真实=字体栈+shader+label 链）。复评触发：wasm 面真投产 or
-  需 CJK 内嵌时重判（退路=feature gate 字体栅格仅 native，R2 纹理退路同款）。
+## D18: S2 text surface band, eight adjudication points (2026-09-18, probes A/B adversarial + user "tier ① engine self-managed · full band")
+- **a tier/scheme**: tier ① minimum-usable + scheme I (engine self-managed fontdue rasterization) — the user chose explicitly among three;
+  not host-self-managed (SDK value halved), not the standard tier (swash touches R2). The MSDF route was rejected (Rust ecosystem ≈ 0, msdf-font 1★).
+- **b dependency lock shape**: fontdue `default-features=false, features=["hashbrown"]` —
+  disables SIMD (wasm traps #25/#72) but keeps hashbrown (under no_std, std/hashbrown is either-or [docs measured;
+  the probe report missed it; N0 smoke corrected it]); ttf-parser RUSTSEC-2026-0192 deny-ignore
+  (unmaintained, not a vulnerability; attack surface = host-injected own assets + panic fence; ab_glyph depends identically = switching is a no-op;
+  three re-evaluation triggers written into the deny comments).
+- **c new crate location**: `crates/visiaengine-io-text` (the 9th crate, pure CPU: face/cache/layout);
+  GPU state lives in render-wgpu; interface isolation keeps a swash upgrade non-breaking.
+- **d namespace**: reuse the IO prefix (IO-07..09, already in the whitelist = the third check unchanged), not a new TEXT-.
+- **e label coordinates**: world-anchored + constant screen size (the ortho exact path's assert_eq locks pixel-equal across zoom);
+  color = linear-domain pass-through (sRGB chokepoint label table = core::srgb_to_linear, chokepoint six); center alignment lands in the dx domain
+  (PIT-28: pen is px and cannot enter the anchor's world coordinates). Always-on-top: depth write=false/Always + command order last.
+- **f atlas**: R8 single slot 512² + shelf packing + 1px gutter (sampling-bleed defense); when full, full-clear rebake with transparency degradation
+  ([ponytail] per-glyph LRU pending profile); set_glyph_atlas is a wholesale replace (io-text dirty-driven).
+- **g clipping**: labels go through WGPU-21's clipped() same predicate (anchor in model-space, REND-33 table domain);
+  casters don't project (no projected surface → don't mount ②).
+- **h dual-port mirror**: CAPI-21 load_font + CAPI-22 add_label (26→28, abi minor = 7 not 8);
+  the three-surface mirror covers the full band (header POD direct use / hpp thin forwarding / wasm loadFont+addLabel→bigint+MISS);
+  the management domain is outside items (same catalog as add_points, out of entity_count/remove).
+- **R2 size war result**: wasm gz 429401→490967 = **+14.3% (passes inside the 15% threshold, zero margin, honestly recorded)**;
+  the probe's +6% estimate was optimistic (reality = font stack + shader + label chain). Re-evaluation triggers: real wasm production, or
+  re-judge if CJK embedding is ever needed (fallback = feature-gate the font rasterizer to native only, same shape as R2's texture fallback).
 
-## D19: ⑤a 相机飞行带裁决（2026-09-18，双探针对抗 + Momus OKAY 0B/3A + 用户「全带开工」）
-- **范围刀**：本带=flyTo 纯飞行；**多视口分屏=独立带**（四坑清单入非目标：depth_cache 单例升 Map/
-  scissor 零实证/输入 px 路由/双 px_world_scale——探针双一致，混带=拖垮验证节奏）。WGPU-26 预留。
-- **分层定案（被迫即正解）**：render crate 零 std::time——纯函数 fly_sample(from,to,t,easing) 住 render；
-  墙钟推进器住 engine。**wasm 运行时雷主动拆**：std::time::Instant 在 wasm32-unknown-unknown 不可用
-  （flyTo 会触 capi_guard -4 假死）→ now_ms() shim 双形（native=Instant 进程锚/wasm=js_sys::Date::now）
-  ——Web 是主舞台，编译过≠跑得通，写于踩前。
-- **缓动**：Easing{Linear,CubicInOut(smoothstep),CubicOut}；capi 面固定 CubicInOut（加参=YAGNI）。
-- **中断=MapLibre A 派**：指针/滚轮（kind 1/2/4）首行 cancel；键(5) 不打断（测试反证在）。
-- **done/idle 合并单主**：fly_state 返回 1=不在飞（cancel 后=1 可再飞）；out_t01 仅飞中写、
-  done 零写（B1 零部分写谱）；wasm 拆 flyState+flyProgress(done=1.0) 免 JS 双值编码。
-- **near/far 不飞行**（pose 无深度域=恒现值，PIT-5/REND-14 连带 [Momus-A1]）；
-  **改道 from=当前采样**保连续 [A3]；yaw 最短弧住 fly_sample 构造件——**mix_rig 零触碰**
-  =REND-15/16 存量断言零回归（wrap 对照用线性中点反证双向锁）。
-- dur_ms=0=瞬移形（非错误值域）；高度弧线/Van Wijk=AV 漫游单触发。
+## D19: ⑤a camera-flight band ruling (2026-09-18, dual-probe adversarial + Momus OKAY 0B/3A + user "full band")
+- **Scope knife**: this band = flyTo pure flight; **multi-viewport split-screen = its own band** (four-pit list into non-goals: the depth_cache singleton upgraded to Map /
+  scissor unproved / input px routing / dual px_world_scale — both probes agreed; mixing bands = drags the verification cadence down). WGPU-26 reserved.
+- **Layering settled (forced = the right answer)**: the render crate sees zero std::time — the pure function fly_sample(from,to,t,easing) lives in render;
+  the wall-clock advancer lives in engine. **The wasm runtime landmine is actively defused**: std::time::Instant is unavailable on wasm32-unknown-unknown
+  (flyTo would trip the capi_guard -4 fake-death) → a now_ms() shim in two forms (native = Instant process anchor / wasm = js_sys::Date::now)
+  — the web is the main stage; compiling ≠ running; written before stepping on it.
+- **Easing**: Easing{Linear,CubicInOut(smoothstep),CubicOut}; the capi surface fixes CubicInOut (adding a parameter = YAGNI).
+- **Interruption = MapLibre A-school**: pointer/wheel (kind 1/2/4) cancel on the first line; keys (5) do not interrupt (test counter-evidence on record).
+- **done/idle merged single source**: fly_state returning 1 = not flying (after cancel = 1, can fly again); out_t01 is written only while flying,
+  done writes zero (B1 zero-partial-write catalog); wasm splits flyState+flyProgress(done=1.0) to spare JS double-value encoding.
+- **near/far do not fly** (pose carries no depth domain = always current values, PIT-5/REND-14 dependent [Momus-A1]);
+  **rerouted from = current sample** to preserve continuity [A3]; the yaw shortest arc lives in the fly_sample construction piece — **mix_rig untouched**
+  = REND-15/16's existing assertions zero-regress (wrap comparison disproven via the linear midpoint, doubly locked).
+- dur_ms = 0 = teleport form (not an error value domain); altitude arcs / Van Wijk = triggered by an AV fly-through ticket.
 
-## D20: ⑤b 多视口带裁决（2026-09-18，双探针+Momus OKAY 0B/2A→修入 + 用户「全带开工」）
-- **范围刀**：本带=分屏管线+活例（纯 rs）；capi 多视口口/click-to-fly=二波（CAPI-25 预留）；
-  共享 viewer 库=另立项（E501/E901/E302/E303 四例同构 ≥3 阈值已破线，账转 D21 候选）。
-- **clear 语义本机定论**（裁决门现行锁）：wgpu30 LoadOp::Clear=**整个 attachment**
-  （AllClear 形后区吞前区 redA=0；与 Vulkan render-area 定论一致）⇒ **首 pass Clear
-  （全幅底色=缝色零新机制）+ 后续 pass Load 色**为唯一安全形；AllClear 枚举位=探针/教学。
-- **深度每 pass 必清**（E303 现行抓的现行雷，覆写探针预期）：pass 间 Load 会拿主视
-  不透明地面的深度把小窗整幅 occlusion 吞（nonsky_map=0 现行）；scissor 圈地内重清
-  零副作用、pass 间深度无消费者 ⇒ Clear+Discard 每 pass（免 Store 带宽）。
-- **rect 挂点=不触 Frame**（ViewportRect 独立类型走渲染调用参数，第 44 兜底波免交）；
-  full-rect 不发 set_* =旧路逐位等 canary 锁；FOV/px 皆 per-Frame 独立（两投自治构图）。
-- **caster 一趟共享 map**（light-space 与主相机无关）；小窗=右上正方（长条=构图错实测）。
-- **fov 单位雷清剿**（存量真 bug）：perspective=弧度消费（look_at 默认 π/3），E501/E302
-  曾传 46/55/60 度数=投影畸变（E302 窗面 bright 96→1987 实证曾烂）；orbit 文档钉死单位；
-  教训=像素门没看过的窗面=没验过的面（T3 人验与 headless 断言双保险的本带分册）。
+## D20: ⑤b multi-viewport band ruling (2026-09-18, dual probes + Momus OKAY 0B/2A → fixed in + user "full band")
+- **Scope knife**: this band = split-screen pipeline + living example (pure rs); capi multi-viewport ports / click-to-fly = wave two (CAPI-25 reserved);
+  the shared viewer library = its own entry (four examples E501/E901/E302/E303 isomorphic, the ≥3 threshold has broken, the account transfers to D21 candidates).
+- **clear semantics settled on this machine** (current lock at the adjudication gate): wgpu30 LoadOp::Clear covers **the whole attachment**
+  (the AllClear form's later region swallows the earlier region, redA=0; consistent with the Vulkan render-area conclusion) ⇒ **first pass Clear
+  (full-extent base color = gutter color, zero new mechanism) + subsequent passes Load** is the only safe shape; the AllClear enum slot = probes/teaching.
+- **Depth must clear every pass** (the live landmine E303 currently caught, overwriting the probe's expectation): Loading depth between passes takes the main view's
+  opaque ground depth and swallows the small window's whole-area occlusion (nonsky_map=0, live); re-clearing inside the scissor fence has
+  zero side effects and no depth consumer between passes ⇒ Clear+Discard every pass (saving Store bandwidth).
+- **rect mount point = does not touch Frame** (ViewportRect is a standalone type passed as a render-call parameter; the 44th fallback wave is exempt);
+  full-rect emits no set_* = the old path's bit-for-bit canary lock; FOV/px are both per-Frame independent (two projections compose autonomously).
+- **casters do one shared-map trip** (light-space is independent of the main camera); small window = top-right square (a long strip = a composition mistake, measured).
+- **fov unit landmine eradicated** (a real bug in the stock): perspective consumes radians (look_at defaults π/3); E501/E302
+  once passed 46/55/60 as degrees = projection distortion (E302's window bright 96→1987 proves it was once broken); the orbit doc nails the unit;
+  lesson = a window surface the pixel gate never looked at is an unverified surface (this band's volume of the T3 human-check + headless-assertion double insurance).
 
-## D21: ④ 半透明带裁决（2026-09-18，双探针+Momus OKAY 0B/3A 修入 + 用户「全带开工」）
-- **三无纪律**：零新口（alpha 已在 add_mesh 四元组路；热改口 set_material_alpha 挂账触发制）/
-  零依赖 / 零 IR 字段（透明判定=材质 alpha<1 后端侧表分拣，WGPU-28 编排）。
-- **V0 混合域定案**：本机 wgpu30=线性域（棋盘门 151 vs 编码域预言 83 单值判案，
-  与 Vulkan spec 一致；预言算术首版漏算 Lambert shade 系数——PIT-8「预言含全链因子」扩注）。
-- **透明管线=Variant 扩值三员**（FlatT/TexturedT/InstancedT；bgl/layout 全同仅管线态；
-  懒建不预建）；blend=SRC_ALPHA 标准式（Labels 同方程）、depthWrite=false、compare 保 Less。
-- **两 pass 编排**：无透明且无标签=旧单路零触（golden 保真构造）；pass2=视深降序画家
-  （键 origin+M 平移列 f64 D7 律；同键提交序稳定）+Labels 恒顶收尾；**pass2 深度 Load**
-  承不透明遮挡（与 ⑤b 视口间清深形分域——两套 Load/Clear 语义各得其所）。
-- **E504 双向语义锁**：水膜「衰减对比」而非「消灭对比」（a=1.0 对照 52 / a=0.5 实测 15，
-  断言带 (10,30)）——半透明正确性的可判定形。
-- **v0 残留声明入条款**：单 mesh 自叠不可序（RTT/OIT 后带）· 半透件全实影（three.js 同择）
-  · 材质 a==1∧texel a<1 走旧路（无暗语义）· 逐实例 alpha 需独立布局裁决。
+## D21: ④ translucency band ruling (2026-09-18, dual probes + Momus OKAY 0B/3A fixed in + user "full band")
+- **Three-zero discipline**: zero new ports (alpha already rides the add_mesh four-tuple path; the hot-change port set_material_alpha is booked with triggers) /
+  zero dependencies / zero IR fields (transparency decision = material alpha<1, sorted on the backend side table, WGPU-28 orchestration).
+- **V0 blend domain settled**: this machine's wgpu30 = linear domain (checkerboard gate 151 vs encode-domain prediction 83, decided on a single value,
+  consistent with the Vulkan spec; the prediction's arithmetic first version missed the Lambert shade coefficient — PIT-8 "predictions carry all chain factors" extended note).
+- **Translucent pipeline = Variant value-extension trio** (FlatT/TexturedT/InstancedT; bgl/layout identical, only the pipeline state differs;
+  lazily created, never prebuilt); blend = the SRC_ALPHA standard form (same equation as Labels), depthWrite=false, compare stays Less.
+- **Two-pass orchestration**: no translucency and no labels = the old single path untouched (golden fidelity preserved by construction); pass2 = painter's on view depth descending
+  (key origin + M translation column, f64 per D7 law; same-key submission order stable) + Labels always-on-top at the end; **pass2 depth Load**
+  inherits the opaque occlusion (distinct from ⑤b's across-viewport clear-depth shape — the two Load/Clear semantics each in their rightful domain).
+- **E504 bidirectional semantic lock**: the water film "attenuates contrast" rather than "destroys contrast" (a=1.0 control 52 / a=0.5 measured 15,
+  assertion band (10,30)) — a decidable form for translucency correctness.
+- **v0 residual declarations into clauses**: single-mesh self-overlap cannot be ordered (RTT/OIT in a later band) · translucent pieces cast fully solid shadows (three.js chose the same)
+  · material a==1 ∧ texel a<1 goes the old road (no dark semantics) · per-instance alpha needs its own layout ruling.
 
-## D22: ⑤b 二波小地图导航带裁决（2026-09-18，双探针+Momus OKAY 0B/2A→修入 + 用户批准）
-- **丙案：主+固定副视口+引擎内部 hit-test 路由**（甲=宿主分发/乙=VeInput 加字段均判退）。
-  探针 B 实锤 `struct_size` 严格 `<` 前瞻门=给 VeInput 加字段会断所有旧宿主——
-  宿主只报屏幕 px，区内外判定/双投路由住引擎（VeInput 零触）。
-- **MapView=比例表形**（fx/fy/fw/fh∈[0,1]+zoom），resize 自动跟随零宿主义务；
-  小图 rig=主 target 派生跟随顶视（零同步口，双 rig 漂移半径=构造 0）。
-- **[裁决 e] navigate_click 仅换 target 保 dist/fov/yaw/pitch**：小图点击=平移意图，
-  非重新构图（E816 f64 逐位断言锁）。两阶段命中=实体优先（pick_geo 顶视）→
-  地面 z=0 兜底（REND-37 ray_ground）；区外/无图=拒（无暗改道，C15 值域先对表）。
-- **路由序：小图区优先**（视觉顶层=输入顶层，ImGui 焦点制同理）；小图区内 kind1..4
-  指针/滚轮=消费 no-op（v0 无拖图语义，导航走 CAPI-26 明口）。
-- **canary 构造保证**：map=None ⇒ 旧单帧路逐字节（E816 段1+段5 双形实证，段5 教训
-  =飞行后基线必须重取，写后自查根修一例）。
-- 账：152 条 · 33 入口 minor=9 · ctest 31（E816 五段活体门实测 1596g/756r/target
-  (3.579,3.714,0)）· wasm 桥 4 名（setMap/clearMap/navigateClick/getCameraPose，
-  C 三口之 clear=NULL 在 web 分裂二法）· R2 零新依赖。
+## D22: ⑤b wave-two minimap navigation band ruling (2026-09-18, dual probes + Momus OKAY 0B/2A → fixed in + user approval)
+- **Option C: main + fixed secondary viewport + engine-internal hit-test routing** (A = host dispatch / B = VeInput field additions, both judged out).
+  Probe B nailed `struct_size`'s strict `<` forward-compat gate = adding a field to VeInput breaks every old host —
+  hosts report only screen px; inside/outside determination and dual-projection routing live in the engine (VeInput untouched).
+- **MapView = proportional-rect form** (fx/fy/fw/fh∈[0,1]+zoom); resize auto-follows, zero host duty;
+  the minimap rig = a top-view follower derived from the main target (zero sync port; two-rig drift radius = construct 0).
+- **[ruling e] navigate_click swaps only the target, preserving dist/fov/yaw/pitch**: a minimap click = a pan intent,
+  not a re-composition (E816 f64 bit-exact assertion lock). Two-stage hit = entities first (pick_geo top view) →
+  ground z=0 fallback (REND-37 ray_ground); outside the region / no map = reject (no silent rerouting, C15 value-domain table first).
+- **Routing order: minimap region first** (visual top = input top, same reasoning as ImGui focus); kind1..4
+  pointer/wheel inside the minimap region = consumed no-ops (v0 has no map-drag semantics; navigation goes through the explicit CAPI-26 port).
+- **canary construction guarantee**: map=None ⇒ the old single-frame path byte-for-byte (E816 leg 1 + leg 5 dual-form evidence; leg 5's lesson
+  = baselines must be re-captured after flight; post-write self-check, one root fix).
+- Ledger: 152 clauses · 33 entry points minor=9 · ctest 31 (E816 five-segment living gate measured 1596g/756r/target
+  (3.579,3.714,0)) · wasm bridge 4 names (setMap/clearMap/navigateClick/getCameraPose;
+  clear=NULL of the three C ports splits into two web laws) · R2 zero new dependencies.
 
 ## D23: Install-tree band (packaging-round v1.3) — user-adjudicated one by one (2026-10-08)
 
@@ -266,44 +266,44 @@ message). Momus re-reviewed the resulting v1.3 section and returned OKAY.
   web segment and `web-mirror.mjs` had no freshness check, hence PIT-44 and the
   staleness guard.
 
-## D24: 共享件价值以**站点数**计，不以行数计；触发器以实测覆盖存档步骤 (2026-10-08, band V4)
-- **裁决**: V4 落地 `orbit_drag`/`zoom_dist` 后净行数变化为 **零**（例侧 4×(−9)，viewer.rs +36）。
-  其价值是手感常数（0.006 灵敏度 / 0.0012 滚轮系数 / LineDelta×40）与"首次运动只播种"的哨兵协议
-  从 4 站点收敛到 1，而此前**没有任何机制**让这 4 处保持同步。
-- **同时裁决**: 触发器成立与否以实测为准，**覆盖计划里存档的步骤清单**。计划原写"步 1 接
-  E510/E511/E206 类代表"，字段指纹+逐字比对证明这些正是语义**不同**的一族（E510 滚轮=相位；
-  E508/E509/E510/E511/E206 自带球面解算；E402/E403 拖拽臂含悬停拾取/框选课文；E306 平移+右键倾角；
-  E303 逐视口跟随）。真正逐字节相同的是 E201/E501/E504/E901（E201 的 `.take()` 与拷贝在
-  `Copy` Option 上行为等价）。故最终只共享两个自由函数，不建 `Orbit` 类型。
-- **可复用判据**: 某常数"每场景不同"若来自**场景尺度**（clamp 上下界）→ 参数化；若来自
-  **手感/协议**（灵敏度、哨兵协议）→ 常量入共享件，禁止留成参数（无人可变的参数=装饰）。
-- **影响**: 后续共享件提案的评估口径="站点数 × 有无同步机制"；行数口径仅在真收敛时（V3 的
-  −1,376）才有意义。此条与 C18 配套：C18 管**不该共享什么**，D24 管**共享了值不值**。
+## D24: Shared-code value counts in **sites**, not in lines; triggers get archived by measured coverage (2026-10-08, band V4)
+- **Ruling**: after V4 landed `orbit_drag`/`zoom_dist`, the net line change was **zero** (example side 4×(−9), viewer.rs +36).
+  Its value is the feel constants (0.006 sensitivity / 0.0012 wheel coefficient / LineDelta×40) and the "seed on first motion only" sentinel protocol
+  converging from 4 sites to 1 — while previously **no mechanism at all** kept those 4 copies in sync.
+- **Ruled together**: whether a trigger holds is decided by measurement, **overriding the archived step list in the plan**. The plan originally said "step 1 wires in
+  E510/E511/E206-type representatives"; the field fingerprint + verbatim comparison proved those are exactly the semantically **different** family (E510 wheel = phase;
+  E508/E509/E510/E511/E206 carry their own spherical solving; E402/E403's drag arm includes hover-pick/box-select course text; E306 pan + right-click tilt;
+  E303 per-viewport follow). What is truly byte-identical is E201/E501/E504/E901 (E201's `.take()` and the copy are behavior-equivalent on a
+  `Copy` Option). Hence in the end only two free functions were shared; no `Orbit` type was built.
+- **Reusable criterion**: if a constant's "differs per scenario" comes from **scene scale** (clamp bounds) → parameterize; if it comes from
+  **feel/protocol** (sensitivity, sentinel protocol) → the constant belongs in the shared piece; keeping it a parameter is forbidden (a parameter nobody varies = decoration).
+- **Impact**: later shared-code proposals are evaluated as "site count × presence of a sync mechanism"; the line-count yardstick means something only at genuine
+  convergence (V3's −1,376). This entry pairs with C18: C18 governs **what must not be shared**, D24 governs **whether sharing pays**.
 
-## D25: 队列三分——护栏 / 能力 / 发布 (2026-10-09)
+## D25: The queue trinity — guardrails / capability / publish (2026-10-09)
 
-- **背景**: next-band-queue 六卡逐项裁决（协议 adjudication-walkthrough，每卡 C1 四栏）。
-  三分法=**护栏**（已有面的自动检查）/ **能力**（新语言或新通道面）/ **发布**（分发与产物）。
-  三者判据不同：护栏问"谓词能不能变红"，能力问"有没有真实消费方"，发布问"本机能不能实证"。
-- **裁决（六卡，一句一条）**:
-  1. keys-probe 永久化 = **A**（进 harness 并保留 `--all`/`--strict`，但**不进** `pixi run ci`；
-     ci.yml 已单独以 `--strict` 调用）。
-  2. npm = **A**；pip **不是打包而是新能力面**——`bindings/` 实测只有 c / cpp / js / qt 四形，
-     无 py，没有可以打包的东西。
-  3. 站点 = **A 不做**：白皮书实测无站点承诺（grep 零命中），mdbook 维持批 5 判退结论。
-  4. 先普查 + 谓词先行 = **A**：谓词写进文档**先于**任何计数。本会话六次口径漂移的根因都是
-     "先数后定义"。
-  5. 发布带 = **C**：只做本机可实证的产物（CPack tarball）；跨平台矩阵按
-     `.agents/rules/common/constraints.md` 挂起（交叉编译属 Docker/厂商工具链，不在此带）。
-  6. C 面共享引导 = **A 关闭**：实测 `visiaengine_create_headless` 引导形 **15 行 / 13 文件**
-     （谓词 `grep -rn 'visiaengine_create[a-z_]*\('`；两轮各错一次——14 是 C-only 行计数，15 初测是出现计数碰巧对上；
-     E817 重挂再 create 两次，故 3 行在一文件内）；漂移为**措辞而非行为**；`template.c`/`template.cpp`
-     已在仓；那三行宿主调用正是这些例子的**课文**（C18：共享件不得吃掉主张）。
-- **可复用判据（D24 扩）**: 共享件与护栏工作的价值 = **站点数 × 同步机制缺席**，从不以行数计。
-  第 6 卡是正例：站点不少（15 行），但同步机制**在场**（手写头 + 模板骨架 + 例子面本身），
-  故净值为零，关闭。第 2 卡的 pip 反向同理：站点数为**零**，所以它连打包债都算不上。
-- **账本冻结**: 199 条款 / 49 C 口 / 44 例（= ctest 44 = 画廊 44 卡）/ 12 包 / 12 ci 段。
-  除最后一项外**全部未动**。本带唯一移动的计数是 **ci 段数 11→12**（pack-check 入链，有意为之）；
-  两处散文口径（`docs/gap-closure-roadmap.md` 的 Gates 行与 `.agents/memorys/status.md` 的
-  台账行）随 `10c7dc7` **同一提交**更新——这是本仓唯一没有机器锁守住的计数，故纪律=动它的那笔
-  提交必须同笔改口径。
+- **Background**: the next-band-queue's six cards were adjudicated one by one (adjudication-walkthrough protocol, C1 four columns per card).
+  The trinity = **guardrails** (automated checks over existing surfaces) / **capability** (new language or new channel surfaces) / **publish** (distribution and artifacts).
+  Their questions differ: guardrails ask "can the predicate go red", capability asks "is there a real consumer", publish asks "can it be evidenced on this machine".
+- **Rulings (six cards, one sentence each)**:
+  1. keys-probe permanence = **A** (into the harness keeping `--all`/`--strict`, but **not into** `pixi run ci`;
+     ci.yml already calls it separately with `--strict`).
+  2. npm = **A**; pip is **not packaging but a new capability surface** — the measured `bindings/` holds only the c / cpp / js / qt four forms,
+     no py, nothing to package.
+  3. site = **A, don't do**: the whitepaper measurement contains no site promise (grep zero hits); mdbook keeps its batch-5 rejection verdict.
+  4. census first + predicate first = **A**: predicates go into the document **before** any count. The root cause of this session's six counting-drifts was each time
+     "count first, define later".
+  5. publish band = **C**: only artifacts evidenceable on this machine (CPack tarball); the cross-platform matrix is parked per
+     `.agents/rules/common/constraints.md` (cross-compilation belongs to Docker/vendor toolchains, not this band).
+  6. C-surface shared bootstrap = **A, close**: measured, the `visiaengine_create_headless` bootstrap shape is **15 lines / 13 files**
+     (predicate `grep -rn 'visiaengine_create[a-z_]*\('`; two rounds each wrong once — 14 was a C-only line count, 15 initially an occurrence count that happened to match;
+     E817 re-mounted creates twice more, so 3 lines sit in one file); the drift is in **wording, not behavior**; `template.c`/`template.cpp`
+     are already in the repo; those three host-call lines are exactly the **course text** of these examples (C18: shared pieces must not eat claims).
+- **Reusable criterion (extending D24)**: the value of shared-code and guardrail work = **site count × absence of a sync mechanism**, never counted in lines.
+  Card 6 is the positive case: sites are plenty (15 lines), but the sync mechanism **is present** (handwritten header + template skeletons + the example surface itself),
+  so net value is zero — close it. Card 2's pip is the mirror case: site count **zero**, so it isn't even packaging debt.
+- **Ledger frozen**: 199 clauses / 49 C ports / 44 examples (= ctest 44 = gallery 44 cards) / 12 packages / 12 ci segments.
+  Everything **unchanged** except the last. The only count this band moved is **ci segments 11→12** (pack-check joined the chain, deliberately);
+  both prose counters (`docs/gap-closure-roadmap.md`'s Gates row and `.agents/memorys/status.md`'s
+  ledger row) were updated in `10c7dc7` **in the same commit** — this is the repo's only count with no machine lock guarding it, so the discipline = whoever moves it
+  updates the wording in that very commit.

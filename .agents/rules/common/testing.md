@@ -56,61 +56,61 @@ test('throws error when API key is missing', () => {})
 test('falls back to substring search when Redis is unavailable', () => {})
 ```
 
-## 可执行检查
+## Runnable Check
 
 ```bash
-# 验证：测试通过
+# Verify: tests pass
 cargo test --workspace
-# 验证：覆盖率
+# Verify: coverage
 cargo tarpaulin --workspace 2>/dev/null || echo "tarpaulin not installed"
 ```
 
-## 本仓测试三层法（E3D:D5 纪律，2026-09-03 计划 v1.1 批次 0a）
+## This repository's three-tier testing doctrine (E3D:D5 discipline, 2026-09-03 plan v1.1 batch 0a)
 
-| 层 | 定义 | 命令 | 门禁位置 |
+| Tier | Definition | Command | Gate location |
 |----|------|------|---------|
-| **T1 纯单元** | 无 GPU/窗口的逻辑断言（解析/数学/场景）| `cargo test --workspace` | `pixi run ci` |
-| **T2 帧预算 auto-smoke** | `--frames N` 离屏/窗口示例真执行 | `xvfb-run -a pixi run smoke-clear`（smoke-* 全族） | `pixi run ci`（L2 段）|
-| **T3 人工交互（诚实层）** | 无法自动化的交互验证（鼠标拾取、飞行相机等）——测试体 `#[ignore]` 且**运行时必须打印人检步骤清单**，报告时明说"T3 未跑/已人验" | `cargo test --workspace -- --ignored`（当前允许空集，命令合法空跑=通过） | 合并前人检 |
+| **T1 pure unit** | logic assertions with no GPU/window (parsing/math/scene) | `cargo test --workspace` | `pixi run ci` |
+| **T2 frame-budget auto-smoke** | real execution of `--frames N` offscreen/window examples | `xvfb-run -a pixi run smoke-clear` (the whole smoke-* family) | `pixi run ci` (L2 segment) |
+| **T3 human interaction (the honesty tier)** | interaction verification that cannot be automated (mouse picking, fly camera, etc.) — test bodies are `#[ignore]`d and **must print a human-check step checklist at run time**; when reporting, state plainly "T3 not run / human-verified" | `cargo test --workspace -- --ignored` (an empty set is currently allowed; a legitimately empty command run = pass) | manual check before merge |
 
-原则：任何"测试通过"声明必须指明层级；T3 项禁止被 T1/T2 绿灯冒充（verification-honesty 条款的测试面投影）。
+Principle: every "tests pass" claim must name the tier; a T3 item must never be passed off as covered by T1/T2 green lights (the testing-surface projection of the verification-honesty clause).
 
-## 视觉例双保险（2026-09-16 教训升级：交互窗从未被像素验证案族）
+## Visual-example double insurance (2026-09-16 lesson escalation: the case family where interactive windows were never pixel-verified)
 
-窗口/画面类 example 的 exit-code+计数门（`loaded N entities`/rc=0）**不是画面证据**——本会话三案：E201 相机焊错机位全灰屏、E301 键鼠写死变量、golden 族中心亮度 >40 被暗背景自身 57 分骗过。纪律：
+Exit-code + counter gates on window/scene examples (`loaded N entities`/rc=0) are **not picture evidence** — three cases this session: E201's camera welded to the wrong position with an all-gray screen, E301's keyboard/mouse writing hard-coded variables, the golden family's center-luminance >40 gate fooled by the dark background's own score of 57. Discipline:
 
-1. **headless 像素门**：每个视觉例至少一条离屏镜像断言（颜色/计数级、保守阈=实测 −40%，专捕回归不追审美）；先例 `crates/visiaengine-render-wgpu/tests/gltf_scene.rs`（装载→拟合→红绿计数）。新例出生带同 commit 落门。
-2. **断言谓词三自证**：能命中正例（旧机位必红一次）；不吃背景值（阈值贴背景之上留距）；亮度带族慎用「非背景即过」形（本案骗过例）。
-3. **T3 人验清单**：交互面（拖/滚/关窗/resize）机器不可达，交付文案带人验步骤清单（既有 `#[ignore]` 运行时打印纪律的窗口例投影）；验证环境=用户通道形（PIT-22），非工具 shell 手加 export。
-4. **ctest 转发壳**：`-R` 必配「≥1 被选」断言 + `--timeout`（PIT-23 互引），空匹配 exit-0 = 恒假绿。
+1. **Headless pixel gate**: every visual example carries at least one offscreen image assertion (color/count level, conservative threshold = measured −40%, catches regressions only, never chases aesthetics); precedent `crates/visiaengine-render-wgpu/tests/gltf_scene.rs` (load→fit→red/green counts). A new example lands its gate in the same commit it is born in.
+2. **Three self-proofs for assertion predicates**: it can hit the positive case (the old camera position must go red once); it does not feed on background values (the threshold sits above the background with clearance); for luminance-band families use the "non-background passes" shape with care (the shape that was fooled in this case).
+3. **T3 human-verification checklist**: the interaction surface (drag/scroll/close-window/resize) is machine-unreachable, so delivery text carries the human verification steps (the window-example projection of the existing `#[ignore]` print-at-runtime discipline); the verification environment = the user's channel form (PIT-22), not an export hand-added in the tool shell.
+4. **ctest forwarding shell**: `-R` must come with a "≥1 selected" assertion + `--timeout` (cross-cited with PIT-23); an empty match exiting 0 = an always-false green.
 
 ```bash
-# 验证：视觉例像素门在场（例名→测试映射人工核 + 转发壳断言 grep）
-grep -rn 'out of [1-9]' scripts/smoke-rs.sh        # 转发壳 ≥1 断言在位
-grep -rn 'lum >\|red >\|green >' crates/*/tests/*.rs | wc -l   # 像素门计数（增删随带对账）
+# Verify: visual-example pixel gates are present (example→test mapping checked by hand + forwarding-shell assertions grepped)
+grep -rn 'out of [1-9]' scripts/smoke-rs.sh        # forwarding-shell ≥1 assertion in place
+grep -rn 'lum >\|red >\|green >' crates/*/tests/*.rs | wc -l   # pixel-gate count (reconcile on add/remove)
 ```
 
-### HashMap 迭代序测试纪律（2026-09-28 N1.4 带实锤）
-涉及 HashMap 驱动的多对象断言（如 pump 逐出顺序）：单测内**不得**对迭代序做可观测断言——本机单跑绿、CI 全量跑翻车（PIT-7 族假红的近亲）。确定性语义（budget=每次 I/O 数）用**脚本化 source 计数**锁（attempts.len()==budget），顺序本身不锁。
-**验证**: 同测试连跑 `for i in 1 2 3 4 5; do cargo test ... ; done` 全绿再提交。
-**阻塞条件**: 修复 HashMap 序型偶发后未 5 连跑。
+### HashMap iteration-order testing discipline (2026-09-28, N1.4 band, hard evidence)
+For multi-object assertions driven by HashMap iteration (e.g. pump eviction order): unit tests **must not** make observable assertions on iteration order — green in a local single run, blown up in a full CI run (a close relative of the PIT-7 family of false reds). Deterministic semantics (budget = items per I/O pass) are locked with **scripted source counts** (attempts.len()==budget); the order itself is not locked.
+**Verify**: run the same test five times in a row (`for i in 1 2 3 4 5; do cargo test ... ; done`) — all green before committing.
+**Blocking condition**: fixing a HashMap-order flake without the 5-run loop.
 
-## Web/wasm 验证通道（PIT-44 入册，2026-10-08）
+## Web/wasm verification channel (PIT-44 registered, 2026-10-08)
 
-`pixi run ci`（11 段）**不含** web 面。wasm 相关的三条硬规矩：
+`pixi run ci` (11 segments) does **not** cover the web surface. Three hard rules for wasm:
 
-1. **声明口径**：任何「WEB ✓ / MIRROR ✓」字样只能来自**同终端** `pixi run web-check`
-   （+ 需要名册时 `node scripts/web-mirror.mjs`）的实际输出。宿主 cargo test 不算。
-2. **编译面不可达性**：`&mut Vec<T>` / `Vec<T>` 出参这类 wasm-bindgen -only 约束，
-   host target 编得过、wasm32 编不过。凡动 `bindings/js/rust/visiaengine-wasm/src/`
-   的签名，切片内必须跑一次 `pixi run web-check`（不是 cargo check）。
-3. **陈旧护栏在场**：`scripts/web-mirror.mjs` 会比对源目录与 `pkg-node/*.d.ts` 的 mtime，
-   源更新即红并指名补救。该检红 ≠ 门禁坏，是「你在拿昨天的产物报今天的绿」。
+1. **Claim source**: any "WEB ✓ / MIRROR ✓" wording may come only from the actual output of `pixi run web-check` in the **same terminal**
+   (plus `node scripts/web-mirror.mjs` when the roster is needed). A host cargo test does not count.
+2. **Compile-surface unreachability**: wasm-bindgen-only constraints like `&mut Vec<T>` / `Vec<T>` out-params
+   compile on the host target and fail on wasm32. Any change to signatures under `bindings/js/rust/visiaengine-wasm/src/`
+   requires one `pixi run web-check` run inside the slice (not cargo check).
+3. **Staleness guardrail present**: `scripts/web-mirror.mjs` compares the mtime of the source directory against `pkg-node/*.d.ts`,
+   turning red on a newer source and naming the remedy. That check going red ≠ a broken gate — it means "you are reporting today's green with yesterday's artifacts".
 
 ```bash
-# 验证：护栏在位 + 声明来源可查
-grep -c "陈旧" scripts/web-mirror.mjs          # 期望 ≥1
-grep -n "^ci = " pixi.toml                     # 期望：无 web-check（本条存在的原因）
+# Verify: guardrail in place + claim source traceable
+grep -c "陈旧" scripts/web-mirror.mjs          # expect ≥1 (literal must match web-mirror.mjs's own message)
+grep -n "^ci = " pixi.toml                     # expect: no web-check (the reason this line exists)
 ```
 
 ## XTEST input probe = T3-input promoted to T2 (band K, 2026-10-08)

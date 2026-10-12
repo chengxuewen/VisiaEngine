@@ -1,31 +1,31 @@
-# .agents — 项目记忆 / 规则 / 技能
+# .agents — project memory / rules / skills
 
-Agent 工具链根目录（149 文件，全部 .md 或技能附属物）。装配点在 `.opencode/opencode.json`。
+Root of the agent toolchain (149 files, all .md or skill attachments). The assembly point is `.opencode/opencode.json`.
 
 ## STRUCTURE
 
 ```
 .agents/
-├── memorys/   # 易变事实：status(状态快照) conventions(C 约定) decisions(D 决策) pitfalls(PIT 踩坑)
-├── rules/     # 恒常约束：common/(入 instructions) + <lang>/(按需，由层级见 rules/README.md)
-└── skills/    # 23 技能目录，各以 SKILL.md frontmatter 注册；.skill_id 为安装元数据，勿动
+├── memorys/   # volatile facts: status (state snapshot) conventions (C conventions) decisions (D decisions) pitfalls (PIT stumbles)
+├── rules/     # standing constraints: common/ (loaded into instructions) + <lang>/ (on demand; hierarchy in rules/README.md)
+└── skills/    # 23 skill directories, each registered via SKILL.md frontmatter; .skill_id is install metadata, do not touch
 ```
 
-## 加载机制（决定写作纪律）
+## Loading mechanism (determines writing discipline)
 
-| 层 | 何时进上下文 | 推论 |
+| Layer | When it enters context | Implication |
 |----|-------------|------|
-| `memorys/status+conventions` + `rules/common` 12 文件 | **每轮全量**（opencode.json instructions，总 14 条） | 每行都有固定 token 成本；保持精简、不重复 skills 内容 |
-| `rules/<lang>/` | 文件扩展名匹配时按需 | 可放语言细节 |
-| `skills/*/SKILL.md` | frontmatter description 命中触发 | description 是路由命脉：通用方法论词，禁品牌残留 |
-| `memorys/decisions+pitfalls` | 显式读取 | 可长，追加式，永不重写历史条目 |
+| `memorys/status+conventions` + `rules/common` 12 files | **fully every turn** (opencode.json instructions, 14 entries total) | every line carries a fixed token cost; stay lean, never duplicate skills content |
+| `rules/<lang>/` | on demand when file extensions match | language details may live here |
+| `skills/*/SKILL.md` | frontmatter description matches the trigger | the description is the routing lifeline: generic methodology words, no brand residue |
+| `memorys/decisions+pitfalls` | explicit read | may be long, append-only, never rewrite historical entries |
 
-## 编号纪律
+## Numbering discipline
 
-- VisiaEngine 自己的 C{n}/D{n}/PIT-{n} 从模板起算（C2-C8、C10-C13 保留空号，见 conventions.md 头部声明）。
-- **禁止**引用前项目的编号——新库无条目。前项目史在 `.refinfo/MediaServo/.agents/`（只读归档）。
-- 五段式（症状/根因/解法/验证）与 D 条目格式已嵌在各模板注释，新增条目照抄骨架。
+- VisiaEngine's own C{n}/D{n}/PIT-{n} numbering starts from the template (C2-C8 and C10-C13 are reserved gaps; see the header declaration in conventions.md).
+- **Forbidden** to cite the predecessor project's numbering — the new stores have no such entries. The predecessor's history lives in `.refinfo/MediaServo/.agents/` (read-only archive).
+- The five-part form (symptom / root cause / solution / verification) and the D-entry format are embedded in each template's comments; new entries copy the skeleton verbatim.
 
-## 修改后验证
+## Verification after changes
 
-跑根 `AGENTS.md` COMMANDS 的 grep 门禁；frontmatter（`---` 对偶、description 单行 YAML）用 `head -6` 抽查。
+Run the grep gates from the root `AGENTS.md` COMMANDS section; spot-check frontmatter (`---` pairing, single-line YAML description) with `head -6`.

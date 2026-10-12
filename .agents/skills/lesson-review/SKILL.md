@@ -1,105 +1,105 @@
 ---
 name: lesson-review
-description: "批量会话回顾：系统性提取经验教训，写入项目记忆。Use after long debugging sessions (>1h or >3 failed attempts), when user corrects multiple errors, after build fixes, on '总结经验'/'更新记忆'/'记录教训'/'回顾会话', or /lesson-review command."
+description: "Batch session review: systematically extract lessons learned, write them to project memory. Use after long debugging sessions (>1h or >3 failed attempts), when user corrects multiple errors, after build fixes, on '总结经验'/'更新记忆'/'记录教训'/'回顾会话', or via the /lesson-review command."
 ---
 
-# lesson-review — 批量经验教训沉淀
+# lesson-review — Batch Lesson Consolidation
 
-## 触发条件
+## Trigger Conditions
 
-- 用户说"总结经验" / "更新记忆" / "记录教训" / "回顾会话"
-- 长时间调试会话结束（>1h 或 >3 次失败尝试）
-- 用户指出多个错误后
-- 解决一个耗时 >30min 的问题后
-- `/lesson-review` 命令
+- The user says "总结经验" / "更新记忆" / "记录教训" / "回顾会话" (summarize experience / update memory / record lessons / review the session)
+- A long debugging session ends (>1h or >3 failed attempts)
+- After the user points out multiple errors
+- After solving a problem that took >30min
+- The `/lesson-review` command
 
-## 与规则和技能的关系
+## Relation to Rules and Skills
 
 ```
-think-before-act  →  [行动]  →  lesson-memory  →  doc-audit
-   (咨询)                       (即时捕获)          (定期审计)
-                    lesson-review ← 批量补漏
+think-before-act  →  [action]  →  lesson-memory  →  doc-audit
+   (consult)                      (instant capture)     (periodic audit)
+                    lesson-review ← batch gap-fill
 ```
 
-| | `lesson-memory` 规则 (C9) | `lesson-review` 技能 |
+| | `lesson-memory` rule (C9) | `lesson-review` skill |
 |---|---|---|
-| 时机 | 即时（每次错误后，自动触发） | 批量（会话结束/用户触发） |
-| 方式 | 反射 | 交互式回顾 |
-| 粒度 | 单条教训 | 全会话扫描 |
-| 互补 | 第一层防线（不遗漏） | 第二层防线（不误判 + 归类） |
+| Timing | instant (after every error, auto-triggered) | batch (session end / user-triggered) |
+| Method | reflex | interactive review |
+| Granularity | single lesson | full-session scan |
+| Complement | first line of defense (miss nothing) | second line of defense (no misjudgment + categorization) |
 
-- `think-before-act`（咨询）：行动前检查已有教训，避免重蹈
-- `lesson-memory`（C9 规则）：每次错误后**即时自动**写入，无需用户要求
-- `lesson-review`（本技能）：会话末**批量回顾**，查漏补缺、归类归档
-- `doc-audit`（审计）：定期检查记忆文件自洽性
+- `think-before-act` (consultation): check existing lessons before acting, avoid repeats
+- `lesson-memory` (C9 rule): write **instantly and automatically** after every error, no user request needed
+- `lesson-review` (this skill): **batch review** at session end, fill gaps, categorize and archive
+- `doc-audit` (audit): periodically check memory-file self-consistency
 
-## 流程
+## Flow
 
-### Step 1: 扫描会话
+### Step 1: Scan the session
 
-回顾本次会话中哪些时刻触发了规则但可能遗漏了：
+Review which moments in this session triggered the rule but may have been missed:
 
-- 编译/构建失败
-- >1 次失败尝试才定位根因
-- 用户纠正做法/偏好
-- 意外发现（"原来如此"、"没想到"）
-- 耗时 >30min 的问题
-- 编辑后语法损坏（brace 不平衡、重复行等）
+- compile/build failures
+- >1 failed attempt before locating the root cause
+- user corrections of approach/preference
+- surprise discoveries ("原来如此" / "没想到" — so-that's-how / didn't-expect-that)
+- problems that took >30min
+- post-edit syntax corruption (unbalanced braces, duplicate lines, etc.)
 
-### Step 2: 逐条提取（5 问清单）
+### Step 2: Extract one by one (5-question checklist)
 
-对每个发现，逐条完成：
+For each finding, complete:
 
-1. **什么错了？**（现象描述）
-2. **为什么错？**（根因分析）
-3. **正确做法？**（解决方案）
-4. **如何预防？**（检查命令 / 约束）
-5. **存到哪里？**（按存储目标表）
+1. **What went wrong?** (symptom description)
+2. **Why did it go wrong?** (root-cause analysis)
+3. **What's the right way?** (solution)
+4. **How to prevent it?** (check command / constraint)
+5. **Where to store it?** (per the storage-target table)
 
-### Step 3: 写入
+### Step 3: Write
 
-按目标文件的模板格式写入。
+Write using the target file's template format.
 
-- 重要教训 → 完整模板（症状 + 根因 + 解法，三要素）
-- 平凡修复（1 行/无分支/无副作用）→ 1 行捕获，不用完整模板
+- Important lessons → full template (symptom + root cause + solution, three elements)
+- Trivial fixes (1 line / no branch / no side effects) → 1-line capture, no full template
 
-### Step 4: 验证
+### Step 4: Verify
 
-- [ ] 每条 pitfall 有 verify 字段（检查命令 — 如何确认已修复）
-- [ ] 每条 convention 可被 grep/lint 验证
-- [ ] 与已有条目无重复（grep 目标文件确认）
-- [ ] decisions.md 编号连续（不跳号）
-- [ ] 交叉引用正确（如 pitfalls 中引用 conventions）
-- [ ] 高频/高成本教训标注是否需要 CI 门禁升级
+- [ ] every pitfall has a verify field (check command — how to confirm the fix)
+- [ ] every convention is grep/lint verifiable
+- [ ] no duplicates with existing entries (confirm by grepping the target file)
+- [ ] decisions.md numbering is contiguous (no gaps)
+- [ ] cross-references correct (e.g. pitfalls citing conventions)
+- [ ] high-frequency/high-cost lessons flagged for CI-gate upgrade if needed
 
-## 输出格式
+## Output Format
 
 ```markdown
-## 会话经验总结 — YYYY-MM-DD
+## Session lessons summary — YYYY-MM-DD
 
-### 已记录 (N 条)
-1. [标题] → pitfalls.md
-2. [标题] → conventions.md
+### Recorded (N items)
+1. [title] → pitfalls.md
+2. [title] → conventions.md
 ...
 
-### 未记录（无需记录）
-- [原因：一次性问题 / 已有记录 / 环境特定]
+### Not recorded (no need)
+- [reason: one-off issue / already recorded / environment-specific]
 
-### 建议升级
-- [某条教训建议添加 CI 门禁，理由：重复 3+ 次/耗费 >1h]
+### Upgrade suggestions
+- [a lesson suggests adding a CI gate, reason: repeated 3+ times / cost >1h]
 ```
 
-## 存储目标（按项目配置）
+## Storage targets (per project config)
 
-适用任何项目，修改路径即可：
+Applies to any project; just adjust the paths:
 
 ```
-- 技术陷阱 → {pitfall_log}      # VisiaEngine: .agents/memorys/pitfalls.md
-- 开发约束 → {conventions}       # VisiaEngine: .agents/memorys/conventions.md
-- 架构决策 → {decisions}         # VisiaEngine: .agents/memorys/decisions.md
-- 可执行检查 → {checks}          # VisiaEngine: .agents/rules/common/edit-safety.md
-- 测试要求 → {test_rules}        # VisiaEngine: .agents/rules/common/testing.md
-- 安全规则 → {security_rules}    # VisiaEngine: .agents/rules/common/security.md
-- Rust 编码 → {rust_style}       # VisiaEngine: .agents/rules/rust/coding-style.md
-- 项目状态 → {status}            # VisiaEngine: .agents/memorys/status.md
+- technical pitfalls → {pitfall_log}      # VisiaEngine: .agents/memorys/pitfalls.md
+- dev constraints    → {conventions}       # VisiaEngine: .agents/memorys/conventions.md
+- architecture decisions → {decisions}     # VisiaEngine: .agents/memorys/decisions.md
+- runnable checks  → {checks}              # VisiaEngine: .agents/rules/common/edit-safety.md
+- testing rules    → {test_rules}          # VisiaEngine: .agents/rules/common/testing.md
+- security rules   → {security_rules}      # VisiaEngine: .agents/rules/common/security.md
+- Rust coding      → {rust_coding_style}   # VisiaEngine: .agents/rules/rust/coding-style.md
+- project status   → {status}              # VisiaEngine: .agents/memorys/status.md
 ```

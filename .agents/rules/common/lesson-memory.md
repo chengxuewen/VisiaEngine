@@ -1,78 +1,78 @@
 # Lesson Memory & Self-Correction Rule
 
-> AI 遇到失误、新问题、新经验时，**主动**将教训写入项目记忆和规则文件。
+> When AI encounters mistakes, new problems, or new lessons, **proactively** write the lessons into the project memory and rule files.
 
-## 触发条件（满足任一即触发）
+## Triggers (any one triggers)
 
-| 触发场景 | 动作 |
+| Trigger scenario | Action |
 |----------|------|
-| 编辑代码后编译/构建失败 | 记录到 `pitfalls.md` + 更新 `edit-safety.md` |
-| 同一类错误第 2 次出现 | **立即**添加规则到 `edit-safety.md` 或新建规则文件 |
-| 发现社区已有解决方案 | 记录到 `pitfalls.md`（含社区链接）+ 更新 `decisions.md` |
-| 测试通过但功能不工作 | 记录到 `pitfalls.md` + 更新 `testing.md` 添加 E2E 要求 |
-| 依赖版本冲突 | 记录到 `pitfalls.md` + 更新 `edit-safety.md` |
-| 补丁/脚本破坏构建产物 | 记录到 `pitfalls.md` + 更新 `edit-safety.md` |
-| 用户指出 AI 未发现的问题 | 记录到 `pitfalls.md` + 分析根因 + 添加预防规则 |
-| >1 次失败尝试才定位根因 | 记录到 `pitfalls.md`（含失败尝试 + 正确路径） |
-| 用户纠正做法/偏好 | 记录到 `conventions.md` 或 `decisions.md` |
+| Compile/build fails after editing code | Record to `pitfalls.md` + update `edit-safety.md` |
+| The same error type appears a 2nd time | **Immediately** add a rule to `edit-safety.md` or create a new rule file |
+| Community solution already exists | Record to `pitfalls.md` (with community link) + update `decisions.md` |
+| Tests pass but feature doesn't work | Record to `pitfalls.md` + update `testing.md` to add E2E requirement |
+| Dependency version conflict | Record to `pitfalls.md` + update `edit-safety.md` |
+| Patch/script breaks build artifacts | Record to `pitfalls.md` + update `edit-safety.md` |
+| User points out an issue AI didn't find | Record to `pitfalls.md` + analyze root cause + add prevention rule |
+| Root cause only located after >1 failed attempts | Record to `pitfalls.md` (with failed attempts + correct path) |
+| User corrects approach/preference | Record to `conventions.md` or `decisions.md` |
 
-## 写入目标
+## Write Targets
 
-| 文件 | 写入内容 | 格式 |
+| File | Content to write | Format |
 |------|---------|------|
-| `.agents/memorys/pitfalls.md` | 问题 + 原因 + 方案 + 验证 + 禁止 | 五段式 (PIT-{n}) |
-| `.agents/memorys/decisions.md` | 架构/技术决策 + 理由 + 参考 | `## D{N}: 标题` |
-| `.agents/memorys/conventions.md` | 开发约束/用户偏好 | C{n}：「约束」+ 检查命令 |
-| `.agents/rules/common/edit-safety.md` | 可执行检查规则 | `### N. 规则名` + 检查命令 + 阻塞条件 |
-| `.agents/rules/common/testing.md` | 测试覆盖要求 | 测试类型 + 执行命令 + 通过标准 |
+| `.agents/memorys/pitfalls.md` | problem + cause + solution + verification + forbidden | five-part (PIT-{n}) |
+| `.agents/memorys/decisions.md` | architecture/technical decision + rationale + reference | `## D{N}: title` |
+| `.agents/memorys/conventions.md` | development constraint/user preference | C{n}: "constraint" + check command |
+| `.agents/rules/common/edit-safety.md` | runnable check rule | `### N. rule name` + check command + blocking condition |
+| `.agents/rules/common/testing.md` | test coverage requirement | test type + execution command + pass criteria |
 
-## 写入时机
+## Write Timing
 
-1. **即时写入**：发现问题当下就写入，不等到会话结束
-2. **修复后验证**：写入后验证规则是否可执行（有具体命令，不是空话）
-3. **去重检查**：写入前 `grep` 目标文件，确认不重复
+1. **Write immediately**: write at the moment the problem is found, don't wait until the session ends
+2. **Verify after fix**: after writing, verify the rule is executable (has concrete commands, not empty talk)
+3. **Deduplication check**: before writing, `grep` the target file to confirm it's not duplicated
 
-## 规则质量标准
+## Rule Quality Standards
 
-| 标准 | 说明 |
+| Standard | Description |
 |------|------|
-| **可执行** | 包含具体 shell 命令或检查步骤，不是"注意 XXX" |
-| **可验证** | 有明确的通过/失败标准 |
-| **有阻塞** | 明确说明不通过时怎么办 |
-| **有先例** | 引用实际发生的错误 |
+| **Executable** | Contains concrete shell command or check step, not "be careful about X" |
+| **Verifiable** | Has clear pass/fail criteria |
+| **Has blocking** | Clearly states what to do if it fails |
+| **Has precedent** | References an actually occurring error |
 
-## 反模式（禁止）
+## Anti-Patterns (forbidden)
 
-| 反模式 | 正确做法 |
+| Anti-pattern | Correct approach |
 |--------|---------|
-| "以后注意" | 写入具体检查命令到规则文件 |
-| 只记录不预防 | 每条 pitfall 必须对应一条可执行规则 |
-| 规则写"小心编辑" | 写 `grep -c '{' file && grep -c '}' file` |
-| 等用户提醒才记录 | 发现即记录（C9），不等用户指出 |
+| "be careful later" | Write concrete check commands into the rule file |
+| Record without prevention | Every pitfall must map to one runnable rule |
+| Rule says "be careful when editing" | Write `grep -c '{' file && grep -c '}' file` |
+| Wait for user reminder before recording | Record as soon as found (C9), don't wait for user to point it out |
 
-## 捕获清单（每次触发自问）
+## Capture Checklist (ask yourself on every trigger)
 
-1. **什么错了？**（现象）
-2. **为什么错？**（根因）
-3. **正确做法？**（方案）
-4. **如何预防？**（检查命令 / 约束）
-5. **存到哪里？**（按写入目标表）
+1. **What went wrong?** (symptom)
+2. **Why did it go wrong?** (root cause)
+3. **What's the right way?** (solution)
+4. **How to prevent it?** (check command / constraint)
+5. **Where does it go?** (per write target table)
 
-## 平凡修复逃生舱
+## Trivial-Fix Escape Hatch
 
-1 行修复 / 无分支 / 无副作用 → 1 行捕获，不用完整模板。
+1-line fix / no branch / no side effects → 1-line capture, no full template needed.
 
-## pitfall 模板（写入 pitfalls.md 必须包含）
+## Pitfall Template (must be included when writing to pitfalls.md)
 
 ```markdown
-## PIT-{n}: 标题 (日期)
-- **症状**: [现象描述]
-- **根因**: [根因分析]
-- **解法**: [正确做法]
-- **验证**: [检查命令]
+## PIT-{n}: Title (date)
+- **Symptom**: [symptom description]
+- **Root cause**: [root cause analysis]
+- **Solution**: [correct approach]
+- **Verification**: [check command]
 ```
 
-## 预防升级（高成本/高频教训）
+## Prevention Escalation (high-cost/frequent lessons)
 
-- 重复 ≥2 次或耗费 >3 轮定位 → 添加 CI 门禁或 pre-commit hook
-- 低频/低成本 → 仅记录到 pitfalls.md
+- Repeats ≥2 times or takes >3 rounds to locate → add CI gate or pre-commit hook
+- Low frequency/low cost → only record to pitfalls.md

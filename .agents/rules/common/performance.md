@@ -54,9 +54,9 @@ If build fails:
 3. Fix incrementally
 4. Verify after each fix
 
-## 可执行检查
+## Runnable Check
 
 ```bash
-# 验证：无 unwrap 滥用
+# Verify: no unwrap() misuse
 grep -rn "unwrap()" --include="*.rs" crates/ | grep -v "test" | grep -v "// OK" || true
 ```

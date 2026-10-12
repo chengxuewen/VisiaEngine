@@ -5,8 +5,8 @@ description: "Hardcoded secrets/ports/URLs scan. MERGED into security-hardening 
 
 # review-hardcode → security-hardening
 
-本技能已合并到 `security-hardening` 技能。
+This skill has been merged into the `security-hardening` skill.
 
-**`/review-hardcode`** 现在加载 `security-hardening` 的 Phase 1: 密钥扫描（含硬编码值严重性表与硬编码检查流程）。
+**`/review-hardcode`** now loads Phase 1 of `security-hardening`: secret scanning (with the hardcoded-value severity table and the hardcode-check workflow).
 
-完整安全审计请使用 `/security-hardening`。
+For a full security audit use `/security-hardening`.

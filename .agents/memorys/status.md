@@ -1,459 +1,473 @@
 # VisiaEngine Status
 
-**生成**: 2026-09-03 | Phase: 项目初始化 | 分支: main（首 6 提交见 git log，工作区 clean 为常态）
+**Generated**: 2026-09-03 | Phase: project init | Branch: main (first 6 commits in git log; a clean worktree is the normal state)
 
-> 前身项目 MediaServo 的全部历史（D/PIT/C 编号体系、crate 矩阵、Phase 记录）见本机归档 `.refinfo/MediaServo/.agents/memorys/`（已被 gitignore，不随 clone 分发）。本目录自 2026-09-03 起为 VisiaEngine 从零积累。
+> The full history of the predecessor MediaServo (the D/PIT/C numbering system, the crate matrix, Phase records) lives in the local archive `.refinfo/MediaServo/.agents/memorys/` (gitignored, not distributed with clones). This directory accumulates VisiaEngine history from scratch starting 2026-09-03.
 
-## 概览
+## Overview
 
-| 项 | 状态 |
+| Item | State |
 |----|------|
-| 技术栈 | ✅ Rust 核心 + wgpu 渲染（白皮书 v0.1.0，2026-09-03 定）；**后端 = D4 终审定案：wgpu 直用自研管线 `visiaengine-render-wgpu`（不采用 Bevy）**；SDK 形态（C API FFI）；Open Core 商业模型 |
-| 许可证 | ✅ 已落地：MIT OR Apache-2.0 双许可正本文件（LICENSE-MIT/LICENSE-APACHE），不可撤销承诺入 README |
-| 源码 | crates/ **5** crate（core/render/render-wgpu/io-gltf/geo），~4.7k 行，**68 cargo 测试全绿** + 4×L2 smoke 接线；离屏 golden 9/9 本机 lavapipe 无 SKIP；fixture 已迁 `resources/data/`（1b） |
-| 项目定位 | ✅ 多维空间可视化引擎（2D/2.5D/3D 统一，GIS/数字孪生/AV 仿真/BIM），非游戏引擎 |
-| Agent 工具链 | ✅ 中性化+注册表+双层 AGENTS；Rust 规则已入 instructions（16 条）；MCP 修复轮：nodejs 入 pixi 环境+with-node 包装器，codegraph/github 通路绿，openspace 归按需族（PIT-6） |
+| Tech stack | ✅ Rust core + wgpu rendering (whitepaper v0.1.0, settled 2026-09-03); **backend = D4 final ruling: wgpu direct use, self-built pipeline `visiaengine-render-wgpu` (Bevy not adopted)**; SDK form (C API FFI); Open Core business model |
+| License | ✅ landed: MIT OR Apache-2.0 dual-license canonical files (LICENSE-MIT/LICENSE-APACHE); the irrevocability promise is in the README |
+| Source | crates/ **5** crates (core/render/render-wgpu/io-gltf/geo), ~4.7k lines, **68 cargo tests all green** + 4×L2 smoke wired; offscreen golden 9/9 on this machine's lavapipe with no SKIP; fixtures migrated to `resources/data/` (1b) |
+| Positioning | ✅ multi-dimensional spatial visualization engine (unified 2D/2.5D/3D; GIS / digital twin / AV simulation / BIM), not a game engine |
+| Agent toolchain | ✅ neutralized + registry + two-tier AGENTS; Rust rules loaded into instructions (16 entries); MCP repair round: nodejs into the pixi env + the with-node wrapper, codegraph/github paths green, openspace moved to the on-demand family (PIT-6) |
 
-## Phase 状态
+## Phase status
 
-| Phase | 状态 |
+| Phase | State |
 |-------|:----:|
-| 0 项目初始化（配置中性化/白皮书/架构基线/参考库/许可证） | ✅ |
-| 1 MVP | 🔨 内容轮+GeoJSON 片完成（G1-G4 ✓；H1-H4 ✓：geo 解析/细分样式/D7 落地/geo_viewer）；宿主嵌入/capi = 后续片） |
-| 2 Alpha / 3 Beta / 4 1.0 | — 白皮书路线图 |
+| 0 project init (config neutralization / whitepaper / architecture baseline / reference library / licenses) | ✅ |
+| 1 MVP | 🔨 content round + GeoJSON slice done (G1-G4 ✓; H1-H4 ✓: geo parsing / tessellation styles / D7 landed / geo_viewer); host embedding / capi = later slices |
+| 2 Alpha / 3 Beta / 4 1.0 | — whitepaper roadmap |
 
-## 下一步
+## Next steps
 
-1. **push gitee**（远端由用户侧同步推进中，本地领先笔数随轮变动）+ GitHub 镜像决策（ci.yml 五路 L2 smoke+gate 即转现役）——**用户侧另需 GITHUB_TOKEN+重启验 MCP**
-2. ~~P1 裁决~~ ✅ D7 已裁 + **H3 已实施**（compose_mvp 落地，WGPU-10 远原点像素一致实证）
-3. ~~宿主嵌入片候令~~ ✅ **批准轮（2026-09-11）**：批 2 v1.4 + 批 7 v1.4 同批批准；I0/J0 环境轮开工；Qt demo 仍单独立项（qt-main 扩张随该轮）
-4. capi 片（ABI 面 D6 已锁：visiaengine_*/visiaengine.h）；纹理/材质 PBR、屏幕空间线宽、MVT/tile 流式（⑦）= Alpha 档
-5. P2 样式 spec 兼容性裁决（simplestyle 六键之上：MapLibre v8 子集？）——样式系统设计轮
-4. CI 激活：GitHub 镜像仓决策日（ci.yml 已三连 smoke）；Gitee push 待指令
-5. wgpu 升级窗口（季度）：重跑 PIT-3/PIT-5 破坏面清单
-6. 环境/许可证条款不变（D5/D6）；镜像 CI 待命期本机 `pixi run ci` 为唯一门禁（G 轮实证）
+1. **push gitee** (remote sync advanced on the user's side; the local-ahead count varies per round) + the GitHub mirror decision (the five L2 smoke+gate lanes in ci.yml go live that day) — **user side still needs GITHUB_TOKEN + restart to verify MCP**
+2. ~~P1 adjudication~~ ✅ D7 ruled + **H3 implemented** (compose_mvp landed, WGPU-10 far-origin pixel-equality proven)
+3. ~~host-embedding slice standing by~~ ✅ **approval round (2026-09-11)**: batch 2 v1.4 + batch 7 v1.4 approved together; I0/J0 environment round started; the Qt demo stays its own entry (qt-main expansion rides that round)
+4. capi slice (ABI surface locked by D6: visiaengine_*/visiaengine.h); texture/material PBR, screen-space line width, MVT/tile streaming (⑦) = Alpha tier
+5. P2 style-spec compatibility adjudication (above the six simplestyle keys: a MapLibre v8 subset?) — style-system design round
+4. CI activation: the GitHub mirror repo decision day (ci.yml already has three chained smokes); Gitee push awaiting instruction
+5. wgpu upgrade window (quarterly): re-run the PIT-3/PIT-5 breakage checklist
+6. env/license clauses unchanged (D5/D6); during the mirror-CI standby, this machine's `pixi run ci` is the only gate (proven in the G round)
 
-## MVP 内容轮基线（2026-09-03，G1-G4）
+## MVP content-round baseline (2026-09-03, G1-G4)
 
-`pixi run ci` 全绿 · spec-trace **66↔66**（CORE/REND/WGPU/GLTF/GEO 五命名空间）· 立方 golden 7/7 本机 lavapipe 真机 · L2 三 smoke 接线（运行绿地点=CI 待命）· 提交面 11 笔（计划 9 + S2/G1 补采 + G4 拆 b，K5 弹性记账）· PIT-5 入档（wgpu [0,1] 静默裁剪）
+`pixi run ci` all green · spec-trace **66↔66** (five namespaces CORE/REND/WGPU/GLTF/GEO) · cube golden 7/7 on this machine's lavapipe real runs · L2 three smokes wired (where they run green = CI standby) · 11 commits on the surface (planned 9 + S2/G1 supplemental + G4 split-b, K5 elastic accounting) · PIT-5 filed (wgpu [0,1] silent clipping)
 
-## GeoJSON 片基线（2026-09-03，H1-H4）
+## GeoJSON slice baseline (2026-09-03, H1-H4)
 
-geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`GeoKind::shifted` 原语）+ `rebase::compose_mvp` f64 相减 + 远原点立方/geo 全链路像素级验证 · Web Mercator 球面式（EPSG:3857 定义语义入 SDD）· geo_viewer example + 第 4 路 smoke · 提交 12 笔（计划 8+RED 补采/H1 收口各 1，弹性条款覆盖）· 事故三笔如实记于 message（双 view_rotation 并行编辑 / contract 批内未写盘 / 51 声称口径）
+geo crate 16 tests (GEO-01..14) · D7 full chain: `tessellate` takes local input (the `GeoKind::shifted` primitive) + `rebase::compose_mvp` f64 subtraction + far-origin cube/geo pixel-level end-to-end verification · Web Mercator spherical formulas (the EPSG:3857 definitional semantics into the SDD) · geo_viewer example + 4th smoke lane · 12 commits (planned 8 + RED supplemental / H1 close-out one each, covered by the elastic clause) · three incidents recorded honestly in messages (parallel edit of two view_rotation / a contract not written within its batch / the 51 claimed count)
 
-## 计划 v1.1 批次 0/1 基线（2026-09-03，Easy3D 借鉴移植开工轮）
+## Plan v1.1 batches 0/1 baseline (2026-09-03, Easy3D-borrowing port, work-start round)
 
-- 批次 0：测试三层法(T1/T2/T3)+示例门禁+D8 预登记入 rules/decisions（`0464fd2`）
-- 批次 1a：LoadReport+RepairPolicy 五类分型（GEO-15/16）+ GLTF-09 模式过滤（**顺带修 POINTS 假三角存量 bug**）（RED `6892b81`+GREEN `07999cd`）
-- 批次 1b：testdata→resources/data 迁移 14 处同步，grep 清零（`229f77f`）
-- 基线：66↔66 · 68 测试 · ci exit=0 · golden 无 SKIP；边界事实：JSON 数字超域在文档层拒=双策略 Err（条款注记）；非有限坐标 parse 入口不可达（字段留 web_mercator 直调路径）
-- 计划文档 `.omo/plans/easy3d-adoption-plan.md`（v1.1 已批准）；下一步=批 2 计划轮（宿主嵌入，含 D8 转正）或批 3（∥3c→3b）+ 批 3.5 交互片
+- batch 0: three-tier testing (T1/T2/T3) + example gate + D8 pre-registration into rules/decisions (`0464fd2`)
+- batch 1a: LoadReport+RepairPolicy five error classes (GEO-15/16) + GLTF-09 mode filter (**incidentally fixing the POINTS fake-triangle legacy bug**) (RED `6892b81` + GREEN `07999cd`)
+- batch 1b: testdata→resources/data migration, 14 synced sites, grep zeroed (`229f77f`)
+- baseline: 66↔66 · 68 tests · ci exit=0 · golden no SKIP; boundary facts: JSON numeric out-of-domain rejected at the document layer = dual-strategy Err (clause note); non-finite coordinates unreachable at the parse entrance (the field keeps the web_mercator direct-call path)
+- plan doc `.omo/plans/easy3d-adoption-plan.md` (v1.1 approved); next = batch 2 planning round (host embedding, incl. D8 finalization) or batch 3 (∥3c→3b) + batch 3.5 interaction slice
 
-## 批次 3a 基线（2026-09-03，AttrSet 属性列化轮）
+## Batch 3a baseline (2026-09-03, AttrSet attribute-column round)
 
-- core::AttrSet（CORE-11/12/13）：三型闭合列存、行对齐不变式、缺失≠零值、首写定型
-- geo（GEO-17/18）：props 解析后不再丢弃（宿主查询口打开）；样式经 typed 列读，style.rs 零 JSON 依赖（gate-style 任务入 ci 链）
-- 基线：**71↔71 · 74 passed · ci exit=0 · golden 9/9 无 SKIP**；RED `070ce59` GREEN `28c250f`
-- 教训两处如实：GREEN 回归网抓到 feed 普通件分支绕过 accept 分类器；grep 门禁谓词首版被自家注释文本绊倒（谓词收窄至代码形态）
-- 3c 已裁：**D9=B**（v8 paint 别名子集，主键优先/表达式边界冻结）→ GEO-19 实施（`str_first/f64_first` 回退映射）
-- 基线刷新：**72↔72 · 76 passed · ci exit=0（含 gate-style 段）· golden 9/9 无 SKIP**
-- 3b 已实施（修订降档 CPU lerp，GEO-20+渲染三色族 golden）：**73↔73 · 80 passed · ci exit=0 · SKIP 0**；批次 3 全清
-- 教训追加：grep -c 零匹配=exit 1 断 && 链（3b commit 链破一次，补跑坐实）
-- 3.5a/b 已实施（CORE-14/15+REND-21/22 射线族，MT 求交+屏幕口）：**77↔77 · 84 passed**；RED `929b3b6` GREEN `0db9d87`
-- GREEN 战果：slab tmax 变量误用真 bug + 测试侧两处（zoom 默认值/f32 aspect 噪声）；PIT-7 入档（deny 联网抖动假红）
-- 3.5d 已实施（GEO-21/22 平面量测，amend 收编 lint）；3.5c/e 已实施（REND-23/24 pick_meshes + WGPU-12/13 高亮+**深度面补齐** + E401/E403 + smoke 双路）
-- 基线刷新：**83↔83 · 90 passed · ci exit=0 · golden 无 SKIP · smoke-pick/measure 本机真跑绿**
-- WGPU-13 存量修复：mesh 管线此前无深度缓冲（单对象 golden 掩盖）——多实体遮挡自此正确
-- 交互片（3.5 全 5 项）收口
-- **批 2 批准轮执行中（2026-09-11）**：I0+J0 环境轮 `a163d0d`（host/wasm 双 spike 环境、wasm 全树绿零 cfg 修复、PROBE-OK）→ I1 `c68e57c`（句柄/栅栏/线程/错误串/输入口 六条款测试）→ I2 `6bdd7e7`（出图链真身 + **headless readback 行对齐存量 bug 修复** + gate-abi 14/14 + demo 'OK capi headless'）；基线 **88↔88 · 98 passed · ci=0**
-- #17 纪律四犯四纠（本轮两次 amend：范围混提交/clippy 红时称绿/87 笔误）——commit message 数字必须粘贴同终端实测输出
-- 下一步：I3 attach spike（x11 SurfaceTarget）∥ I4 输入/pick demo → 批 7 J1；push 待令
+- core::AttrSet (CORE-11/12/13): three-type closed column store, row-alignment invariant, missing ≠ zero, first-write sets the type
+- geo (GEO-17/18): props no longer dropped after parsing (the host query port opens); styles read via typed columns, style.rs zero JSON dependency (the gate-style task enters the ci chain)
+- baseline: **71↔71 · 74 passed · ci exit=0 · golden 9/9 no SKIP**; RED `070ce59` GREEN `28c250f`
+- two lessons recorded honestly: the GREEN regression net caught the feed's plain-item branch bypassing the accept classifier; the first grep-gate predicate was tripped by its own comment text (predicate narrowed to code shapes)
+- 3c ruled: **D9=B** (v8 paint alias subset, primary keys first / expression boundary frozen) → GEO-19 implemented (the `str_first/f64_first` fallback mapping)
+- baseline refresh: **72↔72 · 76 passed · ci exit=0 (incl. the gate-style segment) · golden 9/9 no SKIP**
+- 3b implemented (revised downgrade to CPU lerp, GEO-20 + the three-color render family golden): **73↔73 · 80 passed · ci exit=0 · SKIP 0**; batch 3 fully cleared
+- lesson appended: grep -c zero-match = exit 1 breaks && chains (the 3b commit chain broke once; confirmed on re-run)
+- 3.5a/b implemented (CORE-14/15 + REND-21/22 ray family, MT intersection + screen port): **77↔77 · 84 passed**; RED `929b3b6` GREEN `0db9d87`
+- GREEN wins: a real bug of slab tmax variable misuse + two test-side ones (zoom default / f32 aspect noise); PIT-7 filed (deny network-flakiness false reds)
+- 3.5d implemented (GEO-21/22 plane measurement, lint folded in via amend); 3.5c/e implemented (REND-23/24 pick_meshes + WGPU-12/13 highlight + **depth surface filled in** + E401/E403 + dual smoke lanes)
+- baseline refresh: **83↔83 · 90 passed · ci exit=0 · golden no SKIP · smoke-pick/measure real local runs green**
+- WGPU-13 legacy fix: the mesh pipeline previously had no depth buffer (single-object goldens masked it) — multi-entity occlusion is correct from here on
+- interaction slice (all five 3.5 items) closed
+- **batch 2 approval round in execution (2026-09-11)**: I0+J0 environment round `a163d0d` (host/wasm dual spike environments, wasm full-tree green with zero cfg fixes, PROBE-OK) → I1 `c68e57c` (handle/fence/thread/error-string/input-port — six-clause tests) → I2 `6bdd7e7` (the real out-frame chain + **headless readback row-alignment legacy bug fixed** + gate-abi 14/14 + demo 'OK capi headless'); baseline **88↔88 · 98 passed · ci=0**
+- discipline #17 fourth-and-corrected×4 (two amends this round: mixed-scope commit / claiming green while clippy red / the 87 typo) — commit-message numbers must be pasted from same-terminal measured output
+- next: I3 attach spike (x11 SurfaceTarget) ∥ I4 input/pick demo → batch 7 J1; push awaiting instruction
 
-## Qt widget 轮基线（2026-09-14，v1.3 Q1-Q3 全落）
+## Qt widget round baseline (2026-09-14, v1.3 Q1-Q3 all landed)
 
-- Q1（`render_spec` 锁）：viewport 换 dims 三面断言直绿——「行为既有、锁缺席」如实记
-- Q2/Q3（本笔）：widget.hpp（header-only 零 moc/PaintOnScreen 三件套）+ qt_app 真窗（texquad+park）+ smoke-qt 三态；QTimer 60Hz 拉泵跑通=**D8 触发器① 复评：维持挂起**（无帧跳过协商需求；再触发=视频解码对齐类宿主）
-- conda Qt 双坑入档：qt-main=Qt5 正名 qt6-main；QX11Application 未打包→Xlib 自持 Display*（跨连接 xid 合同兑现）
-- 基线刷新：**143 passed · ci 十段 ✓ · SMOKE-QT ✓(真窗@:0) · 108↔108 · 14/14**
-- Alpha 余账：npm/pip 打包（含 cmake install 树/corrosion 复评 D-11）、真 PBR、站点、E402、wayland/Win/mac 矩阵
+- Q1 (the `render_spec` lock): viewport switched to dims with three-surface assertions going green directly — "behavior existed, lock absent" recorded honestly
+- Q2/Q3 (this commit): widget.hpp (header-only, zero moc / the PaintOnScreen trio) + qt_app real window (texquad+park) + smoke-qt tri-state; the QTimer 60Hz pull pump running through = **D8 trigger ① re-evaluation: maintain suspension** (no frame-skip negotiation demand; next trigger = video/decoded-frame-aligned hosts)
+- conda Qt double-pit filed: qt-main is actually Qt5, the proper name is qt6-main; QX11Application not packaged → Xlib self-held Display* (the cross-connection xid contract fulfilled)
+- baseline refresh: **143 passed · ci ten segments ✓ · SMOKE-QT ✓ (real window @:0) · 108↔108 · 14/14**
+- Alpha remaining balance: npm/pip packaging (incl. the cmake install tree / corrosion re-evaluation D-11), real PBR, site, E402, wayland/Win/mac matrix
 
-## CMake 工程化层基线（2026-09-14，C1-C3；Qt 轮 v1.3 消费面待跑）
+## CMake engineering-layer baseline (2026-09-14, C1-C3; Qt round v1.3 consumption surface pending)
 
-- 计划 `.omo/plans/visiaengine-cmake-project.md` v1.0（Momus OKAY 0B；六→十段口径修）+ Qt 轮 v1.3（构建面交公）
-- C1：根门面（版本单源 Cargo.toml 硬错锁）+ SDK 三级解析（AUTO/PIXI/SYSTEM/路径 × Rust/Qt 双通道）+ presets；**审核期实测语义洞**：pixi 激活 PATH 使 SYSTEM 假通过→反污染双滤（拒收报文指名）；tools+cmake,ninja,gxx_linux-64（R1 实测 add 2.6s/首装 ~3min）
-- C2：cargo-step（仓级共享 target-dir，复跑 0.16s）+ 伞 `visiaengine::capi`（rpath 注入免 LD_LIBRARY_PATH）+ 树内假 Config + ctest 探针——**首跑抓到真缺口：手写头零 extern "C" 护栏（纯 C demos 三轮全绿掩盖），补后 Qt 面预埋清账**；links 账不立实证销（cargo 须配 build script）
-- C3：cmake-smoke 三态入 ci（第 10 段；无 cmake 机 SKIP）+ gate-docs ⑤门面纯度（≤60 行/禁编译规则字样）+ README 双入口
-- 基线：**142 passed · 108↔108 零触 · ci 十段 ✓ · GATE-ABI 14/14 · ctest 1/1 · 双负路径报文 ✓**
-- 插曲如实：cmake 报文折行致全句 grep 断言漏失（短语断言修正）；预设 schema 字段 `output.outputOnFailure` 两连错；未激活 shell 直调 conda cargo 假 rustc-missing（PATH 语义，教训在 pytest 族同款）
+- plan `.omo/plans/visiaengine-cmake-project.md` v1.0 (Momus OKAY 0B; the six→ten segment wording fixed) + Qt round v1.3 (build surface made public)
+- C1: root facade (version single-source from Cargo.toml, hard-error lock) + SDK three-tier resolution (AUTO/PIXI/SYSTEM/path × Rust/Qt dual channels) + presets; **measured semantics hole during review**: the pixi-activated PATH made SYSTEM falsely pass → anti-pollution dual filters (rejection messages name the culprit); tools + cmake, ninja, gxx_linux-64 (R1 measured: add 2.6s / first install ~3min)
+- C2: cargo-step (repo-level shared target-dir, rerun 0.16s) + umbrella `visiaengine::capi` (rpath injection, no LD_LIBRARY_PATH) + in-tree fake Config + ctest probe — **first run caught a real gap: the handwritten header had zero extern "C" guards (pure-C demos' three green rounds masked it); after the fix the Qt-side pre-embedded debt cleared**; the links account not opened, evidence-based write-off (cargo requires a build script)
+- C3: cmake-smoke tri-state into ci (segment 10; machines without cmake SKIP) + gate-docs ⑤ facade purity (≤60 lines / no compile-rule wording) + README dual entry
+- baseline: **142 passed · 108↔108 untouched · ci ten segments ✓ · GATE-ABI 14/14 · ctest 1/1 · dual negative-path messages ✓**
+- interlude honestly: cmake message wrapping made a full-sentence grep assertion miss it (fixed to short-phrase assertions); the preset-schema field `output.outputOnFailure` wrong twice; calling conda cargo directly from a non-activated shell gave a fake rustc-missing (PATH semantics — the same lesson exists in the pytest family)
 
-## 批 5 文档/教程归位基线（2026-09-14 收官）
+## Batch 5 docs/tutorials landing baseline (2026-09-14 close-out)
 
-- 计划 `.omo/plans/visiaengine-docs-tutorials.md` v1.0（Momus OKAY→批准→T1-T4 全落；纠偏注记：cbindgen→手写头+签名门禁、mdbook 不做=站点轮）
-- T1（`1031eef`）：E 编号改名 11 件（E402 空号预留；measure E403→E203 归带）+ E301 头注粘贴残留修 + tutorials.md
-- T2（`bfd2f57`）：**E901_twin_city** 垂直切片 seed（park 实尺 93×31m×256 塔群×PCSS×PNG 人检；九路 smoke +1）；caster slope_bias→0 硬化（理论自影面拆除，实测本景无差）
-- T3：gate-docs 四检入 ci（上线即抓 README 83≠108 实证门禁价值）+ README/architecture v0.2/AGENTS 零漂移
-- 基线：**142 passed · spec-trace 108↔108 · ci exit=0（四 gate）· smoke 九路 ✓ · SKIP 0 · 漂移字样 grep=0**
-- 教训：PIT-10 入档（场景人检三探针教训：像素谓词正确但受光区位置假设错——低日角×楼高→前景合法长影带）
-- **批 4/5 之后队列**：4g/4h SSAO/DDP/大图分条/热重载=backlog（排序器不承诺）；Alpha 档=Qt widget 轮/npm-pip 打包/真 PBR(GGX)/站点基建/E402 交互件——均候用户裁决；R2 已裁=A 接受现状（2026-09-15 用户令，包体增量=纹理面合理代价，退路口维持不开）；push 候令
+- plan `.omo/plans/visiaengine-docs-tutorials.md` v1.0 (Momus OKAY → approval → T1-T4 all landed; correction notes: cbindgen → handwritten header + signature gate, mdbook not done = site round)
+- T1 (`1031eef`): E-number renames, 11 items (E402 kept as a reserved gap; measure E403→E203 returns to its band) + E301 header-comment paste residue fixed + tutorials.md
+- T2 (`bfd2f57`): **E901_twin_city** vertical-slice seed (park real-scale 93×31m × 256 towers × PCSS × PNG human check; the nine smoke lanes +1); caster slope_bias → 0 hardened (the theoretical self-shadow plane removed; measured no difference in this scene)
+- T3: gate-docs four checks into ci (coming online it immediately caught README 83≠108 — the gate's value proven) + README/architecture v0.2/AGENTS zero drift
+- baseline: **142 passed · spec-trace 108↔108 · ci exit=0 (four gates) · smoke nine lanes ✓ · SKIP 0 · drift wording grep=0**
+- lesson: PIT-10 filed (scene human-check three-probe lesson: the pixel predicate was right but the lit-area position assumption wrong — low sun angle × building height → a legitimately long shadow band in the foreground)
+- **queue after batches 4/5**: 4g/4h SSAO/DDP/big-image striping/hot-reload = backlog (the sorter promises nothing); Alpha tier = Qt widget round / npm-pip packaging / real PBR (GGX) / site infrastructure / E402 interaction — all await user adjudication; R2 ruled = A accept status quo (user order 2026-09-15; package-size increment = the reasonable cost of the texture surface; the exit path stays closed); push awaiting
 
-## 批 4f Shadow/PCSS 基线 + 批次 4 收口（2026-09-14）
+## Batch 4f Shadow/PCSS baseline + batch 4 close (2026-09-14)
 
-- 计划 `.omo/plans/visiaengine-shadow-pcss.md` v1.0（Momus OKAY 0B 13 引用实测命中→批准→P1-P4 全落）
-- P1（`73c9c39..`→`7845601`）：REND-31 ShadowSetup/Frame.shadow Option（33 构造点兜底 21 实插）+ PIT-5 深度域教训升契约（rig 三元组专用路）
-- P2（`f7e8..`→`3361392`）：caster pre-pass（无色彩目标双管线 ShadowMesh/ShadowInst、bias{-1,-1.5}、1024² map 懒建）；View 块 176B（light_view_proj per-draw compose_mvp 复用 [裁决点 a]）；接收三 bgl 恒绑 params/map/cmp-sampler（dummy 常驻=动态分支非布局分支）；params-off 载旧 LIGHT 同位型=sp.a.rgb 退役路逐位不变（R4 护栏 golden 全绿自证）
-- P3（`f91f759`）：PCSS 三阶段 [E3D:B3 单 pass 移植]（8 环 blocker textureLoad→半影 clamp[texel,0.06]→16-tap 泊松比较）；单调性双边锁 soft>2×hard ∧ hard<400 ∧ soft<6000
-- P4（本笔）：shadow_demo 例（16×16 城 dark=22647 断言）+ GL 降级守卫（wgpu-30 实况：GLES=Gl 子版本单变体）+ smoke 第八路
-- **批次 4 全收口**：4ab✓ 4c✓ 4de✓ 4f✓ → 批 5（文档归位）强制触发成立；SSAO/DDP/大图分条/热重载=4g/4h backlog（排序器不承诺）
-- 事故如实：naga 两实锤入档注记（`0u32` 字面量后缀拒收→i32 推断+u32() 索引；重复 match 臂遮蔽=三元组未推静默失效，binding-missing 报错定位）；splice 切位吃正则前瞻留孤儿函数（切除）；PIT-7 第 3 见（audit 重试 2 绿）；clippy 二清（needless_borrow/collapsible_if/chunks_exact 三度同款）
-- 基线：**142 passed · spec-trace 108↔108 · ci exit=0 · GATE-ABI ✓ · smoke 八路 ✓ · SKIP 0 · web-check ✓（1069627B/429401B 同量级）**
+- plan `.omo/plans/visiaengine-shadow-pcss.md` v1.0 (Momus OKAY 0B, 13 citations measured to hit → approval → P1-P4 all landed)
+- P1 (`73c9c39..`→`7845601`): REND-31 ShadowSetup / Frame.shadow Option (33 construction points, 21 real insertions as fallback) + the PIT-5 depth-domain lesson promoted to contract (the rig-triple dedicated path)
+- P2 (`f7e8..`→`3361392`): caster pre-pass (no-color-target dual pipelines ShadowMesh/ShadowInst, bias{-1,-1.5}, 1024² map lazily built); View block 176B (light_view_proj per-draw compose_mvp reuse [adjudication point a]); the three receiving bgls always bind params/map/cmp-sampler (resident dummies = dynamic branching, not layout branching); params-off loads the old LIGHT at the same position type = the sp.a.rgb retirement path bit-unchanged (R4 guardrail, the golden suite self-proves all green)
+- P3 (`f91f759`): PCSS three stages [E3D:B3 single-pass port] (8-ring blocker textureLoad → penumbra clamp[texel,0.06] → 16-tap Poisson compare); monotonicity double-sided lock soft>2×hard ∧ hard<400 ∧ soft<6000
+- P4 (this commit): shadow_demo example (the 16×16 city, dark=22647 assertion) + GL-degrade guard (wgpu-30 reality: GLES = a Gl sub-version single variant) + smoke's eighth lane
+- **batch 4 fully closed**: 4ab✓ 4c✓ 4de✓ 4f✓ → batch 5 (docs landing) force-trigger condition met; SSAO/DDP/big-image striping/hot-reload = 4g/4h backlog (the sorter promises nothing)
+- incidents honestly: two naga hard evidences noted into the archive (`0u32` literal suffix rejected → i32 inference + u32() indexing; duplicate match-arm masking = the triple silently unpropagated, located via the binding-missing error); the splice cut point ate a regex lookahead leaving an orphan function (cut out); PIT-7 third sighting (audit retried, 2 green); clippy double-clean (needless_borrow/collapsible_if/chunks_exact — third time same pattern)
+- baseline: **142 passed · spec-trace 108↔108 · ci exit=0 · GATE-ABI ✓ · smoke eight lanes ✓ · SKIP 0 · web-check ✓ (1069627B/429401B same magnitude)**
 
-## 批 4de VS 扩片族基线（2026-09-14 收官）
+## Batch 4de VS-expansion family baseline (2026-09-14 close-out)
 
-- 计划 `.omo/plans/visiaengine-vs-expansion.md` v1.0（Momus OKAY 0B→批准→N1-N4 全落）
-- N1 IR（`73c9c39..`→`213edbc`）：REND-29 Frame.px_world_scale（26+ 构造点编译器兜底）/REND-30 StrokeSeg 48B+PointMark 32B Pod 布局锁+双命令+默认拒
-- N2/N3（`6d8559c→8ac0ffb`、`aee0bc4→20edd3c`）：View 块 128B（mat+right+up+px_scale+eye_local，三角系只读前 64B=零回归构造证明：golden 零重录）；vs_stroke perp 扩片 [E3D:B4] + 退化兜底 right + bias{−1,−1} 盖面 [E3D:B7③]；vs_point/fs_point 屏幕基 splat+discard 圆盘=真圆点
-- N4（`40115b3`）：geo GeoPart 输出切换（GEO-24：tess_stroke/quad 退役，px 单位纠偏 stroke_width_px=1.5/radius_px=4，键名/D9 别名不动）；capi extra_cmds+ortho px_scale=2·hw/W 精确路；geo_viewer 同款
-- 视觉战果：描边不再被同深度 fill 吞噬；点从方块→圆；线宽缩放恒定不重建（Frame 单字段）
-- 事故如实：#17 第五犯拦下（N3 首版未 fmt 即提交+空值假声称→二 amend 收编，消息内注记）；PIT-8 第 3 次踩中（strokes 位置窗口凭直觉→probe 修正；points 76° 俯角一次对）
-- 基线：**136 passed · spec-trace 105↔105 · ci exit=0 · GATE-ABI ✓ · smoke 七路 ✓ · SKIP 0 · web-check ✓（1053859B/424099B 同量级）**
-- 批次 4 队列：**4de ✓ → 4f Shadow/PCSS（[E3D:B3]，PIT-5 深度域换算写成条款）候计划轮**；批 5 触发早已满足（examples=7+4de 门禁例）
-- 提取位注记：LineStrip→StrokeSeg 三处同形（engine/geo_viewer/geo_pipeline）——第四消费者出现时抽 helper（tess.rs 内注释锚）
+- plan `.omo/plans/visiaengine-vs-expansion.md` v1.0 (Momus OKAY 0B → approval → N1-N4 all landed)
+- N1 IR (`73c9c39..`→`213edbc`): REND-29 Frame.px_world_scale (26+ construction points compiler-backstopped) / REND-30 StrokeSeg 48B + PointMark 32B Pod layout locks + dual commands + default rejection
+- N2/N3 (`6d8559c→8ac0ffb`, `aee0bc4→20edd3c`): View block 128B (mat+right+up+px_scale+eye_local; the triangle families read only the first 64B = a constructional zero-regression proof: goldens zero re-record); vs_stroke perp expansion [E3D:B4] + degenerate fallback right + bias{−1,−1} coverage [E3D:B7③]; vs_point/fs_point screen-basis splat + discard disk = real round points
+- N4 (`40115b3`): geo GeoPart output switch (GEO-24: tess_stroke/quad retired, px-unit correction stroke_width_px=1.5 / radius_px=4, key names / D9 aliases untouched); capi extra_cmds + ortho px_scale=2·hw/W exact path; same for geo_viewer
+- visual wins: strokes no longer swallowed by same-depth fills; points go square→round; line width scales constantly with no rebuild (a single Frame field)
+- incidents honestly: #17 fifth offense intercepted (the N3 first version committed unformatted + a null-value false claim → folded in via a second amend, noted in the message); PIT-8 third stumble (strokes position window by intuition → corrected via probe; points' 76° pitch got it right once)
+- baseline: **136 passed · spec-trace 105↔105 · ci exit=0 · GATE-ABI ✓ · smoke seven lanes ✓ · SKIP 0 · web-check ✓ (1053859B/424099B same magnitude)**
+- batch 4 queue: **4de ✓ → 4f Shadow/PCSS ([E3D:B3], the PIT-5 depth-domain conversion written as a clause) awaiting its planning round**; batch 5's trigger was met long ago (examples=7 + the 4de gate examples)
+- extraction-position note: LineStrip→StrokeSeg same shape in three places (engine/geo_viewer/geo_pipeline) — extract the helper when a fourth consumer appears (comment anchor inside tess.rs)
 
-## 批 4c instancing+bench 基线（2026-09-14 收官）
+## Batch 4c instancing+bench baseline (2026-09-14 close-out)
 
-- 计划 `.omo/plans/visiaengine-instancing-bench.md` v1.0（Momus 0B→批准→K1-K3 全落）
-- K1 IR（`73c9c39`→`3fe7ccf`）：Instance 32B Pod（offset/height/color+pad，布局三重锁）/DrawInstances D7 同款/create_instances 默认拒
-- K2 管线（`3f08d2d`→`d5062a5`）：Variant{Flat,Textured,Instanced} 三 layout 族（WGPU-14 编号零破坏）；storage binding5；vs_inst 底对齐挤出（轴对齐法向零误差论证）；静默跳过封堵
-- K3 制品（`4d34bd7`+`aeb5a37`）：bench_twin headless 100k（release 本机 lavapipe：upload 3.8ms/frame 217ms/单 draw）；pick_demo --bench 结 3.5b 欠账；scripts/bench.sh→resources/bench/*.json（劣化>20% 红字非门禁）；unit_box_mesh 公共化
-- 存量战果：三窗口 example Bgra/Rgba 错配根修（I3 漏同步，跨 3 轮存活——PIT-9 入档：smoke 七路合并前必跑）
-- 基线：**124 passed · spec-trace 100↔100 · ci ✓（audit=PIT-7 重试 1 次后绿）· GATE-ABI ✓ · 七路 smoke 真跑 ✓ · golden SKIP 0**
-- 批次 4 队列态：4ab ✓ 4c ✓ → **4de（VS 扩片族：线宽+点 splat+polygon-offset+真点）候计划轮**；4f Shadow/PCSS 其后；批 5 文档归位触发已满足（examples≥6：现 7 个）——最迟批 4 完强制归位
+- plan `.omo/plans/visiaengine-instancing-bench.md` v1.0 (Momus 0B → approval → K1-K3 all landed)
+- K1 IR (`73c9c39`→`3fe7ccf`): Instance 32B Pod (offset/height/color + pad, triple layout locks) / DrawInstances same shape as D7 / create_instances default rejection
+- K2 pipeline (`3f08d2d`→`d5062a5`): Variant{Flat,Textured,Instanced} three layout families (WGPU-14 numbered, zero breakage); storage binding5; vs_inst bottom-aligned extrusion (the axis-aligned-normal zero-error argument); silent-skip sealed
+- K3 products (`4d34bd7`+`aeb5a37`): bench_twin headless 100k (release on this machine's lavapipe: upload 3.8ms / frame 217ms / single draw); pick_demo --bench settles the 3.5b debt; scripts/bench.sh → resources/bench/*.json (degradation >20% prints red, non-gating); unit_box_mesh made public
+- legacy win: the root fix of the Bgra/Rgba mismatch in three window examples (I3 missed the sync, surviving 3 rounds — PIT-9 filed: the seven smoke lanes must run before any merge)
+- baseline: **124 passed · spec-trace 100↔100 · ci ✓ (audit = PIT-7 retry once then green) · GATE-ABI ✓ · seven smoke lanes real runs ✓ · golden SKIP 0**
+- batch 4 queue state: 4ab ✓ 4c ✓ → **4de (VS-expansion family: line width + point splat + polygon-offset + real points) awaiting its planning round**; 4f Shadow/PCSS follows; batch 5 docs-landing trigger met (examples≥6: now 7) — landing is forced at latest when batch 4 completes
 
-## 批 4ab 材质纹理片基线（2026-09-12 收官）
+## Batch 4ab material/texture slice baseline (2026-09-12 close-out)
 
-- M1 io-gltf（`2f293fe`）· M2 RED→GREEN（`4449fb3`→`c9d80f3`）· M3（`434e56e`+`7b92676` 条款体同步）
-- 管线：32B 材质块双 layout（Flat 逐像素零回归=构造保证）+ upload_texture(256 行距补零)+textured 双管线 (format,textured) 键；REND-25/26+WGPU-14/15 条款体入册（specular=mock-up Lambert 系数，非 GGX）
-- capi/example 纹理链路实装；texquad.glb=io-gltf builder #[ignore] emit 真源可再生；gate-abi 双 demo 路
-- 基线：**117 passed · ci exit=0 · spec-trace 97↔97 · golden SKIP 0 · GATE-ABI 14/14 · web-check ✓**
-- **R2 超阈待裁决**：WEB-SIZE raw=1062807B gz=431472B（基线 733KB/294KB gz **+47% > 15%**）；退路=「纹理解码仅 native，wasm 收 RGBA 裸字节口」**未擅自启用**，数字已记录。**2026-09-15 用户裁决=A 接受**（退路「纹理解码仅 native」维持不开）
-- 教训：PIT-8 入档（像素断言首版谓词=几何覆盖×滤波×通道乘法链，先探针实测再写断言；两轮各 1 次踩中）
+- M1 io-gltf (`2f293fe`) · M2 RED→GREEN (`4449fb3`→`c9d80f3`) · M3 (`434e56e`+`7b92676` clause bodies synced)
+- pipeline: 32B material block dual layout (Flat per-pixel, zero regression = constructional guarantee) + upload_texture (256 row-stride zero-padded) + textured dual pipelines keyed (format,textured); REND-25/26 + WGPU-14/15 clause bodies registered (specular = mock-up Lambert coefficient, not GGX)
+- capi/example texture chain implemented; texquad.glb = the io-gltf builder #[ignore] emit, regenerable from the true source; gate-abi dual demo paths
+- baseline: **117 passed · ci exit=0 · spec-trace 97↔97 · golden SKIP 0 · GATE-ABI 14/14 · web-check ✓**
+- **R2 threshold breach awaiting adjudication**: WEB-SIZE raw=1062807B gz=431472B (baseline 733KB/294KB; gz **+47% > 15%**); the escape route "texture decode native-only, wasm takes raw RGBA bytes" was **not enabled unilaterally**; numbers recorded. **2026-09-15 user ruling = A accept** (the "texture decode native-only" exit stays closed)
+- lesson: PIT-8 filed (the first-version predicate of pixel assertions = the intersection of geometry coverage × filtering × channel multiplication chains; probe-measure first, then write assertions; one stumble in each of two rounds)
 
-## 批 2+批 7 落地基线（2026-09-11 收官）
+## Batch 2 + batch 7 landing baseline (2026-09-11 close-out)
 
-- 批 2 I0-I4 全清：capi 14 入口（句柄/栅栏/线程/错误协议/输入/attach）+ 双 C demo 真跑 + gate-abi/gate-trace 入 ci
-- 批 7 J0-J3 全清：visiaengine-wasm 独立 crate（隔离裁决：no_mangle×bindgen wasm-ld 互斥实锤）· WEB-BUILD 双胶水 · CAPI-09 镜像 · demo 页+T3 · **733KB raw/294KB gz**
-- 基线：**90↔90 · 100 passed · ci exit=0 · SMOKE-X11 ✓ web-check ✓**
-- D8/D10 已转正（修订面记录齐）；README MVP 四件套销账完成
-- 余账：push 待令（本地领先持续增长）· 批 4 渲染强化/批 5 文档/批 6 基建候令 · smoke-x11/web-check 的 CI 现役=镜像仓日
+- batch 2 I0-I4 all cleared: capi 14 entry points (handle/fence/thread/error protocol/input/attach) + dual C demos real-ran + gate-abi/gate-trace into ci
+- batch 7 J0-J3 all cleared: visiaengine-wasm standalone crate (isolation ruling: the no_mangle × bindgen wasm-ld mutual exclusion nailed) · WEB-BUILD dual glue · CAPI-09 mirror · demo page + T3 · **733KB raw / 294KB gz**
+- baseline: **90↔90 · 100 passed · ci exit=0 · SMOKE-X11 ✓ web-check ✓**
+- D8/D10 finalized (revision surfaces fully recorded); the README MVP four-piece account closed
+- remaining balance: push awaiting (local-ahead keeps growing) · batch 4 render strengthening / batch 5 docs / batch 6 infrastructure standing by · the CI liveness of smoke-x11/web-check = the mirror-repo day
 
-## CMake 示例入口轮基线（2026-09-15，S1-S5 全落）
+## CMake example-entry round baseline (2026-09-15, S1-S5 all landed)
 
-- 团队模式：探针 A（Easy3D 解剖，采纳 6 拒 5）+ 探针 B（gap 矩阵 G1-G8）→ 计划 v1.0→Momus OKAY(0B/3A 修入 v1.1)→用户批准（C-1 stub/C-2 E703/C-3 存档）
-- S2 `be4f970`：VisiaEngineExamples.cmake 契约表+glob⇄表双验（负路径双向实测）+ ve_example_launcher.cpp（chdir/DISPLAY-77/argv 透传）；S1 spike 实证 cargo unix 无哈希硬链同 inode
-- S3 `59f5b61`：E701/702 原生 cmake 化（ve_real_+OUTPUT_NAME 规范名+伞 rpath）；qt_app→**E703_qt_viewer** 归 7x 带；tools +xorg-libx11/xproto；G8 修订如实记（cc 路=gate 属性保留）
-- S4 `ac60a07`：cmake-smoke `-LE display`（ci 不弹真窗）；presets v7+qt-pixi testPreset（filter.exclude.label=字符串正则）；**真缺口=enable_testing 序**修复（PIT-15）；tutorials.md IDE 运行节
-- 基线：**143 passed · 108↔108 · ci 十段 ✓（PIT-7 第 5 见：audit TLS 抖 3 红退避绿）· ctest bare 12 注册（@:0 11+probe 全 Passed 2.4s；无 X 6P/5S）· qt-build 13 注册 preset 跑 7 · E703 ctest 真窗 ✓ · SMOKE-QT ✓**
-- 新坑入档：PIT-15（enable_testing 序静默丢）、PIT-16（function 内 enable_language 不外传；presets 权威=随包 schema.yaml 离线正本）；D-12 转正
-- 缺口表存档 docs/reference/easy3d-tutorial-gap.md（7 带映射+立项建议序 5 项）
+- team mode: probe A (Easy3D anatomy, 6 adopted 5 rejected) + probe B (gap matrix G1-G8) → plan v1.0 → Momus OKAY (0B/3A fixed into v1.1) → user approval (C-1 stub / C-2 E703 / C-3 archive)
+- S2 `be4f970`: VisiaEngineExamples.cmake contract table + glob⇄table dual validation (negative paths measured both directions) + ve_example_launcher.cpp (chdir / DISPLAY-77 / argv passthrough); the S1 spike proved cargo unix has no hash hardlinks, same inode
+- S3 `59f5b61`: E701/702 natively cmake-ized (ve_real_ + OUTPUT_NAME canonical names + umbrella rpath); qt_app → **E703_qt_viewer** joins the 7x band; tools +xorg-libx11/xproto; the G8 revision recorded honestly (the cc path = a gate attribute, kept)
+- S4 `ac60a07`: cmake-smoke `-LE display` (ci pops no real window); presets v7 + the qt-pixi testPreset (filter.exclude.label = a string regex); **the real gap = the enable_testing order** fixed (PIT-15); the tutorials.md IDE-run section
+- baseline: **143 passed · 108↔108 · ci ten segments ✓ (PIT-7 5th sighting: audit TLS flapped, 3 reds, backoff, green) · ctest bare 12 registered (@:0 11+probe all Passed 2.4s; without X 6P/5S) · qt-build 13 registered, preset runs 7 · E703 ctest real window ✓ · SMOKE-QT ✓**
+- new pits filed: PIT-15 (enable_testing order silently drops), PIT-16 (enable_language inside function doesn't propagate; presets authority = the shipped-with-package schema.yaml offline canon); D-12 finalized
+- gap table archived at docs/reference/easy3d-tutorial-gap.md (7-band mapping + a 5-item entry-order proposal)
 
-## capi 属性读轮基线（2026-09-15，D13）
+## capi attribute-read round baseline (2026-09-15, D13)
 
-- 团队模式：就绪度探针（点云=PURE-DEMO 但与 E202 重叠→用户裁跳过；属性=分裂判定→capi 版批准）→ 计划 v1.0→Momus OKAY(0B/5A 修入 v1.1)→终审 C-1=3 口/C-2=256B/C-3=E701 追加段
-- S1+S2 `a5a830e`：Engine geo_docs+attr_of（**u64 位形直通键**零解码）+ FFI attr_f64/str/bool（1/0/-5 零部分写参表）+ 十二处连带（头/版本 0x00010001/gate-abi 17/CAPI-01·02 修订句/README/AGENTS/wasm 镜像）+ 条款 10/11/12 双靶测
-- S3 `17e4e35`：E701 属性闭环段 park 实键 + 故意读缺=missing-intact 活广告；双路（手工 cc/cmake stub）同输出实测
-- 新坑：PIT-17（harness 共享 pid tmp 竞态，pid+纳秒双缀）；PIT-7 第 6 见（audit TLS try3 绿）
-- 基线：**151 passed（143+4 内联+4 FFI，全和实算自 ci 日志 44 目标；S2 commit message 写 147=局部口径，#17 第六犯如实纠于本笔）· spec-trace 111↔111 · GATE-ABI 17/17 ✓ · ci 十段 ✓ · web_capi_pair_mirror ✓ · ctest example 族不回退**
+- team mode: readiness probe (point cloud = PURE-DEMO but overlaps E202 → user ruled skip; attributes = split verdict → the capi version approved) → plan v1.0 → Momus OKAY (0B/5A fixed into v1.1) → final C-1=3 ports / C-2=256B / C-3=E701 appended section
+- S1+S2 `a5a830e`: Engine geo_docs + attr_of (the **u64 pose pass-through key**, zero decode) + FFI attr_f64/str/bool (1/0/-5 zero-partial-write parameter tables) + twelve dependent places (header / version 0x00010001 / gate-abi 17 / CAPI-01·02 revision sentences / README / AGENTS / wasm mirror) + clause 10/11/12 dual-target tests
+- S3 `17e4e35`: E701 attribute closed-loop section with park real keys + deliberately reading a missing key = the missing-intact living billboard; dual paths (manual cc / cmake stub) measured to identical output
+- new pit: PIT-17 (harness shared-pid tmp race; pid+nanosecond dual suffix); PIT-7 6th sighting (audit TLS try3 green)
+- baseline: **151 passed (143+4 inline+4 FFI; the total actually computed from the ci log's 44 targets; the S2 commit message wrote 147 = a local count — #17 sixth offense, honestly corrected in this commit) · spec-trace 111↔111 · GATE-ABI 17/17 ✓ · ci ten segments ✓ · web_capi_pair_mirror ✓ · no regression in the ctest example family**
 
-## CMake 结构轮基线（2026-09-16，v1.3 S0–S5 全落）
+## CMake structure round baseline (2026-09-16, v1.3 S0–S5 all landed)
 
-- 团队模式两轮审（红队 27 项 + 定稿复审 10 项，逐项用户裁决）→ 计划 `.omo/plans/bindings-restructure-cpp-examples.md` v1.3（corrosion 判退：八税单+conda 首蟹+CTest #13 空转；c+ 自写步骤采纳其命名文法）
-- 目录终形：`examples/{rs,c,cpp,qt}`（Rust 例=cargo example [[example]]×9 不 bin 化；C/C++/Qt=cmake 真身）+ `bindings/{c,cpp,qt,js}`（capi/wasm 一窝同栖，crates/=纯核心 5）+ `cmake/VisiaEngineBindings.cmake`（R9 注册表=argv 唯一户口，反-glob 双向硬错）
-- 跑面收敛：ctest 统一清单（bare 14 条：rs 转发 9 + native + probe）；pixi smoke 9 条=转发壳（`smoke-rs.sh` 带「≥1 被选」断言堵 ctest 空匹配假绿）；cmake-smoke=三态三锚（裸 PATH {configure 探+cargo-build_capi+cargo-build_examples}）+三负路径（SYSTEM/prebuilt 缺物/install 说谎）+Xvfb:78 display 子态（窗口族首获自动执行轨；conda 无 xvfb-run=直启形，PIT-19 机=PIT-19 clobber note 不假绿）
-- C++ 面开张：`visiaengine.hpp`（76 行 RAII，三壳语义住头注释，B9 不开 SDD 账）+ `visiaengine::cpp`；E801(SDL3 x11 三帧)/E802(hpp→readback→PPM) 出生即锁；template.c/.cpp 骨架（B8 不建库保 gate-abi 全眼）
-- 工具链：presets 双配 EXPORT_COMPILE + bare testPreset -LE display + `.clang-format`(LLVM+4 随现役) + `.vscode/settings.json`(presets always) + `.gitignore` L56 negation 死锁修复（B4）+ install fail-loud 守卫（S-c β；树=打包轮硬债带验收模板）
-- 新坑三件入档：PIT-19（pixi clobber→conda Xvfb XKB 死）/ PIT-20（幽灵 API 族立族）/ PIT-21（编辑残留+grep -E 断言，升 edit-safety ###18）
-- 基线：**151 passed · spec-trace 111↔111 · GATE-ABI ✓ · GATE-DOCS ✓（E 14 件三方）· CMAKE-SMOKE ✓ · web ✓ · smoke 11/11 · prebuilt 退场真验 · 工作区 clean**
-- 待办：push 候令（本地领先 += 本轮）· Phase B 首带（E8xx 数据带 API 缺口清单→capi 扩口）候令 · RA example Run lens 人验（T3，风险④已降辅助轨）· 打包轮三件（install 树/corrosion 复评/npm-pip）
+- two team-mode review rounds (red team 27 items + finalization review 10 items, each item user-adjudicated) → plan `.omo/plans/bindings-restructure-cpp-examples.md` v1.3 (corrosion rejected: the eight-tax list + conda first-crab + CTest #13 spinning; the c+ self-written steps adopt its naming grammar)
+- final directory shape: `examples/{rs,c,cpp,qt}` (Rust examples = cargo example [[example]] ×9, not bin-ified; C/C++/Qt = cmake real bodies) + `bindings/{c,cpp,qt,js}` (capi/wasm one nest, crates/ = pure core 5) + `cmake/VisiaEngineBindings.cmake` (the R9 registry = argv's only residence; the anti-glob bidirectional hard error)
+- run-surface convergence: the unified ctest list (bare 14 items: 9 rs forwards + native + probe); the 9 pixi smokes = forwarding shells (`smoke-rs.sh` carries the "≥1 selected" assertion plugging ctest's empty-match false green); cmake-smoke = tri-state tri-anchor (bare PATH {configure probe + cargo-build_capi + cargo-build_examples}) + three negative paths (SYSTEM / prebuilt missing / install lying) + Xvfb:78 display sub-state (the window family's first automated track; conda lacks xvfb-run = direct-launch form, the PIT-19 machine = PIT-19 clobber note, no false green)
+- the C++ surface opens: `visiaengine.hpp` (76-line RAII; the three shells' semantics live in header comments; B9 opens no SDD account) + `visiaengine::cpp`; E801 (SDL3 x11 three frames) / E802 (hpp→readback→PPM) locked at birth; template.c/.cpp skeletons (B8 builds no library, keeping full gate-abi visibility)
+- toolchain: presets dual-config EXPORT_COMPILE + the bare testPreset -LE display + `.clang-format` (LLVM+4 follows the mainstream) + `.vscode/settings.json` (presets always) + the `.gitignore` L56 negation deadlock fix (B4) + the install fail-loud guard (S-c β; the tree = a packaging-round hard debt with an acceptance template)
+- three new pits filed: PIT-19 (pixi clobber → conda Xvfb XKB death) / PIT-20 (the ghost-API family founded) / PIT-21 (edit residue + grep -E assertions, promoted into edit-safety ###18)
+- baseline: **151 passed · spec-trace 111↔111 · GATE-ABI ✓ · GATE-DOCS ✓ (E 14 items three-way) · CMAKE-SMOKE ✓ · web ✓ · smoke 11/11 · the prebuilt retirement verified · worktree clean**
+- to-do: push awaiting (local-ahead += this round) · Phase B first band (the E8xx data-band API-gap list → capi port expansion) awaiting · the RA example Run lens human check (T3, risk ④ already demoted to the auxiliary track) · the packaging-round three items (install tree / corrosion re-evaluation / npm-pip)
 
-## B1 数据带基线（2026-09-16，Phase B 首带：CAPI-13..16 四口 + E8xx 例子四件）
-- 口面：显隐（严格 0/1、枚举域不变、render/pick 过滤）/ 查询 / add_mesh（VeMeshDesc struct_size 前瞻门、返回码+out 谱、退化零提交）/ remove（双销毁同谱、ABA 隔离）；abi minor=2（0x00010002），17→21 入口，双面镜像（wasm 4 桥 + d.ts 在场断言）+ hpp 4 薄转发
-- 例子：E810 attr survey（零新口验收例）/ E811 显隐孪生（c/cpp，目标名带语言尾首用）/ E812 程序化增删；ctest 14→18 条（17 编号）
-- 设计反转实录：add_mesh 初版 0=失败哨兵撞 CAPI-01「实体位形 0 合法=有意分工」条款——返回码+out 改谱；测试两处哨兵断言随条款纠偏（幽灵 API 教训的接口设计分册）
-- 基线：**160 passed（+7）· 115↔115 · GATE-ABI 21/21 · GATE-DOCS ✓ 17 件 · CMAKE-SMOKE ✓ · web MIRROR ✓ · ci 十段全绿**
+## B1 data band baseline (2026-09-16, Phase B first band: CAPI-13..16 four ports + the four E8xx examples)
 
-## lesson-review 记录（2026-09-16，结构轮+B1 带会话批量回顾）
-- 新增：PIT-22（验证通道≠用户通道 DISPLAY 族·PIT-18 泛化）、PIT-23（CMake/ctest 恒真/吞噬三形·E801 死挂案）、edit-safety ###19（管道尾吃 rc·带病入库实锤）、testing.md「视觉例双保险」（像素门+三自证+T3 清单+转发壳断言）、conventions C15（哨兵先对条款分工表/参数不侍二主）、C16（决策呈交=人话+示意+目录+逐项）
-- 会话主线：v1.3 结构轮（S0-S5 七笔）+ FOLDER 位置定则 + E201/E301 交互根修 + B1 数据带（RED→GREEN 四口 21 入口 ctest 18 条）；基线 160 passed·115↔115·GATE-ABI 21·ci 十段
-- 下一步队列（不变）：push 候令（领先 7+本笔）→ T3 人验五条（E201/E301/E801/测试面板/RA lens）→ B2 剖面裁切计划轮候令
+- port surface: visibility (strict 0/1, enum-domain invariance, render/pick filtering) / query / add_mesh (the VeMeshDesc struct_size forward gate, return code + out-parameter catalog, degenerate = zero commit) / remove (same catalog as double destroy, ABA isolation); abi minor = 2 (0x00010002), 17→21 entry points, dual-surface mirror (4 wasm bridges + the d.ts presence assertion) + 4 hpp thin forwards
+- examples: E810 attr survey (the zero-new-port acceptance example) / E811 visibility twins (c/cpp — first use of language-suffixed target names) / E812 programmatic add/remove; ctest 14→18 items (17 numbered)
+- design reversal logged: add_mesh's first version used 0 as the failure sentinel, colliding with the CAPI-01 clause "entity pose 0 is legal = deliberate ownership" — the return code + out catalog rewritten; two test sentinel assertions corrected per the clause (the interface-design volume of the ghost-API lesson)
+- baseline: **160 passed (+7) · 115↔115 · GATE-ABI 21/21 · GATE-DOCS ✓ 17 items · CMAKE-SMOKE ✓ · web MIRROR ✓ · ci ten segments all green**
 
-## E202 灰屏根修（2026-09-17，D7 相机位形契约的第二见）
-- 根因：resumed() 拟合缺失——DrawMesh 世界位形=origin+local（D7），相机 target 留 [0,0,0] 对 3857 世界系 park 差数百万米 → 全帧清屏色；离屏探针复刻案发参数实证（四变体全空）后修复：target=层 bbox 中心 + dist/zoom 装载期拟合
-- 永装门：geo_pipeline::golden_geo_window_fit（spec WGPU-11 多例同条款，spec-trace 115↔115 不动）——谓词三自证齐：canary 案发机位恒 0 px、修复路 23222px 实测阈 12000（−48% 保守位）
-- 同族清屏：E901/E401/E201/E301 机位逐例核对无撞（E201/301 数据住局部系 origin=0 自洽）；PIT-22/双保险纪律第二次抓真案（灰屏家族三见：E201/E301/E202）
-- 基线：161 passed · 十段全绿 · ctest 18 条不回退
+## lesson-review record (2026-09-16, structure-round + B1-band session batch review)
 
-## E402 交互拾取窗带（2026-09-17，空号转正 + unit_box 绕序存量雷根修）
-- E402_pick_interactive：hover 橙预览/左键点选黄 toggle 多选/拖轨道/滚轮远近/R 清空/Esc 退；
-  placed() 位形单源（pick world=render transform 同一份矩阵=E401 双份烘移 64px 教训构造性根除）
-- **存量雷**：unit_box_mesh 出生反绕（几何法向=-声明法向）——GPU cull 默认关三消费者全渲染零
-  可见，pick 正面规则（REND-23）一消费即全 miss；根修=索引镜像翻正 + 金训注记，162 passed
-  构造证明无像素回归（cull 关下绕序不观测量）
-- 门：golden_pick_window_mirror（spec WGPU-12 多例同条款）512×320 窗形镜像 + 中心命中链复用
-  + 外角 canary；实测 (35,132,62)→(177,147,51) 黄族翻转锁
-- 登记面：Cargo.toml/契约表/tutorials/pixi 四件 + gate-docs E402 预留豁免收回（真件在位）
-- 基线：**162 passed · 115↔115 · GATE-DOCS E 18 件三方 · ctest 19 条 · ci 十段 ✓ · SMOKE E402 ✓(真窗)**
+- new: PIT-22 (verification channel ≠ user channel, the DISPLAY family — the generalization of PIT-18), PIT-23 (the three always-true/swallowing CMake/ctest shapes — the E801 dead-hang case), edit-safety ###19 (pipeline tails eating rc · shipping-broken proven), testing.md "visual-example double insurance" (pixel gate + three self-proofs + the T3 checklist + forwarding-shell assertions), conventions C15 (sentinels check the clause-ownership table first / one parameter serves no two masters), C16 (decision presentation = plain words + diagram + directory + one-at-a-time)
+- session mainline: the v1.3 structure round (S0-S5, seven commits) + the FOLDER position rule + E201/E301 interaction root fixes + the B1 data band (RED→GREEN, four ports, 21 entry points, ctest 18 items); baseline 160 passed · 115↔115 · GATE-ABI 21 · ci ten segments
+- next queue (unchanged): push awaiting (7 ahead + this commit) → five T3 human checks (E201/E301/E801/test panel/RA lens) → the B2 cross-section planning round awaiting
 
-## 色彩+事件带（2026-09-17，CORE-16/CAPI-17，计划 color-events-band.md K1-K6）
-- CORE-16 sRGB↔线性双口（f64 中间精度，端点逐位）；全链契约=宿主面 sRGB/IR 线性/GPU 两端
-  Srgb 格式硬件编码；咽喉五点（material 块/clear/strokes/points/instances 表）+io-gltf factor
-  反变换归位；GL 降级档=回退线性直通现形
-- 域重钉七处（全部实测先行）：clear [13,18,25] 硬件舍入自标定 canary、shadow 亮暗双峰 95/140、
-  纹理棋盘 b 双峰 135（uv 断链语义保持）、E501 分界 128 dark 阈 4000（实测 19642）、
-  io-gltf 色钉×2、geo 拟合门容差形
-- **挖出并根修**：lavapipe 语义实锤 clear load 值按线性域解释（0.05→63 探针）；渲染测试带
-  域脆性教训（编码抬中间调）
-- CAPI-17 事件口（21→22 入口，abi 0x00010003）：EvtSink cfg 双形（native C 锚 unsafe-Send/
-  wasm Box<dyn FnMut>）、进度单调终态锁/错误同刻/NULL 摘除、三面镜像（头/hpp/wasm+d.ts）
-- 例子 E21 件三方：E704_host_callback.c（事件三态）/E502_color_tuning（**WYSIWYG 四色板逐字节
-  互逆活证**，采样列公式纠一处）/E503_stroke_points（恒宽秀）+ 永装门 golden_zoom_width_invariant
-  （两档 zoom 10px/φ24 跨档锁，列采样=与 zoom 无关相位纪律）
-- 基线：**167 passed · 117↔117 · GATE-ABI 22/22 · GATE-DOCS E 21 件 · ctest 22 条 · ci 十段 ✓ ·
-  WEB MIRROR ✓**；结构事故自纠：E402 带遗留 _disp 四僵尸行清除（edit-safety #18 族再现一例）
+## E202 gray-screen root fix (2026-09-17, the second sighting of the D7 camera-pose contract)
 
-## 双模人验收口（2026-09-17，用户令「例全检 + cmake run target 齐」）
-- native run 步全例覆盖：宏 INTERACTIVE 关键字废除，run_<name> 无条件发（DISPLAY 族 run-gui
-  包装/:0 回退、headless 族直跑=终端 OK 行人验面）——E702 窗口例首次获得 run 目标；矩阵=
-  rs cargo-run_*×12 + native run_*×9（+qt 宏外自注册 E703）
-- E502 双模化：色彩标定例从「headless 秒退」升格无参常驻人验窗（四色板 960×600，Esc/关窗退）
-  + --frames 自断言路原样保留（ctest）；两路同源 build 数据、config.format 显式 Srgb 优先
-- 审计结论（全例逐跑实测）：窗口例无参=常驻 ✓×10；自退例=设计身份 ✓（终端输出/PNG 落盘即
-  人验面，拾取替身=E402、色彩=E502 窗、恒宽=E503）——除 E502 外无隐性分叉
-- tutorials.md「人验形态」段：双模约定成文（IDE 零参=人验 / ctest argv=自动，C15 单源）
-- 基线：167 passed · 117↔117 · GATE-DOCS ✓ · CMAKE-SMOKE ✓ · qt-configure ✓ · ci 十段全绿
+- root cause: the fitted camera missing in resumed() — DrawMesh world pose = origin+local (D7), the camera target stayed [0,0,0] against a 3857-world-meters park = millions of meters off → full-frame clear color; after an offscreen probe replicated the offending parameters (all four variants empty), the fix: target = layer bbox center + dist/zoom fit at load
+- permanent gate: geo_pipeline::golden_geo_window_fit (spec WGPU-11 multi-example same clause, spec-trace 115↔115 unmoved) — the predicate's three self-proofs complete: canary at the offending camera = always 0 px; the fixed path measured 23222px, threshold 12000 (the −48% conservative position)
+- same-family sweep: E901/E401/E201/E301 camera positions checked case by case, no collision (the E201/301 data lives in a local system, origin=0 self-consistent); the PIT-22 / double-insurance discipline caught a real case the second time (the gray-screen family's third sighting: E201/E301/E202)
+- baseline: 161 passed · ten segments all green · ctest 18 items no regression
 
-## 点云数据族带（2026-09-17，D16/hyperplan 计划 pcl-data-band.md，M0→G 全收）
-- 口面：CAPI-18 add_points（23 入口 minor=4）+ CAPI-19 load_pcl（24 入口 minor=5，
-  VePclReport 四类导出/meta attr 缀查）；三面镜像全带（头/hpp/wasm loadPclBytes+d.ts/
-  web-mirror 钉×2）；C15 值域表先写（attr found=1/none=0 测试纠偏入册）
-- io-points 新 crate（裁决 C 授权）：PLY ascii/bin_le 自写 ~420 行零新依赖；四类分型
-  「点级触发 FastFail、列/元素级只计数」落点澄清入条款；截断双语义双向断言；
-  spec-trace IO 前缀 + **第三检机器锁**（负例 FOO-01→红实测在册）
-- 例/门：E204 双模（螺旋自断言阈随点数缩放量纲 + --file 装载路 + 常驻窗）；
-  G1 100k 批量完整性 / G2 远原点互逆点版（逐字节等）；G3 --points 支 1M 实测入册
-- **工具链根修**：bench.sh 包名 S1 后死链 + 缺席 continue 恒真（PIT-25 入档，MISSING→exit1）；
-  rustfmt 误喂 Cargo.toml 事故（edit-safety #20 入档）；测试锚三处 rustfmt 重排教训=锚必现读
-- 基线：**181 passed · spec-trace 125↔125 · GATE-ABI 24/24 · GATE-DOCS E 22 件三方 ·
-  ctest 23 条 · CMAKE-SMOKE ✓ · WEB ✓ · audit try1 ✓（PIT-7 第 7 见）· 8 crate**
-- 余账：LAS 二带（判据=客户演示单）· 拾取族触发制 · cap 改数窗一次 · push 候令
+## E402 interactive-pick window band (2026-09-17, reserved number promoted + the unit_box winding legacy mine root-fixed)
 
-## B2 剖面裁切带基线（2026-09-17，计划 capi-cross-section-band v1.1·Momus OKAY 0B/2A 修入）
-- 口面：CAPI-20 set_clips/get_clips（26 入口 minor=6；n=0 唯一清空/界检先于解引用/
-  归一化引擎侧读回单位形/cap 截断返真数 [Momus-A2 用例入 RED 谱]）；三面镜像全带
-  （头 32B Pod 系数形/hpp 两薄转发/wasm setClips·getClips+d.ts+mirror abi 钉 6）
-- 管线：View 块尾缀扩段 192→256B（**零新 binding/绑组/缓冲**=origin+transform 已在
-  view_block 签名的设计红利）；clipped() fs discard 全五管线+caster 同裁（fs_shadow
-  空函数补体，bgl binding0 +FRAGMENT）；扩片族逐像素=「裁世界不裁类型」；None/EMPTY
-  全零恒绑早退=R4 护栏形，golden 全套零重录
-- IR：REND-32 世界 f64 系数+ClipSetup::new 退化拒；clip_to_local **model-space 恒等式**
-  （n_m=Mᵀn/d_m=d+n·(o+t_M)，列主序 Mᵀ 与 M 平移列两处自查根修如实记）
-- 拾取：engine 重试环（命中 keeps 负侧=排除续找，剖开可见者必可拾）；capi pick 域
-  =positions×IDENTITY 既有事实以「两帧合一」注记入例体与测试
-- 例/门：E813 无头三段活体（基线红 10816/半刀红灭绿存+重试环/角域三面 1764∈[800,4000]
-  ——二面形 g2=0 探针战果=前墙同屏遮蔽，PIT-8 三见）；tests/clip.rs 五门（canary 逐
-  字节/None≡EMPTY/半切对半/全切清零/角域¼+far_origin 1e7 逐位等+线点分色族+caster 6.5×）
-- 新坑：PIT-26（from_raw_parts NULL+0 即 UB，debug 前判实锤——NULL 计数路必 m>0 守卫）；
-  PIT-7 第 8 见（audit TLS 抖一次重试绿）
-- 基线：**191 passed · spec-trace 130↔130 · GATE-ABI 26/26 · GATE-DOCS ✓ E 23 件三方
-  · ctest 24 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 + web_capi_pair_mirror ✓ · ci 十段 ✓ ·
-  8 crate 不变**
-- 非目标挂账：盖帽 stencil（BIM 内腔演示单）· 六面盒 · OR/union · 硬件 CLIP_DISTANCES
-  双路（wgpu30 存在但 DX12 未在列）· 交互剖切滑杆（E901 挂键候需）· LAS（票据制候令）
-- 决策入册：**D17 八裁决点**（discard 单路+复评触发/≤4 AND/无盖帽/Mᵀ恒等式/全族受裁/caster 同裁/重试环/E813）
+- E402_pick_interactive: hover orange preview / left-click yellow toggle multi-select / drag orbit / wheel zoom / R clear / Esc quit;
+  the placed() pose single source (pick world = render transform, the same matrix = the constructive root removal of the E401 double-bake 64px-shift lesson)
+- **legacy mine**: unit_box_mesh born with reversed winding (geometry normal = − declared normal) — with GPU cull default-off all three consumers render zero
+  visible complaints; the pick front-face rule (REND-23) misses entirely on first consumption; root fix = index mirroring flipped + the golden-lesson note, 162 passed
+  constructional proof of zero pixel regression (with cull off, winding is not an observable)
+- gate: golden_pick_window_mirror (spec WGPU-12 multi-example same clause) 512×320 window-shape mirror + central hit-chain reuse
+  + outer-corner canary; measured (35,132,62)→(177,147,51) yellow-family flip locked
+- registration surface: Cargo.toml / contract table / tutorials / pixi, four pieces + the gate-docs E402 reservation exemption revoked (the real item in place)
+- baseline: **162 passed · 115↔115 · GATE-DOCS E 18 items three-way · ctest 19 items · ci ten segments ✓ · SMOKE E402 ✓ (real window)**
 
-## S2 文字标注带基线（2026-09-18，计划 io-text-labels-band v1.1·Momus OKAY 0B/A-1 修入）
-- 带义：档①+方案 I（引擎自管 fontdue 栅格，用户明裁）——标注/图注渲染从「SDK 短板」转正
-- 口面：CAPI-21 load_font（替换式；失败保旧）+ CAPI-22 add_label（struct_size 前瞻门+
-  时序门「无字体=拒」+值域全谱零提交；26→28 入口 minor=7）；三面镜像全带（头 POD/hpp 薄
-  转发/wasm loadFont+addLabel→bigint+MISS/d.ts 钉/mirror 值对）；E701 文字闭环段+gate-abi 28
-- 新 crate：visiaengine-io-text 第 9 个（face/GlyphCache R8-shelf-512²-1px 缝-满则重烘/layout
-  LTR；IO-07..09 三条款；fontdue 锁 default=false+hashbrown【探针盲点本地源码补正】）
-- 管线：REND-33 LabelMark 64B 4×vec4 布局锁+DrawLabels 第 6 变体+create_labels 默认拒；
-  WGPU-24 独立 bgl(0+11+12+13)+R8 atlas+ClampToEdge+恒顶(Always/不写深)+SRC_ALPHA；
-  WGPU-25 锚判整标同生共死；GEO-25 text-field"{prop}"剥壳/常量二形+列缺值 skip 不落字面量
-- 例三门：E205 双模（white=667/warm=348 探针阈；ortho 跨 zoom assert_eq 逐像素等）/
-  E814 C 活体（时序门+utf8+white=3917）/labels.rs WGPU 双测（atlas texel/恒大小/锚判双向）
-- 教训入档：PIT-28（pen 是 px 不可进 anchor 世界坐标——hist 探针抓出，三口 grep 律）；
-  #17 双纠（计划 140=REND-32 双计虚账，实账 139 粘 log；「位形可枚举」断言两次方向错=
-  items 外域语义未先对表）；E0449 cfg(test) 跨 crate 不可见教训→自省口转正 API
-- 基线：**202 passed · spec-trace 139↔139 · GATE-ABI 28/28 · GATE-DOCS ✓ E 25 件三方 ·
-  ctest 26 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3（abi 钉 0x…0007）· ci 十段 0 红 · 9 crate**
-- R2 复账：wasm gz 429401→490967=+14.3%（阈内过线零余量，探针预估 +6% 偏乐观如实记）
-- 余账：push 候令 · billboard/halo/避让/换行富文本/文本更新口=label 后带触发制 ·
-  CJK=宿主注字体同口（演示明账拉丁 fixture）
+## Color + events band (2026-09-17, CORE-16/CAPI-17, plan color-events-band.md K1-K6)
 
-## E901 交互收口带（2026-09-18，D17-h/D18 演示收口，单例文件+账零变动）
-- 孪生城常驻窗挂键：**C=剖切刀 ON/OFF（z≤6m 起刀，影随刀塌）· [ / ]=刀高 ±1m（clamp 0.5..15）· L=三塔屋顶标注（Tower-A/B/C，io-text 全链窗形首演）· Esc=退出**；标题实时回显状态
-- 构造面教训一则（写后自查根修）：首版「append 再 pop 复原基底」的 swap 逻辑在无字体分支会**掏空全部命令**——正解=基底永不掺标签，redraw 帧按开关拼接（show 域住渲染不住构造）
-- 验证：headless 路零回归（bright=3019 dark=2426 原值）· 22s 存活+真窗节点 ✓ · SMOKE ✓ · ctest #14 Passed · ci 十段 0 红 202 passed · 条款/入口/ctest 计数全不动（纯消费者面）
+- CORE-16 sRGB↔linear dual ports (f64 intermediate precision, endpoints bit-exact); the full-chain contract = host surface sRGB / IR linear / both GPU ends
+  Srgb hardware-encoded; five chokepoints (material block / clear / strokes / points / instances table) + the io-gltf factor
+  inverse transforms returned to their right place; the GL-degrade tier = fallback linear pass-through manifests
+- domain re-pinned in seven places (all measured first): clear [13,18,25] hardware-rounding self-calibrated canary, shadow light/dark bimodal 95/140,
+  texture checkerboard b bimodal 135 (the uv-broken semantics preserved), E501 boundary 128 dark threshold 4000 (measured 19642),
+  io-gltf color pins ×2, the geo fit-gate tolerance shape
+- **dug out and root-fixed**: lavapipe semantic hard evidence — clear load values interpreted in the linear domain (0.05→63 probe); the render-test band
+  domain-fragility lesson (encoding lifts midtones)
+- CAPI-17 event port (21→22 entry points, abi 0x00010003): the EvtSink cfg dual forms (native C anchor unsafe-Send /
+  wasm Box<dyn FnMut>), monotonic-terminal progress lock / same-instant errors / NULL detaching, three-surface mirror (header / hpp / wasm + d.ts)
+- example E 21 items three-way: E704_host_callback.c (event tri-state) / E502_color_tuning (**WYSIWYG four color boards byte-for-byte
+  mutual-inverse living proof**, one sampling-column formula error fixed) / E503_stroke_points (constant-width showcase) + the permanent gate golden_zoom_width_invariant
+  (two zoom tiers 10px/φ24 cross-tier lock; column sampling = the phase discipline independent of zoom)
+- baseline: **167 passed · 117↔117 · GATE-ABI 22/22 · GATE-DOCS E 21 items · ctest 22 items · ci ten segments ✓ ·
+  WEB MIRROR ✓**; structural incident self-caught: the four zombie _disp lines left by the E402 band cleared (another sighting of the edit-safety #18 family)
 
-## ⑤a 相机飞行带基线（2026-09-18，计划 camera-flyto-band v1.1·Momus OKAY 0B/3A 修入）
-- 口面：CAPI-23 fly_to（pose f64 八位 struct_size 门/瞬移形/改道连续/near-far 恒现值）+
-  CAPI-24 fly_state（done 含 idle 单主/out 飞中写）；28→30 入口 minor=8；三面镜像全带
-  （wasm flyTo·flyState·flyProgress+d.ts+hpp）；E701 无新段（E815 独立例）
-- IR：REND-34 Easing 三族+fly_sample 纯函数（端点恒 from/to 原值快路；yaw 最短弧住采样器
-  构造件 mix_rig 零触碰=REND-15/16 存量零回归）；E302 反证锁（线性中点两侧对照）
-- **wasm 时钟雷先拆**：std::time 于 wasm32-unknown-unknown 运行时不可用→now_ms() 双形 shim
-  （native Instant 进程锚/wasm js_sys::Date::now；js-sys 0.3 target dep）——编译过≠跑得通
-- 例：E302_fly_camera 双模（1/2/3 预设互飞/拖滚 cancel/R/Esc；headless 四断言 bright 实测
-  96 阈 40）+ E815_fly_camera.c 无头活体（idle 即 done/瞬移/进度单调 14 样本/cancel/域拒×4）
-- 教训如实：wasm 桥 pose 扁平 7/8 元手滑自纠；借用闭包三 borrow 错→展开直写；中文锚 heredoc
-  绊（#9 跨带复发第 N 见）；T2 漏 gate-docs（E815 tutorials 行）T3 抓回=门禁互保
-- 基线：**209 passed · spec-trace 142↔142 · GATE-ABI 30/30 · GATE-DOCS ✓ E 27 件三方 ·
-  ctest 28 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3（abi 钉 0x…0008）+ pair_mirror ✓ ·
-  ci 十段 0 红 · 9 crate 不变**
-- 非目标挂账：多视口分屏（四坑清单 D19/触发=分屏演示单）· 高度弧线 · 多关键帧巡览 ·
-  惯性阻尼 · fly 事件推送 · CJK 内嵌（S2 余账）
+## Dual-mode human acceptance round (2026-09-17, user order "check every example + complete cmake run targets")
 
-## ⑤b 多视口分屏带基线（2026-09-18，计划 multiview-split-screen-band v1.1·Momus OKAY + 用户「全带开工」）
-- 管线：render_view_rects（N Frame×ViewportRect 单 surface/单全幅 depth 多 pass；首 pass
-  Clear 全区底色+后区 Load 色+**每 pass 深度 Clear+Discard**）；caster 一趟共享 map；
-  full-rect 零 set_*=旧路逐位等 canary；REND-35 ViewportRect 独立类型**零触 Frame**（44 兜底波免交）
-- 裁决门定论：wgpu30 LoadOp::Clear=整个 attachment（AllClear redA=0 现行锁，Vulkan 定论一致）——
-  两探针分歧由本机像素门裁决（E303 首跑又抓深度 Load 吞图雷→每 pass 清形，探针预期被覆写）
-- 存量雷清剿：fov 弧度/度数单位（E501/E302 窗面投影畸变实锤，E302 bright 96→1987）；
-  camera.rs orbit 文档钉单位；multiview 四门（裁决/互不侵犯+缝色/深度围栏/共享影 328×328 阈 150）
-- 例：E303_split_screen 双模（96×64 四断言+右上正方小窗跟随；常驻窗 ✓）；注册四面+gate 全套
-- 教训入册：「像素门没看过的窗面=没验过的面」（D20 末条）；隔离探针法（单投全屏 ISO→多视口
-  差分）两分钟定位 pass 间差异；U1 漏写 REND-35 体被 spec-trace 143 现形抓（靶/体成对纪律）
-- 基线：**214 passed · spec-trace 144↔144 · GATE-ABI 30（未动）· GATE-DOCS ✓ E 28 件三方 ·
-  ctest 29 条 · CMAKE-SMOKE ✓ · ci 十段 0 红 · R2 零触（纯 rs 带）· 9 crate**
-- 余账：push 候令（含本带 3 笔）· capi 多视口二波（CAPI-25/click-to-fly）· 共享 viewer 库立项候令 ·
-  半透明④带/打包轮/LAS 候令
+- native run steps cover every example: the INTERACTIVE keyword macro abolished, run_<name> emitted unconditionally (the DISPLAY family goes through the run-gui
+  wrapper / :0 fallback; the headless family direct-run = the terminal-OK human-check face) — the E702 window example gets its first run target; the matrix =
+  rs cargo-run_* ×12 + native run_* ×9 (+ the out-of-macro self-registered E703)
+- E502 dual-mode-ized: the color-calibration example upgraded from "headless quick-exit" to a no-arg resident human-check window (four color boards 960×600, Esc/close to quit)
+  + the --frames self-assertion path kept as-is (ctest); both paths build data from one source, config.format explicit Srgb preferred
+- audit conclusion (every example run for real): window examples with no args = resident ✓ ×10; self-exiting examples = by design identity ✓ (terminal output / PNG landing is
+  the human-check face; pick stand-in = E402, color = the E502 window, constant width = E503) — no hidden forks except E502
+- tutorials.md "human-check forms" section: the dual-mode convention written down (IDE zero-args = human check / ctest argv = automated, C15 single source)
+- baseline: 167 passed · 117↔117 · GATE-DOCS ✓ · CMAKE-SMOKE ✓ · qt-configure ✓ · ci ten segments all green
 
-## ④ 半透明带基线（2026-09-18，计划 translucent-water-band v1.1·Momus OKAY 0B/3A 修入）
-- 三无纪律兑现：**零新口/零依赖/零 IR 字段**（入口 30·abi·R2 全静；透明判定=材质 alpha<1
-  后端侧表分拣 WGPU-28）；材质 a==1 恒旧路=**golden 全族零重录构造保证**（labels 族两 pass 现行）
-- V0 混合域定案：本机 wgpu30=线性域（151 vs 83 棋盘门单值判案，Vulkan spec 一致）；
-  预言算术首版漏算 Lambert shade——PIT-8 扩注「预言含全链因子」
-- 管线：Variant 扩 FlatT/TexturedT/InstancedT（bgl/layout 全同仅管线态：SRC_ALPHA 标准式+
-  不写深+Less 保留遮挡）；两 pass=opaque vec 序 + trans 视深降序（f64 D7 键 origin+M 平移列，
-  同键提交序稳定）+ Labels 恒顶；**pass2 depth Load 承遮挡**（与 ⑤b 视口间清深分域）
-- E504 双向语义锁：水膜=衰减对比（52→15 对照带 (10,30)），非消灭对比；1/2 键=重传材质
-  改 alpha 的宿主路活演示；GEO-26 靶+条款（park α=0.8 WGPU-11 门复测零重录余量内）
-- 教训：透明序测试「近远」命名被相机位打脸一次（z50 俯视→z7=近；期望归正引擎零触）；
-  amend 连坐三犯（fmt/clippy/Mats 死码——终验前本地全链先行，勿以 amend 当 lint 循环）
-- 基线：**220 passed · 148↔148 · GATE-ABI 30/30 · GATE-DOCS ✓ E 29 件三方 · ctest 30 条 ·
-  CMAKE-SMOKE ✓ · WEB MIRROR 3/3 · ci 十段 0 红 · D21 入册**
-- 余账：push 候令（④ 四笔+前带累计）· set_material_alpha/软影/OIT/逐实例 alpha/逐顶点 alpha
-  全挂触发制 · ⑤b capi 二波不变
+## Point-cloud data family band (2026-09-17, D16/hyperplan plan pcl-data-band.md, M0→G all collected)
 
-## ⑤b 二波小地图导航带基线（2026-09-18，计划 capi-minimap-nav-band v1.1·Momus OKAY 0B/2A 修入）
-- 口面：CAPI-25 set_map（VeMapView 比例表；NULL=关=旧路；域拒零副作用）+ CAPI-26
-  navigate_click（区外/无图拒；实体→地面两阶段；保角保距 [裁决 e]）+ CAPI-27
-  get_camera（VeCameraPose 复用双向=入参 fly/出参读回，宿主预置 struct_size 先检后写）；
-  30→33 入口 minor=9；三面镜像全带（头/hpp 三薄转发/wasm 4 桥 setMap·clearMap·
-  navigateClick·getCameraPose+d.ts 名册+mirror 钉 0x…0009）
-- 引擎态：MapView+set_map/map_rect/map_rig（主 target 派生顶视）/navigate_click/
-  camera_pose；render 双投分支（⑤b render_view_rects 消费首实证；None=旧路 canary）；
-  pick 小图区优先路由；apply_input 小图区 kind1..4=消费 no-op
-- 例：E816_minimap_nav.c 五段活体门（canary 逐字节/角区双族 1596g+756r/小图 pick/
-  600ms 飞行 257 tick 到站 (3.579,3.714,0)/值域拒+无图拒）；ctest #31
-- 教训如实：E816 首版把两水平面当「墙」——顶视=红盖绿 g=42 探针现形（PIT-8 四见，
-  场景几何先探针后断言）；段5 终态 canary 比旧 ref=飞行挪相机必破（写后自查根修，
-  基线重取形）；ffi_spec use 块漏三函数名（regex 换行锚未命中=edit-safety #9 族）
-- 基线：**226 passed · spec-trace 152↔152 · GATE-ABI 33/33 · GATE-DOCS ✓ E 30 件
-  三方 · ctest 31 条 · CMAKE-SMOKE ✓ · WEB MIRROR 3/3（abi 钉 0x…0009）· ci 十段
-  0 红 · 9 crate · R2 零触（web gz 增量 web-check 打印为账）**
+- port surface: CAPI-18 add_points (23 entry points, minor=4) + CAPI-19 load_pcl (24 entry points, minor=5,
+  the VePclReport four-class export / meta attr prefix query); three-surface mirror across the band (header / hpp / wasm loadPclBytes + d.ts /
+  web-mirror pins ×2); the C15 value-ownership table written first (attr found=1/none=0, corrected by tests, registered)
+- the io-points new crate (authorized by ruling C): PLY ascii/bin_le self-written ~420 lines, zero new dependencies; the four-class typing
+  "point level triggers FastFail, column/element level counts only" landing clarified into the clause; truncation dual semantics bidirectional assertions;
+  the spec-trace IO prefix + **the third-check machine lock** (the negative FOO-01→red measured, on record)
+- examples/gates: E204 dual mode (the spiral self-assertion threshold scales with point count + the --file load path + the resident window);
+  G1 100k batch integrity / G2 far-origin mutual-inverse point edition (byte-for-byte equal); the G3 --points branch, 1M measured, registered
+- **toolchain root fix**: bench.sh dead links since the S1 package rename + the missing-item continue always-true (PIT-25 filed, MISSING→exit1);
+  the rustfmt-fed-Cargo.toml accident (edit-safety #20 filed); the lesson of three test anchors reflowed by rustfmt = anchors must be read fresh
+- baseline: **181 passed · spec-trace 125↔125 · GATE-ABI 24/24 · GATE-DOCS E 22 items three-way ·
+  ctest 23 items · CMAKE-SMOKE ✓ · WEB ✓ · audit try1 ✓ (PIT-7 7th sighting) · 8 crates**
+- remaining balance: the LAS second band (criterion = customer demo list) · the picking family trigger-gated · cap change window once · push awaiting
 
-## 超级带五连基线（2026-09-24，计划 super-band-2026-09-24 v1.1·Momus OKAY + 三红队审核 + 用户九卡逐项裁决全 A）
+## B2 cross-section band baseline (2026-09-17, plan capi-cross-section-band v1.1 · Momus OKAY 0B/2A fixed in)
 
-- 源起：team 三路差距审计（`docs/reference/team-gap-analysis-2026-09-24.md` 取代 09-17 版）→ 用户「全部采纳」行动序 1-5 → 四路审核（Momus OKAY 0 阻塞 + feasibility/consistency/risk 三卷 `/tmp` 索引）→ 两 plan-killer（B2 VePickHit 前提崩、B1 缩略图前提崩）+ 一 CRITICAL（B2 API 形态）全部修入 v1.1
-- **B4 文档对账**（`51f94bb`）：WMTS"内置"/场景树×3/capability_query 三漂移改词（EN, C17）+ **10MB 首测销账**（cdylib strip 7.25MB ≤10MB 达标 27% 余量，evidence/2026-09-24-native-size.md）+ 差距分析正本落盘
-- **B2 点拾取**（`03a864a`）：裁决④A=零 ABI 变更（引擎留存 positions+CAPI-04 修订句+kind 挂账触发制）；REND-38 屏幕空间最近点谓词（**局部点直投 compose_mvp**=origin 已烘矩阵勿双计+RH [0,1] 深度域守卫）；REND-39 mesh 优先 canary；CAPI-13 纠正为 CAPI-15 先例；E204 `--pick-check` argv 单主（C15②）
-- **B1 Web 画廊**（`2254bbc`）：裁决⑤执行中反转=工具 bin 重造场景（漂移税）弃用 → **例侧自落盘**（gallery.rs helper ×10 双模例 save_frame，例=卡图真源零漂移）；gen_gallery.py 读唯一注册表（cmake+各目录 CMakeLists+qt 裸 add_executable 三形）+fail-loud 双负路径实测；32 卡/11 真图/build gitignored
-- **B3 MVT 瓦片流 Phase 0**（`080e07e`）：第 10 crate io-tiles——353 行手写 protobuf wire 解码器（裁决①A，零依赖；fixture 生成器两处 wire 错靠 Rust/python 交叉对照现形=解码器零错）+slippy 瓦片数学（邻边无缝律）+FileSource/typed HttpSource stub/stdlib LRU+GEO-27 GeoTile 映射（y 翻转+D7 origin 锚）；E206 走通全链；**PIT-8 再兑现**：相机 look_at 世界原点而瓦片住 x=−2e7 m=全画面外+far<eye 距全裁
-- **B5 一例四吃政策**（`a58e689`）：gate-docs 六检+⑥画廊 manifest↔磁盘注册集机器锁（负路径实测红）；政策文本三处（tutorials 头/dev-workflow/gate 注释，EN）
-- **E206 用户三连实测修**（`3f3fccd`/`3690a34`/`9eceb18`）：①无参即退=C15 双模违约（窗桩）→E204 骨架真窗+Xvfb 存活探针；②拖拽滚轮无效=Redraw 每帧硬编码 tile_rig 重建+rig 非字段 →持久化 rig+orbit_delta/zoom；③单瓦片太简→**3×3 邻域**（每瓦片变化水斑/交错道路/边框描线=缝可见/中心 POI；顶点烘场景中心小值域 f32 单一世界帧）；滚轮根因=**正交缩放唯一定义 half-width 而 rig.zoom 从未被消费**（look_at 默认 zoom=1.0+渲染硬编码 tile_w 双叠加）
-- 基线：**259 passed · spec-trace 158↔158 · GATE-ABI 33/33（零 ABI 变变守住）· GATE-DOCS 六检 ✓ 32 卡 · ctest 24（机器实报）· 10 crate · 零新依赖 · ci 十段 rc=0 · 工作区 clean**
-- 待办：push（领先 11 笔）· Phase 1 瓦片带（C API+HTTP，白皮书日期承诺 2026-Q4）· 画廊 T3 人验
+- port surface: CAPI-20 set_clips/get_clips (26 entry points, minor=6; n=0 is the only clear / bounds-check precedes dereference /
+  the engine side reads back normalized unit shapes / cap truncation returns the true count [Momus-A2 cases into the RED catalog]); three-surface mirror across the band
+  (header 32B Pod coefficient form / hpp two thin forwards / wasm setClips·getClips + d.ts + mirror abi pin 6)
+- pipeline: the View block tail extension 192→256B (**zero new binding/bind-group/buffer** = the design dividend of origin+transform already being in the
+  view_block signature); clipped() fs discard across all five pipelines + casters clipped alike (the fs_shadow empty-function body filled in, bgl binding0 +FRAGMENT); the expansion families per-pixel = "clip the world, not the types"; None/EMPTY
+  all-zero always-bound early-exit = the R4 guardrail shape, the golden suite zero re-records
+- IR: REND-32 world f64 coefficients + ClipSetup::new degenerate rejection; clip_to_local the **model-space identity**
+  (n_m=Mᵀn/d_m=d+n·(o+t_M); two self-caught root fixes recorded honestly — the column-major Mᵀ and M's translation column)
+- picking: the engine retry loop (hit on the negative side of keeps = excluded, keep searching; whatever is visible after cutting must be pickable); the capi pick domain
+  = positions × IDENTITY, the existing fact noted as "two frames merged" into the example body and tests
+- examples/gates: E813 headless three-segment living run (baseline red 10816 / half-cut red-dead-green-alive + the retry loop / corner triple-face 1764∈[800,4000]
+  — the two-face shape g2=0 probe win = the front wall occludes on-screen, PIT-8 third sighting); tests/clip.rs five gates (canary byte-for-byte / None≡EMPTY / half-cut halves / full-cut zeroes / corner ¼ + far_origin 1e7 bit-equal + line/point color families + caster 6.5×)
+- new pit: PIT-26 (from_raw_parts NULL+0 is UB, the debug precheck nailed — NULL counting paths must guard m>0);
+  PIT-7 8th sighting (audit TLS flapped once, retry green)
+- baseline: **191 passed · spec-trace 130↔130 · GATE-ABI 26/26 · GATE-DOCS ✓ E 23 items three-way
+  · ctest 24 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 + web_capi_pair_mirror ✓ · ci ten segments ✓ ·
+  8 crates unchanged**
+- non-goals on account: stencil caps (the BIM interior demo list) · six-face boxes · OR/union · the hardware CLIP_DISTANCES
+  dual path (present in wgpu30 but DX12 not in the list) · interactive clip sliders (E901 keys pending demand) · LAS (ticket-gated, standing by)
+- decisions registered: **D17 eight adjudication points** (discard single-path + re-eval trigger / ≤4 AND / no caps / Mᵀ identity / all families clipped / casters clipped alike / retry loop / E813)
 
-## ⑤ Phase-1 瓦片流带基线（2026-09-24，计划 tile-streaming-phase1.md P1-S1–S4 全落）
+## S2 text-label band baseline (2026-09-18, plan io-text-labels-band v1.1 · Momus OKAY 0B/A-1 fixed in)
 
-- 口面：CAPI-28 load_mvt_dir（FileSource 扫描 z 层；域 z≤30；返回=挂载瓦片数）+ CAPI-29 set_tile_view（3857 bbox 喂调度器；返=可见数；未挂载=拒）；30→**35 入口 minor=10 (0x0001000A)**；三面镜像全带（头 2 原型/hpp 薄转发/wasm loadMvtDir+setTileView+d.ts 名册/mirror abi 钉 0x…000A）
-- 引擎态：TileLayer 结构（set:TileSet + ids + center/wpos/widx/strokes/points + uploaded:Option，render-loop 集成=后带，`#[expect(dead_code)]` 注记）；load_mvt_dir 扫描+ensure+decoded→GeoTile 批建；set_tile_view 仅 ensure 不重建（批=挂载时一次性）
-- io-tiles 新件：`scheduler.rs` TileSet{visible 半开枚举+boundary snap/ensure 幂等装载+会计/decoded through-cache 二级}（IO-13/14）；HttpSource::new(root) ureq 实装（IO-15，target-gated：wasm=typed stub，getrandom/js 冲突 root-cause 修）；`tests/tile_set.rs` 6 门；`tests/http_source.rs` 3+1 ignored；source.rs stub 测试升格为 new()+域断言
-- 依赖：ureq 3.4.2 (rustls, default-features=false) → webpki-roots (CDLA-Permissive-2.0) → **deny.toml += CDLA-Permissive-2.0**
-- E206：load_tile 退役（dead code）+ FileSource/decode_tile 导入清理；load_viewport 经 scheduler 驱动（IO-13/14 消费面）
-- gate-abi.sh：33→35 期望数更新；web-mirror.mjs：abiVersion 0x0001000A + 名册 +2 桥
-- whitepaper：MVT Phase 1 兑现（从「在交付项」改「已交付」+WMS/WMTS 单独注记）；README 163 条/35 入口/32 卡同步
-- 教训入档：PIT-28（pen px vs anchor 世界坐标，三口 grep 律）· **PIT-31**（ffi_spec 域测试 cwd=crate 目录，相对路径陷阱）· **PIT-32**（ureq 全量依赖把 getrandom 拖进 wasm 目标——target-gate 修，wasm HttpSource=typed stub）
-- 基线：**270 passed · spec-trace 163↔163 · GATE-ABI 35/35 · GATE-DOCS ✓ E 31 件 · ci 十段 rc=0 · web MIRROR 3/3 · 9 crate · ureq 1 new-dep**
-- 余账：push（含本带 P1-S1..4 全笔）· render-loop 集成 TileLayer（E206 prove 形态入引擎主循环）· HTTP 源 C API（**CAPI-35+** set_tile_source_http；CAPI-30..34 已被场景树带占用，2026-09-28 重记账）· CJK 字体 S2 余账 · LAS 票据制候令
+- band meaning: tier ① + scheme I (engine self-managed fontdue rasterization, the user's explicit ruling) — label/caption rendering promoted from "SDK short board" to first-class
+- port surface: CAPI-21 load_font (replacement style; failure keeps the old) + CAPI-22 add_label (the struct_size forward gate +
+  the timing gate "no font = reject" + the full value-domain zero-commit catalog; 26→28 entry points, minor=7); three-surface mirror across the band (header POD / hpp thin
+  forwards / wasm loadFont+addLabel→bigint+MISS / d.ts pins / mirror value pairs); the E701 text closed-loop section + gate-abi 28
+- new crate: visiaengine-io-text, the 9th (face / GlyphCache R8-shelf-512²-1px-gutter-refreeze-on-full / layout
+  LTR; the three clauses IO-07..09; fontdue locked default=false + hashbrown [the probe blind spot corrected against local sources])
+- pipeline: REND-33 LabelMark 64B 4×vec4 layout lock + DrawLabels the 6th variant + create_labels default rejection;
+  WGPU-24 standalone bgl(0+11+12+13) + R8 atlas + ClampToEdge + always-on-top (Always/no depth write) + SRC_ALPHA;
+  WGPU-25 anchor verdict: the whole label lives or dies together; GEO-25 text-field "{prop}" unwrap / constant two forms + a missing column value skips, never prints the literal
+- examples and three gates: E205 dual mode (white=667 / warm=348 probe thresholds; ortho cross-zoom assert_eq pixel-equal) /
+  E814 C living run (timing gate + utf8 + white=3917) / labels.rs WGPU dual tests (atlas texel / constant size / anchor verdict bidirectional)
+- lessons filed: PIT-28 (pen is px, cannot enter anchor world coordinates — caught by the hist probe, the three-port grep rule);
+  #17 double-corrected (the plan's 140 = a phantom count from REND-32 double-counting, the real 139 pasted from the log; the "positions enumerable" assertion went wrong twice =
+  the out-of-items domain semantics never checked against the table); the E0449 cfg(test) cross-crate invisibility lesson → the self-introspection port became a formal API
+- baseline: **202 passed · spec-trace 139↔139 · GATE-ABI 28/28 · GATE-DOCS ✓ E 25 items three-way ·
+  ctest 26 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 (abi pin 0x…0007) · ci ten segments 0 red · 9 crates**
+- R2 re-account: wasm gz 429401→490967 = +14.3% (inside the threshold, zero margin; the probe's +6% estimate was optimistic, recorded honestly)
+- remaining balance: push awaiting · billboard/halo/declutter/wrapped-rich-text/text-update port = label follow-on bands, trigger-gated ·
+  CJK = the host font-injection same port (the demo keeps a Latin fixture as an open account)
 
-## ⑥ 场景树带基线（2026-09-24，计划 scene-tree-band.md S1-S4）
+## E901 interaction close band (2026-09-18, D17-h/D18 demo close-out, single example file + zero ledger movement)
 
-- 口面：CAPI-30 create_group（out_entity 谱）+ CAPI-31 set_parent（0=root，环/深度≤16 检测）+ CAPI-32 get_parent + CAPI-33 set_group_offset（finite 门）+ CAPI-34 get_group_offset；35→**40 入口 minor=11 (0x0001000B)**；三面镜像全带（头 5 原型/hpp 5 薄转发/wasm 5 桥+d.ts 名册/mirror abi 钉 0x…000B）
-- 引擎态：Slot 新增 parent:Option<EntityId>+offset:[f64;3]（core scene.rs，Component::Group 纯标记变体，slot_of 零成本）；Engine::new_scene（预占 slot0gen0→handle 永非零）；is_hidden（沿祖先链 walk，树感知显隐）；render 循环 origin=it.origin+scene.effective_offset(entity)（CORE-21 累加 O≤16）
-- **设计决策**：旋转/缩放继承=触发制（YAGNI：主流 GIS 引擎=仅显隐+平移）；despawn group→子实体自动摘回根（不级联删除）
-- 教训：PIT-31（ffi_spec 测试 cwd=crate 目录，相对路径陷阱）**第二见**（load_mvt_dir + set_group_offset 域测试均触发）· **PIT-33**（场景树 handle=0 语义冲突：slot0gen0 合法 vs parent=0=root 哨兵；修法=new_scene 预占 slot 0 + set_parent parent==0 特判）
-- 基线：**287 passed · spec-trace 173↔173 · GATE-ABI 40/40 · GATE-DOCS ✓ E 31 · ctest 33 条 · ci 9/10（audit=PIT-7 第 11 见 TLS 持久故障非瞬抖）· web MIRROR ✓ · 9 crate**
-- 余账：push（领先含本带 S1/S2/S3 三笔+⑤ P1 五笔=约 11 笔）· 旋转继承=有需求再开 · 场景树名字查询（node_names 存 engine.rs，无 C 查询口）· CJK 字体 S2 余账 · LAS 票据制
+- the twin-city resident window gains keys: **C = clip knife ON/OFF (blade rises at z≤6m, shadows collapse with the blade) · [ / ] = blade height ±1m (clamp 0.5..15) · L = three tower-top labels (Tower-A/B/C, the io-text full-chain window debut) · Esc = quit**; the title echoes state live
+- one construction-side lesson (post-write self-check root fix): the first version's "append then pop to restore the base" swap logic would **empty all commands** on the no-font branch — the correct form = the base never mixes labels, the redraw frame concatenates per switches (the show domain lives in rendering, not construction)
+- verification: the headless path zero regression (bright=3019 dark=2426 original values) · 22s alive + real-window nodes ✓ · SMOKE ✓ · ctest #14 Passed · ci ten segments 0 red 202 passed · clauses/entry points/ctest counts all unmoved (pure consumer surface)
 
-## 差距调查→hyperplan→Session N+1 基线（2026-09-28，八笔收官）
+## ⑤a camera-flight band baseline (2026-09-18, plan camera-flyto-band v1.1 · Momus OKAY 0B/3A fixed in)
 
-- 团队模式：四路调查（.refinfo 六族 + 自查）→ 对抗规划 4 批手 ×3 轮（C1-C10 全签 + 认输台账）→ Momus OKAY → 四卡裁决（1a 瓦片泵 / 2 金标+EDL / 3 morph 做 / 4 不部署+three.js 对标）→ 执行
-- N1.1 `a5d3180`：hpp fly_state 转发 + **hpp⊇头镜像门**（别名表制：destroy→destroy_now、entity_set_visible→set_visible；破坏探针自证）+ CAPI-30→35+ 重记账 + 存量 clippy 清账
-- N1.2 `59c772a`：whitepaper L27/L103 + README L11/L38 精确改词（"平滑/无缝/无级"→交付语义；L22 竞品句保留）
-- N1.4 `47bbe54`：**CAPI-35 set_tile_source_http**（发现式装载）+ io-tiles 4 态泵（begin/pump(budget)/state）+ HttpSource 5s 超时 + loopback 免代理（PIT-35）+ 渲染环 4 片/帧预算 + 三面镜像 abi 0x0001000C + E206 --source 真跑 9/9（4+4+1 分帧）+ rebuild_tile_batch 抽取
-- N1.3 `354a8e7`：**goldens-10 逐属性金标**（好坏对自证形；谓词全探针钉值：opacity 145/207、point 4672/232、clip 上下半、shadow 中带分裂）
-- N1.5 `e55dd2f`：**EDL**（Frame.edl None=逐位零回归；中间纹理 + PIT-33 用域法；ON 2790px + 顶行 331.0→322.9 实测；WGPU-33+REND-40 条款；E204 --edl）
-- N1.6 `ca6dbee`：画廊 three.js 式详情页 ×32（CARD 4=不部署纯本地）
-- 审修 `60a24a3`：#1 详情页全名键（E811_c/_cpp 分页 + 撞号 fail-loud）+ #2 C17 21 行清零
-- N2.0 `cd55fc1`：#3 evict_done+decoded_cached 对账（PIT-34）+ #4 center 移位清 uploaded/批（错位根除）
-- 教训：PIT-33/34/35/36 + edit-safety #21/22/23 + testing.md HashMap 序纪律（本次入册）
-- 基线：**297 passed · spec-trace 177↔177 · ABI 41/41 (0x0001000C) · GATE-DOCS ✓ · ci rc=0 · 领先 8 笔**
-- 余账：push 候令 · N+2=morph 带+实体动画 6a+画廊分类扩充 · 择期=property_golden 补锚/镜像门声明形/多视口 EDL assert/point-radius 下限
+- port surface: CAPI-23 fly_to (pose f64 eight slots with the struct_size gate / teleport form / reroute continuity / near-far always current) +
+  CAPI-24 fly_state (done includes idle, single source / out written only mid-flight); 28→30 entry points, minor=8; three-surface mirror across the band
+  (wasm flyTo·flyState·flyProgress + d.ts + hpp); E701 no new section (E815 is a standalone example)
+- IR: REND-34 Easing three families + the fly_sample pure function (endpoints return from/to originals as the fast path; the yaw shortest arc lives in the sampler's
+  construction piece, mix_rig untouched = zero regression for REND-15/16 stock); the E302 counter-evidence lock (linear-midpoint two-sided comparison)
+- **the wasm clock mine defused first**: std::time is unavailable at wasm32-unknown-unknown runtime → the now_ms() dual-form shim
+  (native Instant process anchor / wasm js_sys::Date::now; js-sys 0.3 target dep) — compiling ≠ running
+- examples: E302_fly_camera dual mode (1/2/3 presets flying between each other / drag+wheel cancel / R/Esc; headless four assertions, bright measured
+  96, threshold 40) + E815_fly_camera.c headless living run (idle-is-done / teleport / progress monotonic 14 samples / cancel / domain reject ×4)
+- lessons honestly: the wasm bridge pose flat 7/8 args hand-slip self-caught; the closure-borrow triple errors → expanded to direct writes; the Chinese-anchor heredoc
+  stumble (#9 cross-band recurrence, sighting N); the T2 gate-docs miss (E815's tutorials line) recovered at T3 = the gates mutual-guard
+- baseline: **209 passed · spec-trace 142↔142 · GATE-ABI 30/30 · GATE-DOCS ✓ E 27 items three-way ·
+  ctest 28 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 (abi pin 0x…0008) + pair_mirror ✓ ·
+  ci ten segments 0 red · 9 crates unchanged**
+- non-goals on account: multi-viewport split screen (the four-pit list D19 / trigger = split-screen demo list) · altitude arcs · multi-keyframe flythroughs ·
+  inertial damping · fly event pushes · CJK embedding (the S2 remaining balance)
 
-## Session N+2/N+3 基线（2026-09-28 续，五笔：N2 四带 + 清扫）
+## ⑤b multi-viewport split-screen band baseline (2026-09-18, plan multiview-split-screen-band v1.1 · Momus OKAY + user "full band")
 
-- N2.1 `6d65346`：**投影 morph**（M，Momus OKAY + 卡 A 纯 rs）——render::morph 纯函数（端点逐字节律）+ Engine::set_morph_time（滑杆 clamp 语义，与 EdlSetup 拒式有意分叉）+ morph_spec 3 门 + E304 双模例（窗 [/] 滑 t；Xvfb 存活探针）。白皮书 §3.1 兑现，README"切换"→"连续投影 morph"（N1.2 诚实弧闭环）
-- N2.2 `2ca8551`：**实体动画 6a**（S，C5 拆分）——render::anim::anim_origin（端点恒等 + f64 远原点精度）+ anim_spec 4 门 + E305 轨迹重放（24 标记像素门）。例面首跑抓归一化 t 误用=采样器时间域契约现形
-- N2.3 `f10baff`：画廊 sticky 分类导航（three.js 浏览形，9 域锚点条；cards 键=title 的数字恢复教训）
-- N2.4 `8b18937`：**属性热更 CAPI-36..38**（M，44 入口 minor=0x0001000D）——override 层 + override-first 读 + typed-reject（CORE-11/12）+ 三面镜像全带 + attr_diff_spec 2 门（fixture 抄 attr_ffi_spec 先例）。rs-only 计划升格 C 三口=测试可达性裁决（Engine 所有权住句柄表）
-- 清扫 `0d430c4`：审 #5-#8 择期清零（多视口 EDL debug_assert / point-radius 双面带 / golden 无锚声明 / 镜像门声明形谓词三连自证；顶格 [[nodiscard]] 教训=自证样本必取真行）
-- 基线：**306 passed · spec-trace 182↔182 · ABI 44/44 (0x0001000D) · 画廊 34 卡+34 详情页+导航条 · ci rc=0 · 领先 15 笔**
-- 数字孪生三骨：属性热更 ✓ / 动画采样 6a ✓ / 序列化 S3' 挂账（Studio 依赖触发）
-- 待办：触发制队列全空（几何 diff/框选/ODR/LAS/7 态机等票候令）
-- **T3 人验（2026-09-28 用户实测）**：E304 `[/]` 滑投影 morph ✓ · E305 常驻窗 drone 循环重放 ✓（窗面缺口由用户抓出后补齐=eab5530）——两条销账，数字孪生演示面双验通过
+- pipeline: render_view_rects (N Frames × ViewportRects, single surface / single full-extent depth, multiple passes; first pass
+  Clear paints the whole-area base color + later passes Load color + **depth Clear+Discard every pass**); casters do one shared-map trip;
+  full-rect emits zero set_* = the old path's bit-equality canary; REND-35 ViewportRect standalone type, **zero Frame touch** (the 44-fallback wave exempt)
+- the adjudication gate's conclusion: wgpu30 LoadOp::Clear = the whole attachment (AllClear redA=0, the live lock, consistent with the Vulkan conclusion) —
+  the two probes' disagreement was decided by this machine's pixel gate (E303's first run again caught the depth-Load-swallowing mine → the every-pass-clear shape, overwriting the probes' expectation)
+- legacy mine eradicated: the fov radian/degree unit (E501/E302 window projection distortion nailed, E302 bright 96→1987);
+  camera.rs orbit doc nails the unit; the four multiview gates (adjudication / mutual non-aggression + gutter color / depth fence / shared shadow 328×328 threshold 150)
+- examples: E303_split_screen dual mode (96×64 four assertions + the top-right square small-window follower; resident window ✓); four registration faces + the full gate suite
+- lessons registered: "a window surface the pixel gate never looked at is an unverified surface" (D20's last item); the isolation-probe method (single projection full-screen ISO → multi-viewport
+  differencing) located the inter-pass difference in two minutes; the U1 REND-35 body omission surfaced through spec-trace 143 (the target/body pairing discipline)
+- baseline: **214 passed · spec-trace 144↔144 · GATE-ABI 30 (untouched) · GATE-DOCS ✓ E 28 items three-way ·
+  ctest 29 items · CMAKE-SMOKE ✓ · ci ten segments 0 red · R2 untouched (pure rs band) · 9 crates**
+- remaining balance: push awaiting (3 commits this band) · the capi multi-viewport wave two (CAPI-25/click-to-fly) · the shared viewer library entry awaiting ·
+  the translucency ④ band / packaging round / LAS standing by
 
-## N4 后处理框架带基线（2026-09-28，计划 n4-post-framework-band.md v1.0·Momus OKAY）
-- IR：REND-43 PostEffect{Bloom{strength},Outline{width}} + Frame.post Vec（空=逐位零回归旧路）+ bloom/outline 构造器域拒 Option（EdlSetup::new 同谱）；**46 处 Frame 构造点 sweep**（python 缩进感知插入 + contract.rs 手编）；contract_spec +域拒门
-- 管线：WGPU-34 stage 链编排——ensure_stage_color 固定 2 槽（尺寸+格式缓存）+ per-(effect,format) 懒建管线 + bgl=EDL 4 绑定形共享（fullscreen_entries 提取共享描述符）；深度 Store 单旗 `edl_on||post_on`；**效果 i 写 stage[i+1]、末效果写最终 view、stage[0]=链输入永不作写目标**（首版写 stage[i] 撞 wgpu usage-scope RESOURCE+COLOR_TARGET 同 pass 冲突=validation error 抓出）
-- 着色器：bloom.wgsl 9-tap luma 阈值加性（THRESHOLD=0.25 线性解码域探针定档——sRGB 编码 138/px≈线性 0.25）；outline.wgsl 深度梯度比（WGPU-33 rel 同族阈 0.08）+selection 橙；vs_main 三形同谱（fullscreen triangle strip from vertex_index）
-- 例/门：E506_postprocessing 双模（1/2/3 键+标题回显；--frames off 确定性+bloom/outline 像素断言 probe=1289/1509px 阈 600/700）+ 四方消费全带（cmake 注册表 disp 缺省 headless/tutorials 行/画廊 37 卡/smoke-post）；post_chain.rs 四门（off 逐位/bloom 432/outline 678/链序 1038·1640 全探针在注）
-- **web-check 抓真雷**：engine.rs wasm-专属 new_canvas 构造器被 sweep 脚本误插 post 字段（native check 不可达=cfg 门后面）——CI 后必跑 web-check 的活证据（R2 gz=539641B 记账）
-- 基线：**311 passed（+5）· spec-trace 184↔184 · GATE-ABI 44/44 · GATE-DOCS ✓ E 36 件三方+37 卡 · ctest 37 条 · CMAKE-SMOKE ✓（Xvfb display ✓）· ci 十段 rc=0 · 9 crate**
-- 余账：push 候令 · SSAO/DOF/SSR=框架后触发制 · 多视口 post（EDL 同款挂账）· >2 效果链=非目标
+## ④ translucency band baseline (2026-09-18, plan translucent-water-band v1.1 · Momus OKAY 0B/3A fixed in)
 
-## T3 人验补录（2026-09-29，N3-N6 全带交互面）
-- E508 拖拽轨道/滚轮缩放 ✓（rig 硬编码根修=733de61）· 1/2/3 特效键 ✓
-- E507 tonemap/bloom 键 ✓ · E403 框选 ✓ · E306 map controls ✓ · E304 morph（此前已验）✓
-- 结论：N3-N6 五带全部交互面双验通过，无遗留 T3 项
+- the three-zero discipline honored: **zero new ports / zero dependencies / zero IR fields** (entry count 30 · abi · R2 all silent; transparency decision = material alpha<1
+  sorted by a backend side table, WGPU-28); material a==1 always takes the old road = the **golden family full-suite zero-re-record construction guarantee** (the labels family runs the two passes live)
+- V0 blend domain settled: this machine's wgpu30 = linear domain (151 vs 83 checkerboard gate, decided on a single value, consistent with the Vulkan spec);
+  the prediction arithmetic's first version missed the Lambert shade — the PIT-8 extended note "predictions carry all chain factors"
+- pipeline: Variant extended FlatT/TexturedT/InstancedT (bgl/layout fully identical, only pipeline state: the SRC_ALPHA standard form +
+  no depth write + Less preserved for occlusion); two passes = opaque vec order + trans view-depth descending (the f64 D7 key origin + M translation column,
+  same-key submission order stable) + Labels always-on-top; **pass2 depth Load inherits occlusion** (domain-split from ⑤b's inter-viewport depth clearing)
+- E504 bidirectional semantic lock: the water film = attenuating contrast (52→15 control band (10,30)), not destroying contrast; keys 1/2 = a living demo of
+  the host path re-uploading materials to change alpha; the GEO-26 target + clause (park α=0.8, the WGPU-11 gate re-measured within zero-re-record margin)
+- lesson: the transparency-order test's "near/far" naming was slapped by the camera pose once (z50 top-down → z7 = near; expectations re-labeled, the engine untouched);
+  the amend triple-offense (fmt/clippy/dead Mats code — run the full local chain before the final verification, don't use amend as a lint loop)
+- baseline: **220 passed · 148↔148 · GATE-ABI 30/30 · GATE-DOCS ✓ E 29 items three-way · ctest 30 items ·
+  CMAKE-SMOKE ✓ · WEB MIRROR 3/3 · ci ten segments 0 red · D21 registered**
+- remaining balance: push awaiting (the ④ band's four commits + prior accumulated) · set_material_alpha / soft shadows / OIT / per-instance alpha / per-vertex alpha
+  all trigger-gated · ⑤b capi wave two unchanged
 
-## V 系列 gap-closure 基线（2026-09-30，hyperplan→全量补全裁决→Block A/B 执行）
+## ⑤b wave-two minimap navigation band baseline (2026-09-18, plan capi-minimap-nav-band v1.1 · Momus OKAY 0B/2A fixed in)
 
-- 源起：hyperplan 对抗 5 员×3 轮（研究底料=three.js 608 例普查 + refinfo 13 项目 + self-audit）→ 全量补全裁决 → 计划 v1.1（`.omo/plans/gap-closure-full-2026-09-30.md`，4 员审核 10 修 4 险）→ 执行
-- 审计正本（**2026-10-08 校正**）：本行原引「09-30 审计」与 `docs/gap-closure-roadmap.md` 为「双正本」，但前者（team-gap-analysis-2026-**09-30**.md）**从未入库**（git 全历史无此文件），后者当时也不存在。现役在盘正本 = `docs/reference/team-gap-analysis-2026-09-24.md`（S 级缺口表 + 例数普查）+ `docs/reference/team-gap-analysis-2026-09-28b.md`（three.js 608 例对标，取代 09-24 的例数段）+ `docs/gap-closure-roadmap.md`（2026-10-08 实写：逐条重测的覆盖图 / 未做清单 / 触发器 / 反向优势；09-30 当时的综合判断留在 gitignored 计划 `.omo/plans/gap-closure-full-2026-09-30.md`，不作库内引用）
-- **W1**（`9fd64a2`）：REND-46 stroke 屏幕空间拾取谓词（+5 纯数学测；引擎接线诚实挂账——C pick 面 EntityId 与 seg 无 entity 表冲突 CAPI-01，伪装即违纪）
-- **W2**（`e24b308`）：WGPU-38 depth haze——**raw depth 透视压缩雷探针现形**（16m≈0.994），SSAO view_z 米域线性化；三带几何感知双面锁（bg 12114 全雾/near 0 触碰）；E506 键 4
-- **D**（`13035eb`）：四漂移对账（MVT/morph/场景树/Flutter-C#）+ **check-promises lint**（proximity 匹配器；self-test 破探针抓到第一版行级 allowlist 太粗）+ llms.txt/docs-gen；**ci 十段→十一段**
-- **R**（`54f4e26`）：**白皮书 L53 WMS/WMTS 承诺兑现**（栅格面）——IO-18 `TilePayload{Mvt,Raster}` 枚举（反陷阱裁定=单车道泵/LRU 零分叉）+ CAPI-39/40 平铺 basemap（N1.2 纪律：NOT terrain）；五面镜像 abi 0x0001000E
-- **I**（`49c2a95`）：**WGPU-39 SH-9 环境光照**（demo 级声明收窄；View 块 256→416B 尾缀方案零新 binding；PIT-41/42/43 三雷全踩全拆）；CAPI-41；E507 env probe
-- **V2.1**（`88e2e90`）：REND-47 Bezier/CatmullRom+tube/ribbon（+0 ABI 消费带）——**E510 端点律断言首跑抓采样器真 bug**（末 knot 永不落地）；E510 四消费者+常驻窗补壳（`5e34bc0`，C15 第四例新变体=无窗；destroy_points 引擎口前置落地）
-- **V2.2**（`68cc205`）：**CAPI-42/43 节点局部变换 + 存量根修**——glTF entity.world 层级矩阵 mount 期被丢弃（多节点层级从未正确渲染，E201 单层掩盖）；DrawItem.transform 全链贯通+刚性父链；五面镜像 abi 0x00010010（49 入口）；E511 旋转像素证明
-- **V2.3 LAS=条件制未开**（真实 .las fixture 未落库）；**V2.4 蒙皮+morph=L 级候立项**（F1 提级在册，须独立 plan→Momus→批准）
-- 基线：**343 passed · spec-trace 199↔199 · ABI 49/49 (0x00010010) · ci 十一段 · 画廊 43 卡 · 领先 origin 3 笔（gitee 鉴权失败待用户侧刷新）**
-- 教训入册：PIT-41（多块 patch 截断雷，io-gltf 清空事故）/ PIT-42（WGSL uniform 三雷：闭包/let-if/array stride）/ PIT-43（flag 偏移漂移=探针职责）；后台代理五连败复盘（rpm 限流×3+stale-timeout×2，主会话直做 W1 40 分钟 vs 代理 3 轮全灭——小带直做优于派发）
+- port surface: CAPI-25 set_map (the VeMapView proportional rect; NULL = off = the old path; domain rejection zero side effects) + CAPI-26
+  navigate_click (outside the region / no map = reject; entity→ground two-stage; keeps angles and distance [ruling e]) + CAPI-27
+  get_camera (the VeCameraPose dual-use = input for fly / output for readback; hosts pre-set struct_size, check before writing);
+  30→33 entry points, minor=9; three-surface mirror across the band (header / hpp three thin forwards / wasm 4 bridges setMap·clearMap·
+  navigateClick·getCameraPose + d.ts roster + mirror pin 0x…0009)
+- engine state: MapView + set_map/map_rect/map_rig (the top view derived from the main target) / navigate_click /
+  camera_pose; the render dual-projection branch (the first consumption proof of ⑤b render_view_rects; None = the old-path canary);
+  the pick minimap-region-priority routing; apply_input minimap region kind1..4 = consumed no-ops
+- examples: E816_minimap_nav.c five-segment living gate (canary byte-for-byte / corner dual families 1596g+756r / minimap pick /
+  600ms flight 257 ticks to (3.579,3.714,0) / value-domain reject + no-map reject); ctest #31
+- lessons honestly: E816's first version treated two horizontal planes as "walls" — the top view = red covering green, g=42 exposed it via probe (PIT-8 fourth sighting;
+  probe scene geometry before asserting); segment 5's end-state canary compared against the old ref = the flight moved the camera and must break (post-write self-check root fix,
+  the baseline-refetch shape); the ffi_spec use block missed three function names (the regex newline anchor didn't hit = the edit-safety #9 family)
+- baseline: **226 passed · spec-trace 152↔152 · GATE-ABI 33/33 · GATE-DOCS ✓ E 30 items
+  three-way · ctest 31 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 (abi pin 0x…0009) · ci ten segments
+  0 red · 9 crates · R2 untouched (the web gz increment is accounted by what web-check prints)**
+
+## Super-band five-in-a-row baseline (2026-09-24, plan super-band-2026-09-24 v1.1 · Momus OKAY + three red-team reviews + user nine-card item-by-item rulings all A)
+
+- origin: three-team gap audit (`docs/reference/team-gap-analysis-2026-09-24.md` supersedes the 09-17 edition) → user "adopt everything", action order 1-5 → four-lane review (Momus OKAY 0 blocking + feasibility/consistency/risk three volumes, /tmp index) → two plan-killers (B2 VePickHit premise collapse, B1 thumbnail premise collapse) + one CRITICAL (B2 API shape), all fixed into v1.1
+- **B4 documentation reconciliation** (`51f94bb`): the three drifts WMTS "built-in" / scene tree ×3 / capability_query reworded (EN, C17) + **the 10MB first measurement closed** (cdylib strip 7.25MB ≤10MB, a 27% margin, evidence/2026-09-24-native-size.md) + the gap-analysis canon landed
+- **B2 point picking** (`03a864a`): ruling ④A = zero ABI change (the engine keeps positions + the CAPI-04 revision sentence + the kind account trigger-gated); REND-38 screen-space nearest-point predicate (the **local-point direct projection compose_mvp** = origin already baked into the matrix, don't double-count + the RH [0,1] depth-domain guard); REND-39 mesh-priority canary; CAPI-13 corrected to the CAPI-15 precedent; E204 `--pick-check` argv single master (C15②)
+- **B1 Web gallery** (`2254bbc`): ruling ⑤ reversed during execution = the tool bin rebuilding scenes (drift tax) discarded → **example-side self-emit** (the gallery.rs helper ×10 dual-mode examples save_frame; examples = the card-image true source, zero drift); gen_gallery.py reads the single registry (the three shapes: cmake + per-directory CMakeLists + qt bare add_executable) + fail-loud, dual negative paths measured; 32 cards / 11 real images / build gitignored
+- **B3 MVT tile streaming Phase 0** (`080e07e`): the 10th crate io-tiles — the 353-line handwritten protobuf wire decoder (ruling ①A, zero dependencies; the fixture generator's two wire errors surfaced via Rust/python cross comparison = the decoder error-free) + slippy tile math (neighbor-edge seamlessness law) + FileSource / typed HttpSource stub / stdlib LRU + the GEO-27 GeoTile mapping (y flip + D7 origin anchor); E206 walks the whole chain; **PIT-8 again justified**: the camera look_at sits at the world origin while tiles live at x=−2e7 m = everything off-screen + far < eye distance clips all
+- **B5 one-example-four-meals policy** (`a58e689`): gate-docs six checks + ⑥ the gallery manifest↔on-disk registry set machine lock (negative path measured red); the policy text in three places (tutorials header / dev-workflow / gate comments, EN)
+- **E206 user triple-measurement fixes** (`3f3fccd`/`3690a34`/`9eceb18`): ① no-args immediate exit = the C15 dual-mode breach (the window stub) → the E204 skeleton real window + Xvfb liveness probe; ② drag/wheel unresponsive = Redraw rebuilt tile_rig every frame hardcoded + rig not a field → the persisted rig + orbit_delta/zoom; ③ single tile too plain → the **3×3 neighborhood** (per-tile changing water patches / staggered roads / border linework = seams visible / center POI; vertices baked into small values around the scene center, f32 single world frame); the wheel root cause = **orthographic zoom's only definition is half-width while rig.zoom was never consumed** (look_at default zoom=1.0 + the render hardcoded tile_w, double-stacked)
+- baseline: **259 passed · spec-trace 158↔158 · GATE-ABI 33/33 (the zero-ABI-change line held) · GATE-DOCS six checks ✓ 32 cards · ctest 24 (machine-reported) · 10 crates · zero new dependencies · ci ten segments rc=0 · worktree clean**
+- to-do: push (11 ahead) · the Phase 1 tile band (C API + HTTP, the whitepaper date promise 2026-Q4) · the gallery T3 human check
+
+## ⑤ Phase-1 tile streaming band baseline (2026-09-24, plan tile-streaming-phase1.md P1-S1–S4 all landed)
+
+- port surface: CAPI-28 load_mvt_dir (the FileSource z-level scan; domain z≤30; return = mounted tile count) + CAPI-29 set_tile_view (feed the scheduler a 3857 bbox; return = visible count; not mounted = reject); 30→**35 entry points minor=10 (0x0001000A)**; three-surface mirror across the band (header 2 prototypes / hpp thin forwards / wasm loadMvtDir+setTileView + d.ts roster / mirror abi pin 0x…000A)
+- engine state: the TileLayer structure (set:TileSet + ids + center/wpos/widx/strokes/points + uploaded:Option; render-loop integration = a later band, annotated `#[expect(dead_code)]`); load_mvt_dir scan+ensure+decoded→GeoTile batch build; set_tile_view only ensures, never rebuilds (batches = one-time at mount)
+- io-tiles new pieces: `scheduler.rs` TileSet{visible half-open enumeration + boundary snap / ensure idempotent loading + accounting / decoded through-cache second tier} (IO-13/14); HttpSource::new(root) ureq implemented (IO-15, target-gated: wasm = typed stub, the getrandom/js conflict root-cause fixed); `tests/tile_set.rs` 6 gates; `tests/http_source.rs` 3+1 ignored; the stub tests in source.rs upgraded to new()+ domain assertions
+- dependencies: ureq 3.4.2 (rustls, default-features=false) → webpki-roots (CDLA-Permissive-2.0) → **deny.toml += CDLA-Permissive-2.0**
+- E206: load_tile retired (dead code) + the FileSource/decode_tile imports cleaned; load_viewport driven through the scheduler (the IO-13/14 consumption surface)
+- gate-abi.sh: the expected count updated 33→35; web-mirror.mjs: abiVersion 0x0001000A + roster +2 bridges
+- whitepaper: MVT Phase 1 honored (moved from "delivering" to "delivered" + the WMS/WMTS separate note); README synchronized 163 clauses / 35 entry points / 32 cards
+- lessons filed: PIT-28 (pen px vs anchor world coordinates, the three-port grep rule) · **PIT-31** (ffi_spec domain tests cwd=crate dir, the relative-path trap) · **PIT-32** (the full ureq dependency dragged getrandom into the wasm target — fixed with a target-gate, wasm HttpSource = typed stub)
+- baseline: **270 passed · spec-trace 163↔163 · GATE-ABI 35/35 · GATE-DOCS ✓ E 31 items · ci ten segments rc=0 · web MIRROR 3/3 · 9 crates · ureq 1 new-dep**
+- remaining balance: push (all P1-S1..4 commits of this band) · the render-loop TileLayer integration (E206's prove shape into the engine main loop) · the HTTP source C API (**CAPI-35+** set_tile_source_http; CAPI-30..34 already consumed by the scene-tree band, re-accounted 2026-09-28) · the CJK font S2 balance · LAS ticket-gated, standing by
+
+## ⑥ Scene-tree band baseline (2026-09-24, plan scene-tree-band.md S1-S4)
+
+- port surface: CAPI-30 create_group (the out_entity catalog) + CAPI-31 set_parent (0=root, cycle / depth≤16 detection) + CAPI-32 get_parent + CAPI-33 set_group_offset (the finite gate) + CAPI-34 get_group_offset; 35→**40 entry points minor=11 (0x0001000B)**; three-surface mirror across the band (header 5 prototypes / hpp 5 thin forwards / wasm 5 bridges + d.ts roster / mirror abi pin 0x…000B)
+- engine state: Slot gains parent:Option<EntityId> + offset:[f64;3] (core scene.rs, the Component::Group pure-marker variant, slot_of zero cost); Engine::new_scene (pre-occupies slot0gen0 → the handle is never zero); is_hidden (walks the ancestor chain, tree-aware visibility); the render loop origin = it.origin + scene.effective_offset(entity) (CORE-21 accumulation, O≤16)
+- **design decision**: rotation/scale inheritance = trigger-gated (YAGNI: mainstream GIS engines = visibility + translation only); despawning a group auto-detaches children back to root (no cascade delete)
+- lesson: PIT-31 (ffi_spec tests cwd=crate dir, the relative-path trap) **second sighting** (both the load_mvt_dir and set_group_offset domain tests tripped it) · **PIT-33** (the scene-tree handle=0 semantic collision: slot0gen0 legal vs the parent=0=root sentinel; fix = new_scene pre-occupies slot 0 + the set_parent parent==0 special case)
+- baseline: **287 passed · spec-trace 173↔173 · GATE-ABI 40/40 · GATE-DOCS ✓ E 31 · ctest 33 items · ci 9/10 (audit = PIT-7 11th sighting, a persistent TLS outage, not momentary flake) · web MIRROR ✓ · 9 crates**
+- remaining balance: push (ahead includes this band's S1/S2/S3 three commits + ⑤ P1 five commits ≈ 11) · rotation inheritance = open it when demanded · scene-tree name lookup (node_names stored in engine.rs, no C query port) · the CJK font S2 balance · LAS ticket-gated
+
+## Gap research → hyperplan → Session N+1 baseline (2026-09-28, eight commits closed)
+
+- team mode: four-lane research (.refinfo six families + self-audit) → adversarial planning 4 batches ×3 rounds (C1-C10 all signed + the concession ledger) → Momus OKAY → four-card adjudication (1a tile pump / 2 golden+EDL / 3 morph do / 4 no-deploy + three.js benchmark) → execution
+- N1.1 `a5d3180`: the hpp fly_state forward + **the hpp⊇header mirror gate** (alias-table form: destroy→destroy_now, entity_set_visible→set_visible; breakage-probe self-proof) + the CAPI-30→35+ re-accounting + the legacy clippy debt cleared
+- N1.2 `59c772a`: whitepaper L27/L103 + README L11/L38 precise rewording ("smooth/seamless/stepless" → delivered semantics; the L22 competitor sentence kept)
+- N1.4 `47bbe54`: **CAPI-35 set_tile_source_http** (discovery-style loading) + the io-tiles 4-state pump (begin/pump(budget)/state) + HttpSource 5s timeout + loopback proxy-exempt (PIT-35) + the render loop 4 tiles/frame budget + three-surface mirror abi 0x0001000C + E206 --source real run 9/9 (4+4+1 across frames) + the rebuild_tile_batch extraction
+- N1.3 `354a8e7`: **goldens-10 per-attribute goldens** (good/bad pair self-proof form; all predicates probe-pinned values: opacity 145/207, point 4672/232, clip upper/lower halves, shadow mid-band split)
+- N1.5 `e55dd2f`: **EDL** (Frame.edl None = bit-for-bit zero-regression old path; intermediate texture + the PIT-33 use-domain law; ON 2790px + top row 331.0→322.9 measured; the WGPU-33+REND-40 clauses; E204 --edl)
+- N1.6 `ca6dbee`: the gallery three.js-style detail pages ×32 (CARD 4 = no deploy, purely local)
+- review fixes `60a24a3`: #1 detail-page full-name key (E811_c/_cpp split pages + collision fail-loud) + #2 C17 21 lines zeroed
+- N2.0 `cd55fc1`: #3 the evict_done+decoded_cached reconciliation (PIT-34) + #4 center shifts clear uploaded/batch (misalignment eradicated)
+- lessons: PIT-33/34/35/36 + edit-safety #21/22/23 + the testing.md HashMap-order discipline (registered this round)
+- baseline: **297 passed · spec-trace 177↔177 · ABI 41/41 (0x0001000C) · GATE-DOCS ✓ · ci rc=0 · 8 commits ahead**
+- remaining balance: push awaiting · N+2 = the morph band + entity animation 6a + gallery category expansion · deferrable = property_golden anchor fill / mirror-gate declaration form / multi-viewport EDL assert / point-radius floor
+
+## Session N+2/N+3 baseline (2026-09-28 continued, five commits: the four N2 bands + sweep)
+
+- N2.1 `6d65346`: **projection morph** (M, Momus OKAY + card A pure rs) — the render::morph pure function (endpoint byte-for-byte law) + Engine::set_morph_time (slider clamp semantics, an intentional fork from EdlSetup's rejection form) + the morph_spec 3 gates + E304 dual-mode example (window [/] slides t; the Xvfb liveness probe). Whitepaper §3.1 honored; README "switch" → "continuous projection morph" (the N1.2 honesty arc closed)
+- N2.2 `2ca8551`: **entity animation 6a** (S, split by C5) — render::anim::anim_origin (endpoint identity + f64 far-origin precision) + the anim_spec 4 gates + E305 trajectory replay (24 markers, pixel gate). The example's first run caught the normalized-t misuse = the sampler time-domain contract surfaced
+- N2.3 `f10baff`: the gallery sticky category nav (three.js browsing shape, the 9-domain anchor bar; the lesson of the cards key = restoring title numbers)
+- N2.4 `8b18937`: **attribute hot-update CAPI-36..38** (M, 44 entry points minor=0x0001000D) — the override layer + override-first read + typed-reject (CORE-11/12) + three-surface mirror across the band + the attr_diff_spec 2 gates (fixtures copied the attr_ffi_spec precedent). The rs-only plan upgraded to three C ports = a test-reachability ruling (Engine ownership lives in the handle table)
+- sweep `0d430c4`: review items #5-#8 deferred list zeroed (multi-viewport EDL debug_assert / point-radius dual bands / anchorless golden declaration / mirror-gate declaration-form predicate triple self-proofs; the column-zero [[nodiscard]] lesson = self-proof samples must take real lines)
+- baseline: **306 passed · spec-trace 182↔182 · ABI 44/44 (0x0001000D) · gallery 34 cards + 34 detail pages + nav bar · ci rc=0 · 15 commits ahead**
+- the digital-twin three bones: attribute hot-update ✓ / animation sampling 6a ✓ / serialization S3' on account (triggered by Studio's dependency)
+- to-do: the trigger-gated queue fully empty (geometry diff / box-select / ODR / LAS / 7-state machine tickets standing by)
+- **T3 human checks (2026-09-28 user measurement)**: E304 `[/]` slides the projection morph ✓ · E305 resident window drone loop replay ✓ (the window-surface gap found by the user, filled at eab5530) — two closed, the digital-twin demo surface double-verified
+
+## N4 post-processing framework band baseline (2026-09-28, plan n4-post-framework-band.md v1.0 · Momus OKAY)
+
+- IR: REND-43 PostEffect{Bloom{strength},Outline{width}} + Frame.post Vec (empty = the bit-for-bit zero-regression old path) + the bloom/outline constructors' domain-reject Option (same catalog as EdlSetup::new); **a 46-site Frame construction sweep** (python indent-aware insertion + manual contract.rs edits); the contract_spec + domain-reject gate
+- pipeline: WGPU-34 stage-chain orchestration — ensure_stage_color fixed 2 slots (size+format cache) + per-(effect,format) lazy pipeline creation + bgl shares EDL's 4-binding shape (fullscreen_entries extracted as shared descriptors); the depth Store single flag `edl_on||post_on`; **effect i writes stage[i+1], the last effect writes the final view, stage[0] = chain input never a write target** (the first version writing stage[i] collided with wgpu's usage-scope RESOURCE+COLOR_TARGET in one pass = caught as a validation error)
+- shaders: bloom.wgsl 9-tap luma-threshold additive (THRESHOLD=0.25 tiered by a probe in the linear-decode domain — sRGB encoded 138/px ≈ linear 0.25); outline.wgsl depth-gradient ratio (the WGPU-33 rel same-family threshold 0.08) + selection orange; vs_main same catalog across three shapes (fullscreen triangle strip from vertex_index)
+- examples/gates: E506_postprocessing dual mode (keys 1/2/3 + title echo; --frames off determinism + bloom/outline pixel assertions probe=1289/1509px thresholds 600/700) + four-way consumption across the band (cmake registry disp default headless / tutorials line / gallery 37 cards / smoke-post); the post_chain.rs four gates (off bit-for-byte / bloom 432 / outline 678 / chain order 1038·1640, all probe values in the notes)
+- **web-check caught a real mine**: the engine.rs wasm-only new_canvas constructor was mis-injected with post fields by the sweep script (unreachable by native check = behind the cfg gate) — the living evidence for always running web-check after CI (R2 gz=539641B accounted)
+- baseline: **311 passed (+5) · spec-trace 184↔184 · GATE-ABI 44/44 · GATE-DOCS ✓ E 36 items three-way + 37 cards · ctest 37 items · CMAKE-SMOKE ✓ (Xvfb display ✓) · ci ten segments rc=0 · 9 crates**
+- remaining balance: push awaiting · SSAO/DOF/SSR = framework-following, trigger-gated · multi-viewport post (on account like EDL) · >2-effect chains = non-goal
+
+## T3 human-check addendum (2026-09-29, the N3-N6 full-band interaction surface)
+
+- E508 drag-orbit / wheel-zoom ✓ (the rig hard-coding root-fixed = 733de61) · keys 1/2/3 effects ✓
+- E507 tonemap/bloom keys ✓ · E403 box-select ✓ · E306 map controls ✓ · E304 morph (verified earlier) ✓
+- conclusion: all five N3-N6 bands' interaction surfaces double-verified, no residual T3 items
+
+## V-series gap-closure baseline (2026-09-30, hyperplan → full-closure adjudication → Block A/B execution)
+
+- origin: hyperplan adversarial 5 members ×3 rounds (research base = the three.js 608-example census + refinfo 13 projects + self-audit) → the full-closure adjudication → plan v1.1 (`.omo/plans/gap-closure-full-2026-09-30.md`, 4 reviewers, 10 fixes, 4 risks) → execution
+- audit canon (**2026-10-08 corrected**): this line originally cited the "09-30 audit" and `docs/gap-closure-roadmap.md` as "dual canons", but the former (team-gap-analysis-2026-**09-30**.md) **was never committed** (no such file in the full git history) and the latter did not exist at the time. The live on-disk canons = `docs/reference/team-gap-analysis-2026-09-24.md` (the S-grade gap table + example census) + `docs/reference/team-gap-analysis-2026-09-28b.md` (the three.js 608-example benchmark, superseding 09-24's example-count section) + `docs/gap-closure-roadmap.md` (actually written 2026-10-08: the clause-by-clause re-measured coverage map / not-done list / triggers / reverse advantages; the 09-30 synthesis judgment stays in the gitignored plan `.omo/plans/gap-closure-full-2026-09-30.md`, not citable from the repo)
+- **W1** (`9fd64a2`): REND-46 stroke screen-space picking predicate (+5 pure-math tests; the engine wiring honestly on account — the C pick surface's EntityId vs segs having no entity table collides with CAPI-01; disguising it would be a breach)
+- **W2** (`e24b308`): WGPU-38 depth haze — **the raw-depth perspective-compression mine surfaced by probe** (16m ≈ 0.994), SSAO view_z metric-domain linearization; the three-band geometry-aware dual lock (bg 12114 fully fogged / near 0 touched); E506 key 4
+- **D** (`13035eb`): four drift reconciliations (MVT/morph/scene-tree/Flutter-C#) + **check-promises lint** (the proximity matcher; the self-test breakage probe caught the first version's line-level allowlist as too coarse) + llms.txt/docs-gen; **ci ten segments → eleven**
+- **R** (`54f4e26`): **whitepaper L53's WMS/WMTS promise honored** (the raster surface) — IO-18 the `TilePayload{Mvt,Raster}` enum (anti-trap ruling = single-lane pump / LRU zero fork) + CAPI-39/40 the flat basemap (the N1.2 discipline: NOT terrain); five-surface mirror abi 0x0001000E
+- **I** (`49c2a95`): **WGPU-39 SH-9 environment lighting** (demo-grade claim narrowed; the View block 256→416B tail scheme, zero new bindings; PIT-41/42/43 all three mines tripped and defused); CAPI-41; the E507 env probe
+- **V2.1** (`88e2e90`): REND-47 Bezier/CatmullRom + tube/ribbon (+0-ABI consumption band) — **E510's endpoint-law assertion caught a real sampler bug on first run** (the last knot never landed); E510 four consumers + the resident-window shell added (`5e34bc0`, a new variant of the C15 fourth case = no window); the destroy_points engine port landed as a precondition
+- **V2.2** (`68cc205`): **CAPI-42/43 node local transforms + a legacy root fix** — the glTF entity.world hierarchy matrices were discarded at mount time (multi-node hierarchies had never rendered correctly, masked by E201's single layer); DrawItem.transform wired through the full chain + rigid parent chains; five-surface mirror abi 0x00010010 (49 entry points); E511 rotation pixel proof
+- **V2.3 LAS = conditional, not opened** (no real .las fixture in the repo); **V2.4 skinning+morph = L-grade, awaiting entry** (the F1 promotion on record; it requires its own plan → Momus → approval)
+- baseline: **343 passed · spec-trace 199↔199 · ABI 49/49 (0x00010010) · ci eleven segments · gallery 43 cards · 3 commits ahead of origin (gitee auth failed, user side to refresh)**
+- lessons registered: PIT-41 (multi-block patch truncation mine, the io-gltf wipeout incident) / PIT-42 (the WGSL uniform trio: closures / let-if / array stride) / PIT-43 (flag-offset drift = a probe's job); the background-agent five-losses review (rpm rate limits ×3 + stale-timeout ×2; the main session did W1 directly in 40 minutes vs agents wiped out in 3 rounds — small bands are better done directly than dispatched)
 
 ## Install-tree band baseline (2026-10-08, packaging-round v1.3 P1-P4)
 
@@ -578,16 +592,17 @@ geo crate 16 测试（GEO-01..14）· D7 全链：`tessellate` 输入 local（`G
   static scenes may then use **live-window sha equality** as the gate; animated examples
   must use keys-probe percentages / time-progress + interaction tri-state instead.
 
-## lesson-review 记录（2026-10-08，band V 批 12–14 + V3/V4 收口会话）
-- 新增：PIT-48（harness 调用错误被 `2>/dev/null` 吞 = 判成被测物死；rc 必先断言）、
-  C19（自检/剪枝判据必须 token 级 + 上线前给检查本身种破坏探针；含如实注记：母本 codemod
-  仍是粗判据，仓内真判据是 `lint -D warnings`）、D24（共享件价值以站点数计不以行数计；
-  触发器实测覆盖计划存档步骤；V4 净额行数=零）。
-- 扩写：testing.md harness-truth 第 (2) 条补**第四见**（E201 argv 位置资产打头，ad-hoc
-  `--frames 1` 掉进开窗路，winit 报错长得像渲染 bug 实为跑道选择 bug）。
-- 本轮回顾自己抓到的一条：新写的 C19 检查命令**首版是假门**（谓词连正例都不命中，
-  且依赖会话级 /tmp 文件）；已改为自带破坏探针的可证伪形并实跑（种植样本=1，仓内=0）。
-- 待办队列不变：push（V4 一笔）· T3 人验五条 · npm/pip 打包轮 · LAS/蒙皮票据制候令。
+## lesson-review record (2026-10-08, band V batches 12–14 + V3/V4 close-out session)
+
+- new: PIT-48 (harness invocation errors swallowed by `2>/dev/null` = misread as the object-under-test being dead; assert rc first),
+  C19 (self-check/prune predicates must be token-level + plant a breakage probe in the check itself before commissioning; includes the honest note: the parent codemod
+  still carries the crude predicate, the repo's real judge is `lint -D warnings`), D24 (shared-code value counts in sites, not lines;
+  triggers covered by measurement override the plan's archived steps; V4 net line change = zero).
+- extended: testing.md harness-truth item (2) gains the **fourth sighting** (E201's argv has the positional asset first; the ad-hoc
+  `--frames 1` dropped into the window lane — winit's error looks like a rendering bug but is a lane-selection bug).
+- this review caught one of its own: the newly written C19 check command was **a fake gate in its first version** (the predicate couldn't even hit the positive case,
+  and it depended on a session-level /tmp file); rewritten as the falsifiable form with a built-in breakage probe and actually run (planted sample=1, in-repo=0).
+- queue unchanged: push (the V4 commit) · five T3 human checks · the npm/pip packaging round · LAS/skinning ticket-gated, standing by.
 
 ## Publish band ledger note (2026-10-09, plan next-band-queue todo 3)
 - Live counters moved by this band, measured same-terminal: ci depends-on = **12**

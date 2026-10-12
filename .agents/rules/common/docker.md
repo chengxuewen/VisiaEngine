@@ -2,7 +2,7 @@
 
 > Topic file, loaded on demand (not in opencode.json instructions). Docker, network, and container-specific constraints for VisiaEngine development.
 
-> **Rust→C 交付注记（2026-09-11 FFI 调研）**：musl/嵌入式目标默认 `crt-static` → cdylib 不可产出，需 `-C target-feature=-crt-static`（cargo-c troubleshooting 实证）；RK3588/Jetson 交叉轮生效。
+> **Rust→C delivery note (2026-09-11 FFI research)**: musl/embedded targets default to `crt-static` → no cdylib can be produced; `-C target-feature=-crt-static` is required (evidenced in cargo-c troubleshooting); takes effect on the RK3588/Jetson cross rounds.
 
 ## Volume Mount Performance
 

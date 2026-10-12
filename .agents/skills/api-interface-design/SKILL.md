@@ -205,49 +205,49 @@ No circular dependencies. The protocol module is the leaf every other module may
 
 ---
 
-## Hyrum's Law（海勒姆定律）
+## Hyrum's Law
 
 > With a sufficient number of users of an API, it does not matter what you promise in the contract: all observable behaviors of your system will be depended on by somebody.
 >
 > — Hyrum Wright, Google
 
-**每一个可观察行为都会成为事实契约。**
+**Every observable behavior becomes a de-facto contract.**
 
-| 边界 | 可观察行为（隐性契约） | 防护 |
+| Boundary | Observable behavior (implicit contract) | Defense |
 |------|----------------------|------|
-| WS 协议 | 消息顺序、字段出现时机、连接重试间隔 | E2E 脚本固化行为 → 改了就跑不过 |
-| Trait/接口 | 方法调用顺序、线程安全标记、错误类型 | `#[non_exhaustive]` + 默认实现 |
-| REST API | 响应时间（~P50）、JSON key 排序、空数组 vs null | OpenAPI spec 锁定 contract |
-| 构建 features | 哪些模块依赖哪些 feature 组合 | CI matrix 测试所有组合 |
+| WS protocol | message ordering, when fields appear, connection-retry interval | E2E scripts freeze the behavior → change it and they fail |
+| Trait/interface | method call order, thread-safety markers, error types | `#[non_exhaustive]` + default implementations |
+| REST API | response time (~P50), JSON key ordering, empty array vs null | OpenAPI spec locks the contract |
+| build features | which modules depend on which feature combinations | CI matrix tests all combinations |
 
-**原则**: API 改了用户就会断 — 无论你是否认为那是"内部细节"。做加法，不做减法。
+**Principle**: change the API and users break — whether or not you call it an "internal detail". Make additions, not subtractions.
 
 ---
 
-## One-Version Rule（唯一版本规则）
+## One-Version Rule
 
 > In a package workspace, every dependency should resolve to exactly one semver-incompatible version. Never allow diamond dependencies.
 
-### 工作区约束
+### Workspace constraints
 
-规则（适用于任何多包 workspace，如 Cargo workspace）：
+Rules (apply to any multi-package workspace, e.g. a Cargo workspace):
 
-| 规则 | 原因 |
+| Rule | Reason |
 |------|------|
-| 所有 workspace 成员使用同一个 `[workspace.dependencies]` 版本 | 避免同一库的两个大版本同时链接 |
-| 禁止成员 `[dependencies]` 中写具体版本号 | 版本号只在 workspace root 定义 |
-| 新增外部依赖前检查重复依赖树 | 确认不引入 duplicate 依赖 |
-| 第三方依赖版本升级必须全 workspace 一致 | 升级运行时库就全 workspace 一起升 |
+| all workspace members use one shared `[workspace.dependencies]` version | prevents two majors of the same library being linked together |
+| members' `[dependencies]` must not pin concrete version numbers | versions are defined only at the workspace root |
+| check the duplicate-dependency tree before adding an external dep | confirm no duplicate dependency is introduced |
+| third-party dependency upgrades must be workspace-wide | if a runtime library is upgraded, the whole workspace upgrades together |
 
-**检查命令**（Rust）: `cargo tree -d --workspace` — 空输出 = 通过。
+**Check command** (Rust): `cargo tree -d --workspace` — empty output = pass.
 
 ---
 
-## Branded Type IDs（品牌化类型 ID）
+## Branded Type IDs
 
 > Use wrapper types instead of raw `String`/`u64` for domain identifiers to prevent accidental misuse at the type level.
 
-### 模式
+### Pattern
 
 ```rust
 // ✅ CORRECT: branded types — no accidental RoomId → PeerId swap
@@ -261,7 +261,7 @@ pub struct PeerId(String);
 pub struct TransportId(String);
 
 fn connect(room: RoomId, peer: PeerId, transport: TransportId) { /* ... */ }
-// RoomId, PeerId, TransportId 不能互换 — 编译器阻止误用
+// RoomId, PeerId, TransportId cannot be swapped — the compiler blocks misuse
 ```
 
 ```rust
@@ -269,16 +269,16 @@ fn connect(room: RoomId, peer: PeerId, transport: TransportId) { /* ... */ }
 fn connect(room_id: String, peer_id: String, transport_id: String) { /* ... */ }
 ```
 
-### 收益
+### Benefits
 
-| 无品牌化 | 品牌化 |
+| No branding | Branded |
 |----------|--------|
-| `fn route(room_id: String, peer_id: String)` — 传反静默出错 | `fn route(room_id: RoomId, peer_id: PeerId)` — 编译器拒绝 |
-| `HashMap<String, Conn>` — key 模糊 | `HashMap<TransportId, Conn>` — key 明确 |
-| 序列化时 ID 语义丢失 | Display/Serialize 保留类型语义 |
+| `fn route(room_id: String, peer_id: String)` — reversed arguments fail silently | `fn route(room_id: RoomId, peer_id: PeerId)` — the compiler rejects it |
+| `HashMap<String, Conn>` — ambiguous key | `HashMap<TransportId, Conn>` — explicit key |
+| ID semantics lost at serialization | Display/Serialize retain the type semantics |
 
-### 应用约定
+### Application convention
 
-项目定义自己的 ID 集合时，把品牌化类型集中放在协议/契约 leaf 模块里，跨模块传递的 ID 一律品牌化。
+When a project defines its own ID set, keep the branded types centralized in the protocol/contract leaf module; any ID passed across modules must be branded.
 
-> **ponytail**: 仅对跨模块传递的 ID 做品牌化。内部一次性局部变量不需要。
+> **ponytail**: brand only the IDs that travel across modules. Internal one-shot local variables don't need it.

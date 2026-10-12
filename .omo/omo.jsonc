@@ -14,7 +14,7 @@
     },
     "teams": {
       "dev": {
-        "description": "通用开发团队：实现 + 测试 + 审查",
+        "description": "General development team: implementation + testing + review",
         "members": [
           {
             "role": "implementer",
