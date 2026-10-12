@@ -44,4 +44,19 @@ function(visiaengine_polyorch_pilot)
       NAME visiaengine-geo-clean
       BASE_DIR "${_geo_dir}"
       FOLDER "crates/visiaengine-geo")
+  # IDE build button: the cargo invocation lives HERE (one site, the wrapper
+  # pattern of the cargo-run_ buttons), not in a fake artifact handle -- a
+  # plain rlib has no PolyOrch artifact kind to hang a mediator on. The test
+  # and clean verbs stay on the PolyOrch functions above (env isolation and
+  # scoped rm come from the supplier machinery).
+  get_filename_component(_geo_cargo_bin "${POLYORCH_RUST_CARGO}" DIRECTORY)
+  add_custom_target(visiaengine-geo-build
+      COMMAND ${CMAKE_COMMAND} -E env "PATH=${_geo_cargo_bin}:$ENV{PATH}"
+              ${POLYORCH_RUST_CARGO} build -p visiaengine-geo
+              --manifest-path "${_geo_manifest}"
+              --target-dir "${_geo_dir}"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+      COMMENT "cargo build -p visiaengine-geo (rlib; no artifact staging -- consumers use the workspace lane)"
+      VERBATIM)
+  set_target_properties(visiaengine-geo-build PROPERTIES FOLDER "crates/visiaengine-geo")
 endfunction()
