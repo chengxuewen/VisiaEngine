@@ -1,6 +1,7 @@
 # SDK three-level resolution (section 2.2): AUTO|PIXI|SYSTEM|<explicit path>;
 # every negative path hard-errors with a message that names the remediation.
 
+set(VISIAENGINE_USE_PIXI "ON" CACHE BOOL "Allow pixi-sourced tools (permission, not a demand: ON resolves pixi first and falls back to system; OFF takes pixi out entirely -- cargo/Qt resolve to system only). T-B1 2026-10-10.")
 set(VISIAENGINE_RUST_SDK "AUTO" CACHE STRING "Rust toolchain: AUTO|PIXI|SYSTEM|<absolute cargo path>")
 # 2026-10-10 (T-A0' adjudication): the five-value VISIAENGINE_QT_SDK collapses into the two-value VISIAENGINE_QT --
 # ON = want Qt (the resolution chain serves itself: pixi qt-spike first -> system -> neither = FATAL with two ways out), OFF = do not touch Qt.
@@ -20,6 +21,12 @@ set_property(CACHE VISIAENGINE_QT PROPERTY TYPE BOOL)
 
 # pixi prefix discovery: an activated $CONDA_PREFIX wins; otherwise the in-repo .pixi/envs/<env> (same convention as the gate-abi family)
 function(_ve_pixi_prefix out)
+  # Master-gate choke point (T-B1): OFF empties the prefix so every downstream
+  # branch (activated shell, envs loop, Qt pixi route) resolves to system for free.
+  if(NOT VISIAENGINE_USE_PIXI)
+    set(${out} "" PARENT_SCOPE)
+    return()
+  endif()
   if(DEFINED ENV{CONDA_PREFIX} AND EXISTS "$ENV{CONDA_PREFIX}/bin/cargo")
     set(${out} "$ENV{CONDA_PREFIX}" PARENT_SCOPE)
     return()
@@ -80,6 +87,11 @@ function(visiaengine_resolve_sdks)
         message(FATAL_ERROR "AUTO found no cargo: the pixi environment is absent (run pixi install -e ${VISIAENGINE_PIXI_ENV} first) and system PATH has no cargo")
       endif()
     elseif(VISIAENGINE_RUST_SDK STREQUAL "PIXI")
+      if(NOT VISIAENGINE_USE_PIXI)
+        message(FATAL_ERROR
+          "Contradiction: VISIAENGINE_USE_PIXI=OFF but VISIAENGINE_RUST_SDK=PIXI.\n"
+          "  Drop -DVISIAENGINE_USE_PIXI=OFF, or drop the PIXI force (AUTO/SYSTEM).")
+      endif()
       if(NOT _pixi OR NOT EXISTS "${_pixi}/bin/cargo")
         message(FATAL_ERROR "PIXI forced but the pixi environment is absent: run pixi install -e ${VISIAENGINE_PIXI_ENV} (no fall-back to system)")
       endif()

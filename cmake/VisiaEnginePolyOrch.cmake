@@ -53,3 +53,26 @@ function(visiaengine_ensure_polyorch)
     message(STATUS "VisiaEngine: embedding vendored PolyOrch at ${_po}")
     add_subdirectory("${_po}" "${CMAKE_BINARY_DIR}/_polyorch" EXCLUDE_FROM_ALL)
 endfunction()
+
+# T-B1 (2026-10-10): translate the USE_PIXI master switch into PolyOrch's rust
+# setup. Callers wanting the rust face call visiaengine_ensure_polyorch_rust()
+# AFTER this module's ensure call. FROM pixi REQUIRES polyorch_pixi_setup()
+# first (supplier FATALs otherwise) -- the ordering below is load-bearing.
+function(visiaengine_ensure_polyorch_rust)
+    if(TARGET PolyOrch::PolyOrch AND COMMAND polyorch_rust_setup)
+        if(NOT POLYORCH_RUST_FOUND)
+            if(VISIAENGINE_USE_PIXI)
+                # module path does not propagate out of add_subdirectory (measured):
+                # include by absolute path via the sentinel's D39 property.
+                get_target_property(_po_mod PolyOrch::PolyOrch INTERFACE_POLYORCH_CMAKE_DIR)
+                include("${_po_mod}/PolyOrchPixiHelpers.cmake")
+                polyorch_pixi_setup()
+                polyorch_rust_setup(FROM pixi)
+            else()
+                polyorch_rust_setup(FROM system)
+            endif()
+            message(STATUS "VisiaEngine: PolyOrch rust face ready "
+                    "(route = ${VISIAENGINE_USE_PIXI}, cargo = ${POLYORCH_RUST_CARGO})")
+        endif()
+    endif()
+endfunction()
