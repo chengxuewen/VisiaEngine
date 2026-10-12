@@ -153,4 +153,4 @@ else
     DISPLAY_NOTE="display family not executed (no Xvfb -- not a pass)"
 fi
 
-echo "CMAKE-SMOKE ✓ (full bare chain + three negative-path messages + the bare-PATH triple anchor + ${TREE_NOTE} + ${DISPLAY_NOTE})"
+echo "CMAKE-SMOKE ✓ (full bare chain + four negative-path messages + the bare-PATH triple anchor + ${TREE_NOTE} + ${DISPLAY_NOTE})"
