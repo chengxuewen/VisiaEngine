@@ -296,3 +296,19 @@ the toolchain cousin of #26's "assert before write").
 **Verification**: `bash -n <the script you changed>`; after a heredoc, `git diff --stat` lists only the expected files;
 `grep -c "<new-section feature string>" <target file>` == 1.
 **Blocking condition**: embedding a heredoc inside a heredoc with the same delimiter in one command; or using a format string in a gate assertion without self-proving it first.
+
+### 28. Re-anchor every check that greps a translatable literal, in the same commit as the translation (2026-10-12 E2 round)
+
+**Rule**: a gate/check whose grep pattern embeds prose from a file owned by a translation/
+refactor batch dies silently when that batch lands ("sentinel"/"stale artifact" replaced Chinese anchors):
+the check still RUNS, greps NOTHING, and passes vacuously (PIT-43 class). Sweep order when a
+batch edits prose: (1) grep the repo for literals that referenced the old text;
+(2) re-anchor pattern AND target in one commit; (3) the gate file itself must not contain the
+forbidden literals it scans (PIT-1 self-match -- build patterns from escapes, e.g.
+"'\u975e\u76ee\u6807").
+
+**Verification**: for each re-anchored check, run it once against the new anchor and expect
+the documented pass; run `bash scripts/gate-i18n.sh` after editing any gate that scans CJK.
+
+**Blocking condition**: landing a prose-translation batch in the same commit as its dependent
+gates without re-running each gate verbatim; leaving a gate file carrying its own scanned literals.

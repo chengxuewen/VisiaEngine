@@ -134,3 +134,18 @@ bash scripts/gate-i18n.sh   # red/green proof duty per C0 was performed 2026-10-
 
 New commits: subject+body in English from E1 onward (the pre-E1 Chinese commit history is
 history, not policy; searchable via the whitepaper-zh-v0.1.0 tag and parent commits).
+
+## C21: Semicolon is the CMake list separator -- multi-value table entries need their own delimiter (2026-10-12, caught live as CMP0002 target collision)
+
+A `set(T "a=b;c;d")` entry is ONE string at `set()` but a 3-element LIST the moment
+`foreach(x ${T})` iterates it -- each `;` splits. Table entries that bundle a value plus
+its dependency list must use a non-list separator (`@` here) inside the entry and
+`string(REPLACE "@" ";" ...)` after extraction. Symptom when violated: `add_custom_target`
+dies with "another target with the same name already exists" on the SECOND entry, naming a
+fragment (e.g. `visiaengine-render-build`) as the collision -- the fragment was a dependency
+name iterated as a crate.
+
+```bash
+# any table file: entries must not carry raw ';' inside quoted values
+grep -nE '"[^"]*;[^"]*=' cmake/VisiaEnginePolyOrchCrates.cmake && echo FAIL || echo PASS
+```
