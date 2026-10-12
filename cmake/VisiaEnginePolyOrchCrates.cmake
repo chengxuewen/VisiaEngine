@@ -50,11 +50,13 @@ function(visiaengine_polyorch_crates)
   get_filename_component(_cargo_bin "${POLYORCH_RUST_CARGO}" DIRECTORY)
   set(_rlib_dir "${CMAKE_BINARY_DIR}/.cargo-target-rlibs")
 
-  # shared clean: every crate's clean button clears the shared rlib face
+  # shared clean: every crate's clean button clears the shared rlib face.
+  # No FOLDER: the action target is an implementation detail (the 9 crate
+  # aliases are the user-facing entries); hiding it keeps the crates tree
+  # free of a non-crate node. Same for the two aggregates below.
   polyorch_rust_clean(
       NAME visiaengine-rlibs-clean
-      BASE_DIR "${_rlib_dir}"
-      FOLDER "crates")
+      BASE_DIR "${_rlib_dir}")
 
   foreach(_entry ${VE_RLIB_FACE})
     string(REPLACE "@" ";" _kv "${_entry}")
@@ -101,5 +103,20 @@ function(visiaengine_polyorch_crates)
     polyorch_rust_ide_mount(TARGET ${_c}-build
         MANIFEST "${CMAKE_SOURCE_DIR}/crates/${_c}/Cargo.toml"
         CRATE ${_c})
+    list(APPEND _all_builds ${_c}-build)
+    list(APPEND _all_tests  ${_c}-rusttest)
   endforeach()
+
+  # face-level aggregates (the "all" entries of the three surfaces; hidden
+  # from the grouping tree like rlibs-clean -- the per-crate buttons are the
+  # user-facing entries). Ninja/make order the 9 via the dependency edges
+  # already registered between the build buttons.
+  add_custom_target(visiaengine-rlibs-build
+      COMMENT "building all 9 workspace rlibs (dependency-ordered)"
+      VERBATIM)
+  add_dependencies(visiaengine-rlibs-build ${_all_builds})
+  add_custom_target(visiaengine-rlibs-rusttest
+      COMMENT "running every workspace rlib's spec suite"
+      VERBATIM)
+  add_dependencies(visiaengine-rlibs-rusttest ${_all_tests})
 endfunction()
