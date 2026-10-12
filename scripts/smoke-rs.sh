@@ -7,9 +7,9 @@ cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 STEM="${1:?用法: smoke-rs.sh <E###_茎名>}"
 CM=$(command -v cmake || true); [ -n "$CM" ] || CM=.pixi/envs/default/bin/cmake
 CT=$(command -v ctest || true);  [ -n "$CT" ]  || CT=.pixi/envs/default/bin/ctest
-"$CM" --preset bare >/dev/null || { echo "SMOKE-RS ✗ ${STEM} configure"; exit 1; }
-"$CM" --build --preset bare >/dev/null || { echo "SMOKE-RS ✗ ${STEM} build"; exit 1; }
-out=$("$CT" --test-dir target/cmake-bare -R "^example_${STEM}\$" --output-on-failure 2>&1); rc=$?
+"$CM" --preset default >/dev/null || { echo "SMOKE-RS ✗ ${STEM} configure"; exit 1; }
+"$CM" --build --preset default >/dev/null || { echo "SMOKE-RS ✗ ${STEM} build"; exit 1; }
+out=$("$CT" --test-dir cmake-build -R "^example_${STEM}\$" --output-on-failure 2>&1); rc=$?
 echo "$out" | tail -3
 echo "$out" | grep -qE 'out of [1-9]' || { echo "SMOKE-RS ✗ ${STEM} 未被选中（空匹配假绿拦截）"; exit 1; }
 [ $rc -eq 0 ] && echo "SMOKE-RS ✓ ${STEM}" || echo "SMOKE-RS ✗ ${STEM} rc=$rc"

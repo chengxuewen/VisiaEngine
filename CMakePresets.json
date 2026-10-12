@@ -2,26 +2,60 @@
   "version": 7,
   "configurePresets": [
     {
-      "name": "bare",
-      "displayName": "Rust-only（Qt OFF，纯 cargo-step 验证）",
+      "name": "default",
+      "displayName": "日常开发（Debug，Qt/Rust 自动解析；gallery 独占 build/，CMake 树在 cmake-build/）",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/target/cmake-bare",
+      "binaryDir": "${sourceDir}/cmake-build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "VISIAENGINE_QT_SDK": "OFF"
+        "CMAKE_RUNTIME_OUTPUT_DIRECTORY": "${sourceDir}/cmake-build/bin",
+        "CMAKE_LIBRARY_OUTPUT_DIRECTORY": "${sourceDir}/cmake-build/lib",
+        "CMAKE_ARCHIVE_OUTPUT_DIRECTORY": "${sourceDir}/cmake-build/lib"
       }
     },
     {
-      "name": "qt-pixi",
-      "displayName": "Qt demo（pixi 环境 SDK；仓内 .pixi/envs 兜底可裸开）",
+      "name": "release",
+      "displayName": "发包前验证（Release，同 default 形态）",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/target/qt-build",
+      "binaryDir": "${sourceDir}/cmake-build-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_RUNTIME_OUTPUT_DIRECTORY": "${sourceDir}/cmake-build-release/bin",
+        "CMAKE_LIBRARY_OUTPUT_DIRECTORY": "${sourceDir}/cmake-build-release/lib",
+        "CMAKE_ARCHIVE_OUTPUT_DIRECTORY": "${sourceDir}/cmake-build-release/lib"
+      }
+    },
+    {
+      "name": "prebuilt",
+      "displayName": "纯消费（无 cargo；VISIAENGINE_ARTIFACT_PATH 必填）",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-prebuilt",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "VSCode F5（default + PolyOrch CodeLLDB 托管调试面）",
+      "inherits": "default",
+      "cacheVariables": {
+        "POLYORCH_RUST_VSCODE_DEBUG": "ON"
+      }
+    },
+    {
+      "name": "ci-strict",
+      "displayName": "CI 防漂移钉（双 SDK 强制 PIXI；勿用于日常）",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-ci",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "VISIAENGINE_QT_SDK": "PIXI",
-        "VISIAENGINE_RUST_SDK": "PIXI"
+        "VISIAENGINE_QT": "ON",
+        "VISIAENGINE_RUST_SDK": "PIXI",
+        "VISIAENGINE_PIXI_ENV": "qt-spike"
       },
       "environment": {
         "CMAKE_PREFIX_PATH": "$penv{CONDA_PREFIX}"
@@ -29,39 +63,36 @@
     }
   ],
   "buildPresets": [
-    {
-      "name": "bare",
-      "configurePreset": "bare"
-    },
-    {
-      "name": "qt-pixi",
-      "configurePreset": "qt-pixi"
-    }
+    { "name": "default", "configurePreset": "default" },
+    { "name": "release", "configurePreset": "release" },
+    { "name": "prebuilt", "configurePreset": "prebuilt" },
+    { "name": "debug", "configurePreset": "debug" },
+    { "name": "ci-strict", "configurePreset": "ci-strict" }
   ],
   "testPresets": [
     {
-      "name": "bare",
-      "configurePreset": "bare",
-      "output": {
-        "outputOnFailure": true
-      },
-      "filter": {
-        "exclude": {
-          "label": "display"
-        }
-      }
+      "name": "default",
+      "configurePreset": "default",
+      "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "display" } }
     },
     {
-      "name": "qt-pixi",
-      "configurePreset": "qt-pixi",
-      "output": {
-        "outputOnFailure": true
-      },
-      "filter": {
-        "exclude": {
-          "label": "display"
-        }
-      }
+      "name": "release",
+      "configurePreset": "release",
+      "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "display" } }
+    },
+    {
+      "name": "debug",
+      "configurePreset": "default",
+      "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "display" } }
+    },
+    {
+      "name": "ci-strict",
+      "configurePreset": "ci-strict",
+      "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "display" } }
     }
   ]
 }

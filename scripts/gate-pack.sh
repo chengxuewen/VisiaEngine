@@ -19,7 +19,7 @@ fail=0
 say() { echo "$1"; fail=1; }
 
 # Build + install into a throwaway prefix (never touches a user prefix).
-[ -d "$B" ] || { echo "GATE-PACK SKIP (无 $B —— 先跑 cmake-smoke 或 pixi run cmake --preset bare)"; exit 0; }
+[ -d "$B" ] || { echo "GATE-PACK SKIP (无 $B —— 先跑 cmake-smoke 或 pixi run cmake --preset default)"; exit 0; }
 rm -rf "$P"
 "$CM" --install "$B" --prefix "$P" >/dev/null 2>&1 \
   || { say "GATE-PACK ✗ install 失败"; exit 1; }

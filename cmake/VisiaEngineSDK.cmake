@@ -2,11 +2,21 @@
 # 依据 docs/reference/cmake-integration-patterns.md（iceoryx2 形改道：PATH 假定→三级解析）。
 
 set(VISIAENGINE_RUST_SDK "AUTO" CACHE STRING "Rust 工具链：AUTO|PIXI|SYSTEM|<cargo 绝对路径>")
-set(VISIAENGINE_QT_SDK "AUTO" CACHE STRING "Qt6：AUTO|PIXI|SYSTEM|OFF|<Qt6 前缀目录>")
+# 2026-10-10（T-A0' 裁决）：五值 VISIAENGINE_QT_SDK 收敛为二值 VISIAENGINE_QT——
+# ON=要 Qt（解析链自助：pixi qt-spike 优先→系统→都无=FATAL 带两出路），OFF=不碰 Qt。
+# 来源选择不是用户输入（AUTO 的静默降级只属于"没人要 Qt"的世界；ON 落空必须响亮）。
+# 旧名侦测：残留缓存静默变 Qt=OFF 是假绿——响亮指路。
+if(DEFINED VISIAENGINE_QT_SDK)
+  message(WARNING
+    "VISIAENGINE_QT_SDK 已更名 VISIAENGINE_QT（二值 OFF|ON）。本构建目录残留旧缓存 "
+    "VISIAENGINE_QT_SDK=${VISIAENGINE_QT_SDK} 将被忽略；删除 CMakeCache.txt 重建，"
+    "或改用 -DVISIAENGINE_QT=ON")
+endif()
+set(VISIAENGINE_QT "OFF" CACHE BOOL "要 Qt6？（ON=pixi qt-spike 优先→系统→都无 FATAL；OFF=不配 Qt）")
 set(VISIAENGINE_PIXI_ENV "qt-spike" CACHE STRING "pixi 环境名（该 env 目录缺位时回落 default）")
 set(VISIAENGINE_ARTIFACT_PATH "" CACHE PATH "预构建 capi 产物目录（设之=纯消费，cargo 步不生成；文件缺失=硬错）")
 set_property(CACHE VISIAENGINE_RUST_SDK PROPERTY STRINGS AUTO PIXI SYSTEM)
-set_property(CACHE VISIAENGINE_QT_SDK PROPERTY STRINGS AUTO PIXI SYSTEM OFF)
+set_property(CACHE VISIAENGINE_QT PROPERTY TYPE BOOL)
 
 # pixi 前缀发现：激活态 $CONDA_PREFIX 优先，否则仓内 .pixi/envs/<env>（gate-abi 同族惯例）
 function(_ve_pixi_prefix out)
@@ -101,55 +111,31 @@ function(visiaengine_resolve_sdks)
     message(STATUS "Rust SDK: ${_cargo} [${_kind}] · MSRV ${_msrv}")
   endif()
 
-  # ---- Qt6 ----
-  if(VISIAENGINE_QT_SDK STREQUAL "OFF")
+  # ---- Qt6（T-A0' 二值合同）----
+  if(NOT VISIAENGINE_QT)
     set(VISIAENGINE_QT_KIND "OFF" PARENT_SCOPE)
-    message(STATUS "Qt: OFF（bare/cargo-only 配置态）")
+    message(STATUS "Qt: OFF（不开 Qt；要 Qt 用 -DVISIAENGINE_QT=ON）")
     return()
   endif()
+  # ON=严格要 Qt。来源自助：pixi（qt-spike 优先，环境内自足原则）→ 系统 → 都无 FATAL。
+  # USE_PIXI=OFF 时 _pixi 已为空（总闸收口点），此处天然只剩系统路——无需重复判断。
+  find_package(Qt6 COMPONENTS Widgets QUIET)
   set(_qkind "")
-  if(VISIAENGINE_QT_SDK STREQUAL "AUTO")
+  if(NOT Qt6_FOUND AND _pixi)
+    list(APPEND CMAKE_PREFIX_PATH "${_pixi}")
     find_package(Qt6 COMPONENTS Widgets QUIET)
     if(Qt6_FOUND)
-      set(_qkind "system")
-    elseif(_pixi)
-      list(APPEND CMAKE_PREFIX_PATH "${_pixi}")
-      find_package(Qt6 COMPONENTS Widgets QUIET)
-      if(Qt6_FOUND)
-        set(_qkind "pixi")
-      endif()
-    endif()
-    if(NOT Qt6_FOUND)
-      message(STATUS "Qt: AUTO 双路未命中（系统/pixi）——Qt 消费者功能将不可用；跑 pixi install -e ${VISIAENGINE_PIXI_ENV} 或 -DVISIAENGINE_QT_SDK=<dir>")
-    endif()
-  elseif(VISIAENGINE_QT_SDK STREQUAL "PIXI" OR VISIAENGINE_QT_SDK STREQUAL "SYSTEM")
-    if(VISIAENGINE_QT_SDK STREQUAL "PIXI")
-      if(NOT _pixi)
-        message(FATAL_ERROR "强制 PIXI 但无 pixi 环境：跑 pixi install -e ${VISIAENGINE_PIXI_ENV}（不回落系统）")
-      endif()
-      list(APPEND CMAKE_PREFIX_PATH "${_pixi}")
       set(_qkind "pixi")
-    else()
-      set(_qkind "system")
-      list(REMOVE_ITEM CMAKE_PREFIX_PATH "${_pixi}") # 反污染：SYSTEM 态剔除 pixi 前缀
     endif()
-    find_package(Qt6 COMPONENTS Widgets QUIET)
-    if(NOT Qt6_FOUND)
-      message(FATAL_ERROR "强制 ${VISIAENGINE_QT_SDK} 的 Qt6 未找到（该模式不回落；改 AUTO 或给目录）")
-    endif()
-    if(_qkind STREQUAL "system" AND Qt6_FOUND AND Qt6_DIR MATCHES "\.pixi|envs/")
-      message(FATAL_ERROR "SYSTEM 模式拒收 pixi 树内 Qt6（${Qt6_DIR}）；改 AUTO/PIXI 或开未激活 shell")
-    endif()
-  else()
-    if(NOT IS_DIRECTORY "${VISIAENGINE_QT_SDK}")
-      message(FATAL_ERROR "VISIAENGINE_QT_SDK=${VISIAENGINE_QT_SDK} 不是目录（显式路径=逃生舱）")
-    endif()
-    list(APPEND CMAKE_PREFIX_PATH "${VISIAENGINE_QT_SDK}")
-    find_package(Qt6 COMPONENTS Widgets QUIET)
-    if(NOT Qt6_FOUND)
-      message(FATAL_ERROR "目录 ${VISIAENGINE_QT_SDK} 下无 Qt6Config（逃生舱路径亦须真实）")
-    endif()
-    set(_qkind "path")
+  elseif(Qt6_FOUND)
+    set(_qkind "system")
+  endif()
+  if(NOT Qt6_FOUND)
+    message(FATAL_ERROR
+      "VISIAENGINE_QT=ON 但两边都没找到 Qt6：\n"
+      "  pixi 路线：pixi install -e ${VISIAENGINE_PIXI_ENV}（qt6-main 在 qt-spike 环境）\n"
+      "  系统路线：安装 Qt6（qt6-base-dev / 官网安装器）后重试\n"
+      "不想要 Qt 就 -DVISIAENGINE_QT=OFF（默认）")
   endif()
   if(_qkind STREQUAL "system")
     message(STATUS "Qt: ${Qt6_VERSION} [system] ${Qt6_DIR}")

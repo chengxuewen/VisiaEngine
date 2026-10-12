@@ -98,3 +98,9 @@ node_modules
 # Official reference source clones (git-ignored, script-managed)
 .refinfo
 Testing/
+
+# CMake preset build trees (T-A0' 2026-10-10): gallery owns build/, cargo owns target/
+cmake-build/
+cmake-build-release/
+cmake-build-prebuilt/
+cmake-build-ci/

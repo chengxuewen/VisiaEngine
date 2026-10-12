@@ -35,7 +35,7 @@ if(VISIAENGINE_EXAMPLES AND NOT VISIAENGINE_ARTIFACT_PATH)
   add_subdirectory(examples/cpp)
 endif()
 
-if(NOT VISIAENGINE_QT_SDK STREQUAL "OFF")
+if(VISIAENGINE_QT)
   add_subdirectory(examples/qt) # Qt 宿主专带（绑定面 widget.hpp 在 bindings/qt，头-only）
 endif()
 

@@ -21,7 +21,7 @@ if [ -z "$XVFB" ] || [ -z "$XWD" ]; then
 fi
 
 BIN="target/debug/examples/${STEM}"
-[ -f "$BIN" ] || BIN="target/cmake-bare/examples/rs/${STEM}"
+[ -f "$BIN" ] || BIN="cmake-build/examples/rs/${STEM}"
 [ -f "$BIN" ] || { echo "WINDOW-PROBE ✗ ${STEM} 无二进制（先 build）"; exit 1; }
 
 # 启 Xvfb（离散显示号避开 CI 并发）

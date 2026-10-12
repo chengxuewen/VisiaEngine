@@ -40,8 +40,10 @@
 ```bash
 ```bash
 bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
-pixi run cmake --preset bare && pixi run cmake --build --preset bare   # C++/IDE 入口（根 CMake 门面）
-# IDE 打开工程即得：测试面板=全语言例子统一清单（ctest --preset bare）；构建菜单含逐例 cargo-build_*/cargo-run_* 步骤；Rust 例另有 rust-analyzer Run/Debug
+pixi run cmake --preset default && pixi run cmake --build --preset default   # C++/IDE 入口（根 CMake 门面）
+
+> 输出地盘：`build/` = 画廊独占 · `target/` = cargo 直调独占 · `cmake-build*/` = CMake 预设构建树（T-A0' 2026-10-10）。VSCode 装 CMake Tools 即按预设工作（cmake.useCMakePresets=always 已配）。
+# IDE 打开工程即得：测试面板=全语言例子统一清单（ctest --preset default）；构建菜单含逐例 cargo-build_*/cargo-run_* 步骤；Rust 例另有 rust-analyzer Run/Debug
 ```
 
 ## 商业模型

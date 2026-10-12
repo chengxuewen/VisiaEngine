@@ -58,7 +58,7 @@
 
 ## IDE 运行（CMake target 面）
 
-`pixi run cmake --preset bare`（或 IDE 直接打开工程选 bare/qt-pixi 预设）后：
+`pixi run cmake --preset default`（或 IDE 打开工程选 default/qt 预设；CI 用 ci-strict）后：
 
 - **Rust E 系（examples/rs）三件套**：构建步 `cargo-build_<E#>`（单例增量）、
   运行步 `cargo-run_<E#>`（构建+跑，输出终端）、ctest 条目 `example_<E#>`——
@@ -73,7 +73,7 @@
 新增例必须同轮注册：Rust 例=Bindings.cmake 注册表行 + `examples/rs` 的
 `[[example]]` 块；C/C++ 例=对应 `examples/<lang>/CMakeLists.txt` 的
 `visiaengine_add_example()` 行（反-glob 中央账 configure 硬错，禁注释式禁用）。
-E703（Qt 宿主带）仅 qt-pixi 预设下存在。
+E703（Qt 宿主带）在 ci-strict 预设（或 -DVISIAENGINE_QT=ON）下存在。
 
 ## 人验形态（双模约定 · IDE 手跑与自动测试同一入口）
 

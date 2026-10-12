@@ -20,7 +20,7 @@ esac
 B=target/cmake-smoke
 rm -rf "$B" "$B-neg" "$B-negconf"
 
-"$CM" -S . -B "$B" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT_SDK=OFF >/dev/null \
+"$CM" -S . -B "$B" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT=OFF >/dev/null \
     || { echo "CMAKE-SMOKE ✗ bare configure"; exit 1; }
 "$CM" --build "$B" >/dev/null || { echo "CMAKE-SMOKE ✗ build"; exit 1; }
 "$CT" --test-dir "$B" -LE display --output-on-failure >/dev/null 2>&1 \
@@ -38,7 +38,7 @@ RN=$(grep -oE 'ctest 统一例子清单（[0-9]+ 条' README.md | grep -oE '[0-9
 # （2026-09-15 实锤：pixi run 包装掩盖，用户 IDE /usr/bin/cmake 直调爆「could not execute rustc」）
 SYS_CM=$(command -v /usr/bin/cmake || true); [ -n "$SYS_CM" ] || SYS_CM="$CM"  # 探针=用户 IDE 真形（系统 cmake；无系统 cmake 机退 conda 件）
 # 编译器绝对路径钉死=探针聚焦 cargo 自足面（本机实况：系统无 g++，C++ 全在 conda 侧；IDE 真形另由态①覆盖）
-env PATH=/usr/bin:/bin "$SYS_CM" -S . -B "$B-negconf" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT_SDK=OFF \
+env PATH=/usr/bin:/bin "$SYS_CM" -S . -B "$B-negconf" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT=OFF \
     -DCMAKE_C_COMPILER=/usr/bin/gcc "-DCMAKE_CXX_COMPILER=$(dirname "$CM")/x86_64-conda-linux-gnu-c++" \
     >/dev/null 2>&1 \
     || { echo "CMAKE-SMOKE ✗ 裸 PATH configure（SDK/cargo 自足性破坏——.pixi 兜底断）"; exit 1; }
@@ -49,7 +49,7 @@ for _t in cargo-build_capi cargo-build_examples; do
 done
 
 # 负路径 1：SYSTEM 语义（激活壳=拒收污染；真系统 cargo=合法通过；其余=必错且报文含 SYSTEM）
-out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_RUST_SDK=SYSTEM 2>&1)
+out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT=OFF -DVISIAENGINE_RUST_SDK=SYSTEM 2>&1)
 rc=$?
 if [ $rc -eq 0 ]; then
     echo "  note: SYSTEM 模式走了真·系统 cargo（合法环境态）"
@@ -60,7 +60,7 @@ fi
 # （D39 嵌入契约 2026-10-10；报文断言用短语 grep，cmake 折行不漏——同负路径 1/2 纪律）
 mv PolyOrch PolyOrch.smoke-hidden 2>/dev/null  # 已是 submodule 时目录存在；缺目录的机=天然走同一断言
 rm -rf "$B-neg3"  # 独立目录：负路径1的 SYSTEM 缓存会抢先炸（SDK:86），轮不到 shim——实测坑
-out=$("$CM" -S . -B "$B-neg3" -G Ninja -DVISIAENGINE_QT_SDK=OFF 2>&1)  # 纯 bare：不带逃生舱旗，否则 SDK 解析先死轮不到 shim
+out=$("$CM" -S . -B "$B-neg3" -G Ninja -DVISIAENGINE_QT=OFF 2>&1)  # 纯 bare：不带逃生舱旗，否则 SDK 解析先死轮不到 shim
 rm -rf "$B-neg3"
 mv PolyOrch.smoke-hidden PolyOrch 2>/dev/null || true
 if ! grep -q "submodule update --init" <<<"$out"; then
@@ -68,7 +68,7 @@ if ! grep -q "submodule update --init" <<<"$out"; then
 fi
 
 # 负路径 2：预构建逃生舱缺物=硬错（环境无关确定性）
-out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_ARTIFACT_PATH=/tmp/ve-nope 2>&1)
+out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT=OFF -DVISIAENGINE_ARTIFACT_PATH=/tmp/ve-nope 2>&1)
 [ $? -ne 0 ] && grep -q "无 capi" <<<"$out" \
     || { echo "CMAKE-SMOKE ✗ 逃生舱缺物未硬错（静默消费回潮）"; exit 1; }  # 短语断言：cmake 报文会折行，全句 grep 必漏
 

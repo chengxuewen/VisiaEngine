@@ -55,3 +55,7 @@ Windows：`bootstrap.bat` → `pixi.bat`（子 shell 形态）。**注：.bat �
 ## 本机实测基线（2026-09-03，linux-64）
 
 首跑 solve+安装 **37s**（缓存热后）· 幂等二跑 **0.24s** · `pixi run verify` 六件套全绿 · 五平台 lock 条目 linux×2:57 / osx×2:26 / win-64:42。
+
+## CMake 预设构建树（T-A0' 2026-10-10）
+
+CMake 构建树住 `cmake-build*/`（VSCode 选预设即用）。注意与旧 `target/cmake-rust` 共享增量面的差异：现在 **cargo 缓存随构建树隔离**（PolyOrch 默认 `.cargo-target/` 在各 cmake-build* 内）——每个预设首次全量编译一次 cargo；换取的是构建目录自足（删树=全清）与多预设可并行。gallery 独占 `build/`，cargo 直调独占 `target/`。
