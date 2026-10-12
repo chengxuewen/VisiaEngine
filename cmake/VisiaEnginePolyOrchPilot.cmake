@@ -59,4 +59,13 @@ function(visiaengine_polyorch_pilot)
       COMMENT "cargo build -p visiaengine-geo (rlib; no artifact staging -- consumers use the workspace lane)"
       VERBATIM)
   set_target_properties(visiaengine-geo-build PROPERTIES FOLDER "crates/visiaengine-geo")
+  # IDE source mounts hang DIRECTLY off the build target (user adjudication:
+  # no -ide carrier targets -- the build node is the anchor, its SOURCES are
+  # the crate's own files plus the dependency crate it pulls in; the
+  # metadata-authoritative mount is the PolyOrch public function, V only calls).
+  polyorch_rust_ide_mount(TARGET visiaengine-geo-build
+      MANIFEST "${_geo_manifest}" CRATE visiaengine-geo)
+  polyorch_rust_ide_mount(TARGET visiaengine-geo-build
+      MANIFEST "${CMAKE_SOURCE_DIR}/crates/visiaengine-core/Cargo.toml"
+      CRATE visiaengine-core)
 endfunction()
