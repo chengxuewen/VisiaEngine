@@ -51,12 +51,24 @@ while IFS= read -r f; do
     done < <(grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//')
 done < <(ls README.md docs/*.md docs/sdd/*.md docs/reference/*.md llms.txt 2>/dev/null)
 
-# ⑤ 门面纯度（CMake 层纪律：根文件 ≤60 行且禁载编译规则——权威=cargo/pixi）
+# ⑤ 门面纯度（T-A 2026-10-10 裁决 1-B+：装配层定位）——行数软阈值 120 + 豁免标注 +
+# 结构硬锁（编译规则禁入根；polyorch_* 装配调用与伞 ALIAS 白名单）。原 60 行锁随 PolyOrch
+# 全量改造放宽：行数是代理指标不是病本身，病=根文件不可读/载编译规则，那两条仍是硬的。
 if [ -f CMakeLists.txt ]; then
     rl=$(wc -l < CMakeLists.txt)
-    [ "$rl" -le 60 ] || { echo "GATE-DOCS ✗ ⑤根 CMakeLists ${rl} 行超 60（门面纪律）"; fail=1; }
-    if grep -qE 'add_executable|add_library\(' CMakeLists.txt; then
-        echo "GATE-DOCS ✗ ⑤根门面含编译规则字样（越权 cargo 权威）"; fail=1
+    exempt=$(grep -q '# assembly-growth' CMakeLists.txt && echo 1 || echo 0)
+    if [ "$rl" -gt 120 ]; then
+        if [ "$exempt" = 1 ]; then
+            echo "GATE-DOCS ⑤根 CMakeLists ${rl} 行超 120（assembly-growth 豁免在案，人工承诺已给出理由）"
+        else
+            echo "GATE-DOCS ✗ ⑤根 CMakeLists ${rl} 行超 120：下沉到 cmake/ 模块，或在根文件加 '# assembly-growth: <理由>' 豁免标注（带说明）"
+            fail=1
+        fi
+    fi
+    # 结构硬锁：真编译规则禁入根（黑名单），装配语句放行。add_library 仅放行 ALIAS 形态。
+    bad=$(grep -nE 'add_executable\(|add_library\(' CMakeLists.txt | grep -vE 'add_library\([^)]*ALIAS' | grep -vE '^\s*#|polyorch_' || true)
+    if [ -n "$bad" ]; then
+        echo "GATE-DOCS ✗ ⑤根门面含编译规则（装配层禁载；ALIAS 伞除外）：$bad"; fail=1
     fi
 fi
 

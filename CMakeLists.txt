@@ -1,5 +1,7 @@
-# 门面：IDE/消费者入口（权威构建 = cargo + pixi [D5]；本文件禁载编译规则，
-# 纯度由 scripts/gate-docs.sh 断言锁）。设计与裁决：.omo/plans/visiaengine-cmake-project.md
+# 装配层：cmr / project / SDK 解析 / PolyOrch 装配 / options / add_subdirectory /
+# install 钩子（T-A 2026-10-10 裁决 1-B+：编译规则禁入根，ALIAS 伞除外；行数软阈值
+# 120 + assembly-growth 豁免标注，检查=scripts/gate-docs.sh ⑤）。设计与裁决：
+# .omo/plans/visiaengine-cmake-project.md + .omo/plans/2026-10-10-visia-embed.md
 cmake_minimum_required(VERSION 3.25)  # PolyOrch embed floor (D39; adjudication 5-B)
 
 # 版本单源：workspace Cargo.toml（iceoryx2 五处字面量之债不抄——失配=configure 硬错）
