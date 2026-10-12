@@ -1,6 +1,6 @@
 # 门面：IDE/消费者入口（权威构建 = cargo + pixi [D5]；本文件禁载编译规则，
 # 纯度由 scripts/gate-docs.sh 断言锁）。设计与裁决：.omo/plans/visiaengine-cmake-project.md
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.25)  # PolyOrch embed floor (D39; adjudication 5-B)
 
 # 版本单源：workspace Cargo.toml（iceoryx2 五处字面量之债不抄——失配=configure 硬错）
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml" _ws)
@@ -15,6 +15,9 @@ visiaengine_resolve_sdks() # 汇报行：Rust/Qt 解析结果与来源（auto|pi
 
 include(cmake/VisiaEngineCargo.cmake)
 visiaengine_setup_cargo()  # cargo-step + 伞 visiaengine::capi + 假 Config 桥
+
+include(cmake/VisiaEnginePolyOrch.cmake)
+visiaengine_ensure_polyorch()  # D39 哨兵复用/自嵌（first-wins；superbuild 先加则复用其份）
 
 # enable_testing() 必在全部 add_subdirectory 前（Qt 目录的 add_test 晚调即静默丢——实锤）
 enable_testing()

@@ -56,6 +56,17 @@ if [ $rc -eq 0 ]; then
 elif ! grep -q "SYSTEM" <<<"$out"; then
     echo "CMAKE-SMOKE ✗ SYSTEM 负路径报文缺失"; exit 1
 fi
+# 负路径 3：PolyOrch 缺席（未拉 submodule / 裸克隆）——shim FATAL 报文必须可读且指路
+# （D39 嵌入契约 2026-10-10；报文断言用短语 grep，cmake 折行不漏——同负路径 1/2 纪律）
+mv PolyOrch PolyOrch.smoke-hidden 2>/dev/null  # 已是 submodule 时目录存在；缺目录的机=天然走同一断言
+rm -rf "$B-neg3"  # 独立目录：负路径1的 SYSTEM 缓存会抢先炸（SDK:86），轮不到 shim——实测坑
+out=$("$CM" -S . -B "$B-neg3" -G Ninja -DVISIAENGINE_QT_SDK=OFF 2>&1)  # 纯 bare：不带逃生舱旗，否则 SDK 解析先死轮不到 shim
+rm -rf "$B-neg3"
+mv PolyOrch.smoke-hidden PolyOrch 2>/dev/null || true
+if ! grep -q "submodule update --init" <<<"$out"; then
+    echo "CMAKE-SMOKE ✗ PolyOrch 缺席报文缺指路（shim 修复指引丢失）"; exit 1
+fi
+
 # 负路径 2：预构建逃生舱缺物=硬错（环境无关确定性）
 out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT_SDK=OFF -DVISIAENGINE_ARTIFACT_PATH=/tmp/ve-nope 2>&1)
 [ $? -ne 0 ] && grep -q "无 capi" <<<"$out" \
