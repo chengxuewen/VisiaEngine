@@ -55,6 +55,8 @@ Thumbs.db
 .cache
 .vscode/*
 !.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json   # T-E: PolyOrch managed regions are committed (fresh-clone F5 works; user rows live outside the region)
 
 # Build dirs
 # --------
