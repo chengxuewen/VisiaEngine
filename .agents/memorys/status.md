@@ -664,3 +664,18 @@ geo crate 16 tests (GEO-01..14) · D7 full chain: `tessellate` takes local input
   usage/error line (no gate impact); an exit-key convention band for E201/E501 would unlock
   two more probe rows; the npm package name was never checked against a registry (deliberate
   offline stance, nothing pushed); the npm `exports` map is deferred.
+
+## PolyOrch embedding round (2026-10-12, in force)
+
+Supplier consumption landed end to end: submodule pinned PolyOrch 457234e (D39 contract + D40 EXAMPLE
+kind), shim reuse/embed + USE_PIXI master switch + 0.2.0 version floor (T-B1/T-D, five cmake-smoke
+negative paths pin the failure lanes). Build engine: capi (cdylib+staticlib handles, ALL wrapper,
+staged artifacts in cmake-build*/lib|bin, install-tree guard moved to install time) and all 28 rs
+examples (polyorch_rust_build EXAMPLE kind; ctest runs staged binaries directly). Debug: the `debug`
+preset opens 29 CodeLLDB launch+task pairs in the committed .vscode managed regions (idempotent).
+Presets re-shaped: default/release/prebuilt + debug + ci-strict (Qt is a plain VISIAENGINE_QT
+bool, no Qt preset; legacy QT_SDK five-value cache renamed with a stale-detection WARNING).
+T-A0..T-F + i18n E1-E5 committed (gate-i18n in ci; PIT-49/50 recorded; C20 in force).
+Open: PolyOrch upstream push (gitee auth expired -- 457234e unpublished; fresh clones cannot
+resolve the gitlink until pushed); cargo-build_examples/cargo-run_* naming lives in smoke anchors
+swept; T-D deferred items none; examples' RA lane unaffected.
