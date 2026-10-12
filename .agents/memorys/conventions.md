@@ -117,3 +117,20 @@ The discipline that was missing is "do not claim the script checks more than it 
 - Pointers added where they will be seen: `rules/common/testing.md` (Batch-migration
   gates) and `rules/rust/coding-style.md` (Runnable Check section) both now name `lint -D
   warnings` as the true judge of import-pruning steps.
+
+## C20: All tracked artifacts are English; Chinese lives in AI chat and the .omo plan zone (2026-10-12, user adjudication A)
+
+The whole repo migrated to English artifacts (E1-E5, PolyOrch-C4-shaped but V-written:
+skills/ is a directory-level whitelist -- trigger phrases and keyword tables are activation
+surface, and PolyOrch's quoted-phrase heuristic would flag 1k+ lines of V skill bodies;
+.opencode node_modules and book-to-skill parser regexes are vendored/functional). The
+brand record line in decisions.md D6 and the `.omo`-anchoring conventions check literal are
+the named residuals. Test fixtures that ARE the feature under test (E505 CJK glyphs,
+E814 UTF-8 path, io_spec Chinese test-function identifiers) are functional data, not prose.
+
+```bash
+bash scripts/gate-i18n.sh   # red/green proof duty per C0 was performed 2026-10-12
+```
+
+New commits: subject+body in English from E1 onward (the pre-E1 Chinese commit history is
+history, not policy; searchable via the whitepaper-zh-v0.1.0 tag and parent commits).

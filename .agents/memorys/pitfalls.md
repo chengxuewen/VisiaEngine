@@ -408,3 +408,31 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
   grep -n "2>/dev/null" scripts/keys-probe.py        # expect: no report-swallowing forms on the harness side
   ```
 - **Forbidden**: asserting "input had no effect / picture unchanged" while harness output was discarded or its rc unchecked.
+
+## PIT-49: Translation batches can silently delete code lines; line-count diff is not a semantic check (2026-10-12)
+- **Symptom**: E1 (facade i18n batch) removed three code lines from `scripts/window-probe.sh`:
+  the app launch (`DISPLAY=... "$BIN" & APPID=$! sleep 6`) and the final `exit $rc`.
+  The probe then exited 0 unconditionally (the `&&/||` echo tail swallows the verdict) =
+  the black-screen machine gate was vacuous for two rounds before the T-D era caught it.
+  bash -n passes, gate-docs passes -- nothing in the E1 closure loop ran the script's semantics.
+- **Root cause**: whole-file manual translation with no structural diff between old and new
+  content; comment-line churn hides a deleted code line at the same position.
+- **Solution**: restore launch block + `exit $rc`; audit every E1/E2/E3-touched script for
+  exit-line count vs the pre-translation parent commit (`git show <parent>:<f>` signature
+  diff). E5 added `gate-i18n.sh` (CJK scan) -- structural loss is its blind spot; the
+  exit-line audit is the completing check.
+- **Verification**: `bash scripts/window-probe.sh E101_clear` SKIPs or asserts per contract;
+  `diff <(git show <E1^>:f | grep -E '^\s*(exit|return)\b') <(grep -E '^\s*(exit|return)\b' f)` empty.
+- **Forbidden**: committing a translation batch without a code-line delta audit
+  (non-comment line count before vs after, per file).
+
+## PIT-50: `git add -A` while a parallel agent works in the same tree sweeps the agent's staged work (2026-10-12)
+- **Symptom**: the E2 commit (`git add docs/`) landed 96 files belonging to the concurrently
+  running E3 agent -- E3 had self-staged part of its work; the E2 message under-described the content.
+- **Root cause**: the index is shared state; any agent staging + any actor committing = cross-commit bleed.
+- **Solution**: soft-reset + re-add by exact path spec before E3 finished; E3 residuals were intact
+  (per-file whole writes, no partial corruption). Standing rule: the orchestrator commits only
+  exact path specs it owns; parallel translation agents are told not to stage at all (E3 was, E4 wasn't).
+- **Verification**: `git show --name-only <commit>` count matches the message's claim, or fix before push.
+- **Forbidden**: `-A`/`.` as path spec while any background task edits the tree; agent-instruction
+  omission of the "no git add" clause.
