@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# [6b] bench 制品链（计划 4c §2.4）：跑压力例 → 解析 RESULT → 写 git 跟踪的
-# resources/bench/<name>.json → 与上一版对比，劣化>20% 红字但 exit 0（观测非门禁）。
-# ⚠ 数字=本机 lavapipe 软光栅，**非 CI 门禁**（总计划 v-B4 裁决）。
+# [6b] bench artifact chain (plan 4c §2.4): run the stress examples → parse RESULT →
+# write the git-tracked resources/bench/<name>.json → compare with the previous version;
+# a >20% regression prints red but exits 0 (observation band, not a gate).
+# ⚠ numbers = this machine's lavapipe software rasterizer, **not a CI gate** (master plan v-B4 ruling).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 mkdir -p resources/bench
-GPU_LABEL="lavapipe (Mesa software Vulkan; 本机独有，非 CI)"
+GPU_LABEL="lavapipe (Mesa software Vulkan; local-only, not CI)"
 MACHINE=$(uname -n)
 DATE=$(date +%F)
 
-# 逐例执行 → 抓 RESULT 行 → 合并写 JSON（保留旧值做对比）
+# per-example run → grab RESULT lines → merge-write the JSON (old values kept for comparison)
 MISSING=0
 for spec in "bench_twin:cargo run --release -p examples --example E601_bench_twin -- --frames 3" \
             "bench_pick:cargo run --release -p examples --example E401_pick_demo -- --bench" \
@@ -19,8 +20,8 @@ for spec in "bench_twin:cargo run --release -p examples --example E601_bench_twi
     old_json="resources/bench/${name}.json"
     # shellcheck disable=SC2086
     out=$($cmd 2>/dev/null | grep '^RESULT ' || true)
-    [ -z "$out" ] && { echo "BENCH ✗ ${name} 无 RESULT 行" >&2; MISSING=$((MISSING+1)); continue; }
-    # 写新 JSON
+    [ -z "$out" ] && { echo "BENCH ✗ ${name} produced no RESULT lines" >&2; MISSING=$((MISSING+1)); continue; }
+    # write the new JSON
     {
         printf '{\n  "date": "%s",\n  "machine": "%s",\n  "gpu": "%s",\n  "values": {\n' \
             "$DATE" "$MACHINE" "$GPU_LABEL"
@@ -33,14 +34,14 @@ for spec in "bench_twin:cargo run --release -p examples --example E601_bench_twi
         printf '\n  }\n}\n'
     } > "$old_json"
     echo "BENCH ✓ $name → $old_json"
-    # 对比劣化>20%（基线=git HEAD 版；首版无基线自动跳过）
+    # compare, >20% regression is flagged (baseline = the git HEAD version; the first version has no baseline and is skipped)
     python3 - "$old_json" <<'PYEOF'
 import json, sys
-# 注：上一步已覆盖写入，此处对比 git HEAD 版本
+# note: the previous step already overwrote the file; this compares against the git HEAD version
 import subprocess
 old_raw = subprocess.run(["git", "show", f"HEAD:{sys.argv[1]}"], capture_output=True)
 if old_raw.returncode != 0:
-    sys.exit(0)  # 首版，无对比基线
+    sys.exit(0)  # first version, no baseline to compare
 try:
     old = json.loads(old_raw.stdout)
 except Exception:
@@ -52,7 +53,8 @@ for k, (nv, _u) in new.get("values", {}).items():
         sys.stderr.write(f"\033[31mREGRESSION {k}: {ov[0]} → {nv} (>20%)\033[0m\n")
 PYEOF
 done
-echo "BENCH done（观测档，非门禁；真阈值=用户裁）"
+echo "BENCH done (observation band, not a gate; real thresholds are the user's call)"
 
-# 缺席=工具链断言（包名漂移/例失踪——PIT-23 恒真族教训：曾静默 continue 两轮制品不写）
-if [ "$MISSING" -gt 0 ]; then echo "BENCH ✗ ${MISSING} 例无产出（非性能劣化，系工具链故障）" >&2; exit 1; fi
+# absence = toolchain assertion (package-name drift / missing example — the PIT-23
+# constant-true family lesson: it once silently continued for two rounds without writing artifacts)
+if [ "$MISSING" -gt 0 ]; then echo "BENCH ✗ ${MISSING} examples produced nothing (not a performance regression — a toolchain failure)" >&2; exit 1; fi

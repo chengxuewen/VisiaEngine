@@ -3,7 +3,7 @@
   "configurePresets": [
     {
       "name": "default",
-      "displayName": "日常开发（Debug，Qt/Rust 自动解析；gallery 独占 build/，CMake 树在 cmake-build/）",
+      "displayName": "Daily development (Debug, Qt/Rust auto-resolved; gallery owns build/, CMake tree in cmake-build/)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build",
       "cacheVariables": {
@@ -16,7 +16,7 @@
     },
     {
       "name": "release",
-      "displayName": "发包前验证（Release，同 default 形态）",
+      "displayName": "Pre-release verification (Release, same shape as default)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-release",
       "cacheVariables": {
@@ -29,7 +29,7 @@
     },
     {
       "name": "prebuilt",
-      "displayName": "纯消费（无 cargo；VISIAENGINE_ARTIFACT_PATH 必填）",
+      "displayName": "Pure consumption (no cargo; VISIAENGINE_ARTIFACT_PATH required)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-prebuilt",
       "cacheVariables": {
@@ -39,7 +39,7 @@
     },
     {
       "name": "debug",
-      "displayName": "VSCode F5（default + PolyOrch CodeLLDB 托管调试面）",
+      "displayName": "VSCode F5 (default + the PolyOrch CodeLLDB managed debug surface)",
       "inherits": "default",
       "cacheVariables": {
         "POLYORCH_RUST_VSCODE_DEBUG": "ON"
@@ -47,7 +47,7 @@
     },
     {
       "name": "ci-strict",
-      "displayName": "CI 防漂移钉（双 SDK 强制 PIXI；勿用于日常）",
+      "displayName": "CI anti-drift pin (both SDKs forced PIXI; not for daily use)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build-ci",
       "cacheVariables": {

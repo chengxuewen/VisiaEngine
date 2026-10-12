@@ -1,69 +1,68 @@
-# VisiaEngine（维视引擎）
+# VisiaEngine
 
-> **多维空间可视化引擎** — 统一的 2D / 2.5D / 3D 渲染管线，为"看见数据的本质"而生。
+> **A multi-dimensional spatial visualization engine** — a unified 2D / 2.5D / 3D rendering pipeline, built to "see the essence of data."
 
-**状态：白皮书 v0.1.0 定稿 + Phase 1 MVP 完成 + 批 4 渲染强化 + 批 5 文档归位（2026-09）。** 完整定位见 [docs/whitepaper.md](docs/whitepaper.md)。
+**Status: whitepaper v0.1.0 finalized + Phase 1 MVP complete + batch 4 rendering hardening + batch 5 documentation rehoming (2026-09).** Full positioning: [docs/whitepaper.md](docs/whitepaper.md).
 
-## 它是什么
+## What It Is
 
-一个开源、轻量、可嵌入的空间可视化**引擎内核**（非游戏引擎）：
+An open-source, lightweight, embeddable spatial visualization **engine kernel** (not a game engine):
 
-- 多维度统一视口：鸟瞰地图（2D）、倾斜视角（2.5D）、沉浸 3D 自由切换（当前为扁平实体表，场景树 = Alpha 档候选），图层/实体/标注交互语义一致
-- **空间数据一等公民**：GeoJSON、主流坐标投影（已内置）；矢量瓦片 MVT（目录/HTTP 源已交付）；栅格瓦片（PNG 平铺 basemap 已交付）；**矢量瓦片与栅格底图同句柄叠放**已交付（两种挂载顺序各有像素活体门，E817）；WMS/WMTS 服务端（在交付，见白皮书 3.2 路线）；glTF/点云/BIM 轻量化展示；ODR/OSC 经官方仿真插件支持
-- **Rust 内核 + wgpu 渲染**：内存安全、无 GC；一等 Vulkan / Metal / DX12 / WebGPU，GL 3.3+ / GLES 3.0+ / WebGL2 降级档
-- **SDK 形态**：经 C API 嵌入 Qt / Flutter / C# (WPF/Unity) / Web，不绑架宿主主循环；启动体积（native cdylib strip 后）实测 7.25 MB ≤ 10 MB（证据：docs/reference/evidence/2026-09-24-native-size.md）
+- Unified multi-dimensional viewport: top-down map (2D), tilted view (2.5D), immersive 3D free switching (currently a flat entity table; scene tree = Alpha-tier candidate), with consistent interaction semantics for layers/entities/annotations
+- **Spatial data as first-class citizens**: GeoJSON, mainstream coordinate projections (built in); tiled-vector MVT (directory/HTTP sources delivered); raster tiles (PNG tiled basemap delivered); **tiled vectors and raster basemaps stacked under one handle** delivered (each of the two mount orders has its own live pixel gate, E817); WMS/WMTS serving (in progress, see whitepaper §3.2 roadmap); glTF/point-cloud/BIM lightweight display; ODR/OSC via official simulation plugins
+- **Rust kernel + wgpu rendering**: memory safety, no GC; first-class Vulkan / Metal / DX12 / WebGPU, with GL 3.3+ / GLES 3.0+ / WebGL2 fallback tier
+- **SDK form factor**: embed into Qt / Flutter / C# (WPF/Unity) / Web via the C API without hijacking the host main loop; startup size (native cdylib, stripped) measured 7.25 MB ≤ 10 MB (evidence: docs/reference/evidence/2026-09-24-native-size.md)
 
-## 架构（一句话）
+## Architecture (One Sentence)
 
-`visiaengine-core`（数据模型/空间索引/坐标系/场景图）→ `visiaengine-render`（渲染抽象 Trait）→ `visiaengine-render-wgpu`（默认后端：基于 wgpu 的自研渲染管线，D4 终审定案；后端抽象保留可插拔）。宿主侧只依赖 C API，后端选型不破坏兼容承诺。
+`visiaengine-core` (data model / spatial index / coordinate systems / scene graph) → `visiaengine-render` (rendering abstraction traits) → `visiaengine-render-wgpu` (default backend: a from-scratch pipeline on wgpu, settled by D4; backend abstraction kept pluggable). Hosts depend only on the C API; backend choice never breaks the compatibility promise.
 
-## 仓库结构
+## Repository Structure
 
 ```
-├── AGENTS.md / SKILL.md   # 代理知识库与技能注册表
-├── crates/                # 纯核心 5：core / render / render-wgpu / io-gltf / geo（D6 命名）
-├── examples/              # 例子按语言分层：rs（Rust 教程系）/ c / cpp / qt——ctest 统一清单一键跑
-├── bindings/              # 对外实现面：c（capi crate+手写头+探针）/ cpp（RAII 头）/ qt（widget）/ js（wasm+demo）
-├── pixi.toml / pixi.lock  # 开发环境单源（D5：conda-forge，含 rust 工具链）
-├── docs/sdd/              # 行为契约条款（与测试双向追溯）
+├── AGENTS.md / SKILL.md   # agent knowledge base and skill registry
+├── crates/                # 5 pure-core crates: core / render / render-wgpu / io-gltf / geo (D6 naming)
+├── examples/              # examples tiered by language: rs (Rust tutorial series) / c / cpp / qt — one-click via the ctest unified registry
+├── bindings/              # outward implementation surface: c (capi crate + handwritten header + probe) / cpp (RAII header) / qt (widget) / js (wasm+demo)
+├── pixi.toml / pixi.lock  # dev environment single source (D5: conda-forge, incl. rust toolchain)
+├── docs/sdd/              # behavioral contract clauses (bidirectionally traced to tests)
 ├── docs/
-│   ├── whitepaper.md      # 白皮书 v0.1.0（定位与商业策略一手源）
-│   ├── architecture.md    # 架构设计基线 v0.1（D4 定案后的设计入口）
-│   └── reference/         # 开源参考项目库 + 决策证据快照（evidence/）
-└── .agents/               # 项目记忆 / 规则 / 技能（agent 工具链）
+│   ├── whitepaper.md      # whitepaper v0.1.0 (primary source for positioning and business strategy)
+│   ├── architecture.md    # architecture design baseline v0.1 (design entry after the D4 ruling)
+│   └── reference/         # open-source reference library + decision evidence snapshots (evidence/)
+└── .agents/               # project memory / rules / skills (agent toolchain)
 ```
 
-## 开发状态
+## Development Status
 
-**Phase 1 现状（数字以门禁实报为准）**：**11 个 crate**（`crates/` 9 + capi + wasm；workspace 共 12 个包，含 examples 壳包）、**199 条** SDD 行为契约全绿（`scripts/spec-trace.sh` 双向追溯，`gate-docs` 锁本文数字与实报一致）。渲染管线：glTF/GeoJSON/点云(PLY)/矢量瓦片(MVT 目录/HTTP 源挂载+视口调度+泵式装载) 装载 + 材质纹理（GGX PBR，WGPU-35/REND-45）+ GPU instancing（10 万楼块单 draw）+ 屏幕空间线宽/真圆点扩片 + 半透明双 pass 画家序 + 方向光 PCSS 软影 + 点云 EDL 描边（`--edl`，WGPU-33）+ postprocessing framework (bloom/outline/tonemap/SSAO/depth-haze, WGPU-34/36/38, REND-43/44) + HDRI 装载 (.hdr RGBE, IO-17) + SH-9 环境光照 (demo 级, WGPU-39/CAPI-41) + 文字标注（含 CJK 子集字体）+ 剖面裁切 + 主副双投小地图/点击导航 + 2D↔3D 连续投影 morph + 拾取（含点云 REND-38 + 线要素屏幕空间 REND-46）/参数曲线 tube/ribbon (REND-47)/量测闭环 + D7 远坐标重基（像素级验证）。离屏 golden 真机无 SKIP；**ctest 统一例子清单（44 条，含 SDL3 窗口族 xvfb 子态）+ 三 gate（abi/trace/docs）+ cmake-smoke 四态（含装树）+ pack-check 装树卫生 + bench 制品链**机器门禁；教程 E 编号系见 [docs/tutorials.md](docs/tutorials.md)（文件名=头注=索引单源）。 例子画廊（44 卡，例侧自渲染缩略图）：`pixi run gallery` → `build/gallery/index.html`。**宿主嵌入**：C ABI 49 入口（+场景树五口+HTTP/栅格瓦片源+属性热更三口+.hdr 环境+刚体节点变换）（事件推送/点云/剖面/字体标注/飞行/小地图导航，三面镜像 wasm·hpp·头）（人审手写头 + C demo 群真跑）+ Web 面（visiaengine-wasm 双面镜像，demo 页可跑）——Qt 宿主实证 ✅（header-only widget+真窗 smoke 三态）；**安装树已交付**（`cmake --install` 出 9 件：库+三头+许可证+`find_package(visiaengine)` 说明页+pkg-config 小票，树外消费者 C/C++ 两形实测编译运行、换前缀重编通过、库自带 SONAME 故 `NEEDED` 记裸名）；npm/pip 打包挂 Alpha。
+**Phase 1 status (numbers as reported by the gates)**: **11 crates** (9 in `crates/` + capi + wasm; workspace has 12 packages incl. the examples shell package), **199** SDD behavioral contract clauses all green (`scripts/spec-trace.sh` bidirectional tracing; `gate-docs` locks these numbers to live reports). Rendering pipeline: glTF/GeoJSON/point-cloud(PLY)/tiled-vector (MVT directory/HTTP source mounting + viewport scheduling + pump loading) + material textures (GGX PBR, WGPU-35/REND-45) + GPU instancing (100k building blocks in one draw) + screen-space line width / true-round dot expansion slice + translucent two-pass painter's ordering + directional-light PCSS soft shadows + point-cloud EDL rim (`` `--edl` ``, WGPU-33) + postprocessing framework (bloom/outline/tonemap/SSAO/depth-haze, WGPU-34/36/38, REND-43/44) + HDRI loading (.hdr RGBE, IO-17) + SH-9 environment lighting (demo grade, WGPU-39/CAPI-41) + text annotation (incl. CJK subset fonts) + profile clipping + main/aux dual-projection minimap / click navigation + continuous 2D↔3D projection morph + picking (incl. point cloud REND-38 + line-feature screen space REND-46) / parametric-curve tube/ribbon (REND-47) / measurement loop + D7 far-coordinate rebase (pixel-verified). Offscreen golden: no SKIP on real hardware; **ctest unified example registry (44 entries, incl. the SDL3 window family xvfb substate) + three gates (abi/trace/docs) + cmake-smoke four states (incl. installed tree) + pack-check installed-tree hygiene + bench artifact chain** as machine gates; the tutorial E-number system lives in [docs/tutorials.md](docs/tutorials.md) (filename = header comment = index, single source).  Example gallery (44 cards, thumbnails self-rendered by the examples): `pixi run gallery` → `build/gallery/index.html`. **Host embedding**: C ABI 49 entry points (+5 scene-tree ports + HTTP/raster tile sources + 3 property hot-update ports + .hdr environment + rigid-body node transforms) (event push / point cloud / profile / font annotation / flight / minimap navigation, mirrored three ways in wasm·hpp·header) (human-reviewed handwritten header + C demo fleet actually run) + Web surface (visiaengine-wasm dual mirror, runnable demo page) — proven on a Qt host ✅ (header-only widget + real-window smoke, three states); **install tree delivered** (`cmake --install` produces 9 items: library + three headers + licenses + `find_package(visiaengine)` how-to page + pkg-config receipt; out-of-tree consumers compiled and run in both C/C++ forms, re-prefix rebuild passes, the library ships its own SONAME so `NEEDED` records the bare name); npm/pip packaging deferred to Alpha.
 
 ```bash
-```bash
-bash bootstrap.sh && source pixi.sh && pixi run ci   # 环境三步
-pixi run cmake --preset default && pixi run cmake --build --preset default   # C++/IDE 入口（根 CMake 门面）
+bash bootstrap.sh && source pixi.sh && pixi run ci   # environment, three steps
+pixi run cmake --preset default && pixi run cmake --build --preset default   # C++/IDE entry (root CMake facade)
 
-> 输出地盘：`build/` = 画廊独占 · `target/` = cargo 直调独占 · `cmake-build*/` = CMake 预设构建树（T-A0' 2026-10-10）。VSCode 装 CMake Tools 即按预设工作（cmake.useCMakePresets=always 已配）。
-# IDE 打开工程即得：测试面板=全语言例子统一清单（ctest --preset default）；构建菜单含逐例 cargo-build_*/cargo-run_* 步骤；Rust 例另有 rust-analyzer Run/Debug
+> Output territories: `build/` = gallery-only · `target/` = cargo-direct only · `cmake-build*/` = CMake preset build trees (T-A0' 2026-10-10). VSCode: install CMake Tools and work via presets (cmake.useCMakePresets=already configured).
+# Opening the project in an IDE gives: test panel = the unified example registry for all languages (ctest --preset default); the build menu carries per-example cargo-build_*/cargo-run_* steps; Rust examples additionally have rust-analyzer Run/Debug
 ```
 
-## 商业模型
+## Business Model
 
-Open Core：核心运行时 **MIT OR Apache-2.0 永久开源**（已发布版本许可不可撤销）；商业产品为 **Visia Studio** 编辑器与企业级插件/支持。
+Open Core: the core runtime is **permanently open source under MIT OR Apache-2.0** (the license of a released version is irrevocable); the commercial products are the **Visia Studio** editor and enterprise plugins/support.
 
-## 路线图
+## Roadmap
 
-| 阶段 | 内容 |
+| Phase | Content |
 |------|------|
-| MVP（当前） | 核心库骨架、glTF+GeoJSON 加载、2D↔3D 切换演示、宿主嵌入示例 |
-| Alpha | 空间索引/坐标系完善、2.5D 白模、C API 稳定化 + 绑定生成 |
-| Beta | Visia Studio 预览、ODR/OSC 插件、孪生数据实时绑定 |
-| 1.0 | 编辑器+运行时正式发布、插件市场、商业支持上线 |
+| MVP (current) | core library skeleton, glTF+GeoJSON loading, 2D↔3D switching demo, host-embedding examples |
+| Alpha | spatial index / coordinate system maturation, 2.5D white-model, C API stabilization + binding generation |
+| Beta | Visia Studio preview, ODR/OSC plugins, real-time digital-twin data binding |
+| 1.0 | editor+runtime official release, plugin marketplace, commercial support launch |
 
-## 许可
+## License
 
-核心运行时以 **MIT OR Apache-2.0** 双许可开源（文本见 [LICENSE-MIT](LICENSE-MIT) / [LICENSE-APACHE](LICENSE-APACHE)）。已发布版本的许可**不可撤销、不追溯变更**。Visia Studio 与企业插件为独立商业授权。
+The core runtime is dual-licensed open source under **MIT OR Apache-2.0** (texts at [LICENSE-MIT](LICENSE-MIT) / [LICENSE-APACHE](LICENSE-APACHE)). The license of a released version is **irrevocable and never retroactively changed**. Visia Studio and enterprise plugins are licensed separately, commercially.
 
-## 联系方式
+## Contact
 
-- 仓库：gitee.com/chengxuewen/VisiaEngine
-- 官网 / 邮箱：待公布
+- Repo: gitee.com/chengxuewen/VisiaEngine
+- Website / email: TBD

@@ -1,5 +1,5 @@
-// E703_qt_viewer —— Qt6 真窗 demo（E 系宿主带；原 qt_app）（[E3D:C3] 几行接入配方兑现；跑不通即 API 未完成 [E3D:D7]）。
-// 用法：E703_qt_viewer [--frames N]（0=交互）；载入 texquad.glb（纹理族）+ park.geojson（扩片族）。
+// E703_qt_viewer — Qt6 real-window demo (host band of the E series; formerly qt_app) ([E3D:C3] the few-line integration recipe, delivered; if it does not run, the API is not done [E3D:D7]).
+// Usage: E703_qt_viewer [--frames N] (0 = interactive); loads texquad.glb (texture family) + park.geojson (expansion-slice family).
 #include <QApplication>
 #include <cstdio>
 #include <cstdlib>
@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    QApplication app(argc, argv); // 唯一线程=引擎 owner（CAPI-03）
+    QApplication app(argc, argv); // single thread = engine owner (CAPI-03)
     const uint64_t ve = visiaengine_create_headless(960, 600);
     if (!ve) {
         std::fprintf(stderr, "FAIL create: %s\n", visiaengine_last_error(0));
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
 
     VisiaEngineWidget w(ve);
     w.resize(960, 600);
-    w.setWindowTitle("VisiaEngine × Qt6 — texquad + park（鼠标轨道/滚轮缩放/拖窗 resize）");
+    w.setWindowTitle("VisiaEngine × Qt6 — texquad + park (mouse orbit / wheel zoom / window-drag resize)");
     w.show();
     w.start(frames);
     const int rc = app.exec();
@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     std::printf("OK qt pump frames=%d rc=%d\n", frames, rc);
-    std::printf("T3 人检清单：①棋盘纹理四边形可见且色=checker ②park 描边/圆点覆盖其上"
-                " ③鼠标左键拖=轨道、滚轮=缩放常数不随 zoom 变粗 ④拖窗 resize 无残影无花屏\n");
+    std::printf("T3 manual checklist: (1) checker-textured quad visible with colour = checker (2) park outline/dot overlay on top"
+                " (3) left-drag = orbit, wheel = zoom with line width constant, not thickening with zoom (4) window-drag resize leaves no ghosts, no glitches\n");
     return rc;
 }

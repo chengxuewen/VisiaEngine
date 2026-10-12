@@ -1,34 +1,36 @@
 #!/usr/bin/env bash
-# SDD 条款号 ↔ 测试 `// spec:` 双向覆盖门禁（计划 §4）。L2 不占号，天然不在扫描面。
-# 条款起号以实施日 docs/sdd 实际 max+1 为准（现况 CORE10/REND20/WGPU11/GLTF8/GEO14）。
-# ⚠ 新命名空间：扩 PREFIX_RE 单源即可（两处正则+第三检同表）；盘上出现白名单外前缀=第三检红。
-# 示例门禁见 rules/common/development-workflow.md（API 新增必带可运行 example）。
+# SDD clause numbers ↔ test `// spec:` bidirectional coverage gate (plan §4). L2 takes no clause
+# number and naturally stays outside the scan surface.
+# Clause numbering starts at the docs/sdd live max+1 on implementation day (current: CORE10/REND20/WGPU11/GLTF8/GEO14).
+# ⚠ new namespace: extend PREFIX_RE in this single source (two regexes + the third check share this table);
+# a clause shape/tag with a non-whitelisted prefix on disk = third check red.
+# Example gate: see rules/common/development-workflow.md (every new API must carry a runnable example).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 
-# 前缀单源（扩命名空间只改这一行——两侧正则与第三检共用同表白名单）
+# prefix single source (extend namespaces only on this line — both regexes and the third check share the same whitelist)
 PREFIX_RE='CORE|REND|WGPU|GLTF|GEO|CAPI|IO'
-# 只认条款标题行（`## CORE-NN: ...`），正文交叉引用/区间记法不计条款
+# only clause title lines count (`## CORE-NN: ...`); in-prose cross references / range notation are not clauses
 sdds=$(grep -ohE "^## ($PREFIX_RE)-[0-9]{2}\b" docs/sdd/*.md 2>/dev/null | sed 's/^## //' | sort -u)
 tags=$(grep -rhoE "// spec: ($PREFIX_RE)-[0-9]{2}" crates/ bindings/ 2>/dev/null | grep -oE "($PREFIX_RE)-[0-9]{2}" | sort -u)
 
-# 第三检（点云带共识 3）：盘上出现「白名单外前缀」的条款形/标签 = 红——
-# 把「扩命名空间漏改正则=双侧静默失明假绿」从禁忌降维成门禁问题。
+# third check (point-cloud band consensus 3): a clause shape/tag with a non-whitelisted prefix on disk = red —
+# this turns "extend the namespace but forget the regex = silent double-sided blindness, fake green" from a taboo into a gate problem.
 ghost=$( { grep -ohE '^## [A-Z]+-[0-9]{2}\b' docs/sdd/*.md 2>/dev/null | sed 's/^## //;s/-[0-9][0-9]//'
            grep -rhoE '// spec: [A-Z]+-[0-9]{2}' crates/ bindings/ 2>/dev/null | sed 's|// spec: ||;s/-[0-9][0-9]//'; } \
          | sort -u | grep -vxE "$PREFIX_RE" || true)
 if [ -n "$ghost" ]; then
-    echo "ERROR: 白名单外前缀（漏扩 spec-trace 或幽灵条款号）: $(echo $ghost)" >&2
+    echo "ERROR: prefix outside the whitelist (spec-trace not extended, or a ghost clause number): $(echo $ghost)" >&2
     exit 1
 fi
 
 if [ -z "$sdds" ] && [ -z "$tags" ]; then
-    echo "spec-trace OK: 0 条款（骨架期空集合法）"
+    echo "spec-trace OK: 0 clauses (empty set is legal during skeleton phase)"
     exit 0
 fi
 if [ "$sdds" != "$tags" ]; then
-    echo "ERROR: SDD/spec 追溯失配（左=有规无测，右=有测无规）:" >&2
+    echo "ERROR: SDD/spec trace mismatch (left = clause without test, right = test without clause):" >&2
     diff <(printf '%s\n' "$sdds") <(printf '%s\n' "$tags") >&2 || true
     exit 1
 fi
-echo "spec-trace OK: $(printf '%s\n' "$sdds" | wc -l) 条双向对齐"
+echo "spec-trace OK: $(printf '%s\n' "$sdds" | wc -l) pairs aligned"

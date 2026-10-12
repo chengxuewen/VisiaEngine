@@ -1,4 +1,4 @@
-# C/C++ 门面与例子风格（S4 批；LLVM 基底 + 4 空格随现役 5 文件实测零冲突；CI 门禁=例子 >500 行再议）
+# C/C++ facade and examples style (S4 batch; LLVM base + 4-space indent, measured zero-conflict against the 5 active files; CI gate = revisit if an example exceeds 500 lines)
 BasedOnStyle: LLVM
 IndentWidth: 4
 ColumnLimit: 100

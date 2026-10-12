@@ -1,17 +1,17 @@
-# examples/qt —— Qt6 真窗例（宿主专带；E703 自 bindings/qt 分家：widget 是绑定面住 bindings，例子住 examples）
+# examples/qt -- the Qt6 real-window example (host-only band; E703 split from bindings/qt: the widget is binding surface and lives in bindings, the example lives in examples)
 find_package(Qt6 COMPONENTS Widgets REQUIRED)
-find_package(X11 REQUIRED)   # conda 无 qt6 x11extras→宿主 Xlib 直连（最小调用面）
+find_package(X11 REQUIRED)   # conda has no qt6 x11extras -> talk to the host Xlib directly (the minimal call surface)
 find_package(visiaengine REQUIRED)
 
-add_executable(E703_qt_viewer E703_qt_viewer.cpp)  # 名=源=目标（R10）
+add_executable(E703_qt_viewer E703_qt_viewer.cpp)  # name = source = target (R10)
 target_link_libraries(E703_qt_viewer PRIVATE visiaengine::capi Qt6::Widgets ${X11_LIBRARIES})
-target_include_directories(E703_qt_viewer PRIVATE ${CMAKE_SOURCE_DIR}/bindings/qt)  # widget.hpp 搬家分家修正（S3）
+target_include_directories(E703_qt_viewer PRIVATE ${CMAKE_SOURCE_DIR}/bindings/qt)  # the widget.hpp relocation/split fix (S3)
 if(DEFINED VISIAENGINE_CARGO_STEP)
   add_dependencies(E703_qt_viewer ${VISIAENGINE_CARGO_STEP})
 endif()
 set_target_properties(E703_qt_viewer PROPERTIES
   BUILD_RPATH "${Qt6_DIR}/../../../lib"
-  FOLDER "examples/qt")  # 词汇表=磁盘语言目录（本件走宏外自注册，勿再手写带号）
+  FOLDER "examples/qt")  # vocabulary = the on-disk language directory (this file self-registers outside the macro; do not hand-write a band number)
 add_test(NAME example_E703_qt_viewer COMMAND E703_qt_viewer --frames 6)
 set_tests_properties(example_E703_qt_viewer PROPERTIES
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -19,7 +19,7 @@ set_tests_properties(example_E703_qt_viewer PROPERTIES
   SKIP_RETURN_CODE 77
   LABELS "example;native;display")
 
-# 交互 run 步骤（cargo-run_*/run_E801 同制：零参=常驻窗 [E703 头注 0=交互]，run-gui 探测 :0 回退）
+# Interactive run step (same scheme as cargo-run_*/run_E801: zero args = resident window [the E703 header note, 0 = interactive]; run-gui probes and falls back to :0)
 add_custom_target(run_E703_qt_viewer
   COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
           ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh $<TARGET_FILE:E703_qt_viewer>

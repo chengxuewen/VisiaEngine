@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# window-probe-all.sh — 全部常驻窗例的第一帧守卫批量（黑屏三连根治的 CI 化）。
-# 每例：零参跑 → Xvfb 截屏 → 亮度比断言（window-probe.sh 单例形）。
-# 自退例不在此列（golden 像素门守它们）。一例红=整链红（报文指名）。
+# window-probe-all.sh -- the batch first-frame guard over all resident-window examples (the CI-ized form of the black-screen trio cure).
+# Per example: run with no args -> Xvfb screenshot -> lit-ratio assert (the window-probe.sh single-example shape).
+# Self-exiting examples are not in this list (their golden-pixel gates guard them). One example red = the whole chain red (the message names it).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 RC=0

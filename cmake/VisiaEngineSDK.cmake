@@ -1,24 +1,24 @@
-# SDK 三级解析（§2.2）：AUTO|PIXI|SYSTEM|<显式路径>；负路径全部硬报错且报文指名补救动作。
-# 依据 docs/reference/cmake-integration-patterns.md（iceoryx2 形改道：PATH 假定→三级解析）。
+# SDK three-level resolution (section 2.2): AUTO|PIXI|SYSTEM|<explicit path>;
+# every negative path hard-errors with a message that names the remediation.
 
-set(VISIAENGINE_RUST_SDK "AUTO" CACHE STRING "Rust 工具链：AUTO|PIXI|SYSTEM|<cargo 绝对路径>")
-# 2026-10-10（T-A0' 裁决）：五值 VISIAENGINE_QT_SDK 收敛为二值 VISIAENGINE_QT——
-# ON=要 Qt（解析链自助：pixi qt-spike 优先→系统→都无=FATAL 带两出路），OFF=不碰 Qt。
-# 来源选择不是用户输入（AUTO 的静默降级只属于"没人要 Qt"的世界；ON 落空必须响亮）。
-# 旧名侦测：残留缓存静默变 Qt=OFF 是假绿——响亮指路。
+set(VISIAENGINE_RUST_SDK "AUTO" CACHE STRING "Rust toolchain: AUTO|PIXI|SYSTEM|<absolute cargo path>")
+# 2026-10-10 (T-A0' adjudication): the five-value VISIAENGINE_QT_SDK collapses into the two-value VISIAENGINE_QT --
+# ON = want Qt (the resolution chain serves itself: pixi qt-spike first -> system -> neither = FATAL with two ways out), OFF = do not touch Qt.
+# Source selection is not user input (AUTO's silent degradation belongs to the "nobody asked for Qt" world; a failed ON must be loud).
+# Old-name detection: a stale cache silently flipping Qt=OFF is a false green -- point the way, loudly.
 if(DEFINED VISIAENGINE_QT_SDK)
   message(WARNING
-    "VISIAENGINE_QT_SDK 已更名 VISIAENGINE_QT（二值 OFF|ON）。本构建目录残留旧缓存 "
-    "VISIAENGINE_QT_SDK=${VISIAENGINE_QT_SDK} 将被忽略；删除 CMakeCache.txt 重建，"
-    "或改用 -DVISIAENGINE_QT=ON")
+    "VISIAENGINE_QT_SDK has been renamed VISIAENGINE_QT (two-valued OFF|ON). Stale cache in this build dir "
+    "VISIAENGINE_QT_SDK=${VISIAENGINE_QT_SDK} will be ignored; delete CMakeCache.txt and reconfigure, "
+    "or pass -DVISIAENGINE_QT=ON")
 endif()
-set(VISIAENGINE_QT "OFF" CACHE BOOL "要 Qt6？（ON=pixi qt-spike 优先→系统→都无 FATAL；OFF=不配 Qt）")
-set(VISIAENGINE_PIXI_ENV "qt-spike" CACHE STRING "pixi 环境名（该 env 目录缺位时回落 default）")
-set(VISIAENGINE_ARTIFACT_PATH "" CACHE PATH "预构建 capi 产物目录（设之=纯消费，cargo 步不生成；文件缺失=硬错）")
+set(VISIAENGINE_QT "OFF" CACHE BOOL "Want Qt6? (ON = pixi qt-spike first -> system -> neither = FATAL; OFF = no Qt setup)")
+set(VISIAENGINE_PIXI_ENV "qt-spike" CACHE STRING "pixi environment name (falls back to default when that env dir is absent)")
+set(VISIAENGINE_ARTIFACT_PATH "" CACHE PATH "Prebuilt capi artifact directory (setting it = pure consumption, no cargo step; a missing file = hard error)")
 set_property(CACHE VISIAENGINE_RUST_SDK PROPERTY STRINGS AUTO PIXI SYSTEM)
 set_property(CACHE VISIAENGINE_QT PROPERTY TYPE BOOL)
 
-# pixi 前缀发现：激活态 $CONDA_PREFIX 优先，否则仓内 .pixi/envs/<env>（gate-abi 同族惯例）
+# pixi prefix discovery: an activated $CONDA_PREFIX wins; otherwise the in-repo .pixi/envs/<env> (same convention as the gate-abi family)
 function(_ve_pixi_prefix out)
   if(DEFINED ENV{CONDA_PREFIX} AND EXISTS "$ENV{CONDA_PREFIX}/bin/cargo")
     set(${out} "$ENV{CONDA_PREFIX}" PARENT_SCOPE)
@@ -39,7 +39,7 @@ function(_ve_msrv_check cargo_path rust_version)
   if(_out MATCHES "([0-9]+)\\.([0-9]+)\\.([0-9]+)")
     set(_v "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
     if(_v VERSION_LESS rust_version)
-      message(WARNING "解析到 cargo ${_v} < workspace rust-version ${rust_version}（MSRV 合同；升 pixi 环境或换 SDK）")
+      message(WARNING "Resolved cargo ${_v} < workspace rust-version ${rust_version} (MSRV contract; upgrade the pixi environment or switch the SDK)")
     endif()
   endif()
 endfunction()
@@ -50,16 +50,16 @@ function(visiaengine_resolve_sdks)
   string(REGEX MATCH "rust-version = \"([0-9.]+)\"" _rm "${_ws}")
   set(_msrv "${CMAKE_MATCH_1}")
 
-  # ---- Rust / cargo（或纯消费产物模式）----
+  # ---- Rust / cargo (or the pure-consumption prebuilt mode) ----
   if(VISIAENGINE_ARTIFACT_PATH)
     set(_so "${VISIAENGINE_ARTIFACT_PATH}/libvisiaengine.so")
     if(NOT EXISTS "${_so}" AND WIN32)
       set(_so "${VISIAENGINE_ARTIFACT_PATH}/visiaengine.dll")
     endif()
     if(NOT EXISTS "${_so}")
-      message(FATAL_ERROR "VISIAENGINE_ARTIFACT_PATH=${VISIAENGINE_ARTIFACT_PATH} 无 capi 产物（逃生舱不静默消费旧物）")
+      message(FATAL_ERROR "VISIAENGINE_ARTIFACT_PATH=${VISIAENGINE_ARTIFACT_PATH} has no capi artifact (the escape hatch never silently consumes stale artifacts)")
     endif()
-    set(VISIAENGINE_CARGO "" CACHE INTERNAL "prebuilt 模式无 cargo")
+    set(VISIAENGINE_CARGO "" CACHE INTERNAL "prebuilt mode has no cargo")
     set(VISIAENGINE_RUST_KIND "prebuilt" PARENT_SCOPE)
     message(STATUS "Rust SDK: prebuilt @ ${VISIAENGINE_ARTIFACT_PATH}")
   else()
@@ -77,29 +77,29 @@ function(visiaengine_resolve_sdks)
         endif()
       endif()
       if(NOT _cargo)
-        message(FATAL_ERROR "AUTO 未找到 cargo：pixi 环境缺位（先跑 pixi install -e ${VISIAENGINE_PIXI_ENV}）且系统 PATH 无 cargo")
+        message(FATAL_ERROR "AUTO found no cargo: the pixi environment is absent (run pixi install -e ${VISIAENGINE_PIXI_ENV} first) and system PATH has no cargo")
       endif()
     elseif(VISIAENGINE_RUST_SDK STREQUAL "PIXI")
       if(NOT _pixi OR NOT EXISTS "${_pixi}/bin/cargo")
-        message(FATAL_ERROR "强制 PIXI 但 pixi 环境缺位：跑 pixi install -e ${VISIAENGINE_PIXI_ENV}（不回落系统）")
+        message(FATAL_ERROR "PIXI forced but the pixi environment is absent: run pixi install -e ${VISIAENGINE_PIXI_ENV} (no fall-back to system)")
       endif()
       set(_cargo "${_pixi}/bin/cargo")
       set(_kind "pixi")
     elseif(VISIAENGINE_RUST_SDK STREQUAL "SYSTEM")
       find_program(_found_cargo cargo)
       if(NOT _found_cargo)
-        message(FATAL_ERROR "强制 SYSTEM 但系统 PATH 无 cargo（不回落 pixi；改 PIXI 或给路径）")
+        message(FATAL_ERROR "SYSTEM forced but system PATH has no cargo (no fall-back to pixi; switch to PIXI or give a path)")
       endif()
-      # 反污染：pixi 激活把 conda cargo 塞进 PATH——SYSTEM 语义须真·系统工具链
+      # Anti-pollution: a pixi activation injects the conda cargo into PATH -- SYSTEM semantics demand a real system toolchain
       if((_pixi AND _found_cargo MATCHES "^${_pixi}/") OR
          (DEFINED ENV{CONDA_PREFIX} AND _found_cargo MATCHES "^$ENV{CONDA_PREFIX}/"))
-        message(FATAL_ERROR "SYSTEM 模式拒收 pixi 激活 PATH 的 cargo（${_found_cargo}）；改 PIXI 或开未激活 shell")
+        message(FATAL_ERROR "SYSTEM mode rejects a pixi-activated PATH cargo (${_found_cargo}); switch to PIXI or use a non-activated shell")
       endif()
       set(_cargo "${_found_cargo}")
       set(_kind "system")
     else()
       if(NOT EXISTS "${VISIAENGINE_RUST_SDK}")
-        message(FATAL_ERROR "VISIAENGINE_RUST_SDK=${VISIAENGINE_RUST_SDK} 不是可执行文件（显式路径=逃生舱，不存在即错）")
+        message(FATAL_ERROR "VISIAENGINE_RUST_SDK=${VISIAENGINE_RUST_SDK} is not an executable file (an explicit path is the escape hatch; a nonexistent one is an error)")
       endif()
       set(_cargo "${VISIAENGINE_RUST_SDK}")
       set(_kind "path")
@@ -111,14 +111,14 @@ function(visiaengine_resolve_sdks)
     message(STATUS "Rust SDK: ${_cargo} [${_kind}] · MSRV ${_msrv}")
   endif()
 
-  # ---- Qt6（T-A0' 二值合同）----
+  # ---- Qt6 (T-A0' two-value contract) ----
   if(NOT VISIAENGINE_QT)
     set(VISIAENGINE_QT_KIND "OFF" PARENT_SCOPE)
-    message(STATUS "Qt: OFF（不开 Qt；要 Qt 用 -DVISIAENGINE_QT=ON）")
+    message(STATUS "Qt: OFF (Qt not enabled; pass -DVISIAENGINE_QT=ON to want Qt)")
     return()
   endif()
-  # ON=严格要 Qt。来源自助：pixi（qt-spike 优先，环境内自足原则）→ 系统 → 都无 FATAL。
-  # USE_PIXI=OFF 时 _pixi 已为空（总闸收口点），此处天然只剩系统路——无需重复判断。
+  # ON = Qt is strictly required. The chain serves itself: pixi (qt-spike first, the env self-sufficiency principle) -> system -> neither = FATAL.
+  # With USE_PIXI=OFF, _pixi is already empty (the master-switch cut-off point), so only the system path remains here -- no re-check needed.
   find_package(Qt6 COMPONENTS Widgets QUIET)
   set(_qkind "")
   if(NOT Qt6_FOUND AND _pixi)
@@ -132,10 +132,10 @@ function(visiaengine_resolve_sdks)
   endif()
   if(NOT Qt6_FOUND)
     message(FATAL_ERROR
-      "VISIAENGINE_QT=ON 但两边都没找到 Qt6：\n"
-      "  pixi 路线：pixi install -e ${VISIAENGINE_PIXI_ENV}（qt6-main 在 qt-spike 环境）\n"
-      "  系统路线：安装 Qt6（qt6-base-dev / 官网安装器）后重试\n"
-      "不想要 Qt 就 -DVISIAENGINE_QT=OFF（默认）")
+      "VISIAENGINE_QT=ON but Qt6 was found on neither side:\n"
+      "  pixi route: pixi install -e ${VISIAENGINE_PIXI_ENV} (qt6-main lives in the qt-spike environment)\n"
+      "  system route: install Qt6 (qt6-base-dev / the official installer) and retry\n"
+      "If you do not want Qt, pass -DVISIAENGINE_QT=OFF (the default)")
   endif()
   if(_qkind STREQUAL "system")
     message(STATUS "Qt: ${Qt6_VERSION} [system] ${Qt6_DIR}")

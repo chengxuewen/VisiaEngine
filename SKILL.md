@@ -1,44 +1,44 @@
 # VisiaEngine Skills Registry
 
-本仓技能分两层：**全局插件技能**（不随仓库分发）与**项目技能**（`.agents/skills/`，随仓库版本化）。
+This repo's skills come in two layers: **global plugin skills** (not distributed with the repo) and **project skills** (`.agents/skills/`, versioned with the repo).
 
-## 全局插件技能
+## Global Plugin Skills
 
-由 `superpowers`、`ponytail`、`oh-my-openagent`、`context-mode` 插件加载（装配点：`.opencode/opencode.json` → `plugin`）。通用方法论，适用所有项目，本文件不重复列举。
+Loaded by the `superpowers`, `ponytail`, `oh-my-openagent`, and `context-mode` plugins (assembly point: `.opencode/opencode.json` → `plugin`). Generic methodology, applicable to all projects; not duplicated here.
 
-## 项目 Skills（23，位于 `.agents/skills/`）
+## Project Skills (23, under `.agents/skills/`)
 
-路由触发面 = 各 SKILL.md frontmatter 的 `description`；代理按任务上下文自动激活，无需手动调用。
+The routing trigger surface = each SKILL.md frontmatter's `description`; agents activate them automatically by task context, no manual invocation needed.
 
-| Skill | 类型 | 说明 |
-|-------|------|------|
-| `think-before-act` | 元约束 | 先调研→列方案→用户审批→执行 |
-| `skill-router` | 元约束 | 意图分析，输出推荐技能组合 |
-| `ecosystem-scan` | 元约束 | .agents 体系审计 + 社区生态扫描 |
-| `adjudication-walkthrough` | 元约束 | 裁决逐项过（一次一项 · 七段模板 · 说人话） |
-| `lesson-review` | 记忆 | 批量会话回顾，教训沉淀入 memorys |
-| `doc-audit` | 文档 | 文档与架构自洽性审计（交互式） |
-| `book-to-skill` | 文档 | 书籍/文档 → 结构化技能 |
-| `openspec-explore` | 规范 | 变更前探索/思路澄清 |
-| `openspec-propose` | 规范 | 生成 proposal + design + tasks 三件套 |
-| `openspec-apply-change` | 规范 | 按 OpenSpec 任务实施 |
-| `openspec-sync-specs` | 规范 | delta 规格同步主规格 |
-| `openspec-archive-change` | 规范 | 完成变更归档 |
-| `api-interface-design` | 工程 | 契约优先设计（trait / WS 协议 / REST） |
-| `context-engineering` | 工程 | 多语言 workspace 上下文路由 |
-| `incremental-implementation` | 工程 | 薄垂直切片实施循环 |
-| `code-simplification` | 工程 | 过度工程识别与降复杂度 |
-| `source-driven-development` | 工程 | 依赖决策以官方文档为准 |
-| `performance-optimization` | 工程 | 延迟/吞吐/渲染/基准四维排查 |
-| `ci-cd-automation` | 工程 | CI 门禁与构建矩阵管理 |
-| `test-harness` | 测试 | 规格→测试骨架生成与验证 |
-| `browser-testing` | 测试 | Web 面板 Playwright 验证 |
-| `security-hardening` | 安全 | OWASP + 密钥扫描 + 审计流 |
-| `review-hardcode` | 安全 | 硬编码快速扫描（已并入 security-hardening） |
+| Skill | Type | Purpose |
+|-------|------|---------|
+| `think-before-act` | meta-constraint | research first → list options → user approval → execute |
+| `skill-router` | meta-constraint | intent analysis, output a recommended skill set |
+| `ecosystem-scan` | meta-constraint | .agents system audit + community ecosystem scan |
+| `adjudication-walkthrough` | meta-constraint | item-by-item adjudication (one at a time · seven-part template · plain language) |
+| `lesson-review` | memory | batch session review, deposit lessons into memorys |
+| `doc-audit` | docs | documentation and architecture self-consistency audit (interactive) |
+| `book-to-skill` | docs | books/documents → structured skills |
+| `openspec-explore` | spec | pre-change exploration / idea clarification |
+| `openspec-propose` | spec | generate the proposal + design + tasks trio |
+| `openspec-apply-change` | spec | implement per OpenSpec tasks |
+| `openspec-sync-specs` | spec | sync delta specs into the main specs |
+| `openspec-archive-change` | spec | archive a completed change |
+| `api-interface-design` | engineering | contract-first design (trait / WS protocol / REST) |
+| `context-engineering` | engineering | context routing for multi-language workspaces |
+| `incremental-implementation` | engineering | thin vertical-slice implementation loop |
+| `code-simplification` | engineering | over-engineering detection and complexity reduction |
+| `source-driven-development` | engineering | dependency decisions follow official docs |
+| `performance-optimization` | engineering | four-dimension latency/throughput/rendering/benchmark triage |
+| `ci-cd-automation` | engineering | CI gate and build-matrix management |
+| `test-harness` | testing | spec → test skeleton generation and verification |
+| `browser-testing` | testing | Playwright verification of the web panel |
+| `security-hardening` | security | OWASP + secret scanning + audit flow |
+| `review-hardcode` | security | quick hardcoded-value scan (merged into security-hardening) |
 
-## 与规则/记忆的分工
+## Division of Labor vs Rules/Memory
 
-- **规则**（`.agents/rules/`）= 恒常约束，部分每轮加载（清单见 `.opencode/opencode.json` → `instructions`，14 条）
-- **记忆**（`.agents/memorys/`）= 易变事实（C/D/PIT 编号体系）
-- **技能**（本表）= 按需深度工作流
-- 层级详情：根 `AGENTS.md` + `.agents/AGENTS.md`
+- **Rules** (`.agents/rules/`) = constant constraints, some loaded every turn (list in `.opencode/opencode.json` → `instructions`, 14 entries)
+- **Memory** (`.agents/memorys/`) = volatile facts (the C/D/PIT numbering system)
+- **Skills** (this table) = on-demand deep workflows
+- Layer details: root `AGENTS.md` + `.agents/AGENTS.md`

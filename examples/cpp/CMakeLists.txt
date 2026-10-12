@@ -1,5 +1,5 @@
-# examples/cpp —— C++ 例真身（visiaengine::cpp RAII 消费位；S4 开张）
-# 反-glob 中央账在 visiaengine_setup_bindings()
+# examples/cpp -- the C++ examples' real bodies (the visiaengine::cpp RAII consumption slot; opened at S4)
+# the anti-glob central audit lives in visiaengine_setup_bindings()
 visiaengine_add_example(E802_offscreen CPP)
-visiaengine_add_example(E811_entity_hide_cpp CPP)  # 显隐孪生·C++ 面（hpp 薄转发验收）
-visiaengine_add_example(E812_mesh_add CPP)           # 程序化增删（CAPI-15/16 活体门）
+visiaengine_add_example(E811_entity_hide_cpp CPP)  # the visibility twin, C++ face (the hpp thin-forwarding acceptance)
+visiaengine_add_example(E812_mesh_add CPP)           # programmatic add/remove (the CAPI-15/16 live gates)

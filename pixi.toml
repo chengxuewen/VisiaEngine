@@ -1,7 +1,7 @@
-# VisiaEngine 开发环境 — pixi 单源管理（D5）
-# 纪律: .agents/rules/common/constraints.md | 指南: docs/env.md
-# 用法: bash bootstrap.sh（首次）→ source pixi.sh（日常）| 验证: pixi run verify
-# 注意: rustfmt/clippy 非独立 conda 包名（实测 NOT-FOUND），二进制由 rust 主包提供
+# VisiaEngine dev environment -- pixi single-source management (D5)
+# Discipline: .agents/rules/common/constraints.md | Guide: docs/env.md
+# Usage: bash bootstrap.sh (first time) -> source pixi.sh (daily) | Verify: pixi run verify
+# Note: rustfmt/clippy are not standalone conda package names (measured NOT-FOUND); the rust main package provides the binaries
 
 [workspace]
 name = "visiaengine"
@@ -24,9 +24,9 @@ ninja = ">=1.13.2,<2"
 sdl3 = ">=3.4,<4"
 
 [feature.tools.target.linux-64.dependencies]
-gxx_linux-64 = "*"   # CMake 消费面 C++ 编译器（仅 linux-64 目标位；Win/mac 不装[计划§1③]）
-xorg-libx11 = "*"      # E702 C demo 消费面（FindX11 头+库；缺位=E702 优雅跳过，双层门控）
-xorg-xproto = "*"     # Xlib.h 依赖基协议头（host feature 同款教训行）
+gxx_linux-64 = "*"   # the C++ compiler for the CMake consumption surface (linux-64 target slot only; not installed on Win/mac [plan §1③])
+xorg-libx11 = "*"      # the E702 C demo consumption surface (FindX11 headers+libs; absent = E702 skips gracefully, double-gated)
+xorg-xproto = "*"     # the base protocol headers Xlib.h depends on (the same lesson row as the host feature)
 xorg-xvfb-server = ">=21.1.24,<22"
 
 [feature.tools.tasks]
@@ -37,52 +37,52 @@ rust-analyzer = "*"
 rust-src = ">=1.98,<2"
 
 [feature.host.target.linux-64.dependencies]
-# [FFI-R:FC-M1] 本机无裸 nm/gcc（实测）——gate-abi/demo 走 conda 件；包名 pixi search 实证。
-# ⚠ 必须 target 限定（win-64 无 xorg 候选，solve 全平台炸——I0 首轮实测教训）；
-# Windows 逃生舱场景=cargo build 不带 host feature（D5 既定，本环境仅 linux 用）。
-xorg-xvfb-server = "*"   # 注意：真包名带 -server（pixi search 模糊命中教训）
+# [FFI-R:FC-M1] This host has no bare nm/gcc (measured) -- gate-abi/demo use the conda binaries; package names verified via pixi search.
+# ⚠ MUST be target-scoped (win-64 has no xorg candidates; solving all platforms explodes -- the I0 first-round measured lesson);
+# the Windows escape-hatch scenario = cargo build without the host feature (the standing D5 plan; this environment is linux-only).
+xorg-xvfb-server = "*"   # note: the real package name carries -server (the pixi search fuzzy-hit lesson)
 xorg-libx11 = "*"
-xorg-xproto = "*"      # X.h/Xproto.h 基协议头（Xlib.h 依赖，不在 libx11 包内）
+xorg-xproto = "*"      # the X.h/Xproto.h base protocol headers (Xlib.h depends on them; not inside the libx11 package)
 gcc = "*"
 binutils = "*"
 
 [feature.wasm.dependencies]
-# 组件无 rust↔cross-std 锁步 run-dep [FFI-R:env-B1]：pin 必须 == rust 锁文件实况(1.98.0)，
-# 动任一必同步另一 + pixi.lock 随迁入库（D5）。bindgen-cli schema 对偶执行日校验 [FFI-R:CS-5]。
+# The components carry no rust<->cross-std lockstep run-dep [FFI-R:env-B1]: the pin must == the rust lockfile reality (1.98.0),
+# moving either means moving both + committing the pixi.lock migration together (D5). The bindgen-cli schema duality is checked on execution day [FFI-R:CS-5].
 rust-std-wasm32-unknown-unknown = "=1.98.0"
-wasm-bindgen-cli = "=0.2.127"  # 与 Cargo pin 同步（schema 每 patch 变，J1 实测互拒）
+wasm-bindgen-cli = "=0.2.127"  # kept in sync with the Cargo pin (the schema changes every patch; measured mutual rejection, J1)
 binaryen = "*"
 
 [feature.qt.dependencies]
-qt6-main = "*"   # Qt6 全栈。坑实录：conda-forge `qt-main`=Qt5！Qt6 正名 `qt6-main`（包名坑族第二例）
+qt6-main = "*"   # the full Qt6 stack. Trap on record: conda-forge `qt-main` = Qt5! The real Qt6 name is `qt6-main` (the second case in the package-name trap family)
 
 [feature.wasm.tasks]
-web-probe = "bash scripts/web-probe.sh"   # J0 验收（版本相等+rlib 存在+全树 check 人跑）
-web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-wasm -- --ignored'"   # J2′：build→CAPI-09 镜像（T2 显式链）
+web-probe = "bash scripts/web-probe.sh"   # J0 acceptance (version equality + rlib presence + a full-tree check run by hand)
+web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-wasm -- --ignored'"   # J2': build -> the CAPI-09 mirror (the explicit T2 chain)
 
 [environments]
-# 单环境方案：轻量二进制全部进 default（tools/ide 与 base 依赖同 solve-group，无隔离需求）
+# Single-environment scheme: all lightweight binaries go into default (tools/ide and the base deps share a solve-group; no isolation needed)
 default = { features = ["tools", "ide"], solve-group = "base" }
-# 批2 I0 / 批7 J0（批准轮 2026-09-11）：两 spike 环境共享 base solve-group=单一工具链 [FFI-R:env-W2]
+# Batch 2 I0 / batch 7 J0 (approval round 2026-09-11): the two spike environments share the base solve-group = a single toolchain [FFI-R:env-W2]
 host-spike = { features = ["tools", "ide", "host"], solve-group = "base" }
 wasm-spike = { features = ["tools", "ide", "wasm"], solve-group = "base" }
 qt-spike = { features = ["tools", "ide", "qt"], solve-group = "base" }
 
 [tasks]
-# cargo 类 task 是接口合同：Cargo workspace 落地（动工日）前运行必失败，属预期
+# The cargo-flavored tasks are an interface contract: running them before the Cargo workspace lands (build day) must fail -- that is expected
 check = "cargo check --workspace"
 build = "cargo build --workspace"
 test = "cargo test --workspace"
 lint = "cargo clippy --workspace --all-targets -- -D warnings"
 fmt = "cargo fmt --all -- --check"
 fmt-fix = "cargo fmt --all"
-# 单文件格式化一律 rustfmt --edition 2024 <file>——禁止 cargo fmt -- <path>（其 -- 参数不是路径过滤，历史踩坑）
-smoke-x11 = "bash scripts/smoke-x11.sh"   # 批2 I3：Xvfb 自管三帧 present
-gate-abi = "bash scripts/gate-abi.sh"   # 批2 I2：符号白名单+demo 编译运行（host 工具检索式）
-gate-trace = "bash scripts/spec-trace.sh"   # 批2 v1.4：追溯本机化入 ci 链（[FFI-R:FC-6] 假绿窗口封堵）
-gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # GEO-18 解析边界门禁（代码形态，注释豁免）
-gate-docs = "bash scripts/gate-docs.sh"   # 批 5 T3：文档零漂移四检
-cmake-smoke = "bash scripts/cmake-smoke.sh"   # CMake 层三态门（无 cmake 机 SKIP；含负路径报文）
+# Single-file formatting is always rustfmt --edition 2024 <file> -- cargo fmt -- <path> is forbidden (its -- argument is NOT a path filter; a historical trap)
+smoke-x11 = "bash scripts/smoke-x11.sh"   # batch 2 I3: Xvfb self-managed three-frame present
+gate-abi = "bash scripts/gate-abi.sh"   # batch 2 I2: symbol whitelist + demo compile & run (the host-tool lookup form)
+gate-trace = "bash scripts/spec-trace.sh"   # batch 2 v1.4: traceability nativized into the ci chain (sealing the [FFI-R:FC-6] false-green window)
+gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # the GEO-18 parsing-boundary gate (code shape; comments exempt)
+gate-docs = "bash scripts/gate-docs.sh"   # batch 5 T3: the four zero-drift document checks
+cmake-smoke = "bash scripts/cmake-smoke.sh"   # the CMake-layer three-state gate (SKIP on machines without cmake; includes negative-path messages)
 # pack-check (v1.3 P3; promoted INTO the ci chain by the publish band 2026-10-09):
 # installed-tree hygiene -- manifest / self-sufficiency / no build-machine paths.
 # Runs after cmake-smoke (it reuses that build dir; SKIPs with exit 0 when
@@ -102,28 +102,28 @@ keys-probe = "python3 scripts/keys-probe.py --all"
 # published; the tarball stays on this machine.
 npm-pack = "bash scripts/gen-npm-package.sh"
 ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke", "pack-check"] }
-smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # ctest 转发壳（argv 单源=R9 表；CI xvfb-run 调用）
-smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2：glTF 装配链路（G3）
-smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2：GeoJSON 链路（H4）
-smoke-switch-camera = "bash scripts/smoke-rs.sh E301_switch_camera"   # L2：2D↔3D 切换（G4）
-smoke-pick = "bash scripts/smoke-rs.sh E401_pick_demo"   # L2：拾取→高亮链（headless 免 xvfb）
-smoke-pick-hover = "bash scripts/smoke-rs.sh E402_pick_interactive"   # L2：hover/多选窗（display，CI 走 xvfb）
-smoke-measure = "bash scripts/smoke-rs.sh E203_measure_cli"   # L2：量测 CLI（纯 CPU）
+smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # a ctest forwarding shell (argv single source = the R9 table; CI calls it under xvfb-run)
+smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2: the glTF assembly chain (G3)
+smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2: the GeoJSON chain (H4)
+smoke-switch-camera = "bash scripts/smoke-rs.sh E301_switch_camera"   # L2: 2D<->3D switching (G4)
+smoke-pick = "bash scripts/smoke-rs.sh E401_pick_demo"   # L2: pick->highlight chain (headless, no xvfb needed)
+smoke-pick-hover = "bash scripts/smoke-rs.sh E402_pick_interactive"   # L2: hover/multi-select window (display; CI runs it under xvfb)
+smoke-measure = "bash scripts/smoke-rs.sh E203_measure_cli"   # L2: the measurement CLI (pure CPU)
 smoke-bench-twin = "bash scripts/smoke-rs.sh E601_bench_twin"
 smoke-shadow-demo = "bash scripts/smoke-rs.sh E501_shadow_demo"
 smoke-glass-water = "bash scripts/smoke-rs.sh E504_glass_water"
 smoke-split-screen = "bash scripts/smoke-rs.sh E303_split_screen"
 smoke-fly-camera = "bash scripts/smoke-rs.sh E302_fly_camera"
 smoke-text-labels = "bash scripts/smoke-rs.sh E205_text_labels"
-smoke-pcl-viewer = "bash scripts/smoke-rs.sh E204_pcl_viewer"   # L2：点云双模（headless 自断言路）
-smoke-tile-viewer = "bash scripts/smoke-rs.sh E206_tile_viewer"   # L2：MVT 解码→渲染三族像素（B3）
-smoke-color-tuning = "bash scripts/smoke-rs.sh E502_color_tuning"   # L2：色彩标定往返（headless 自断言）
-qt-demo-build = "cmake --preset ci-strict && cmake --build --preset ci-strict"   # Qt 轮消费冒烟（须 -e qt-spike；ci-strict=双 SDK 强制 PIXI）
-smoke-qt = "bash scripts/smoke-qt.sh"   # 三态：无 env/无 X=SKIP（须 -e qt-spike）
-smoke-twin-city = "bash scripts/smoke-rs.sh E901_twin_city"   # L2：垂直切片 seed（批 4 成果一图流+PNG 人检）
-gallery = { cmd = "python3 scripts/gen_gallery.py", cwd = "." }   # B1：gallery index.html（缩略图先跑各例 --frames 1，产物 build/gallery）
-gallery-serve = { cmd = "python3 -m http.server 8931 --bind 0.0.0.0", cwd = "." }   # B1：仓根起服 0.0.0.0（LAN 可达；开 http://<host>:8931/build/gallery/index.html）
-bench = "bash scripts/bench.sh"   # [6b] 制品链（release 双例；本机 lavapipe 观测档，非门禁）
+smoke-pcl-viewer = "bash scripts/smoke-rs.sh E204_pcl_viewer"   # L2: point cloud, dual mode (the headless self-asserting route)
+smoke-tile-viewer = "bash scripts/smoke-rs.sh E206_tile_viewer"   # L2: MVT decode -> three-family render pixels (B3)
+smoke-color-tuning = "bash scripts/smoke-rs.sh E502_color_tuning"   # L2: color-calibration round trip (headless self-assertion)
+qt-demo-build = "cmake --preset ci-strict && cmake --build --preset ci-strict"   # the Qt round's consumption smoke (requires -e qt-spike; ci-strict = both SDKs forced PIXI)
+smoke-qt = "bash scripts/smoke-qt.sh"   # three-state: no env / no X = SKIP (requires -e qt-spike)
+smoke-twin-city = "bash scripts/smoke-rs.sh E901_twin_city"   # L2: the vertical-slice seed (the batch-4 one-image deliverable + human PNG check)
+gallery = { cmd = "python3 scripts/gen_gallery.py", cwd = "." }   # B1: the gallery index.html (thumbnails first run each example with --frames 1; output build/gallery)
+gallery-serve = { cmd = "python3 -m http.server 8931 --bind 0.0.0.0", cwd = "." }   # B1: serve the repo root on 0.0.0.0 (LAN-reachable; open http://<host>:8931/build/gallery/index.html)
+bench = "bash scripts/bench.sh"   # [6b] the artifact chain (two release examples; a local lavapipe observational tier, not a gate)
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"
 smoke-morph = "bash scripts/smoke-rs.sh E304_projection_morph"
 smoke-box-select = "bash scripts/smoke-rs.sh E403_box_select"
@@ -134,6 +134,6 @@ smoke-gate = "bash scripts/smoke-rs.sh E511_gate"   # L2: rigid node transform r
 smoke-pbr = "bash scripts/smoke-rs.sh E508_pbr_materials"   # L2: GGX metallic/dielectric + roughness ladder asserts (WGPU-35/REND-45)
 smoke-ssao = "bash scripts/smoke-rs.sh E509_ssao"   # L2: SSAO off-vs-on crease-band pixel assert (WGPU-36)
 smoke-cjk = "bash scripts/smoke-rs.sh E505_cjk_labels"
-window-probe = { cmd = "bash scripts/window-probe.sh", cwd = "." }   # 窗例第一帧守卫（黑屏三连根治）：window-probe.sh <E###>
+window-probe = { cmd = "bash scripts/window-probe.sh", cwd = "." }   # the windowed examples' first-frame guard (the black-screen trio cure): window-probe.sh <E###>
 docs-gen = "bash scripts/gen-llms-txt.sh"   # llms.txt + rustdoc reference (D3)
 check-promises = "bash scripts/check-promises.sh"   # overclaim lint (D1; --self-test proven)

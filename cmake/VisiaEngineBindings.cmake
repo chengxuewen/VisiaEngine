@@ -1,18 +1,18 @@
-# visiaengine 例子注册法（R9/R10，v1.3）：Rust 三件套 + C/C++/Qt 原生例 + ctest 统一清单。
-# 反-glob 显式注册纪律承自已故 VisiaEngineExamples.cmake（盘上有文件未注册=硬错）。
-# 命名（R10）：真身=E 号原名 | 步骤=cargo-<动作>_<对象> | ctest=example_<目标基名>；rs/native 由 LABELS 分。
-# 设计=.omo/plans/bindings-restructure-cpp-examples.md v1.3 §S3。
+# The visiaengine example registration scheme (R9/R10, v1.3): the Rust trio + C/C++/Qt native examples + the unified ctest list.
+# The anti-glob explicit-registration discipline is inherited from the late VisiaEngineExamples.cmake (a file on disk but unregistered = hard error).
+# Naming (R10): real target = E-number name | step = cargo-<verb>_<object> | ctest = example_<target base name>; rs/native are separated by LABELS.
+# Design = .omo/plans/bindings-restructure-cpp-examples.md v1.3 §S3.
 
-option(VISIAENGINE_EXAMPLES "examples/ 全家桶（rs 步骤 + C/C++/Qt 例 + ctest 条目）" ON)
+option(VISIAENGINE_EXAMPLES "the whole examples/ family (rs steps + C/C++/Qt examples + ctest entries)" ON)
 
 if(VISIAENGINE_EXAMPLES AND CMAKE_VERSION VERSION_LESS 3.24)
-  # 承自契约表原文（sem5 点名迁移）：SKIP_RETURN_CODE 缺位=无 X 机 display 族红而非 Skip
-  message(FATAL_ERROR "examples 族需 CMake >= 3.24（ctest SKIP_RETURN_CODE：77=Skipped 非 Failed）")
+  # Inherited from the contract-table text (named for migration at sem5): without SKIP_RETURN_CODE, the display family goes red instead of Skip on X-less machines
+  message(FATAL_ERROR "the examples family needs CMake >= 3.24 (ctest SKIP_RETURN_CODE: 77 = Skipped, not Failed)")
 endif()
 
-# 原生例（C/C++/Qt exe）注册宏：真身=名字=ctest 条目；display 族 LABELS 交 -LE/-L 分流
+# Native example (C/C++/Qt exe) registration macro: real target = name = ctest entry; the display family's LABELS hand the -LE/-L routing off
 function(visiaengine_add_example _n)
-  # ARGS 必须 multivalue：单值口会只吞 "--frames"（列表拍扁实锤，E801 超时案）
+  # ARGS must be multivalue: a single-value slot swallows only "--frames" (list flattening, measured in the E801 timeout case)
   cmake_parse_arguments(_A "DISPLAY;X11;QT;SDL3;CPP" "" "ARGS" ${ARGN})
   if(_A_DISPLAY)
     set(_lbl "example;native;display")
@@ -29,28 +29,28 @@ function(visiaengine_add_example _n)
     target_link_libraries(${_n} PRIVATE X11::X11)
   endif()
   if(_A_CPP)
-    target_link_libraries(${_n} PRIVATE visiaengine::cpp)   # hpp 面消费=壳的活体验收
+    target_link_libraries(${_n} PRIVATE visiaengine::cpp)   # hpp-surface consumption = the shell's live acceptance test
   endif()
   if(_A_SDL3)
     target_link_libraries(${_n} PRIVATE SDL3::SDL3)
     get_target_property(_sdll SDL3::SDL3 IMPORTED_LOCATION)
     if(_sdll)
-      get_filename_component(_sdldir ${_sdll} DIRECTORY)      # conda 库不在系统 ld 路——rpath 自带
+      get_filename_component(_sdldir ${_sdll} DIRECTORY)      # conda libs are not on the system ld path -- carry the rpath along
       set_property(TARGET ${_n} APPEND PROPERTY BUILD_RPATH ${_sdldir})
     endif()
   endif()
   if(DEFINED VISIAENGINE_CARGO_STEP)
-    add_dependencies(${_n} ${VISIAENGINE_CARGO_STEP})  # 伞 .so 排序桥（probe 同款）
+    add_dependencies(${_n} ${VISIAENGINE_CARGO_STEP})  # umbrella .so ordering bridge (same as the probe)
   endif()
-  get_filename_component(_lang "${CMAKE_CURRENT_SOURCE_DIR}" NAME)  # FOLDER=磁盘语言目录同律（带号已编码在 E 号首位，不重复建词表）
+  get_filename_component(_lang "${CMAKE_CURRENT_SOURCE_DIR}" NAME)  # FOLDER = the on-disk language directory (the band number is already encoded in the E-number's first digit; no duplicate vocabulary table)
   set_target_properties(${_n} PROPERTIES FOLDER "examples/${_lang}")
   add_test(NAME example_${_n} COMMAND ${_n} ${_A_ARGS})
   set_tests_properties(example_${_n} PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     SKIP_RETURN_CODE 77
     LABELS "${_lbl}")
-  # run 步骤=人验形态，全例必发（rs 族 cargo-run_* 对称制）：零参常驻——
-  # DISPLAY 族经 run-gui（IDE 无 DISPLAY 探测 :0 回退），headless 族直跑终端输出即验收面
+  # Run steps = the human-verification form, emitted for every example (the rs family's cargo-run_* symmetry): zero-arg stays resident --
+  # the DISPLAY family goes through run-gui (probes and falls back to :0 when the IDE has no DISPLAY), the headless family runs directly in a terminal where the output is the acceptance surface
   if(_A_DISPLAY)
     add_custom_target(run_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
@@ -71,11 +71,11 @@ function(visiaengine_setup_bindings)
     return()
   endif()
   if(VISIAENGINE_ARTIFACT_PATH)
-    message(STATUS "visiaengine bindings：prebuilt 伞无 cargo 面，例子域退场（probe/伞/::cpp 常驻）")
+    message(STATUS "visiaengine bindings: the prebuilt umbrella has no cargo surface; the examples domain bows out (probe/umbrella/::cpp stay)")
     return()
   endif()
 
-  # ── Rust 族：argv 唯一户口（pixi smoke 只做 `ctest -R` 转发壳，抄写面归零）──
+  # -- Rust family: argv has its single home here (the pixi smoke is only a `ctest -R` forwarding shell; the transcription surface drops to zero) --
   set(_rs_items E101_clear E201_load_gltf E202_geo_viewer E203_measure_cli E204_pcl_viewer E205_text_labels E206_tile_viewer E302_fly_camera E303_split_screen E304_projection_morph E305_entity_anim E403_box_select E306_map_controls E504_glass_water
                 E301_switch_camera E401_pick_demo E402_pick_interactive E501_shadow_demo
                 E502_color_tuning E503_stroke_points E505_cjk_labels E506_postprocessing E507_hdr_tonemap E508_pbr_materials E509_ssao E510_route_flow E511_gate E601_bench_twin
@@ -104,11 +104,11 @@ function(visiaengine_setup_bindings)
 
   set(_args_E302_fly_camera "--frames;1")
   set(_args_E205_text_labels "--frames;1")
-  set(_args_E204_pcl_viewer "--pick-check;--frames;3")  # 自断言双半区覆盖 + REND-38 点拾取三断言（B2）
-  set(_args_E206_tile_viewer "--frames;1")  # MVT 解码→渲染三族像素断言（B3）
+  set(_args_E204_pcl_viewer "--pick-check;--frames;3")  # self-asserting dual-half coverage + REND-38 point-pick triple assert (B2)
+  set(_args_E206_tile_viewer "--frames;1")  # MVT decode -> render three-family pixel asserts (B3)
   set(_args_E401_pick_demo "--frames;2")
   set(_args_E402_pick_interactive "--frames;3")
-  set(_args_E501_shadow_demo "--frames;1")  # 双模式例：CI 走 headless（默认=交互窗）；注册表只服 ctest
+  set(_args_E501_shadow_demo "--frames;1")  # dual-mode example: CI runs headless (default = interactive window); the registry only serves ctest
   set(_args_E502_color_tuning "--frames;1")
   set(_args_E503_stroke_points "--frames;3")
   set(_args_E505_cjk_labels "--frames;1")
@@ -117,23 +117,23 @@ function(visiaengine_setup_bindings)
   set(_args_E508_pbr_materials "--frames;3")  # tonemap + hdr fixture asserts (REND-44/IO-17; headless path)
   set(_args_E509_ssao "--frames;3")  # SSAO off-vs-on pixel assert (WGPU-36; headless path)
   set(_args_E601_bench_twin "--count;5000;--frames;1")
-  set(_args_E901_twin_city "--frames;1")  # 双模例（E501 同制）：CI 走 headless 单帧+PNG 断言；无参=常驻窗
+  set(_args_E901_twin_city "--frames;1")  # dual-mode example (same scheme as E501): CI runs headless single-frame + PNG assert; no args = resident window
 
-  # 盘⇄表双向对账（examples/rs 面；表=上方 _rs_items）
+  # Disk<->table two-way audit (examples/rs side; table = _rs_items above)
   file(GLOB _rsf "${CMAKE_SOURCE_DIR}/examples/rs/E[0-9][0-9][0-9]_*.rs")
   foreach(_f ${_rsf})
     get_filename_component(_n ${_f} NAME_WE)
     if(NOT _n IN_LIST _rs_items)
-      message(FATAL_ERROR "examples/rs/${_n}.rs 未入注册表（禁注释式禁用）")
+      message(FATAL_ERROR "examples/rs/${_n}.rs is not in the registry (comment-style disabling forbidden)")
     endif()
   endforeach()
 
-  get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)  # rustc 兄弟目录（PIT-18 守卫形）
+  get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)  # the rustc sibling directory (the PIT-18 guard shape)
   set(_cenv ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}")
 
   foreach(_n ${_rs_items})
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/examples/rs/${_n}.rs")
-      message(FATAL_ERROR "注册表项 ${_n} 盘上无件（examples/rs/${_n}.rs）")
+      message(FATAL_ERROR "registry entry ${_n} has no file on disk (examples/rs/${_n}.rs)")
     endif()
     if(_disp_${_n})
       set(_lbl "example;rs;display")
@@ -147,7 +147,7 @@ function(visiaengine_setup_bindings)
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
               ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh
               ${_cenv} ${VISIAENGINE_CARGO} run -p examples --example ${_n}
-      VERBATIM USES_TERMINAL)  # run-gui 包装=IDE 无 DISPLAY 时探测本机 :0 回退（CI 不经此路）  # 步骤零 argv=交互默认（点 Run 看窗口，旧 stub 零参同制）；注册表 argv 专属 ctest。USES_TERMINAL 只挂 run；build/ALL 步不挂（Ninja 串行池自伤）
+      VERBATIM USES_TERMINAL)  # the run-gui wrapper probes and falls back to local :0 when the IDE has no DISPLAY (CI never passes here)  # zero-argv steps = interactive default (click Run to see the window; the old zero-arg stub worked the same); registry argv is ctest-only. USES_TERMINAL rides run only; build/ALL steps don't take it (Ninja's serial console pool would serialize everything)
     foreach(_t cargo-build_${_n} cargo-run_${_n})
       set_target_properties(${_t} PROPERTIES FOLDER "examples/rs")
     endforeach()
@@ -186,7 +186,7 @@ function(visiaengine_setup_bindings)
     message(STATUS "visiaengine bindings: python3 not found - gallery targets skipped")
   endif()
 
-  # 中央盘⇄表终账：examples/{c,cpp}/ 全部源文件必须在宏注册名单内（qt 件自注册同款在 examples/qt）
+  # Central disk<->table final audit: every source file under examples/{c,cpp}/ must be on the macro-registration list (the qt file self-registers the same way in examples/qt)
   set(_skip_note "")
   get_property(_reg GLOBAL PROPERTY VE_REGISTERED_EXAMPLES)
   foreach(_d c cpp)
@@ -195,10 +195,10 @@ function(visiaengine_setup_bindings)
     foreach(_f ${_fs})
       get_filename_component(_n ${_f} NAME_WE)
       if(NOT _n IN_LIST _reg)
-        message(FATAL_ERROR "examples/${_d}/${_n} 未注册（visiaengine_add_example 缺行=硬错）")
+        message(FATAL_ERROR "examples/${_d}/${_n} is unregistered (a missing visiaengine_add_example line = hard error)")
       endif()
     endforeach()
   endforeach()
 
-  message(STATUS "visiaengine bindings：Rust=${_rs_items} · 原生=[注册于各 examples/<lang>/CMakeLists]")
+  message(STATUS "visiaengine bindings: Rust=${_rs_items} · native=[registered in each examples/<lang>/CMakeLists]")
 endfunction()

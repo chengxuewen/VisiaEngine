@@ -8,8 +8,9 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES=(README.md docs/whitepaper.md)
-DELIVERED="MVT|场景树|投影 morph|morph"
+FILES=(README.md)
+# TODO(E2): re-add docs/whitepaper.md once it is translated (its Chinese sentence shapes break these regexes today)
+DELIVERED="MVT|scene tree|projection morph|morph"
 
 # A cited repo path must exist on disk. This family produced a false ledger line twice: a
 # "double master copy" citation whose files were never committed, and ungated counts. If this
@@ -32,7 +33,7 @@ run_lint() {
     hits=$(python3 - "$f" "$DELIVERED" <<'PYIN'
 import re, sys
 path, names = sys.argv[1], sys.argv[2]
-pat = re.compile(rf"({names})[^。；\n]{{0,6}}(在交付|计划于|即将支持|待交付)")
+pat = re.compile(rf"({names})[^。；\n]{{0,6}}(in progress|planned|coming soon|pending delivery)")
 for n, line in enumerate(open(path, encoding="utf-8"), 1):
     for m in pat.finditer(line):
         print(f"{n}:{m.group(0)}")
@@ -51,7 +52,7 @@ if [ "${1:-}" = "--self-test" ]; then
   cp README.md /tmp/promises-backup-readme.md
   python3 -c "
 s = open('README.md').read()
-s = s.replace('矢量瓦片 MVT（目录/HTTP 源已交付）', '矢量瓦片 MVT（在交付）', 1)
+s = s.replace('tiled-vector MVT (directory/HTTP sources delivered)', 'tiled-vector MVT (in progress)', 1)
 open('README.md','w').write(s)
 "
   if run_lint; then

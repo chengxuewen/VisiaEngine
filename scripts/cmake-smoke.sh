@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# cmake-smoke（计划 §2.4）：三态门——无 cmake=SKIP exit0（gate-abi 族纪律）；
-# 有= bare 配置+构建+ctest，另两条负路径报文断言（SYSTEM 反污染/预构建缺物）。
+# cmake-smoke (plan §2.4): a three-state gate -- no cmake = SKIP exit 0 (the gate-abi family discipline);
+# cmake present = bare configure+build+ctest, plus negative-path message asserts (SYSTEM anti-pollution / missing prebuilt artifact).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 CM=$(command -v cmake || true)
 [ -n "$CM" ] || CM=.pixi/envs/default/bin/cmake
 if [ ! -x "$CM" ]; then
-    echo "CMAKE-SMOKE SKIP (无 cmake——先 pixi install；本段在裸克隆机不误红)"
+    echo "CMAKE-SMOKE SKIP (no cmake -- run pixi install first; this segment never goes red on a bare-clone machine)"
     exit 0
 fi
 CT="$(dirname "$CM")/ctest"
@@ -24,61 +24,61 @@ rm -rf "$B" "$B-neg" "$B-negconf"
     || { echo "CMAKE-SMOKE ✗ bare configure"; exit 1; }
 "$CM" --build "$B" >/dev/null || { echo "CMAKE-SMOKE ✗ build"; exit 1; }
 "$CT" --test-dir "$B" -LE display --output-on-failure >/dev/null 2>&1 \
-    || { echo "CMAKE-SMOKE ✗ ctest（探针/headless example 未过）"; exit 1; }
-# ↑ -LE display：探针无标签+headless example 真跑；显示族（弹窗）由 smoke-x11/smoke-qt 专职 xvfb 覆盖
+    || { echo "CMAKE-SMOKE ✗ ctest (probe/headless example failed)"; exit 1; }
+# ↑ -LE display: the probe has no label and the headless examples really run; the display family (popup windows) is covered by smoke-x11/smoke-qt, the dedicated xvfb runners
 
-# README 条数锁（2026-10-08：README 写 40 而注册表实为 43，且无人在看）。真值只有
-# 本脚本持有（要已配置目录），所以这条锁住在这里；画廊卡数那半住在 gate-docs ⑦。
+# README count lock (2026-10-08: README said 40 while the registry actually had 43, and nobody was watching). The ground truth lives only in
+# this script (it needs a configured tree), so the lock lives here; the gallery-card-count half lives in gate-docs ⑦.
 NC=$( "$CT" --test-dir "$B" -N 2>/dev/null | grep -c '^  Test ' )
-RN=$(grep -oE 'ctest 统一例子清单（[0-9]+ 条' README.md | grep -oE '[0-9]+' | head -1 || true)
-[ -n "$RN" ] || { echo "CMAKE-SMOKE ✗ README 条数读取失败（断言无对象=恒真）"; exit 1; }
-[ "$NC" = "$RN" ] || { echo "CMAKE-SMOKE ✗ README 条数=$RN ≠ ctest 实注册=$NC"; exit 1; }
+RN=$(grep -oE 'ctest unified example registry \([0-9]+ entries' README.md | grep -oE '[0-9]+' | head -1 || true)
+[ -n "$RN" ] || { echo "CMAKE-SMOKE ✗ failed to read the README count (an assert with no object is vacuously true)"; exit 1; }
+[ "$NC" = "$RN" ] || { echo "CMAKE-SMOKE ✗ README count=$RN ≠ ctest actually registered=$NC"; exit 1; }
 
-# 第四态：裸 PATH 三锚（IDE 直调形态守卫；B1 裁决：configure 探+双构建锚，Rust 例族域换形后不加回退）
-# （2026-09-15 实锤：pixi run 包装掩盖，用户 IDE /usr/bin/cmake 直调爆「could not execute rustc」）
-SYS_CM=$(command -v /usr/bin/cmake || true); [ -n "$SYS_CM" ] || SYS_CM="$CM"  # 探针=用户 IDE 真形（系统 cmake；无系统 cmake 机退 conda 件）
-# 编译器绝对路径钉死=探针聚焦 cargo 自足面（本机实况：系统无 g++，C++ 全在 conda 侧；IDE 真形另由态①覆盖）
+# Fourth state: the bare-PATH triple anchor (the IDE direct-invocation shape guard; B1 adjudication: configure probe + double build anchor, no fallback added after the Rust example family changed shape)
+# (2026-09-15, measured: the pixi run wrapper masked it; the user's IDE /usr/bin/cmake direct call blew up with "could not execute rustc")
+SYS_CM=$(command -v /usr/bin/cmake || true); [ -n "$SYS_CM" ] || SYS_CM="$CM"  # the probe = the user's real IDE shape (system cmake; machines without a system cmake fall back to the conda binary)
+# Pinning the compiler to absolute paths keeps the probe focused on cargo's self-sufficiency (host reality: no system g++; all C++ lives on the conda side; the real IDE shape is covered separately by state ①)
 env PATH=/usr/bin:/bin "$SYS_CM" -S . -B "$B-negconf" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DVISIAENGINE_QT=OFF \
     -DCMAKE_C_COMPILER=/usr/bin/gcc "-DCMAKE_CXX_COMPILER=$(dirname "$CM")/x86_64-conda-linux-gnu-c++" \
     >/dev/null 2>&1 \
-    || { echo "CMAKE-SMOKE ✗ 裸 PATH configure（SDK/cargo 自足性破坏——.pixi 兜底断）"; exit 1; }
+    || { echo "CMAKE-SMOKE ✗ bare-PATH configure (SDK/cargo self-sufficiency broken -- the .pixi fallback snap)"; exit 1; }
 rm -rf "$B-negconf"
 for _t in cargo-build_capi cargo-build_examples; do
   env PATH=/usr/bin:/bin "$CM" --build "$B" --target "$_t" >/dev/null 2>&1 \
-      || { echo "CMAKE-SMOKE ✗ 裸 PATH ${_t}（cargo 环境自足性破坏=IDE 必炸）"; exit 1; }
+      || { echo "CMAKE-SMOKE ✗ bare PATH ${_t} (cargo environment self-sufficiency broken = the IDE would explode)"; exit 1; }
 done
 
-# 负路径 1：SYSTEM 语义（激活壳=拒收污染；真系统 cargo=合法通过；其余=必错且报文含 SYSTEM）
+# Negative path 1: SYSTEM semantics (activated shell = reject pollution; a genuine system cargo = a legitimate pass; anything else must error with a message containing SYSTEM)
 out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT=OFF -DVISIAENGINE_RUST_SDK=SYSTEM 2>&1)
 rc=$?
 if [ $rc -eq 0 ]; then
-    echo "  note: SYSTEM 模式走了真·系统 cargo（合法环境态）"
+    echo "  note: SYSTEM mode ran on a genuine system cargo (a legitimate environment state)"
 elif ! grep -q "SYSTEM" <<<"$out"; then
-    echo "CMAKE-SMOKE ✗ SYSTEM 负路径报文缺失"; exit 1
+    echo "CMAKE-SMOKE ✗ SYSTEM negative-path message missing"; exit 1
 fi
-# 负路径 3：PolyOrch 缺席（未拉 submodule / 裸克隆）——shim FATAL 报文必须可读且指路
-# （D39 嵌入契约 2026-10-10；报文断言用短语 grep，cmake 折行不漏——同负路径 1/2 纪律）
-mv PolyOrch PolyOrch.smoke-hidden 2>/dev/null  # 已是 submodule 时目录存在；缺目录的机=天然走同一断言
-rm -rf "$B-neg3"  # 独立目录：负路径1的 SYSTEM 缓存会抢先炸（SDK:86），轮不到 shim——实测坑
-out=$("$CM" -S . -B "$B-neg3" -G Ninja -DVISIAENGINE_QT=OFF 2>&1)  # 纯 bare：不带逃生舱旗，否则 SDK 解析先死轮不到 shim
+# Negative path 3: PolyOrch absent (submodule not pulled / bare clone) -- the shim FATAL message must be readable and point the way
+# (D39 embed contract 2026-10-10; message asserts grep short phrases so cmake line wrapping cannot evade them -- same discipline as negative paths 1/2)
+mv PolyOrch PolyOrch.smoke-hidden 2>/dev/null  # when it is a submodule the directory exists; machines missing the directory naturally take the same assert
+rm -rf "$B-neg3"  # a separate directory: the SYSTEM cache from negative path 1 would blow first (SDK:86) before the shim ever runs -- measured trap
+out=$("$CM" -S . -B "$B-neg3" -G Ninja -DVISIAENGINE_QT=OFF 2>&1)  # purely bare: no escape-hatch flags, otherwise SDK resolution dies first and the shim never runs
 rm -rf "$B-neg3"
 mv PolyOrch.smoke-hidden PolyOrch 2>/dev/null || true
 if ! grep -q "submodule update --init" <<<"$out"; then
-    echo "CMAKE-SMOKE ✗ PolyOrch 缺席报文缺指路（shim 修复指引丢失）"; exit 1
+    echo "CMAKE-SMOKE ✗ the PolyOrch-absent message lost its remediation pointer (the shim's fix guidance is gone)"; exit 1
 fi
 
-# 负路径 2：预构建逃生舱缺物=硬错（环境无关确定性）
+# Negative path 2: the prebuilt escape hatch with a missing artifact = hard error (environment-independent determinism)
 out=$("$CM" -S . -B "$B-neg" -G Ninja -DVISIAENGINE_QT=OFF -DVISIAENGINE_ARTIFACT_PATH=/tmp/ve-nope 2>&1)
-[ $? -ne 0 ] && grep -q "无 capi" <<<"$out" \
-    || { echo "CMAKE-SMOKE ✗ 逃生舱缺物未硬错（静默消费回潮）"; exit 1; }  # 短语断言：cmake 报文会折行，全句 grep 必漏
+[ $? -ne 0 ] && grep -q "no capi artifact" <<<"$out" \
+    || { echo "CMAKE-SMOKE ✗ the escape hatch did not hard-error on the missing artifact (silent consumption crept back)"; exit 1; }  # phrase assert: cmake messages wrap lines; a whole-sentence grep would always miss
 
-# 卫生锁·FOLDER 位置定则：一切字面值必须是磁盘真实目录（发明词 _rs-steps/7x-宿主/_bridge 在规则层死亡）；${} 模板行放行
+# Hygiene lock · the FOLDER position rule: every literal must be a real directory on disk (invented words like _rs-steps/7x-host/_bridge die at the rules layer); ${} template lines are exempt
 BAD=""
 for v in $(grep -rhoE 'FOLDER "[^"]+"' cmake examples bindings 2>/dev/null | sed 's/^FOLDER "//; s/"$//'); do
   case "$v" in *'${'*) continue;; esac
   [ -d "$v" ] || BAD="$BAD $v"
 done
-[ -z "$BAD" ] || { echo "CMAKE-SMOKE ✗ FOLDER 非磁盘目录（位置镜像定则，身份语义归 LABELS，见 D14/R9）:$BAD"; exit 1; }
+[ -z "$BAD" ] || { echo "CMAKE-SMOKE ✗ FOLDER is not a disk directory (the position-mirror rule; identity semantics belong to LABELS, see D14/R9):$BAD"; exit 1; }
 
 # State 4, positive (packaging-round v1.3 P2: the S-c beta "install must fail"
 # guard retired). The mirror-image risk now is a *silent partial or wrong tree*,
@@ -100,10 +100,10 @@ for f in "lib/$VE_SHARED" "lib/pkgconfig/visiaengine.pc" \
   [ -f "$B-inst/$f" ] || MISS="$MISS $f"
 done
 if [ -n "$MISS" ]; then
-  echo "CMAKE-SMOKE ✗ 装树缺件:$MISS"; rm -rf "$B-inst" "$B-inst.out"; exit 1
+  echo "CMAKE-SMOKE ✗ installed tree missing files:$MISS"; rm -rf "$B-inst" "$B-inst.out"; exit 1
 fi
 NTREE=$(find "$B-inst" -type f | wc -l)
-TREE_NOTE="install 树 ${NTREE} 件"
+TREE_NOTE="install tree ${NTREE} files"
 # File presence does not prove the .pc is right: a configure-time prefix bake
 # reports /usr/local while the tree sits elsewhere (caught live in this slice).
 # Asserted on the file text, not via pkg-config: `pkg-config --variable=libdir`
@@ -111,21 +111,21 @@ TREE_NOTE="install 树 ${NTREE} 件"
 # /usr/local, i.e. it cannot be the witness for this property.
 pc="$B-inst/lib/pkgconfig/visiaengine.pc"
 grep -q '^prefix=${pcfiledir}/' "$pc" \
-  || { echo "CMAKE-SMOKE ✗ .pc 前缀非 pcfiledir 形（baked 前缀=搬树即废）"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+  || { echo "CMAKE-SMOKE ✗ .pc prefix is not in pcfiledir form (a baked prefix = the tree is dead on arrival)"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
 grep -q "$PWD/target" "$pc" \
-  && { echo "CMAKE-SMOKE ✗ .pc 含构建目录绝对路径（发布物泄漏）"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+  && { echo "CMAKE-SMOKE ✗ .pc contains a build-directory absolute path (release-artifact leakage)"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
 grep -q '^URL: https\?://' "$pc" \
-  || { echo "CMAKE-SMOKE ✗ .pc URL 未从 Cargo.toml repository 代入"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
-TREE_NOTE="$TREE_NOTE / .pc 文本三检"
+  || { echo "CMAKE-SMOKE ✗ .pc URL was not substituted from Cargo.toml repository"; rm -rf "$B-inst" "$B-inst.out"; exit 1; }
+TREE_NOTE="$TREE_NOTE / .pc text triple-check"
 rm -rf "$B-inst" "$B-inst.out"
 
-# display 子态（B2）：Xvfb 自启真跑窗口族（E702/E801 自动执行轨；apt CI 同款形）
-# 起不来=XKB/pixi clobber 坑（PIT-19）→ note 不假绿；xvfb-run 系 Debian 包裹，conda 无=直启 Xvfb
+# display sub-state (B2): Xvfb self-starts and really runs the window family (the E702/E801 auto-execution track; same shape as apt CI)
+# if it cannot start = the XKB/pixi clobber trap (PIT-19) -> a note, never a false green; xvfb-run is a Debian wrapper and conda lacks it, so start Xvfb directly
 XV=$(command -v Xvfb || true); [ -n "$XV" ] || XV=.pixi/envs/default/bin/Xvfb
 XRV=$(command -v xvfb-run || true)
 if [ -n "$XRV" ]; then
     "$XRV" -a "$CT" --test-dir "$B" -L display --output-on-failure >/dev/null 2>&1 \
-        || { echo "CMAKE-SMOKE ✗ xvfb display 族（窗口例真跑失败）"; exit 1; }
+        || { echo "CMAKE-SMOKE ✗ xvfb display family (the window examples failed their real run)"; exit 1; }
     DISPLAY_NOTE="xvfb display ✓"
 elif [ -x "$XV" ]; then
     "$XV" :78 -screen 0 1024x768x24 >/tmp/cmake-smoke-xvfb.log 2>&1 & XPID=$!
@@ -134,13 +134,13 @@ elif [ -x "$XV" ]; then
         DISPLAY=:78 "$CT" --test-dir "$B" -L display --output-on-failure >/dev/null 2>&1
         DRV=$?
         kill $XPID 2>/dev/null; wait $XPID 2>/dev/null
-        [ $DRV -eq 0 ] && DISPLAY_NOTE="Xvfb:78 display ✓" || { echo "CMAKE-SMOKE ✗ display 族（Xvfb:78 真跑失败）"; exit 1; }
+        [ $DRV -eq 0 ] && DISPLAY_NOTE="Xvfb:78 display ✓" || { echo "CMAKE-SMOKE ✗ display family (the Xvfb:78 real run failed)"; exit 1; }
     else
         kill $XPID 2>/dev/null; wait $XPID 2>/dev/null
-        DISPLAY_NOTE="display 族未执行（Xvfb 起不来=PIT-19 clobber，非通过）"
+        DISPLAY_NOTE="display family not executed (Xvfb failed to start = the PIT-19 clobber, not a pass)"
     fi
 else
-    DISPLAY_NOTE="display 族未执行（无 Xvfb——非通过）"
+    DISPLAY_NOTE="display family not executed (no Xvfb -- not a pass)"
 fi
 
-echo "CMAKE-SMOKE ✓（bare 全链 + 两负路径报文 + 裸 PATH 三锚 + ${TREE_NOTE} + ${DISPLAY_NOTE}）"
+echo "CMAKE-SMOKE ✓ (full bare chain + two negative-path messages + the bare-PATH triple anchor + ${TREE_NOTE} + ${DISPLAY_NOTE})"

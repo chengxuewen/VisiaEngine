@@ -1,5 +1,5 @@
-# cargo-step + 伞合同 visiaengine::capi + 树内假 Config 桥（§2.3；iceoryx2 形，
-# 设计=.omo/plans/visiaengine-cmake-project.md v1.0）
+# cargo step + the visiaengine::capi umbrella contract + the fake in-tree Config bridge (§2.3; the iceoryx2 shape,
+# design = .omo/plans/visiaengine-cmake-project.md v1.0)
 
 function(visiaengine_setup_cargo)
   set(_src ${CMAKE_SOURCE_DIR}/bindings/c/visiaengine-capi)
@@ -7,8 +7,8 @@ function(visiaengine_setup_cargo)
     set(_dir "${VISIAENGINE_ARTIFACT_PATH}")
     set(_flags "")
   else()
-    set(_rust_dir "${CMAKE_SOURCE_DIR}/target/cmake-rust") # 仓级共享 target-dir：
-    # 多构建目录复用同一 cargo 增量面（cargo 按 profile 子目录隔离 debug/release，锁串行安全）
+    set(_rust_dir "${CMAKE_SOURCE_DIR}/target/cmake-rust") # repo-level shared target-dir:
+    # multiple build dirs reuse the same cargo incremental surface (cargo isolates debug/release under profile subdirs; the lock serializes safely)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
       set(_profile "release")
       set(_flags "--release")
@@ -17,12 +17,12 @@ function(visiaengine_setup_cargo)
       set(_flags "")
     endif()
     set(_dir "${_rust_dir}/${_profile}")
-    # 暴露给 examples 域（VisiaEngineBindings.cmake 的 rs 步骤复用同一产物目录合同）
+    # Exposed to the examples domain (the rs steps in VisiaEngineBindings.cmake reuse the same artifact-dir contract)
     set(VISIAENGINE_RUST_DIR "${_rust_dir}" PARENT_SCOPE)
     set(VISIAENGINE_RUST_PROFILE "${_profile}" PARENT_SCOPE)
   endif()
 
-  # 逐 OS 产物名（仅命名表六行，无安装语义）
+  # Per-OS artifact names (the six-row naming table only; no install semantics)
   if(WIN32)
     set(_shared "visiaengine.dll")
     set(_static "visiaengine.lib")
@@ -35,9 +35,9 @@ function(visiaengine_setup_cargo)
   endif()
 
   if(NOT VISIAENGINE_ARTIFACT_PATH)
-    # IDE 直调守卫：conda cargo 按 PATH 找 rustc，裸 PATH 下=「could not execute rustc」
-    # （2026-09-15 实锤：pixi run 包装验证掩盖，用户 IDE /usr/bin/cmake 直调首爆）——
-    # 构建命令恒定前缀 cargo 同目录（rustc 兄弟件实测在场），SYSTEM 态无害。
+    # IDE direct-invocation guard: conda cargo finds rustc via PATH; on a bare PATH = "could not execute rustc"
+    # (2026-09-15, measured: the pixi run wrapper masked it; it first blew up when the user's IDE invoked /usr/bin/cmake directly) --
+    # the build command is always prefixed with cargo's own directory (the rustc sibling is measured present), harmless in SYSTEM mode.
     get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)
     add_custom_target(cargo-build_capi ALL
       COMMAND ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}"
@@ -46,7 +46,7 @@ function(visiaengine_setup_cargo)
       BYPRODUCTS ${_dir}/${_shared} ${_dir}/${_static}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       VERBATIM USES_TERMINAL)
-    # 根级构建步骤不挂 FOLDER（位置定则：根作用域=顶层裸列；语义由名字承载）
+    # Root-level build step carries no FOLDER (position rule: root scope = a bare top-level listing; semantics carried by the name)
     set(VISIAENGINE_CARGO_STEP "cargo-build_capi" PARENT_SCOPE)
   endif()
 
@@ -61,20 +61,20 @@ function(visiaengine_setup_cargo)
   target_include_directories(visiaengine_capi_umbrella INTERFACE
     "$<BUILD_INTERFACE:${_src}/include>")
   target_link_libraries(visiaengine_capi_umbrella INTERFACE "${_dir}/${_shared}")
-  if(UNIX AND NOT APPLE) # 树内消费免 LD_LIBRARY_PATH（前作手动 env 之债不抄）
+  if(UNIX AND NOT APPLE) # in-tree consumers skip LD_LIBRARY_PATH (do not copy the predecessor's manual-env debt)
     target_link_options(visiaengine_capi_umbrella INTERFACE "-Wl,-rpath,${_dir}")
   endif()
 
-  # 树内假 Config（iceoryx2 双态花招，install 生成版=打包轮）：
-  # 子目录 find_package(visiaengine) 命中本文件 → 目标已在树内定义即成功
+  # Fake in-tree Config (the iceoryx2 two-state trick; the install-generated one = packaging round):
+  # a subdirectory find_package(visiaengine) hits this file -> the targets already exist in-tree, so it succeeds
   set(visiaengine_DIR "${CMAKE_SOURCE_DIR}/cmake" CACHE PATH "visiaengine in-tree config" FORCE)
 
-  # C++ header-only RAII 门面（S4；常驻面=消费者拿 ::capi 也拿 ::cpp，不随例子门）
+  # C++ header-only RAII facade (S4; permanent surface = consumers of ::capi also get ::cpp, independent of the examples gate)
   add_library(visiaengine_cpp_iface INTERFACE)
   add_library(visiaengine::cpp ALIAS visiaengine_cpp_iface)
   target_include_directories(visiaengine_cpp_iface INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/bindings/cpp/include>")
   target_link_libraries(visiaengine_cpp_iface INTERFACE visiaengine::capi)
 
-  message(STATUS "visiaengine::capi 伞就位：${_dir}/${_shared} · visiaengine::cpp 头面就位")
+  message(STATUS "visiaengine::capi umbrella in place: ${_dir}/${_shared} · visiaengine::cpp header surface in place")
 endfunction()

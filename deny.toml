@@ -1,6 +1,6 @@
-# cargo-deny — 骨架期：licenses + bans + sources。advisories 推迟到 CI 镜像化日（需 advisory-db）。
-# 不变式⑥参考：MPL 类件出现在树中即触发人工复核（核心静态链零污染原则）。
-# schema 依据：cargo-deny 0.20.2 init 模板实测（0.20 变更：[licenses] default 键已删、highlight 为枚举）。
+# cargo-deny -- skeleton era: licenses + bans + sources. advisories deferred to the CI mirror day (needs the advisory DB).
+# Invariant ⑥ reference: any MPL-family item appearing in the tree triggers manual review (zero-pollution principle for the core static link).
+# Schema basis: measured against the cargo-deny 0.20.2 init template (0.20 changes: the [licenses] default key removed, highlight is an enum).
 
 [graph]
 all-features = true
@@ -25,7 +25,7 @@ allow = [
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-allow-wildcard-paths = true   # workspace 内部 path 依赖无版本是常态，不算 wildcard 违规
+allow-wildcard-paths = true   # intra-workspace path deps without a version are the norm; not a wildcard violation
 highlight = "all"
 
 [sources]
@@ -34,13 +34,13 @@ unknown-git = "deny"
 allow-registry = ["https://index.crates.io"]
 
 [advisories]
-# 例外白名单（逐条理由+复评触发；D-18 候选=已随 S2 N1 呈交用户裁决 A 案通过 2026-09-18）
+# Exception whitelist (reason + re-review trigger per entry; D-18 candidate = submitted with S2 N1, user ruling option A approved 2026-09-18)
 ignore = [
-    # RUSTSEC-2026-0192: ttf-parser「作者宣告停维护」——类别=unmaintained，非漏洞。
-    # 攻击面判定：字体字节=宿主注入自有资产（同 load_gltf 信任级），非第三方网络输入；
-    # parse panic 由 capi_guard 栅栏兜底（VE_ERR_PANIC 谱）。
-    # 换栈成本：ab_glyph 同依 ttf-parser（C 案无效）；swash/skrifa 直用=+45KB gz 触 R2+工期 2×。
-    # 复评触发：① fontdue 出 skrifa 后端版本 ② 不可信字体输入成为真实用例（在线包下载路）
-    #           ③ 出现真 PoC 崩溃样本。命中任一 = io-text 换 swash（接口面已隔离，非破坏）。
+    # RUSTSEC-2026-0192: ttf-parser "author declared unmaintained" -- category = unmaintained, not a vulnerability.
+    # Attack-surface verdict: font bytes = host-injected own assets (same trust level as load_gltf), not third-party network input;
+    # parse panics are caught by the capi_guard fence (the VE_ERR_PANIC family).
+    # Stack-swap cost: ab_glyph depends on ttf-parser too (option C is void); swash/skrifa directly = +45KB gz, trips R2, 2x the schedule.
+    # Re-review triggers: ① a fontdue version shipping a skrifa backend ② untrusted font input becomes a real use case (online package download path)
+    #           ③ a real PoC crash sample appears. Any hit = swap io-text to swash (the interface is already isolated; non-breaking).
     "RUSTSEC-2026-0192",
 ]

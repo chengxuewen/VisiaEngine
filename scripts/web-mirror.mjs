@@ -1,16 +1,16 @@
-// CAPI-09 对账机（web-check 链）：node 载 pkg-node 产物——值对表 + d.ts bigint 编译面。
-// 常量单源=Rust（capi ffi pub const → js getter 引用）；此处验证"跨语言面不漂"。
+// CAPI-09 reconciliation machine (the web-check chain): node loads the pkg-node artifacts -- the value-pair table + the d.ts bigint compile surface.
+// Constants have a single source = Rust (capi ffi pub const -> js getter reference); this verifies the "cross-language surface does not drift".
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const root = new URL('..', import.meta.url).pathname; // scripts/.. = 仓根
+const root = new URL('..', import.meta.url).pathname; // scripts/.. = repo root
 const pkg = root + 'target/web/pkg-node/';
 
-// 1) 产物存在性（web-build.sh 全件）
+// 1) Artifact presence (every web-build.sh output)
 for (const f of ['visiaengine_wasm.js', 'visiaengine_wasm_bg.wasm', 'visiaengine_wasm.d.ts']) {
-  assert.ok(existsSync(pkg + f), `缺产物 pkg-node/${f}——先跑 web-build.sh`);
+  assert.ok(existsSync(pkg + f), `missing artifact pkg-node/${f} -- run web-build.sh first`);
 }
 
 // 1b) Staleness guard (English-only for new content, C17).
@@ -32,14 +32,14 @@ const newestMtime = (dir) => {
   for (const d of ['bindings/js/rust/visiaengine-wasm/src', 'bindings/c/visiaengine-capi/src']) {
     const src = newestMtime(root + d);
     assert.ok(src <= built,
-      `产物陈旧：${d} 的源比 pkg-node/visiaengine_wasm.d.ts 新——先跑 pixi run web-check 再跑本检`);
+      `stale artifact: the sources of ${d} are newer than pkg-node/visiaengine_wasm.d.ts -- run pixi run web-check, then this check`);
   }
 }
 const mod = require(pkg + 'visiaengine_wasm.js');
 const { VisiaEngine } = mod;
-const m = { ...mod, abiVersion: () => VisiaEngine.abiVersion() }; // static 挂类 [bindgen CJS 形状]
+const m = { ...mod, abiVersion: () => VisiaEngine.abiVersion() }; // static hung on the class [the bindgen CJS shape]
 
-// 2) 值对表（12 项，C 侧镜像 ffi_spec 常量断言同谱）
+// 2) Value-pair table (12 items, mirroring the C-side ffi_spec constant asserts, same schema)
 assert.strictEqual(m.abiVersion(), 0x00010010);
 assert.strictEqual(m.kind_ptr_move(), 1);
 assert.strictEqual(m.kind_ptr_down(), 2);
@@ -53,16 +53,16 @@ assert.strictEqual(m.ve_err_io(), -3);
 assert.strictEqual(m.ve_err_panic(), -4);
 assert.strictEqual(m.ve_err_size(), -5);
 
-// 3) d.ts 编译面：u64 面必须 bigint（number 静默截断=防线在此 [FFI-R:BS-6]）
+// 3) d.ts compile surface: the u64 surface must be bigint (silent number truncation = the defense lives here [FFI-R:BS-6])
 const dts = readFileSync(pkg + 'visiaengine_wasm.d.ts', 'utf8');
-assert.match(dts, /pick\([^)]*\):\s*bigint/, 'pick 返回须 bigint');
-assert.match(dts, /entityAt\([^)]*\):\s*bigint/, 'entity_at 返回须 bigint');
-assert.match(dts, /addPoints\([^)]*\):\s*bigint/, 'addPoints 位形返回须 bigint');
-assert.match(dts, /addLabel\([^)]*\):\s*bigint/, 'addLabel 位形返回须 bigint');
-assert.match(dts, /static\s+fromCanvas[^;]*Promise/, 'fromCanvas 必须 async 工厂(Promise) [FFI-R:v13-FEAS-2]');
-// B1 数据带镜像方法在场（CAPI-13..16 双面单源）
+assert.match(dts, /pick\([^)]*\):\s*bigint/, 'pick must return bigint');
+assert.match(dts, /entityAt\([^)]*\):\s*bigint/, 'entity_at must return bigint');
+assert.match(dts, /addPoints\([^)]*\):\s*bigint/, 'addPoints must return bigint in its 64-bit form');
+assert.match(dts, /addLabel\([^)]*\):\s*bigint/, 'addLabel must return bigint in its 64-bit form');
+assert.match(dts, /static\s+fromCanvas[^;]*Promise/, 'fromCanvas must be an async factory (Promise) [FFI-R:v13-FEAS-2]');
+// The B1 data-band mirror methods are present (the CAPI-13..16 dual-surface single source)
 for (const fn of ['setEntityVisible', 'entityVisible', 'addMesh', 'removeEntity', 'setEventCallback', 'addPoints', 'loadPclBytes', 'setClips', 'getClips', 'loadFont', 'addLabel', 'setMap', 'clearMap', 'navigateClick', 'getCameraPose', 'loadMvtDir', 'setTileSourceHttp', 'setTileView', 'loadRasterDir', 'setRasterView', 'loadEnvHdr', 'setNodeTransform', 'getNodeTransform', 'updateEntityAttrF64', 'updateEntityAttrStr', 'updateEntityAttrBool', 'createGroup', 'setParent', 'getParent', 'setGroupOffset', 'getGroupOffset']) {
-  assert.match(dts, new RegExp(`\\b${fn}\\(`), `d.ts 缺 B1 镜像方法 ${fn}`);
+  assert.match(dts, new RegExp(`\\b${fn}\\(`), `d.ts is missing the B1 mirror method ${fn}`);
 }
 
 console.log('MIRROR 3/3');
