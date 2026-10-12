@@ -60,11 +60,14 @@
 
 After `pixi run cmake --preset default` (or open the project in an IDE and pick the default/qt preset; CI uses ci-strict):
 
-- **The Rust E family (examples/rs) comes as a trio**: build step `cargo-build_<E#>` (single-example incremental),
-  run step `cargo-run_<E#>` (build + run, output in the terminal), ctest entry `example_<E#>` —
+- **The Rust E family (examples/rs) comes as a trio**: PolyOrch build handle `rs-<E#>` (mediator
+  `rs-<E#>-build`, the D40 EXAMPLE kind -- the cargo call lives in the supplier wrapper),
+  run step `cargo-run_<E#>` (builds the handle first, then run-gui executes the staged binary with the
+  DISPLAY fallback), ctest entry `example_<E#>` (runs the staged binary directly, no cargo at test time) —
   the single home of argv is the registry in `cmake/VisiaEngineBindings.cmake`, and the pixi `smoke-*` tasks
   are all `ctest -R` forwarding shells. The cargo environment's self-sufficiency is locked by the cmake-smoke state-④ triple anchor (bare PATH =
-  IDE calls need no pixi activation); per-example breakpoint debugging runs through rust-analyzer Run/Debug.
+  IDE calls need no pixi activation); per-example breakpoint debugging runs through rust-analyzer Run/Debug,
+  and with the `debug` preset on, F5 rows ride the PolyOrch managed lane instead (`rs-<E#>` launch + preLaunchTask pairs).
 - **The native E family is the real thing (examples/{c,cpp,qt})**: add_executable compiles what you change, one at a time,
   ctest entries from the same source, FOLDER = the disk-directory mirror (examples/<language> auto-derived; root-level steps sit bare at the top), identity semantics belong to LABELS.
 - **ctest**: the headless family always truly runs; the default testPreset already skips the display family wholesale via `-LE display`,

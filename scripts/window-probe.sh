@@ -21,7 +21,7 @@ if [ -z "$XVFB" ] || [ -z "$XWD" ]; then
 fi
 
 BIN="target/debug/examples/${STEM}"
-[ -f "$BIN" ] || BIN="cmake-build/examples/rs/${STEM}"
+[ -f "$BIN" ] || BIN="cmake-build/bin/${STEM}"   # T-D: examples stage to the RUNTIME dir (D40)
 [ -f "$BIN" ] || { echo "WINDOW-PROBE ✗ ${STEM} has no binary (build first)"; exit 1; }
 
 # Start Xvfb (a disjoint display number avoids CI concurrency)
@@ -33,6 +33,9 @@ cleanup() { kill "$XVPID" 2>/dev/null; }
 trap cleanup EXIT
 
 # Run the example with no args (the human-verification form); screenshot after 6s (the window manages its own lifetime; resident examples get killed)
+DISPLAY="$DISP" "$BIN" > /dev/null 2>&1 &
+APPID=$!
+sleep 6
 ALIVE="yes"
 kill -0 "$APPID" 2>/dev/null || ALIVE="no"
 # Screenshot first, kill later (a root screenshot depends on the app window being alive -- killing first captures a black background; a first-version trap)
@@ -65,3 +68,4 @@ EOF
 rc=$?
 # Non-zero = pure black / near-pure black = the swapchain never initialized (the black-screen family signal)
 [ $rc -eq 0 ] && echo "WINDOW-PROBE ✓ ${STEM}" || echo "WINDOW-PROBE ✗ ${STEM} black screen (first frame never rendered)"
+exit $rc

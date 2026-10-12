@@ -131,6 +131,13 @@ function(visiaengine_setup_bindings)
   get_filename_component(_cargo_bin "${VISIAENGINE_CARGO}" DIRECTORY)  # the rustc sibling directory (the PIT-18 guard shape)
   set(_cenv ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}")
 
+  # T-D (2026-10-12): the examples build through the PolyOrch rust face (D40 EXAMPLE
+  # kind). Engine story: handles rs-<n> (+ mediators rs-<n>-build) are the ONLY cargo
+  # build site -- the ALL wrapper aggregates mediator dependencies instead of issuing
+  # its own `cargo build`; run buttons and ctest execute the staged binary directly
+  # (cmake-build*/bin/ via the RUNTIME staging), no cargo process at test time.
+  # The run-gui DISPLAY fallback (vscode-server finding) rides the button lane.
+  set(_rs_mediators "")
   foreach(_n ${_rs_items})
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/examples/rs/${_n}.rs")
       message(FATAL_ERROR "registry entry ${_n} has no file on disk (examples/rs/${_n}.rs)")
@@ -140,26 +147,31 @@ function(visiaengine_setup_bindings)
     else()
       set(_lbl "example;rs;headless")
     endif()
-    add_custom_target(cargo-build_${_n}
-      COMMAND ${_cenv} ${VISIAENGINE_CARGO} build -p examples --example ${_n}
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
+    polyorch_rust_build(TARGET rs-${_n}
+        PACKAGE examples CRATE ${_n}
+        EXAMPLE MANIFEST "${CMAKE_SOURCE_DIR}/examples/rs/Cargo.toml"
+        FOLDER "examples/rs")
+    list(APPEND _rs_mediators rs-${_n}-build)
     add_custom_target(cargo-run_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
               ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh
-              ${_cenv} ${VISIAENGINE_CARGO} run -p examples --example ${_n}
-      VERBATIM USES_TERMINAL)  # the run-gui wrapper probes and falls back to local :0 when the IDE has no DISPLAY (CI never passes here)  # zero-argv steps = interactive default (click Run to see the window; the old zero-arg stub worked the same); registry argv is ctest-only. USES_TERMINAL rides run only; build/ALL steps don't take it (Ninja's serial console pool would serialize everything)
-    foreach(_t cargo-build_${_n} cargo-run_${_n})
-      set_target_properties(${_t} PROPERTIES FOLDER "examples/rs")
-    endforeach()
+              $<TARGET_FILE:rs-${_n}>
+      VERBATIM USES_TERMINAL)  # the run-gui wrapper probes and falls back to local :0 when the IDE has no DISPLAY (CI never passes here)  # zero-argv = interactive default (registry argv is ctest-only). USES_TERMINAL rides run only (Ninja console-pool lesson)
+    add_dependencies(cargo-run_${_n} rs-${_n}-build)
+    set_target_properties(cargo-run_${_n} PROPERTIES FOLDER "examples/rs")
     add_test(NAME example_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-              ${_cenv} ${VISIAENGINE_CARGO} run -p examples --example ${_n} -- ${_args_${_n}})
+              ${_cenv} $<TARGET_FILE:rs-${_n}> ${_args_${_n}})
     set_tests_properties(example_${_n} PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} LABELS "${_lbl}")
+    if(PolyOrch_RUST_VSCODE_DEBUG)
+      # T-E lane: run() registers the CodeLLDB launch + preLaunchTask pair.
+      polyorch_rust_run(TARGET rs-${_n})
+    endif()
   endforeach()
 
-  add_custom_target(cargo-build_examples ALL
-    COMMAND ${_cenv} ${VISIAENGINE_CARGO} build -p examples --examples
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
+  add_custom_target(cargo-build_examples ALL)
+  add_dependencies(cargo-build_examples ${_rs_mediators})
+  set_target_properties(cargo-build_examples PROPERTIES FOLDER "examples")
   add_custom_target(cargo-clean_examples
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} clean -p examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)

@@ -42,7 +42,7 @@ bash bootstrap.sh && source pixi.sh && pixi run ci   # environment, three steps
 pixi run cmake --preset default && pixi run cmake --build --preset default   # C++/IDE entry (root CMake facade)
 
 > Output territories: `build/` = gallery-only · `target/` = cargo-direct only · `cmake-build*/` = CMake preset build trees (T-A0' 2026-10-10). VSCode: install CMake Tools and work via presets (cmake.useCMakePresets=already configured).
-# Opening the project in an IDE gives: test panel = the unified example registry for all languages (ctest --preset default); the build menu carries per-example cargo-build_*/cargo-run_* steps; Rust examples additionally have rust-analyzer Run/Debug
+# Opening the project in an IDE gives: test panel = the unified example registry for all languages (ctest --preset default); the build menu carries per-example rs-<E#>-build mediators + cargo-run_* window buttons; Rust examples additionally have rust-analyzer Run/Debug
 ```
 
 ## Business Model
