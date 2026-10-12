@@ -1,6 +1,6 @@
 [package]
 name = "visiaengine-core"
-description = "VisiaEngine 数据模型核心：场景图(slab handle+脏标记)/坐标/资源。永不依赖渲染（不变式①）。"
+description = "VisiaEngine data-model core: scene graph (slab handle + dirty flags) / coordinates / resources. Never depends on rendering (invariant 1)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

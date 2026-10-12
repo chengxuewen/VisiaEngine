@@ -1,6 +1,6 @@
 [package]
 name = "visiaengine-geo"
-description = "GeoJSON 矢量地理数据：解析/WGS84→WebMercator/细分/最小样式（D7 分层 origin 的 host 侧）。零渲染依赖。"
+description = "GeoJSON vector geography: parse / WGS84 -> WebMercator / tessellation / minimal style (the host side of D7 layered origin). Zero render dependency."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

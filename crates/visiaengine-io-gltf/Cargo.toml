@@ -1,6 +1,6 @@
 [package]
 name = "visiaengine-io-gltf"
-description = "glTF 加载（架构② io-* 族）：解析 .glb/.gltf 为 CPU 侧核心数据。零渲染依赖。"
+description = "glTF loading (architecture 2, io-* family): parses .glb/.gltf into CPU-side core data. Zero render dependency."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,8 +12,8 @@ visiaengine-core.workspace = true
 image.workspace = true
 thiserror.workspace = true
 gltf = { version = "1.4", default-features = false, features = ["utils", "names"] }
-# 实测（gltf-1.4.1 源码）：Gltf::from_slice(GLB) + accessor::util::Iter 仅需 utils；
-# import/image/urlencoding 全链不进（v0=GLB-only，多文件 .gltf 后续片再评估 import）
+# measured (gltf-1.4.1 source): Gltf::from_slice(GLB) + accessor::util::Iter need only utils;
+# the import/image/urlencoding chain stays out entirely (v0 = GLB-only; multi-file .gltf re-evaluates import in a later slice)
 
 [dev-dependencies]
 proptest.workspace = true

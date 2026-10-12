@@ -1,6 +1,6 @@
 [package]
 name = "visiaengine-render"
-description = "渲染抽象层：RenderBackend trait + 渲染指令 IR，零 GPU 类型（不变式②的静态保证面）。"
+description = "render abstraction layer: RenderBackend trait + render-instruction IR, zero GPU types (the static guarantee surface of invariant 2)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -3,14 +3,14 @@ name = "visiaengine-capi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "VisiaEngine C ABI 面（批 2）：宿主嵌入唯一稳定边界（D2/D6）"
+description = "VisiaEngine C ABI face (band 2): the sole stable boundary for host embedding (D2/D6)"
 
 [features]
 default = []
-web = ["visiaengine-render-wgpu/web", "dep:web-sys"]   # 仅 engine canvas 口；js 胶水在 visiaengine-wasm
+web = ["visiaengine-render-wgpu/web", "dep:web-sys"]   # engine canvas entry only; the js glue lives in visiaengine-wasm
 
 [lib]
-name = "visiaengine"            # [FFI-R:v13-FEAS-4] 产物名=libvisiaengine.so，-lvisiaengine 链接前提
+name = "visiaengine"            # [FFI-R:v13-FEAS-4] artifact name = libvisiaengine.so, the -lvisiaengine link precondition
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
@@ -25,7 +25,7 @@ visiaengine-io-hdr.workspace = true
 visiaengine-io-tiles.workspace = true
 visiaengine-io-text.workspace = true
 visiaengine-geo.workspace = true
-# I2 起追加：visiaengine-{render-wgpu,geo,io-gltf} + wgpu + raw-window-handle（§3 边界）
+# since I2 also: visiaengine-{render-wgpu,geo,io-gltf} + wgpu + raw-window-handle (s3 boundary)
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3"

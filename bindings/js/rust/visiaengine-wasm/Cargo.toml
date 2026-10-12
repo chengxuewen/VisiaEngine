@@ -3,7 +3,7 @@ name = "visiaengine-wasm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "JS/wasm 胶水层（批 7 路线 A）：capi rlib 之上的纯编组薄叶（D10 预登记）。与 C ABI 面隔离 crate——no_mangle 与 bindgen 符号图互不侵蚀（J1 链接冲突隔离裁决）。"
+description = "JS/wasm glue layer (band 7 route A): a pure marshaling thin leaf above the capi rlib (D10 pre-registered). An isolated crate from the C ABI face -- the no_mangle and bindgen symbol graphs never erode each other (J1 link-conflict isolation ruling)."
 
 [lib]
 crate-type = ["cdylib"]

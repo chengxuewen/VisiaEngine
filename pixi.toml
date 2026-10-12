@@ -83,6 +83,7 @@ gate-trace = "bash scripts/spec-trace.sh"   # batch 2 v1.4: traceability nativiz
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # the GEO-18 parsing-boundary gate (code shape; comments exempt)
 gate-docs = "bash scripts/gate-docs.sh"   # batch 5 T3: the four zero-drift document checks
 cmake-smoke = "bash scripts/cmake-smoke.sh"   # the CMake-layer three-state gate (SKIP on machines without cmake; includes negative-path messages)
+i18n = "bash scripts/gate-i18n.sh"   # C20 artifact-language gate (whitelisted functional CJK; red/green proof duty per C0)
 # pack-check (v1.3 P3; promoted INTO the ci chain by the publish band 2026-10-09):
 # installed-tree hygiene -- manifest / self-sufficiency / no build-machine paths.
 # Runs after cmake-smoke (it reuses that build dir; SKIPs with exit 0 when
@@ -101,7 +102,7 @@ keys-probe = "python3 scripts/keys-probe.py --all"
 # output; needs node (default env) and a prior `pixi run web-check`. Nothing is
 # published; the tarball stays on this machine.
 npm-pack = "bash scripts/gen-npm-package.sh"
-ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke", "pack-check"] }
+ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke", "pack-check", "i18n"] }
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # a ctest forwarding shell (argv single source = the R9 table; CI calls it under xvfb-run)
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2: the glTF assembly chain (G3)
 smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2: the GeoJSON chain (H4)

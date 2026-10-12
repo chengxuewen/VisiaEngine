@@ -1,8 +1,8 @@
 //! E306 · camera map-control presets -- the "map semantics" combination demo of the pan/zoom/tilt trio.
 //! Usage: cargo run --example E306_map_controls [options]
-//! Interaction: left-drag = pan (drags the ground) | wheel = zoom (orthographic half-width) | right-drag = tilt
-//! + orbit around the target) | R = reset | close window = exit.
-//! --frames N: render-budget exit (the ctest/xvfb road, the registry argv-exclusive, C15).
+//! Interaction: left-drag = pan (drags the ground) | wheel = zoom (orthographic half-width) |
+//! right-drag = tilt + orbit around the target | R = reset | close window = exit.
+//! `--frames N`: render-budget exit (the ctest/xvfb road, the registry argv-exclusive, C15).
 //!
 //! A pure consumption combination (the same-semantics form as misc_controls_map): zero engine changes -- pan = a rig.target translation
 //! (screen displacement x world ratio), zoom = rig.zoom (orthographic half-width), tilt = rig.pitch/orbit.

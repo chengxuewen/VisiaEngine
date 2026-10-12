@@ -10,8 +10,8 @@ struct Mat {
     _pad3: f32,
 };
 
-// REND-29 兑现：View 块 128B（mat 64 + right@64 up@80 px_scale@92 eye_local@96，
-// WGSL 对齐规约）。三角系入口只读 view_proj 前 64B=逐位零回归构造保证。
+// REND-29 delivered: View block 128B (mat 64 + right@64 up@80 px_scale@92 eye_local@96,
+// WGSL alignment rules). Triangle-family entries read only view_proj's first 64B = the bitwise zero-regression construction guarantee.
 struct View {
     view_proj: mat4x4<f32>,
     right: vec3<f32>,
@@ -19,12 +19,12 @@ struct View {
     px_scale: f32,
     eye_local: vec3<f32>,
     _pad: f32,
-    // WGPU-19：光源合成阵（compose_mvp 同机件，D7 全链）；shadow=None 时零填+
-    // enabled 关闭+消费点早退——前 128B 位序不变=三角系零回归构造保证续存
+    // WGPU-19: composed light matrix (same mechanism as compose_mvp, D7 full chain); when shadow=None, zero-fill +
+    // enabled off + early-out at consumption -- the first 128B stay bit-for-bit in place = triangle families keep their zero-regression guarantee
     light_view_proj: mat4x4<f32>,
-    // WGPU-21 剖面裁切（REND-32 换算的 model-space 面系数）：dot(n,q)+w ≥ 0 保留；
-    // clip_count=0（None/EMPTY 全零恒绑）=全保留早退=逐位零回归 [R4 护栏形]。
-    // 尾缀 80B 段（float 44..64）：前 176B 位序不变=存量构造保证续存。
+    // WGPU-21 section clipping (model-space plane coefficients per REND-32): dot(n,q)+w >= 0 keeps;
+    // clip_count=0 (None/EMPTY always bound) = keep-all early-out = bitwise zero regression [R4 guard form].
+    // Trailing 80B segment (float 44..64): the first 176B stay in place = existing construction guarantee persists.
     planes: array<vec4<f32>, 4>,
     clip_count: f32,
     _cpad0: f32,
@@ -42,21 +42,21 @@ struct View {
 };
 @group(0) @binding(0) var<uniform> view: View;
 
-// WGPU-19 shadow 资源面：params/map/sampler 恒绑（dummy 常驻）——动态 enabled 分支
-// 非布局分支（[E3D:B2] mega-bool 令辖=着色布局域，注记防误读）
+// WGPU-19 shadow resource surface: params/map/sampler always bound (dummy resident) -- the dynamic enabled branch
+// is not a layout branch ([E3D:B2] mega-bool rules = shader-layout domain; this note prevents misreading)
 struct ShadowParams {
     a: vec4<f32>,  // (light_dir, enabled)
-    b: vec4<f32>,  // (size→半影比例, texel, bias_c[收纳], bias_s[收纳])
+    b: vec4<f32>,  // (size-> penumbra ratio, texel, bias_c[stored], bias_s[stored])
 };
 @group(0) @binding(1) var<uniform> sp: ShadowParams;
 @group(0) @binding(7) var shadow_map: texture_depth_2d;
 @group(0) @binding(8) var shadow_smp: sampler_comparison;
 @group(0) @binding(2) var<uniform> mat: Mat;
-// Textured layout 专属槽位（Flat layout 不含 3/4——两 pipeline 两 layout，
-// mega-bool 分支否决 [E3D:B2]）
+// Textured-layout-only slots (Flat layout omits 3/4 -- two pipelines, two layouts,
+// the mega-bool branch veto stands [E3D:B2])
 @group(0) @binding(3) var diffuse: texture_2d<f32>;
 @group(0) @binding(4) var samp: sampler;
-// Instanced layout 专属槽位（WGPU-16）：32B/条实例表（CPU Instance 逐字节同形，REND-27 布局锁）
+// Instanced-layout-only slots (WGPU-16): 32B/instance table (byte-identical to CPU Instance, REND-27 layout lock)
 struct Inst {
     offset: vec3<f32>,
     height: f32,
@@ -65,7 +65,7 @@ struct Inst {
 };
 @group(0) @binding(5) var<storage, read> insts: array<Inst>;
 
-// WGPU-17 扩片族表（Strokes bgl 专属 binding；48B/条同 StrokeSeg 布局锁）
+// WGPU-17 stroke-family table (Strokes bgl exclusive binding; 48B/entry, same StrokeSeg layout lock)
 struct Seg {
     a: vec4<f32>,
     b: vec4<f32>,
@@ -74,7 +74,7 @@ struct Seg {
 };
 @group(0) @binding(5) var<storage, read> segs: array<Seg>;
 
-// WGPU-18 点表（Points bgl binding6；32B 同 PointMark 布局锁）
+// WGPU-18 point table (Points bgl binding6; 32B, same PointMark layout lock)
 struct Mark {
     pos: vec3<f32>,
     radius_px: f32,
@@ -83,13 +83,13 @@ struct Mark {
 };
 @group(0) @binding(6) var<storage, read> marks: array<Mark>;
 
-// WGPU-24 标签表（Labels bgl 专属：binding11 表 + 12 atlas 纹理 + 13 atlas 采样器）。
-// 64B=4×vec4 与 LabelMark 逐字节同形（REND-33 布局锁）。atlas=R8 覆盖率单通道。
+// WGPU-24 label table (Labels bgl exclusive: binding11 table + 12 atlas texture + 13 atlas sampler).
+// 64B = 4xvec4, byte-identical to LabelMark (REND-33 layout lock). atlas = R8 coverage, single channel.
 struct Label {
-    pos: vec4<f32>,       // (xyz entity-local 锚, pad)
-    color: vec4<f32>,     // 线性 RGBA
+    pos: vec4<f32>,       // (xyz entity-local anchor, pad)
+    color: vec4<f32>,     // linear RGBA
     uv: vec4<f32>,        // (u0, v0, u1, v1)
-    metrics: vec4<f32>,   // (w_px, h_px, dx 右正, dy 上正)
+    metrics: vec4<f32>,   // (w_px, h_px, dx right-positive, dy up-positive)
 };
 @group(0) @binding(11) var<storage, read> labels: array<Label>;
 @group(0) @binding(12) var atlas: texture_2d<f32>;
@@ -116,7 +116,7 @@ fn vs(in: VsIn) -> FsIn {
     out.light_clip = view.light_view_proj * vec4<f32>(in.pos, 1.0);
     out.wpos = in.pos;
     let n = normalize(in.normal);
-    // LIGHT 常数退役入 UBO [R4]：dummy params 载默认位型 (0.5,0.7,0.4) → 存量逐位不变
+    // LIGHT constants retired into the UBO [R4]: dummy params carry the default bit pattern (0.5,0.7,0.4) -> existing output unchanged bitwise
     let l = normalize(sp.a.rgb);
     // GGX PBR (WGPU-35): Cook-Torrance replaces the mock `0.35+0.65*ndl` band.
     // View vector in the same entity-local frame as eye_local (world eye − origin).
@@ -128,9 +128,9 @@ fn vs(in: VsIn) -> FsIn {
     return out;
 }
 
-/// PCSS 三阶段 [E3D:B3 移植]（WGPU-20）：① blocker 搜索(8 环)→② 相似三角形半影
-/// 估计→③ 16-tap 泊松 PCF。返回可见度 ∈[0,1]；1=全亮。map 边长 1024 与后端
-/// `shadow_frame_res::MAP` 成对耦合（改动必同步两处）。
+/// PCSS three stages [E3D:B3 port] (WGPU-20): (1) blocker search (8 rings) -> (2) similar-triangle penumbra
+/// estimate -> (3) 16-tap Poisson PCF. Returns visibility in [0,1]; 1 = fully lit. map edge 1024 is
+/// paired with the backend `shadow_frame_res::MAP` (any change must sync both).
 /// Cook-Torrance GGX specular (WGPU-35): D/G/F with Smith-Schlick geometry and
 /// Schlick fresnel; F0 = mix(vec3(0.04), base.rgb, metallic). Diffuse =
 /// Lambert with energy split (1-metallic)(1-F). Returns lit linear RGB for a
@@ -200,12 +200,12 @@ fn shadow_vis(lc: vec4<f32>) -> f32 {
     let l = lc / lc.w;
     let uv = vec2(l.x * 0.5 + 0.5, 0.5 - l.y * 0.5);
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-        return 1.0; // 光锥外=判亮（v0 无级联 [不装④]）
+        return 1.0; // outside the light cone = lit (v0 has no cascades [non-fit 4])
     }
-    let z = l.z - 0.0015; // 接收端常数偏置（caster 侧 bias 在建图 pass）
+    let z = l.z - 0.0015; // receiver-side constant bias (caster-side bias lives in the map-building pass)
     let texel = sp.b.y;
     let light_size = sp.b.x;
-    // ① blocker 搜索：环半径随光源尺寸放大（texel 单位，下限 1.5=近硬影）
+    // (1) blocker search: ring radius widens with light size (texel units, floor 1.5 = near-hard shadow)
     let r1 = max(1.5, light_size * 220.0 * (1.0 - z));
     let off8 = array<vec2<f32>, 8>(
         vec2(1.0, 0.0), vec2(0.71, 0.71), vec2(0.0, 1.0), vec2(-0.71, 0.71),
@@ -226,12 +226,12 @@ fn shadow_vis(lc: vec4<f32>) -> f32 {
         }
     }
     if (bfound < 1.0) {
-        return 1.0; // 无遮挡者=全亮
+        return 1.0; // nothing occluding = fully lit
     }
-    // ② 半影估计（相似三角形比例；uv 单位，上限 0.06=爆炸护栏 [P3 有界性]）
+    // (2) penumbra estimate (similar-triangle ratio; uv units, cap 0.06 = blow-up guardrail [P3 boundedness])
     let blocker = bsum / bfound;
     let pen = clamp(light_size * (z - blocker) / max(blocker, 0.001) * 2.5, texel, 0.06);
-    // ③ 16-tap 泊松过滤
+    // (3) 16-tap Poisson filter
     let off16 = array<vec2<f32>, 16>(
         vec2(-0.94201624, -0.39906216), vec2(0.94558609, -0.76890725),
         vec2(-0.09418410, -0.92938870), vec2(0.34495938, 0.29387760),
@@ -250,8 +250,8 @@ fn shadow_vis(lc: vec4<f32>) -> f32 {
     return acc / 16.0;
 }
 
-/// 剖面判据 [WGPU-21..23]：任一负侧=裁（AND 组合）；count=0 早退=零成本恒通。
-/// 零平面（padding 位）dot=0 → `<0.0` 恒假天然无害。
+/// Section criterion [WGPU-21..23]: any negative side = clipped (AND combination); count=0 early-out = zero-cost always-pass.
+/// Zero planes (padding slots) give dot=0 -> `<0.0` is constantly false, inherently harmless.
 fn clipped(p: vec3<f32>) -> bool {
     if (view.clip_count < 0.5) {
         return false;
@@ -266,9 +266,9 @@ fn clipped(p: vec3<f32>) -> bool {
 }
 
 
-/// Instanced 变体 vs（WGPU-16）：底对齐 z 挤出 + 实例色乘法链。
-/// 轴对齐盒法向在 z 缩放下不变向（侧面无 z 分量、顶面恒 +z）——法线直传零误差 [4c 裁决④]。
-/// 与 Textured 组合不装 [四不装②]：材质 texture 位在本入口忽略。
+/// Instanced variant vs (WGPU-16): bottom-aligned z extrusion + instance-color multiply chain.
+/// Axis-aligned box normals never flip under z scaling (sides carry no z, top stays +z) -- normals pass through with zero error [4c ruling 4].
+/// Textured combination deliberately not fitted [four non-fits 2]: the material texture slot is ignored in this entry.
 @vertex
 fn vs_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
     var out: FsIn;
@@ -290,8 +290,8 @@ fn vs_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
     return out;
 }
 
-/// 线段扩片 vs [E3D:B4 移植]：side 四角 → perp = cross(视向, 轴)·halfw。
-/// 退化（段∥视向）兜底 perp=right [R2]——NaN 零容忍（顶点全弃=族 0 即红）。
+/// Stroke-expansion vs [E3D:B4 port]: side four corners -> perp = cross(view dir, axis)*halfw.
+/// Degenerate (segment parallel to view) falls back to perp=right [R2] -- zero NaN tolerance (all vertices dropped = family count 0 goes red).
 struct QuadIn {
     @location(0) side: vec2<f32>,
 };
@@ -320,7 +320,7 @@ fn vs_stroke(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     return out;
 }
 
-/// 色直出（光照链不参与 [4de 裁决点 a]——线色=所见（GIS 约定））。
+/// Color straight out (the lighting chain does not participate [4de ruling point a] -- line color = what you see (GIS convention)).
 @fragment
 fn fs_stroke(in: FsIn) -> @location(0) vec4<f32> {
     if (clipped(in.wpos)) {
@@ -329,7 +329,7 @@ fn fs_stroke(in: FsIn) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color, 1.0);
 }
 
-/// 点 splat vs：屏幕基展开（right/up×radius_px×px_scale）——真圆点的路 A（FS 距离弃片）。
+/// Point splat vs: screen-basis expansion (right/up x radius_px x px_scale) -- true round dots, route A (FS distance discards).
 @vertex
 fn vs_point(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     var out: FsIn;
@@ -344,7 +344,7 @@ fn vs_point(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     return out;
 }
 
-/// 圆 mask：local 单位盘外弃片（方块纠案）；alpha=1 色直出。
+/// Circle mask: outside the unit disc in local space is discarded (the square-dot correction); alpha=1, color straight out.
 @fragment
 fn fs_point(in: FsIn) -> @location(0) vec4<f32> {
     if (clipped(in.wpos)) {
@@ -356,24 +356,24 @@ fn fs_point(in: FsIn) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color, 1.0);
 }
 
-/// 标签 vs（WGPU-24）：世界锚点 quad，屏幕恒大小（px×px_scale 沿 right/up 展开）。
-/// 恒顶：fs 写固定近深度 + 命令序末位（覆盖语义 [裁决点 e]，非遮挡）。
+/// Label vs (WGPU-24): world-anchored quad with constant screen size (px x px_scale spread along right/up).
+/// Always on top: fs writes a fixed near depth + last command order (overwrite semantics [ruling point e], not occlusion).
 @vertex
 fn vs_label(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     var out: FsIn;
     let l = labels[ii];
-    let w = l.metrics.x; // 字形宽 px
-    let h = l.metrics.y; // 字形高 px
-    let dx = l.metrics.z; // 左上角相对锚 (右正)
-    let dy = l.metrics.w; // 左上角相对锚 (上正)
-    // side.x=-1→左(u=0,+dx), +1→右(u=1,+dx+w)；side.y=+1→顶(v=0), -1→底(v=1,+dy-h)。
+    let w = l.metrics.x; // glyph width px
+    let h = l.metrics.y; // glyph height px
+    let dx = l.metrics.z; // top-left offset from anchor (right positive)
+    let dy = l.metrics.w; // top-left offset from anchor (up positive)
+    // side.x=-1 -> left(u=0,+dx), +1 -> right(u=1,+dx+w); side.y=+1 -> top(v=0), -1 -> bottom(v=1,+dy-h).
     let offx = dx + (in.side.x * 0.5 + 0.5) * w;
     let offy = dy - (0.5 - in.side.y * 0.5) * h;
     let p = l.pos.xyz + view.right * (offx * view.px_scale) + view.up * (offy * view.px_scale);
     out.pos = view.view_proj * vec4<f32>(p, 1.0);
     out.light_clip = vec4<f32>(0.0);
-    out.wpos = l.pos.xyz; // WGPU-25 锚判：整标同生共死（fs 对锚点裁，非逐像素）
-    // uv：side.x=-1→u0,+1→u1；side.y=+1(顶)→v0, -1(底)→v1
+    out.wpos = l.pos.xyz; // WGPU-25 anchor test: the whole label lives or dies together (fs clips at the anchor, not per pixel)
+    // uv: side.x=-1->u0, +1->u1; side.y=+1(top)->v0, -1(bottom)->v1
     let tu = (in.side.x + 1.0) * 0.5;
     let tv = (1.0 - in.side.y) * 0.5;
     out.uv = mix(l.uv.xy, l.uv.zw, vec2<f32>(tu, tv));
@@ -381,11 +381,11 @@ fn vs_label(in: QuadIn, @builtin(instance_index) ii: u32) -> FsIn {
     return out;
 }
 
-/// 标签 fs：atlas 覆盖率单通道 × 表色线性直出（无光照链 [裁决点 a 同谱]）。
+/// Label fs: atlas coverage single channel x table color, linear straight out (no lighting chain [same family as ruling point a]).
 @fragment
 fn fs_label(in: FsIn) -> @location(0) vec4<f32> {
     if (clipped(in.wpos)) {
-        discard; // 锚在负侧=整标灭 [WGPU-25]
+        discard; // anchor on the negative side = whole label dies [WGPU-25]
     }
     let cov = textureSample(atlas, atlas_smp, in.uv).r;
     if (cov < 0.02) {
@@ -394,7 +394,7 @@ fn fs_label(in: FsIn) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color * cov, cov);
 }
 
-/// Flat 变体（shadow 关闭=`× mix(0.25,1,1.0)=×1.0` 逐位恒等=零回归续存）。
+/// Flat variant (shadow off = `x mix(0.25,1,1.0) = x1.0` identity per bit = zero regression persists).
 @fragment
 fn fs(in: FsIn) -> @location(0) vec4<f32> {
     if (clipped(in.wpos)) {
@@ -404,7 +404,7 @@ fn fs(in: FsIn) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color * mix(0.25, 1.0, vis), mat.base_color.a);
 }
 
-/// Textured 变体：采样×base×shade（WGPU-14 亮度链）。
+/// Textured variant: sample x base x shade (WGPU-14 luminance chain).
 @fragment
 fn fs_textured(in: FsIn) -> @location(0) vec4<f32> {
     if (clipped(in.wpos)) {
@@ -415,7 +415,7 @@ fn fs_textured(in: FsIn) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color * t.rgb * mix(0.25, 1.0, vis), mat.base_color.a * t.a);
 }
 
-/// WGPU-19 caster pass：光空间位置直写（无色彩目标，深度即输出）。
+/// WGPU-19 caster pass: light-space position written straight out (no color target; depth is the output).
 @vertex
 fn vs_shadow(in: VsIn) -> FsIn {
     var out: FsIn;
@@ -442,7 +442,7 @@ fn vs_shadow_inst(in: VsIn, @builtin(instance_index) ii: u32) -> FsIn {
 
 @fragment
 fn fs_shadow(in: FsIn) {
-    // WGPU-22 caster 同裁：剖掉的投影物不得留影（接收端清深度=该区判亮，行为正确）
+    // WGPU-22 same clip in the caster: section-clipped geometry must not cast (receiver clears depth = that region reads lit; behavior correct)
     if (clipped(in.wpos)) {
         discard;
     }

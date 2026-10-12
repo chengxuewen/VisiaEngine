@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-description = "Rust 例教程壳：E 系 example 的 [[example]] 注册包（cargo 轨；不进 CMake 构建图，跑面=ctest 转发/pixi smoke/RA）"
+description = "Rust tutorial shell package: the [[example]] registration home of the E-family examples (cargo track; outside the CMake build graph -- run side = ctest forwarding / pixi smoke / RA)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,13 +18,13 @@ visiaengine-io-points.workspace = true
 visiaengine-io-tiles.workspace = true
 visiaengine-io-text.workspace = true
 visiaengine-io-hdr.workspace = true
-# 三方直用面 = examples/rs/*.rs 顶行+全路径引用实扫（S1 清点：image×1 pollster×4 wgpu×4 winit×4）
+# direct third-party use = the top lines of examples/rs/*.rs + full-path reference sweep (S1 census: image x1 pollster x4 wgpu x4 winit x4)
 wgpu.workspace = true
 winit.workspace = true
 pollster.workspace = true
 image.workspace = true
 
-# 显式注册（bevy 形）：文件栖包根非 examples/ 自动发现位；E 号三方锁（文件名=头注=索引）在 gate-docs。
+# explicit registration (bevy form): files sit at the package root, not the examples/ auto-discovery spot; the E-number three-way lock (filename = header comment = index) lives in gate-docs.
 [[example]]
 name = "E101_clear"
 path = "E101_clear.rs"

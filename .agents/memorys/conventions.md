@@ -43,7 +43,7 @@ Listing options for the user to choose without the above analysis is forbidden.
 ## C15: Interface sentinels and parameter semantics must first be checked against the existing clause-ownership table
 
 **Constraint**: (1) before a new interface sets a "failure/invalid sentinel", grep the clause library for existing value ownership (this case: `add_mesh` used 0 as the failure sentinel and collided with CAPI-01's black-and-white text — "entity pose slot0gen0=0 is legal = deliberate ownership" — only re-owning the return code + out-parameter catalog put it right); the same value domain meaning the opposite in two places = a guaranteed landmine. (2) one parameter surface serves no two masters: CI semantics (fast in-and-out `--frames`) and interactive semantics (resident window) must hang on two separate consumers (the run step's zero args vs the registry argv — ctest's sole judge); "one parameter set with two claimants" is a design alarm. (3) check method: before a new interface goes RED, write a "value-ownership cross-reference" passage into the clause draft (who owns the interpretation of 0/-1/MAX).
-**Check command**: `grep -n '哨兵\|MAX\| 0=' docs/sdd/capi.md | head` (no position collision in the value-ownership table before a new clause enters the library).
+**Check command**: `grep -n 'sentinel\|MAX\| 0=' docs/sdd/capi.md | head` (no position collision in the value-ownership table before a new clause enters the library).
 
 ## C16: Decision-presentation format = plain words + diagram + directory + one-at-a-time
 

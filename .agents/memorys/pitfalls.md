@@ -305,7 +305,7 @@
   ③ claim discipline: **"WEB ✓" may only come from same-terminal `pixi run web-check` output** (the web-surface projection of #17).
 - **Verification**: breakage probe executed — after `touch bindings/js/rust/visiaengine-wasm/src/lib.rs`, running the roster script alone
   must go red (report = "artifact stale: … run pixi run web-check first", rc=1); after re-running web-check it re-greens at MIRROR 3/3.
-  `grep -c "陈旧" scripts/web-mirror.mjs` ≥1.
+  `grep -c "stale artifact" scripts/web-mirror.mjs` ≥1.
 - **Forbidden**: using host `cargo test -p visiaengine-wasm` results to stand in for wasm32 usability;
   writing WEB wording in baselines/commit messages without running `pixi run web-check`.
 

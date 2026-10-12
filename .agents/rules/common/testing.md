@@ -109,7 +109,7 @@ For multi-object assertions driven by HashMap iteration (e.g. pump eviction orde
 
 ```bash
 # Verify: guardrail in place + claim source traceable
-grep -c "陈旧" scripts/web-mirror.mjs          # expect ≥1 (literal must match web-mirror.mjs's own message)
+grep -c "stale artifact" scripts/web-mirror.mjs          # expect ≥1 (literal must match web-mirror.mjs's own message)
 grep -n "^ci = " pixi.toml                     # expect: no web-check (the reason this line exists)
 ```
 

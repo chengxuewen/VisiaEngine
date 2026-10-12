@@ -1,6 +1,6 @@
 [package]
 name = "visiaengine-render-wgpu"
-description = "默认渲染后端：基于 wgpu 的自研管线（D4 终审）。wgpu 类型止步于本 crate（不变式②）。"
+description = "default render backend: the in-house pipeline on wgpu (D4 final ruling). wgpu types stop at this crate (invariant 2)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,7 @@ repository.workspace = true
 
 [features]
 default = []
-web = ["dep:web-sys"]   # 批 7：Canvas attach（wasm32 代码路径自带 cfg）
+web = ["dep:web-sys"]   # band 7: Canvas attach (the wasm32 code path carries its own cfg)
 
 [dependencies]
 visiaengine-core.workspace = true
@@ -25,8 +25,8 @@ raw-window-handle.workspace = true
 web-sys = { version = "0.3", features = ["HtmlCanvasElement"], optional = true }
 
 [dev-dependencies]
-image = { workspace = true }   # E901 PNG 落盘（人检图，T3 素材）
-# 装配示例专用（dev 面不传染正常依赖图：example 是 io×render 合流的演示位）
+image = { workspace = true }   # E901 PNG write-out (human-check images, T3 material)
+# assembly-demo only (the dev side does not infect the normal dependency graph: examples are where io x render converges for demos)
 visiaengine-io-gltf.workspace = true
 visiaengine-geo.workspace = true
 visiaengine-io-text.workspace = true

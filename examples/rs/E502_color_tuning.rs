@@ -1,9 +1,11 @@
 //! E502 · materials and light, color calibration -- the sRGB full-chain round-trip "what you see is what you get" dual-mode example (CORE-16 band K2).
-//! Four color panels with normals parallel to the light -> shade = 1.0 -> readback bytes should ~ equal the original CSS values (the backend linearizes input
-//! + the Srgb target encodes output, reciprocal within 8-bit quantization). A mis-installed color domain = the first red this example produces.
-//! N6 (WGPU-35 GGX): the non-primary channels carry a ~13-14 Fresnel highlight floor (dielectric F0 = 0.04
-//! x rough-diffuse divergence, not quantization noise) -- tolerance 8->20 absorbs that floor, the mid-gray panel remains the linear-domain mis-install criterion
-//! (a domain-mis-install shift is ~60 units, keeping a 3x margin).
+//! Four color panels with normals parallel to the light -> shade = 1.0 -> readback bytes should ~ equal
+//! the original CSS values (the backend linearizes input and the Srgb target encodes output, reciprocal
+//! within 8-bit quantization). A mis-installed color domain = the first red this example produces.
+//! N6 (WGPU-35 GGX): the non-primary channels carry a ~13-14 Fresnel highlight floor (dielectric
+//! F0 = 0.04 x rough-diffuse divergence, not quantization noise) -- tolerance 8->20 absorbs that floor,
+//! the mid-gray panel remains the linear-domain mis-install criterion (a domain-mis-install shift is
+//! ~60 units, keeping a 3x margin).
 //! Dual mode (same system as E501/E801):
 //!   no arguments      = resident human-verified window (the IDE cargo-run_E502 road: four panels eyeball-accept the color chain, close/Esc exits)
 //!   --frames N        = headless self-asserting fast exit (the ctest road; per-panel byte comparison, FAIL exits nonzero)

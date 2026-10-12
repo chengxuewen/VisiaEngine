@@ -1,6 +1,6 @@
 [package]
 name = "visiaengine-io-points"
-description = "点云装载（架构② io-* 族）：PLY(ascii/binary_le) → CPU 侧核心数据。零渲染依赖。"
+description = "point-cloud loading (architecture 2, io-* family): PLY (ascii/binary_le) -> CPU-side core data. Zero render dependency."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
