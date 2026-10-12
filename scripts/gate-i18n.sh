@@ -39,7 +39,7 @@ for f in tracked:
     for i, l in enumerate(t.splitlines(), 1):
         if CJK.search(l):
             # conventions check-command literals referencing .omo-zone anchors (documented allow)
-            if f == '.agents/memorys/conventions.md' and "'非目标" in l: continue
+            if f == '.agents/memorys/conventions.md' and "'\u975e\u76ee\u6807" in l: continue  # constructed via escape: the gate file must not carry its own forbidden literals (PIT-1 class)
             if f == '.agents/memorys/decisions.md':  # D6 brand record line
                 continue
             if str(p) in ALLOW: continue
