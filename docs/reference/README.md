@@ -1,42 +1,42 @@
-# VisiaEngine 参考项目库
+# VisiaEngine reference-project library
 
-**数据快照：2026-09-03 实测**（GitHub stars/last-commit 经 shields 端点、版本经 crates.io/npm registry；定性描述来自模型知识与当日已验证备忘录，标 *UNCERTAIN* 处使用前须复核）。
-用途：渲染后端终裁（D4）、白皮书 §4、MVP 架构设计的证据底座。**每篇只保留"对 VisiaEngine 有用"的部分，不是百科。**
+**Data snapshot: 2026-09-03 measured** (GitHub stars/last-commit via the shields endpoint, versions via the crates.io/npm registry; qualitative descriptions come from model knowledge and memos verified that day; anything marked *UNCERTAIN* must be rechecked before use).
+Purpose: the evidence base for the final rendering-backend ruling (D4), whitepaper §4, and the MVP architecture design. **Each file keeps only the part "useful to VisiaEngine" — it is not an encyclopedia.**
 
-## 索引
+## Index
 
-| 文档 | 对象 | 一句话 | 相关度 |
+| document | subject | one sentence | relevance |
 |------|------|--------|:-----:|
-| [wgpu-rust-gpu-stack.md](wgpu-rust-gpu-stack.md) | wgpu/linebender 系/glow | 主依赖候选的生态体检 | ★★★ |
-| [angle-dawn.md](angle-dawn.md) | ANGLE, Dawn | legacy 平台翻译层的工业底 | ★★★ |
-| [bevy.md](bevy.md) | Bevy 0.19 | 默认后端候选 A（调研备忘录级） | ★★★ |
-| [maplibre.md](maplibre.md) | MapLibre Native+GL JS | 同赛道（地图）活标杆 + 双许可教训 | ★★★ |
-| [cesium.md](cesium.md) | CesiumJS/3D Tiles | 统一 2D/3D + 流式 + Open Core 结构范本 | ★★★ |
-| [deck-gl.md](deck-gl.md) | deck.gl/kepler.gl | "数据可视化图层"形态基准（2.5D 半边天） | ★★★ |
-| [scene-graph-lineage.md](scene-graph-lineage.md) | OSG/OpenSG/Coin/VSG/osgEarth | 场景图流派词典 + 维护崩溃标本 | ★★☆ |
-| [godot.md](godot.md) | Godot 4.7 | 编辑器架构/后端策略同构验证/「全免费对照组」 | ★★☆ |
-| [unreal.md](unreal.md) | UE 5.8/UE6 | Nanite 几何流送启示 + 许可信任教材 | ★★☆ |
-| [unity.md](unity.md) | Unity 6 | 定价崩塌样本 + 管线分叉禁令来源 | ★☆☆ |
-| [three-js.md](three-js.md) | three.js r185 | 与 Visia 同构性最高的库形态先例 | ★★★ |
-| [qt-3d.md](qt-3d.md) | Qt3D/Quick3D/QRhi | 官方厂做域 3D 的冷场实证 + RHI 多后端工程 | ★★☆ |
-| [flutter-embedder.md](flutter-embedder.md) | Flutter embedder | C API 宿主嵌入的黄金标准 | ★★☆ |
-| [gdal-proj-geos.md](gdal-proj-geos.md) | GDAL/PROJ/GEOS | 地理数据三件套：链接 C 还是纯 Rust | ★★☆ |
-| [qgis.md](qgis.md) | QGIS | 图层树/插件生态/双语言绑定 UX 词典 | ★★☆ |
-| [openusd.md](openusd.md) | OpenUSD | 数字孪生场景组织与交换标准 | ★☆☆ |
-| [av-sim-opendrive.md](av-sim-opendrive.md) | CARLA/esmini | ODR/OSC 插件的直接参考实现 | ★☆☆ |
-| [bim-ifc.md](bim-ifc.md) | IfcOpenShell/web-ifc/OCCT | BIM 线：显示层边界与许可证雷区 | ★☆☆ |
-| [ffi-patterns.md](ffi-patterns.md) | SDL3/Vulkan/sokol/Filament/DuckDB/godot 等 28 源 | C ABI+绑定分层模式档（批 2/7 计划 [FFI-R] 引用正本） | ★★★ |
-| [easy3d.md](easy3d.md) | Easy3D v2.6.1（GPL，归档只读） | 宿主嵌入反面教材库 + 属性/pass/教程设计正例 | ★★☆ |
-| [team-gap-analysis-2026-09-28b.md](team-gap-analysis-2026-09-28b.md) | three.js 608 例对标 + 本仓 34 例机器普查 | 例子差距正本（取代 09-24 版例数普查段；覆盖映射 + 缺域→功能映射 + 三快赢 + 行动序） | ★★★ |
-| [team-gap-analysis-2026-09-24.md](team-gap-analysis-2026-09-24.md) | 本仓 vs 24 归档项目 + GitHub 生态 | 功能差距台账（S/A/B 分级；例数普查段已被 09-28b 刷新） | ★★☆ |
+| [wgpu-rust-gpu-stack.md](wgpu-rust-gpu-stack.md) | wgpu/linebender family/glow | ecosystem health check of the main dependency candidates | ★★★ |
+| [angle-dawn.md](angle-dawn.md) | ANGLE, Dawn | the industrial floor of legacy-platform translation layers | ★★★ |
+| [bevy.md](bevy.md) | Bevy 0.19 | default backend candidate A (research-memo grade) | ★★★ |
+| [maplibre.md](maplibre.md) | MapLibre Native+GL JS | the living benchmark of the same lane (maps) + dual-license lessons | ★★★ |
+| [cesium.md](cesium.md) | CesiumJS/3D Tiles | unified 2D/3D + streaming + the Open Core structural template | ★★★ |
+| [deck-gl.md](deck-gl.md) | deck.gl/kepler.gl | the "data-visualization layer" shape baseline (the 2.5D half of the sky) | ★★★ |
+| [scene-graph-lineage.md](scene-graph-lineage.md) | OSG/OpenSG/Coin/VSG/osgEarth | scene-graph school dictionary + maintenance-collapse specimens | ★★☆ |
+| [godot.md](godot.md) | Godot 4.7 | editor architecture / backend-strategy isomorphism check / the "all-free control group" | ★★☆ |
+| [unreal.md](unreal.md) | UE 5.8/UE6 | Nanite geometry-streaming lessons + license-trust teaching | ★★☆ |
+| [unity.md](unity.md) | Unity 6 | the pricing-collapse sample + the origin of the pipeline-fork ban | ★☆☆ |
+| [three-js.md](three-js.md) | three.js r185 | the library-shape precedent with the highest isomorphism to Visia | ★★★ |
+| [qt-3d.md](qt-3d.md) | Qt3D/Quick3D/QRhi | empirical cold-field proof of official-vendor domain 3D + RHI multi-backend engineering | ★★☆ |
+| [flutter-embedder.md](flutter-embedder.md) | Flutter embedder | the gold standard of C-API host embedding | ★★☆ |
+| [gdal-proj-geos.md](gdal-proj-geos.md) | GDAL/PROJ/GEOS | the geo-data trio: link C or pure Rust | ★★☆ |
+| [qgis.md](qgis.md) | QGIS | layer tree / plugin ecosystem / dual-language-binding UX dictionary | ★★☆ |
+| [openusd.md](openusd.md) | OpenUSD | digital-twin scene organization and exchange standard | ★☆☆ |
+| [av-sim-opendrive.md](av-sim-opendrive.md) | CARLA/esmini | the direct reference implementations for the ODR/OSC plugin | ★☆☆ |
+| [bim-ifc.md](bim-ifc.md) | IfcOpenShell/web-ifc/OCCT | the BIM line: display-layer boundaries and the license minefield | ★☆☆ |
+| [ffi-patterns.md](ffi-patterns.md) | SDL3/Vulkan/sokol/Filament/DuckDB/godot etc., 28 sources | C ABI + binding-layering pattern file (the citation register for the batch-2/7 plans' [FFI-R] references) | ★★★ |
+| [easy3d.md](easy3d.md) | Easy3D v2.6.1 (GPL, read-only archive) | the cautionary-tale library for host embedding + positive examples for property/pass/tutorial design | ★★☆ |
+| [team-gap-analysis-2026-09-28b.md](team-gap-analysis-2026-09-28b.md) | three.js 608-example benchmark + machine census of this repo's 34 examples | the register of the example gap (supersedes the 09-24 edition's example-census section; coverage mapping + missing-domain->feature mapping + three quick wins + action order) | ★★★ |
+| [team-gap-analysis-2026-09-24.md](team-gap-analysis-2026-09-24.md) | this repo vs 24 archived projects + the GitHub ecosystem | feature-gap ledger (S/A/B grading; the example-census section was refreshed by 09-28b) | ★★☆ |
 
-## 证据备忘录（evidence/，日期快照 **永不更新**；摘要档与 D4 的引用链落点，勿删勿改名）
+## Evidence memos (evidence/, dated snapshots **never updated**; the landing points of the summary files' and D4's citation chains — do not delete or rename)
 
-- [2026-09-03-wgpu-direct.md](evidence/2026-09-03-wgpu-direct.md) — wgpu 自研路线证据备忘录（积木/先例/人月，已 6/6 抽查通过）
-- [2026-09-03-bevy-embed.md](evidence/2026-09-03-bevy-embed.md) — Bevy 嵌入式可行性全证据（已 2/2 抽查通过）
-- [2026-09-03-angle-integration.md](evidence/2026-09-03-angle-integration.md) — ANGLE 集成全证据（commit 级 + Qt6 证伪 + XP 判词）
-- [legacy-platforms.md](legacy-platforms.md) — 老旧/嵌入式判定矩阵（主会话合成：wgpu 原生 GL 纠偏 / Rust Win10 底线 / G610=Valhall→Panvk）
+- [2026-09-03-wgpu-direct.md](evidence/2026-09-03-wgpu-direct.md) — the wgpu in-house-route evidence memo (building blocks/precedents/person-months, 6/6 spot-checked through)
+- [2026-09-03-bevy-embed.md](evidence/2026-09-03-bevy-embed.md) — full evidence on Bevy embedding feasibility (2/2 spot-checked through)
+- [2026-09-03-angle-integration.md](evidence/2026-09-03-angle-integration.md) — full ANGLE-integration evidence (commit level + the Qt6 refutation + the XP verdict)
+- [legacy-platforms.md](legacy-platforms.md) — the legacy/embedded verdict matrix (main-session synthesis: the wgpu native-GL correction / the Rust Win10 floor / G610=Valhall->Panvk)
 
-## 写作纪律
+## Writing discipline
 
-新增项目档：模板 = 画像(谱系/治理/资金)/架构要点(只写相关)/强弱/借鉴与规避/来源+快照日期。数字必须当日实测；许可证影响 Open Core 边界的一律标粗。
+New project files: template = profile(lineage/governance/funding)/architecture essentials(write only what's relevant)/strengths-weaknesses/adopts-and-avoids/sources+snapshot date. Numbers must be same-day measured; anything the license does to the Open Core boundary is bolded.

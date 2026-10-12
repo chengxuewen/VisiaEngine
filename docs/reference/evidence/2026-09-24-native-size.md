@@ -1,7 +1,7 @@
 # Native Startup Size Measurement — 2026-09-24
 
-> Closes the long-standing "MVP 实测复核" item (architecture.md ⑨ build/delivery matrix: "总量标 ≤10MB（MVP 实测复核）" — the re-measurement had never been recorded).
-> Method per super-band plan adjudication ⑧: release build → strip → sizes; `cargo tree` for composition. Machine: Linux dev box, conda-forge rust toolchain (pixi), release profile defaults (no LTO/panic-abort tuning — plain `pixi run cargo build --release -p visiaengine-capi`).
+> Closes the long-standing "MVP re-measurement check" item (architecture.md ⑨ build/delivery matrix: "total marked ≤10MB (MVP re-measurement check)" — the re-measurement had never been recorded).
+> Method per the super-band plan adjudication ⑧: release build → strip → sizes; `cargo tree` for composition. Machine: Linux dev box, conda-forge rust toolchain (pixi), release profile defaults (no LTO/panic-abort tuning — plain `pixi run cargo build --release -p visiaengine-capi`).
 
 ## Artifact sizes
 
@@ -25,8 +25,8 @@ Largest byte contributors were not individually profiled (adjudication ⑧: one-
 
 | Doc claim | Status after this measurement |
 |---|---|
-| whitepaper.md:63 "启动体积可控制在 10 MB 以内" | **TRUE for the cdylib deliverable** (7.25 MB stripped) — claim retained, evidence cited |
-| README.md:14 "启动体积目标 ≤10 MB" | retained (target met by the same number) |
-| architecture.md:139 "总量标 ≤10MB（MVP 实测复核）" | re-measurement **recorded here**; "复核" pending-note resolved |
+| whitepaper.md:63 "startup size can be kept within 10 MB" | **TRUE for the cdylib deliverable** (7.25 MB stripped) — claim retained, evidence cited |
+| README.md:14 "startup-size target ≤10 MB" | retained (target met by the same number) |
+| architecture.md:139 "total marked ≤10MB (MVP re-measurement check)" | re-measurement **recorded here**; the "re-measurement check" pending-note resolved |
 
-Caveat: "总量" (total SDK surface) beyond the single cdylib (headers, bindings, wasm artifact) is not a startup cost; the ≤10 MB budget is interpreted as the native deliverable size, which this measurement closes. Re-run this measurement after major dependency changes (wgpu upgrades) — natural anchor: the quarterly wgpu upgrade window.
+Caveat: "total" (total SDK surface) beyond the single cdylib (headers, bindings, wasm artifact) is not a startup cost; the ≤10 MB budget is interpreted as the native deliverable size, which this measurement closes. Re-run this measurement after major dependency changes (wgpu upgrades) — natural anchor: the quarterly wgpu upgrade window.

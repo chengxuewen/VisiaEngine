@@ -1,44 +1,44 @@
-# visiaengine-io-gltf 行为契约（SDD）
+# visiaengine-io-gltf behavioral contract (SDD)
 
-> 条款标题行 `## GLTF-NN:` 为追溯锚点；测试挂 `// spec: GLTF-NN`。
-> 矩阵约定：`world: [[f64;4];4]` **列主序**（glTF/glam 同构），平移即 `m[3][0..3]`。
-> 资产纪律：fixture 为程序化生成 glb（resources/data/*.glb，本仓自产零第三方许可面）。
-> v0 格式面：仅 GLB；`.gltf`+外链资源 → `UnsupportedFormat`（多文件支持后续片）。
+> Clause header lines `## GLTF-NN:` are the traceability anchors; tests carry `// spec: GLTF-NN`.
+> Matrix convention: `world: [[f64;4];4]` **column-major** (isomorphic to glTF/glam), translation is `m[3][0..3]`.
+> Asset discipline: fixtures are procedurally generated glb (resources/data/*.glb, self-produced in this repo, zero third-party licensing surface).
+> v0 format surface: GLB only; `.gltf` + external resources -> `UnsupportedFormat` (multi-file support is a later slice).
 
 ## GLTF-01: parses_glb_fixture
-`load_gltf("resources/data/tri-blue.glb")` → 1 实体，positions.len()==4、indices.len()==6，name=Some("Quad")。
+`load_gltf("resources/data/tri-blue.glb")` -> 1 entity, positions.len()==4, indices.len()==6, name=Some("Quad").
 
 ## GLTF-02: node_hierarchy_transform_baked
-hierarchy.glb 双节点（root translate(1,2,3) × leaf translate(10,0,0)）→ 实体 world 矩阵平移列 == (11,2,3)（f64 累乘烘焙，场景展开不保留节点树）。
+hierarchy.glb two nodes (root translate(1,2,3) x leaf translate(10,0,0)) -> the entity world matrix translation column == (11,2,3) (f64 cumulative multiply baked in; scene expansion does not preserve the node tree).
 
 ## GLTF-03: missing_normals_default_or_generated
-twoprim.glb 的 prim1（无 NORMAL 属性）→ normals.len()==positions.len() 且全零（着色端兜底信号，非缺字段）。
+prim1 of twoprim.glb (no NORMAL attribute) -> normals.len()==positions.len() and all zeros (a fallback signal for the shading side, not a missing field).
 
 ## GLTF-04: base_color_from_material
-baseColorFactor（glTF 规范=线性）经 `linear_to_srgb` 归位 IR 面（CORE-16 宿主面=sRGB 约定，后端上传咽喉转回线性，往返 ≤2e-7 无损于 8bit 量化）：tri-blue=[0.1,0.2,0.9]→sRGB [0.3492,0.4845,0.9547]；twoprim 两实体纯原色端点 [1,0,0,1]/[0,1,0,1] 逐位不变。
+baseColorFactor (glTF spec = linear) is normalized into the IR plane via `linear_to_srgb` (CORE-16 host plane = sRGB convention; the backend upload throat converts back to linear, round-trip ≤2e-7 lossless under 8-bit quantization): tri-blue=[0.1,0.2,0.9] -> sRGB [0.3492,0.4845,0.9547]; twoprim's two entities are pure primary-color endpoints [1,0,0,1]/[0,1,0,1], bit-invariant.
 
 ## GLTF-05: multi_primitive_counts_consistent
-twoprim.glb → 2 实体（prim 拆分独立），positions/indices 计数与 fixture 构造逐项等（3/6 与 3/6）。
+twoprim.glb -> 2 entities (primitives split independently), positions/indices counts equal the fixture construction item-by-item (3/6 and 3/6).
 
 ## GLTF-06: corrupt_file_err_not_panic
-GLB 截断字节流 → `IoError::Parse`，零 panic 零 unwrap。
+GLB truncated byte stream -> `IoError::Parse`, zero panic, zero unwrap.
 
 ## GLTF-07: missing_file_io_err
-不存在路径 → `IoError::NotFound{}`。
+Nonexistent path -> `IoError::NotFound{}`.
 
 ## GLTF-08: y_up_orientation_preserved
-loader 零坐标系改写：hierarchy 世界平移 z==3.0 原样出（无隐式 Z-up 翻号——行业转换属 geo 片）。
+The loader does zero coordinate-system rewriting: the hierarchy world translation z==3.0 comes out unchanged (no implicit Z-up sign flip — industry conversions belong to the geo slice).
 
-## GLTF-09: primitive 模式过滤+跳过报告
-`load_gltf_with_report(path)` → `(doc, LoadReport)`：mode≠Triangles 的 primitive 跳过并计 `skipped_non_triangle`（不再以假三角混入实体表——正确性修复对旧入口同步生效），POSITION 缺失/不可读/空计 `skipped_unreadable_positions`；`load_gltf` 签名不变 = 丢弃报告的 wrapper。
+## GLTF-09: primitive mode filtering + skip report
+`load_gltf_with_report(path)` -> `(doc, LoadReport)`: primitives with mode≠Triangles are skipped and counted in `skipped_non_triangle` (they no longer sneak into the entity table as fake triangles — the correctness fix takes effect on the old entry as well), missing/unreadable/empty POSITION is counted in `skipped_unreadable_positions`; the `load_gltf` signature is unchanged = a wrapper that drops the report.
 
-覆盖延伸（GLTF-11 期）：fuzz 面无 panic 契约含 **image 解码段**——确定性篡改带（PNG 签名定位+截断+IDAT 区 flip）与随机流/header 篡改并列为测试面。
+Coverage extension (GLTF-11 era): the no-panic contract over the fuzz surface includes **the image decoding segment** — a deterministic mutation band (PNG signature location + truncation + IDAT-region flip) alongside random-stream/header mutation as the test surface.
 
-## GLTF-10: GLB 解码全输入无 panic（属性面）
-`load_gltf_bytes` 对任意字节流、任意 GLB header 组合（magic/version/total/chunk 篡改）、合法 fixture 的截断带零 panic——Err 合法、panic 契约违反。proptest 512 例×2 + 确定性截断带一测。
+## GLTF-10: GLB decoding panics on no input (property surface)
+`load_gltf_bytes` over arbitrary byte streams, arbitrary GLB header combinations (magic/version/total/chunk mutation), and truncation bands of the legal fixture: zero panic — Err is legal, panic is a contract violation. proptest 512 cases × 2 + one deterministic truncation-band test.
 
-## GLTF-11: uv/纹理/PBR 因子读取
-`GltfMesh` 增 `uv`（TEXCOORD_0，缺省=空不占位）、`texture`（baseColorTexture 经 textures[].source 解析为 **images 槽位**；`texCoord≠0` 视为无纹理=材质保留纹理丢弃）、`metallic_factor`/`roughness_factor`（原样收纳，零换算——specular 组合住 render IR）。`GltfDocument.textures()` 输出 images[] 序的 RGBA8 解码槽位（embedded bufferView 图；**data:URI/外链图=UnsupportedFormat**，v0 边界）；解码失败=Parse（FastFail 一致，禁静默丢纹理）。fixture 为测试内程序化 builder（chunk 4 字节垫+POSITION min/max+accessors 完备，自检 `from_slice ok` 先于一切断言）。
+## GLTF-11: uv/texture/PBR factor reading
+`GltfMesh` gains `uv` (TEXCOORD_0, default = empty, no placeholder), `texture` (baseColorTexture resolved through textures[].source into an **images slot index**; `texCoord≠0` is treated as no texture = material kept, texture dropped), `metallic_factor`/`roughness_factor` (stored as-is, zero conversion — the specular combination lives in the render IR). `GltfDocument.textures()` outputs RGBA8 decoded slots in images[] order (embedded-bufferView images; **data:URI / external images = UnsupportedFormat**, the v0 boundary); decode failure = Parse (FastFail consistency, silent texture dropping forbidden). The fixture is an in-test procedural builder (chunk 4-byte padding + POSITION min/max + complete accessors, self-check `from_slice ok` before any assertion).
 
-## IO-17: RADIANCE .hdr (RGBE) 解码（N5，visiaengine-io-hdr crate）
-`decode_hdr(bytes)→HdrImage{width,height,pixels:Vec<[f32;3]>}`（行主序自顶向下，线性域值可 >1.0=HDR 本体）。头段契约：magic 行 `#?` 前缀（`#?RADIANCE` 典形）；`FORMAT=32-bit_rle_rgbe` 必需（其余 FORMAT 值=BadFormat；FORMAT 缺席=BadFormat）；未知键行（EXPOSURE/PRIMARIES/SOFTWARE…）跳过；空行=meta 与分辨率行的标准分隔（继续扫）；分辨率行固定符 `-Y H +X W`（符号/次序变体=BadResolution；H/W=0=BadResolution）。扫描线双布局逐行嗅探：新式 RLE（magic `2,2,h,l`——h=scanline 计数高/低字节；随后 R/G/B/E 四通道平面游程流：计数字节 ≥128=(b−128) 个字面量随后、<128=下一字节重复 b 次）+ 旧式平铺（w 个 RGBE 四元组；w<8 或 w>32767 惯例走平铺）。解码公式：f = (c/256)·2^(E−128)（每像素共享指数；E=0 编码零）。错误分型五类：`BadMagic`/`BadFormat`/`BadResolution`/`Truncated{need,at}`（数据段截断报精确缺数）/`BadRle{at}`（计数 0、游程跨行越界）。fixture 真源=`resources/data/demo_sky.hdr`（64×32 RLE 渐变天光 0.2..3.0，960 像素 >1.0；生成器=`scripts/gen_hdr.py` stdlib-only 自产零许可面）；测试=hand-built 字节 fixture（io-tiles 同纪律）8 门 + fixture 往返 1 门。
+## IO-17: RADIANCE .hdr (RGBE) decode (N5, visiaengine-io-hdr crate)
+`decode_hdr(bytes) -> HdrImage{width,height,pixels:Vec<[f32;3]>}` (row-major top-down, linear-domain values may exceed 1.0 = the essence of HDR). Header contract: the magic line carries the `#?` prefix (`#?RADIANCE` is the typical form); `FORMAT=32-bit_rle_rgbe` is required (any other FORMAT value = BadFormat; FORMAT absent = BadFormat); unknown key lines (EXPOSURE/PRIMARIES/SOFTWARE…) are skipped; an empty line = the standard separator between meta and the resolution line (keep scanning); the resolution line is the fixed token `-Y H +X W` (sign/order variants = BadResolution; H/W = 0 = BadResolution). Scanline dual-layout per-line sniffing: the new RLE form (magic `2,2,h,l` — h/l = high/low bytes of the scanline count; then R/G/B/E four channel-plane run streams: a count byte ≥128 = (b−128) literals follow, <128 = the next byte repeats b times) + the old flat form (w RGBE quads; w<8 or w>32767 follows the flat convention per spec). Decode formula: f = (c/256)*2^(E−128) (one shared exponent per pixel; E=0 encodes zero). Five error classes: `BadMagic`/`BadFormat`/`BadResolution`/`Truncated{need,at}` (data-segment truncation reports the exact deficit)/`BadRle{at}` (count 0, a run crossing the line boundary). Fixture source of truth = `resources/data/demo_sky.hdr` (64×32 RLE gradient sky light 0.2..3.0, 960 pixels >1.0; generator = `scripts/gen_hdr.py` stdlib-only, self-produced, zero licensing surface); tests = hand-built byte fixtures (same discipline as io-tiles) 8 gates + 1 fixture round-trip gate.

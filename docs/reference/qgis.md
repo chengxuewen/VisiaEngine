@@ -1,14 +1,14 @@
-# QGIS — 图层语义 / 插件经济 / 双语言绑定的 UX 词典
+# QGIS — the UX dictionary of layer semantics / plugin economy / dual-language bindings
 
-**快照 2026-09-03 实测**：qgis/qgis 14k★，当日活跃。GPL-2.0+。QGIS.org 社区 + 大量商业用户（政府/公用事业）。
+**Snapshot 2026-09-03, measured**: qgis/qgis 14k★, active the same day. GPL-2.0+. The QGIS.org community + a large commercial user base (governments/utilities).
 
-## 画像
-桌面 GIS 应用（非引擎）：C++ 核心 + PyQGIS 自动绑定（sip）；QgsProject 文档模型、**图层树+图层类型族**（vector/raster/mesh/point-cloud/temporal 统一接口）、渲染器/符号系统（SVG marker、分级渲染器）、表达式引擎（过滤/标注语法）、**插件仓库**（Python 插件免费+个别商业支持=社区经济样本）、QGIS Server（FWS/WMS/WFS）、3D 视图建立在 **Qt3D** 上（→ qt-3d 档冷场链）。
+## Profile
+A desktop GIS application (not an engine): C++ core + PyQGIS auto-bindings (sip); the QgsProject document model, **the layer tree + layer-type family** (vector/raster/mesh/point-cloud/temporal under one unified interface), renderers/symbol system (SVG markers, graduated renderers), the expression engine (filter/label syntax), the **plugin repository** (free Python plugins + some commercial support = a community-economy sample), QGIS Server (FWS/WMS/WFS), and its 3D view built on **Qt3D** (-> the qt-3d file's cold-field chain).
 
-## 对 VisiaEngine
-- **借鉴（重，但按层取）**：① **图层类型统一接口 + 渲染器/符号系统分离**（同一 vector 层挂不同 renderer）= Visia 样式系统的语义基准，比 deck.gl 更 GIS 正统；② 表达式语言（字段过滤/标注计算）——孪生数据绑定的最小可用形态；③ temporal 控制器（时间轴→数据刷新）= 数字孪生回放的产品形态；④ **C++ 核 + Python 薄绑定**的双层 API 纪律 = Visia Rust 核 → C API → TS/Py/C# 绑定生成器的路线验证（绑定生成工具的选型参考）；⑤ 项目文件格式（.qgz XML zip，含样式/图层树）= Visia Studio 保存格式的语义清单。
-- **规避**：① GPL 核 + 闭源插件的灰色边界（Visia MIT 核心 + 商业插件反而更干净，写明兼容性）；② CPU QPainter 渲染路线在海量数据下的天花板（3D 弱 = Qt3D 拖累，正是 Visia 的机会而非学习对象）；③ UI 功能堆积（每版 release notes 数百条目——功能引力失控样本，Visia 内核按 SDK 边界克制）。
-- **现状判定**：不碰其代码基（GPL），但 MVP 的"用户看得懂 GIS 语义"验收清单（图层开关/属性表/标注/符号分级）源自 QGIS 习惯——目标用户的肌肉记忆就是它。
+## For VisiaEngine
+- **Adopt (heavy, but layer by layer)**: ① **the unified layer-type interface + the renderer/symbol system separation** (different renderers on one vector layer) = the semantic baseline of Visia's style system, more GIS-canonical than deck.gl; ② the expression language (field filtering / label computation) — the minimal viable form of twin data binding; ③ the temporal controller (timeline -> data refresh) = the product shape of digital-twin playback; ④ the dual-layer API discipline of **C++ core + thin Python bindings** = route validation for Visia's Rust core -> C API -> TS/Py/C# binding generator (a selection reference for binding-generation tooling); ⑤ the project file format (.qgz XML zip, carrying styles/layer tree) = the semantic checklist for Visia Studio's save format.
+- **Avoid**: ① the gray boundary of a GPL core + closed-source plugins (Visia's MIT core + commercial plugins is actually cleaner — state the compatibility); ② the CPU QPainter rendering route's ceiling on massive data (weak 3D = the Qt3D drag — exactly Visia's opportunity, not its study target); ③ UI feature accretion (hundreds of entries per release notes — a feature-gravity-out-of-control sample; the Visia kernel stays restrained at the SDK boundary).
+- **Current-state ruling**: do not touch its code base (GPL), but the MVP's "users recognize GIS semantics" acceptance checklist (layer toggles / attribute table / labels / symbol classes) comes from QGIS habits — the target users' muscle memory is this.
 
-## 来源
-shields（2026-09-03）；docs.qgis.org 公开。
+## Sources
+shields (2026-09-03); docs.qgis.org public.

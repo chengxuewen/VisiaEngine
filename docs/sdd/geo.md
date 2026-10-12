@@ -1,83 +1,83 @@
-# visiaengine-geo 行为契约（SDD）
+# visiaengine-geo behavioral contract (SDD)
 
-> 条款标题行 `## GEO-NN:` 为追溯锚点；测试挂 `// spec: GEO-NN`。
-> fixture：`resources/data/park.geojson`（本仓自产：2 多边形[其一含双洞]+1 线+1 MultiPoint+1 点=5 features，simplestyle 属性）。
-> 投影语义：EPSG:3857 定义即**球面近似**（auxiliary sphere WGS84 a=6378137）；与椭球 Mercator 在 50°N 差约 8.7mm 属标准定义行为，非实现误差。datum 假定 WGS84（RFC7946 强制）。
+> Clause header lines `## GEO-NN:` are the traceability anchors; tests carry `// spec: GEO-NN`.
+> Fixture: `resources/data/park.geojson` (self-produced in this repo: 2 polygons [one with two holes] + 1 line + 1 MultiPoint + 1 point = 5 features, simplestyle properties).
+> Projection semantics: the EPSG:3857 definition is itself a **spherical approximation** (auxiliary sphere WGS84 a=6378137); the ~8.7 mm deviation from ellipsoidal Mercator at 50°N is standard-definition behavior, not an implementation error. Datum assumed WGS84 (mandated by RFC7946).
 
 ## GEO-01: parses_feature_count
-`load_geojson("resources/data/park.geojson")` → 5 features，name 保序（buildingA..lamp）。
+`load_geojson("resources/data/park.geojson")` -> 5 features, name order preserved (buildingA..lamp).
 
 ## GEO-02: webmercator_known_points
-球面式正反参考：(0,0)→(0,0)；(180°,0)→x=20037508.342789244；(10°,50°)→(1113194.9079327357, 6446275.841017158)±0.01m。
+Forward/inverse reference points on the spherical form: (0,0)->(0,0); (180°,0)->x=20037508.342789244; (10°,50°)->(1113194.9079327357, 6446275.841017158)±0.01m.
 
 ## GEO-03: polygon_exterior_holes_preserved
-buildingA → 外环 5 点（闭合）+ 2 洞保序保点数，环不合并。
+buildingA -> exterior ring 5 points (closed) + 2 holes with order and point counts preserved, rings not merged.
 
 ## GEO-04: line_and_multipoint_kinds
-road → Line(len 4)；grove → MultiPoint(len 2)；lamp → Point；类型不混。
+road -> Line(len 4); grove -> MultiPoint(len 2); lamp -> Point; kinds not mixed.
 
 ## GEO-05: layer_bbox_union
-park 层 bbox = 全 feature 3857 并集：x∈[261658.6,261704.2]±1m，y∈(5.65879e6,5.65891e6) 量级带（fixture 构造值）。
+park layer bbox = 3857 union of all features: x∈[261658.6,261704.2]±1m, y magnitude band (5.65879e6,5.65891e6) (fixture construction values).
 
 ## GEO-06: malformed_err_not_panic
-park 字节截半 → GeoError::Parse，零 panic。
+park bytes cut in half -> GeoError::Parse, zero panic.
 
 ## GEO-07: geometrycollection_flattened
-顶层 GeometryCollection{Polygon,Point} → 2 features（Poly+Point），GC 自身不成 feature。
+Top-level GeometryCollection{Polygon,Point} -> 2 features (Poly+Point), the GC itself does not become a feature.
 
 ## GEO-08: extreme_latitude_rejected
-lat=89.0 → GeoError::InvalidCoord（|φ|>85.0511° 3857 发散域）。
+lat=89.0 -> GeoError::InvalidCoord (|φ|>85.0511° is the 3857 divergent domain).
 
 ## GEO-09: fill_area_matches_polygon
-单位方环 [-1,1]² 细分 → 三角形总面积 ≈4 ±5%，重心 (0,0) 落于某三角形内（含边容差）。
+Unit square ring [-1,1]² tessellated -> total triangle area ≈4 ±5%, the barycenter (0,0) falls inside some triangle (with edge tolerance).
 
 ## GEO-10: hole_interior_uncovered
-方环含中心 0.4² 洞 → 洞内采样点 (0,0) 不在任何输出三角形内部。
+Square ring with a central 0.4² hole -> the interior sample point (0,0) lies inside no output triangle.
 
 ## GEO-11: stroke_expands_to_width
-(0,0)-(10,0) 线、显式 stroke_width_m=2（默认 3 不断言具体值）→ 输出 y 跨度 2±0.1、x 跨度 10±0.1（butt 端）。
+(0,0)-(10,0) line, explicit stroke_width_m=2 (the default 3 asserts no concrete value) -> output y span 2±0.1, x span 10±0.1 (butt caps).
 
 ## GEO-12: simplestyle_six_keys_parsed
-六键：fill / fill-opacity / stroke / stroke-width / marker-color / marker-radius；色支持 #rrggbb 与 rgb(r,g,b)（解析产物=**sRGB 域原值**，线性化住在后端上传咽喉 [CORE-16]——geo 域零换算）。park 断言：A fill=[1,0,0,1] α=0.8、road stroke=#808080、lamp marker=#228B22。
+Six keys: fill / fill-opacity / stroke / stroke-width / marker-color / marker-radius; colors accept #rrggbb and rgb(r,g,b) (parse product = **raw sRGB-domain values**, linearization lives at the backend upload throat [CORE-16] — zero conversion in the geo domain). park assertions: A fill=[1,0,0,1] α=0.8, road stroke=#808080, lamp marker=#228B22.
 
 ## GEO-13: missing_props_default_style
-无/未知键（如 "color"）→ 默认样式（fill 蓝 [0,0.45,1,1]，stroke 白），不报错。
+Missing/unknown keys (e.g. "color") -> default style (fill blue [0,0.45,1,1], stroke white), no error.
 
 ## GEO-14: tessellate_input_is_origin_local
-D7 纪律接口化：`tessellate` 输入为**已减 origin 的 local 坐标**（引擎提供 `GeoKind::shifted` 作 world→local 原语，消费方不得手改顶点）；(1e7,0) 偏移方环 local 化细分 ≡ 原点方环细分（对应顶点 <1e-3 米）。
+D7 discipline turned into an interface: `tessellate` input is **origin-subtracted local coordinates** (the engine provides `GeoKind::shifted` as the world->local primitive, consumers must not hand-modify vertices); a (1e7,0)-offset square ring localized and tessellated ≡ the origin square ring tessellation (corresponding vertices <1e-3 meters).
 
-## GEO-15: 宽松加载=分型丢弃计数
-`parse_geojson_lenient(bytes)` → `(doc, LoadReport)`：脏几何按 out_of_bounds/non_finite/unsupported/null_geometry/nested_collection 五类在产生点计数（typed GeoError 变体映射，非 reason 字符串反解）；`total_dropped()`=五类和；文档级错误（语法/IO）仍整文件 Err。`parse_geojson_with(bytes, RepairPolicy)` 为显式策略入口。
+## GEO-15: lenient loading = typed drop counting
+`parse_geojson_lenient(bytes)` -> `(doc, LoadReport)`: dirty geometries are counted at the point of origin in five classes — out_of_bounds/non_finite/unsupported/null_geometry/nested_collection (mapped from typed GeoError variants, not reverse-parsed from reason strings); `total_dropped()` = sum of the five; document-level errors (syntax/IO) still Err for the whole file. `parse_geojson_with(bytes, RepairPolicy)` is the explicit-policy entry.
 
-## GEO-16: 旧入口 FastFail 语义冻结
-`parse_geojson` = `RepairPolicy::FastFail`：首件脏几何即整文档 Err（GEO-08 拒绝面原样保持）；`geometry:null` feature 维持旧静默跳过（不计数）；纯干净输入下双入口 features 结果一致且报告全零。
+## GEO-16: legacy entry FastFail semantics frozen
+`parse_geojson` = `RepairPolicy::FastFail`: the first dirty geometry makes the whole document Err (the GEO-08 rejection surface kept as-is); `geometry:null` features keep the old silent skip (not counted); on purely clean input both entries give identical features results and an all-zero report.
 
-## GEO-17: feature 属性入列，行与展平件对齐
-解析成功的每个 feature 件（GC 展平后按件计）占 `AttrSet` 一行，`doc.attrs().len() == features().len()` 恒成立；`geometry:null`/被丢弃脏件不占行（先于 add_row 失败）。JSON 标量（number/string/bool）入对应类型列；object/array/null 值跳过不入列。GC 子件行复制 feature 级 name/props。宿主查询口 `doc.attr_f64/attr_str/attr_bool(feature_idx, name)`。
+## GEO-17: feature properties enter columns, rows align with flattened parts
+Every successfully parsed feature part (counted per part after GC flattening) occupies one `AttrSet` row, `doc.attrs().len() == features().len()` always holds; `geometry:null`/dropped dirty parts occupy no row (failure precedes add_row). JSON scalars (number/string/bool) enter the matching typed column; object/array/null values are skipped and do not enter columns. GC sub-part rows copy the feature-level name/props. Host query accessors: `doc.attr_f64/attr_str/attr_bool(feature_idx, name)`.
 
-## GEO-18: 样式经 typed 列读取
-simplestyle 六键判定经 `style_from_attrs(&AttrSet, row)`——`style.rs` 模块零 serde_json 依赖（解析边界固定 lib.rs，机器门禁 `pixi run gate-style`）；六键输出与列化前语义逐键一致（回归网=既有 GEO-11/12/13 断言）。`parse_style(json)` 便利口经一次性 AttrSet 走同一实现。
+## GEO-18: styles read via typed columns
+The six simplestyle keys are resolved through `style_from_attrs(&AttrSet, row)` — the `style.rs` module has zero serde_json dependency (the parse boundary is fixed at lib.rs, machine gate `pixi run gate-style`); the six-key output matches per-key the pre-columnarization semantics (regression net = the existing GEO-11/12/13 assertions). The convenience entry `parse_style(json)` runs the same implementation through a one-off AttrSet.
 
-## GEO-19: v8 paint 别名回退（D9 裁决实施）
-每个样式键在 simplestyle 主键缺席时接受 MapLibre v8 静态 paint 别名回退：fill→fill-color、stroke→line-color、stroke-width→line-width、marker-color→circle-color、marker-radius→circle-radius（fill-opacity 同名直读）。**主键优先于别名**（并存时主键胜，规则定死）。值格式复用 GEO-12 色解析与 GEO-13 数值语义；v8 表达式/stops/data-driven 明确不在本条覆盖面（D9 边界）。
+## GEO-19: v8 paint alias fallback (implementation of the D9 ruling)
+Each style key accepts a MapLibre v8 static paint alias fallback when its simplestyle primary key is absent: fill->fill-color, stroke->line-color, stroke-width->line-width, marker-color->circle-color, marker-radius->circle-radius (fill-opacity read directly under the same name). **Primary key takes precedence over the alias** (when both exist the primary key wins, rule fixed). Value formats reuse the GEO-12 color parsing and GEO-13 numeric semantics; v8 expressions/stops/data-driven are explicitly outside this clause's coverage (D9 boundary).
 
-## GEO-20: 标量→色带扩展键（解析期物化）
-`visia:color-column`（属性列名）+ `visia:color-lo/hi`（数值区间）+ `visia:color-low/high`（端色，GEO-12 格式）齐备且区间有效时：列值线性插值 t=clamp((v−lo)/(hi−lo)) 物化写入 `style.fill`/`style.marker_color`（渲染零改动——per-feature 常量色形态）。任一要素缺失/`hi<=lo`/引用列不存在或非数值 → 静默禁用（六键结果保持）。`visia:` 前缀为 D9 边界外自有扩展命名空间；逐顶点 GPU LUT（DEM/点云场）不在本条，留 backlog。
+## GEO-20: scalar->color-ramp extension keys (materialized at parse time)
+When `visia:color-column` (property column name) + `visia:color-lo/hi` (numeric interval) + `visia:color-low/high` (endpoint colors, GEO-12 format) are all present and the interval is valid: the column value is linearly interpolated t=clamp((v−lo)/(hi−lo)) and materialized into `style.fill`/`style.marker_color` (zero render changes — per-feature constant-color form). Any missing element / `hi<=lo` / referenced column absent or non-numeric -> silently disabled (six-key results preserved). The `visia:` prefix is a self-owned extension namespace outside the D9 boundary; per-vertex GPU LUT (DEM/point-cloud fields) is not in this clause and stays in the backlog.
 
-## GEO-21: 折线平面距离
-`planar_distance(&[Vec3]) -> f64`：3857 米平面折线长（相邻有限点段和）。非有限点跳过不成段（大坐标 NaN 传播防御）；空/单点=0。**语义冻结**：墨卡托平面距离随纬度含 cos φ 畸变——大地学语义属"坐标系完善"（Alpha roadmap），本条不充胖子。
+## GEO-21: polyline planar distance
+`planar_distance(&[Vec3]) -> f64`: 3857-meter planar polyline length (sum of segments between adjacent finite points). Non-finite points are skipped and form no segment (defense against NaN propagation at large coordinates); empty/single point = 0. **Semantics frozen**: the Mercator planar distance carries a cos φ distortion with latitude — geodetic semantics belong to "coordinate-system completion" (Alpha roadmap), this clause does not overreach.
 
-## GEO-22: 环平面面积
-`ring_area(&[Vec3]) -> f64`：shoelace 绝对值、方向无关（GeoJSON 顺/逆时针双俗同值）、闭合重复点与否同值。顶点 <3 或任一非有限点 → 0（不猜测残缺多边形）。
+## GEO-22: ring planar area
+`ring_area(&[Vec3]) -> f64`: shoelace absolute value, direction-agnostic (both GeoJSON winding conventions yield the same value), same value whether or not the closing point is duplicated. Vertices <3 or any non-finite point -> 0 (no guessing at incomplete polygons).
 
-## GEO-23: 解析域全输入无 panic（属性面）
-`parse_geojson`（FastFail）与 `parse_geojson_lenient` 对**任意字节流与任意 f64 坐标域**（含 NaN/inf/越界/非法 JSON 结构）零 panic——Err/丢弃为合法出口，panic 为契约违反。proptest 512 例×3 性质覆盖（随机流/全 f64 坐标/干净域双策略一致性：无脏件时 total_dropped==0 且件数同）。
+## GEO-23: parse domain panics on no input (property surface)
+`parse_geojson` (FastFail) and `parse_geojson_lenient` over **arbitrary byte streams and arbitrary f64 coordinate domains** (incl. NaN/inf/out-of-range/illegal JSON structure): zero panic — Err/drop are legal exits, panic is a contract violation. proptest 512 cases × 3 properties coverage (random stream / all-f64 coordinates / clean-domain dual-policy consistency: with no dirty parts total_dropped==0 and identical part counts).
 
-## GEO-24: GeoPart 输出切换（4de）
-`tessellate → Vec<GeoPart>`：`{Fill(TessPart), Strokes(Vec<LineStrip>), Markers(Vec<Marker>)}`——线/点**不再 CPU 扩条带/方块**（`tess_stroke`/`quad` 退役，`PartKind` 缩至 `{Fill}`）。中立类型（geo 零 render-IR 依赖，分层不变式；扩片转换住消费者=三处同形注记 pending 4de 后提取）。`LineStrip{pts(相邻点=段，环输出闭合首尾同点), color:[f32;3], width_px}` / `Marker{pos, color, radius_px}`——**px 单位语义 [裁决点 a 纠偏]**：MapLibre stroke-width/circle-radius 本义像素，旧 `_m` 字段系误释；样式键名（含 D9 别名）不动，`stroke_width_px` 默认 1.5（原 3.0 世界单位随单位重释归正）、`radius_px` 默认 4.0，stroke-width 值 floor 0.5px。`stroke_width_px==0` → 不出 Strokes part（关描边语义保真）。
+## GEO-24: GeoPart output switch (4de)
+`tessellate -> Vec<GeoPart>`: `{Fill(TessPart), Strokes(Vec<LineStrip>), Markers(Vec<Marker>)}` — lines/points **no longer CPU-expand into strips/quads** (`tess_stroke`/`quad` retired, `PartKind` shrinks to `{Fill}`). Neutral types (geo has zero render-IR dependency, the layering invariant; the expansion conversion lives at the consumer = the three-sites-isomorphic note pending extraction after 4de). `LineStrip{pts (adjacent points = segment, rings output closed with duplicated first/last point), color:[f32;3], width_px}` / `Marker{pos, color, radius_px}` — **px unit semantics [adjudication point a correction]**: MapLibre stroke-width/circle-radius mean pixels natively, the old `_m` fields were a misreading; style key names (incl. D9 aliases) untouched, `stroke_width_px` default 1.5 (the former 3.0 world units re-interpreted back to the correct unit), `radius_px` default 4.0, stroke-width value floor 0.5px. `stroke_width_px==0` -> no Strokes part emitted (stroke-off semantics preserved faithfully).
 
-## GEO-25: 文本样式三键（S2/B2后）
-`StyleRecord +{ text_field: Option<Box<str>>, text_size_px(默认 14), text_color(宿主 sRGB 面=GEO-12 同制，线性化住消费端咽喉 CORE-16) }`（**Copy→Clone**，零涟漪实测）。解析（style_from_attrs，v8 layout 域正本无 simplestyle 对应=主键即正本）：`text-field` 值花括号剥壳 `"{prop}"`→列名；**裸串=常量文本**；分辨律住消费端（CAPI-22/引擎挂载）：**属性列存在（`attrs.names()` 判）→列语义**（该列存在而行值缺=**skip 不落字面量**，杜绝 `"{name}"` 漏成文本）；列不存在→字面量。`text-size` clamp [1,256]；`text-color` 复用 parse_color。输出形：装载端产 `LabelMark` 合**一 doc 一表一 DrawLabels**（origin=层中心，锚=bbox 中心+**center 对齐**（MapLibre 默认），z=0.1 恒顶层）。无字体装载=整段零收集零输出不报错（休眠形，CAPI-22 时序门配套）。
+## GEO-25: text style three keys (after S2/B2)
+`StyleRecord +{ text_field: Option<Box<str>>, text_size_px (default 14), text_color (host sRGB plane = same discipline as GEO-12, linearization at the consumer throat CORE-16) }` (**Copy->Clone**, zero ripple measured). Parsing (style_from_attrs, the v8 layout domain has no simplestyle counterpart = primary key is the canonical form): `text-field` values unwrap braces `"{prop}"` -> column name; **a bare string = constant text**; the resolution rule sits at the consumer (CAPI-22 / engine mount): **property column exists (checked via `attrs.names()`) -> column semantics** (column exists but the row value is missing = **skip, do not fall back to the literal**, preventing `"{name}"` from leaking as text); column absent -> literal. `text-size` clamp [1,256]; `text-color` reuses parse_color. Output form: the loading side produces `LabelMark`s merged into **one table, one DrawLabels per doc** (origin = layer center, anchor = bbox center + **center alignment** (MapLibre default), z=0.1 always top layer). No font loaded = the entire segment collects nothing and outputs nothing, no error (dormant form, paired with the CAPI-22 timing gate).
 
-## GEO-26: fill-opacity→透明族全链（④）
-样式 `fill-opacity`（GEO-12 主键+域钳 [0,1]）→ `with_alpha(fill, op)` → part 材质 `base_color.a` →（REND-36 单一判）透明管线 + 画家 pass（WGPU-28）。**park.geojson 现行锁**：buildingA α=0.8 红填在灰地上=线性域合成值可算（棋盘门同族），WGPU-11 多件拟合门在 alpha 生效前后**零重录**（实测位=保守阈余量内，本条为准绳复测记录）。逐顶点 alpha 路不存在（part 级材质单值）；stroke/marker 恒不透明（fs 硬 a=1.0，半透线/点=后带独立裁决）。
+## GEO-26: fill-opacity -> full transparency chain (④)
+Style `fill-opacity` (GEO-12 primary key + domain clamp [0,1]) -> `with_alpha(fill, op)` -> part material `base_color.a` -> (REND-36 single predicate) transparent pipeline + painter pass (WGPU-28). **park.geojson current lock**: buildingA α=0.8 red fill on gray ground = a linear-domain composite value that is computable (checkerboard-gate same family), WGPU-11 multi-part fitting gate **zero re-recording** before and after alpha takes effect (measured position within the conservative-threshold margin, this clause is the reference re-measurement record). A per-vertex alpha path does not exist (part-level material single value); stroke/marker are always opaque (fs hard a=1.0, semi-transparent lines/points = a separate ruling in a later band).

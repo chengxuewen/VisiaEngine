@@ -1,14 +1,14 @@
-# three.js — 与 VisiaEngine 同构性最高的参考物
+# three.js — the reference with the highest isomorphism to VisiaEngine
 
-**快照 2026-09-03**（shields/npm 实测）：115k★（昨日活跃）；npm **r185**（2026-07-01）；MIT；单核心维护者（mrdoob）+ 稳定贡献层——16 年不断代。
+**Snapshot 2026-09-03** (shields/npm measured): 115k★ (active yesterday); npm **r185** (2026-07-01); MIT; a single core maintainer (mrdoob) + a stable contributor layer — 16 years without breaking generation.
 
-## 画像
-"JavaScript 3D Library"——**刻意自称库不叫引擎**：最小场景图（Object3D/Scene/Mesh/Material）+ 可换 renderer（WebGLRenderer 稳态 / WebGPURenderer + TSL 着色语言迁移进行中，2026 完成度 *UNCERTAIN：官网示例前缀仍多 webgl_*，精确状态查 CHANGELOG*）+ 一切扩展（loader/controls/后处理）在 examples/jsm 外围。生态=React-Three-Fiber、model-viewer、potree（点云）、aframe……网页 3D 的事实基础设施（Google/NASA/Shopify 案例墙当日可见）。
+## Profile
+A "JavaScript 3D Library" — **deliberately calling itself a library, not an engine**: a minimal scene graph (Object3D/Scene/Mesh/Material) + a swappable renderer (WebGLRenderer steady-state / WebGPURenderer + the TSL shading-language migration in progress, 2026 completion *UNCERTAIN: the official site's example prefixes are still mostly webgl_*, check the CHANGELOG for the exact state*) + all extensions (loader/controls/post-processing) in the examples/jsm periphery. Ecosystem = React-Three-Fiber, model-viewer, potree (point clouds), aframe… the de-facto infrastructure of web 3D (the Google/NASA/Shopify case wall visible the same day).
 
-## 对 VisiaEngine（同构性：库形态/API 极简/嵌入优先/Web 一翼——四条全对齐）
-- **借鉴**：① **API 面的"最小核 + 外围"分层**：核心包只含场景图/材质/相机，40+ loader 全在外围——visia-core vs visia-io-* 的 crate 切分有 16 年存续先例；② **WebGL→WebGPU 的渐进迁移工程**：双 renderer 长期并存、同 API 面换后端——visia-render trait 的"语义源唯一+后端可并存"路线的现实注脚（且证明这条路能走十年）；TSL（把着色器逻辑写成 JS 图，编译到 WGSL/GLSL）= visia 未来材质 DSL 的形态参照；③ 发布节奏（每月 rNNN，date-based）对 SDK 版本策略友好；④ 点云查看器 potree 是 Visia 点云层的用户画像样本。
-- **规避**：① 无空间索引/无 LOD 调度/无流式原语——它停在"3D 库"，正停在 Visia 要越过的线上（白皮书 1.1 对 Three.js 的批评句可引用此缺口，措辞已修正过 Cesium 句，此句仍成立）；② 全局状态与隐式生命周期（Material/Texture 手动 dispose，泄漏是用户税）——C API 层用所有权类型替他挡掉；③ 破坏性变更频繁（每 r 可删 API）——16 年靠 Web 生态容忍度，对 SDK 承诺是反面教材（C ABI 版本握手必做）。
-- **现状判定**：写 visia-core API 设计文档时人手一份其 Scene API 做语感对照；"库而非引擎"的定位声明句式可直接借进白皮书 FAQ。
+## For VisiaEngine (isomorphism: library shape / minimal API / embedding-first / the Web wing — all four align)
+- **Adopt**: ① **the "minimal core + periphery" layering of the API surface**: the core package holds only scene graph/materials/camera, all 40+ loaders are periphery — the visia-core vs visia-io-* crate split now has a 16-year-survival precedent; ② **the WebGL->WebGPU progressive-migration engineering**: two renderers coexisting long-term, same API surface swapped backend — the real-world footnote of visia-render trait's "single semantic source + coexisting backends" route (and proof the road can run for a decade); TSL (writing shader logic as a JS graph, compiled to WGSL/GLSL) = the shape reference for a future visia material DSL; ③ the release cadence (monthly rNNN, date-based) is kind to SDK version strategy; ④ the potree point-cloud viewer is the user-persona sample for Visia's point-cloud layer.
+- **Avoid**: ① no spatial index / no LOD scheduling / no streaming primitives — it stops at "3D library", stopping exactly at the line Visia must cross (the whitepaper 1.1 critique sentence on Three.js may cite this gap; the Cesium sentence's wording was already corrected, this sentence still stands); ② global state and implicit lifecycles (Material/Texture manual dispose, leaks are a user tax) — the C API layer uses ownership types to shield it for you; ③ frequent breaking changes (every r may delete APIs) — 16 years survived on the Web ecosystem's tolerance, a counter-example for an SDK promise (the C ABI version handshake is mandatory).
+- **Current-state ruling**: when writing the visia-core API design document, hold a copy of its Scene API as a language-feel control; the "library, not an engine" positioning-sentence pattern can be borrowed into the whitepaper FAQ directly.
 
-## 来源
-img.shields.io + registry.npmjs.org（2026-09-03）；threejs.org 首页案例墙（当日）；WebGPU 迁移完成度待 CHANGELOG 复核。
+## Sources
+img.shields.io + registry.npmjs.org (2026-09-03); the threejs.org homepage case wall (same day); the WebGPU migration completion awaits CHANGELOG recheck.

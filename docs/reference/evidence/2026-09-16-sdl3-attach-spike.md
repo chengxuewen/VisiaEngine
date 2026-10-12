@@ -1,39 +1,39 @@
-# 2026-09-16 SDL3×capi attach spike 证据（快照日，永不更新）
+# 2026-09-16 SDL3×capi attach spike evidence (snapshot day, never updated)
 
-> S0 出口件（.omo/plans/bindings-restructure-cpp-examples.md v1.3 §S0）。throwaway 代码在 /tmp（不进仓）；
-> 本档记录环境事实与通路结论，供 S4 窗口例（E801）与打包轮引用。
+> S0 exit artifact (.omo/plans/bindings-restructure-cpp-examples.md v1.3 §S0). The throwaway code lives in /tmp (not in the repo);
+> this file records environment facts and the path conclusions, for the S4 window example (E801) and the packaging round to cite.
 
-## 结论（两态全绿）
+## Conclusion (both states fully green)
 
-| 态 | 命令要点 | 结果 |
+| state | command essentials | result |
 |---|---|---|
-| 真窗 @:0 | `DISPLAY=:0 SDL_VIDEO_DRIVER=x11 <spike>` | `OK sdl3 attach` rc=0（首试即过）|
-| Xvfb :77 | default 环境 Xvfb + `SDL_VIDEO_DRIVER=x11` | 同上 rc=0（**须先修 xkb 树，见坑 2**）|
+| real window @:0 | `DISPLAY=:0 SDL_VIDEO_DRIVER=x11 <spike>` | `OK sdl3 attach` rc=0 (passed on the first try) |
+| Xvfb :77 | default-environment Xvfb + `SDL_VIDEO_DRIVER=x11` | same, rc=0 (**the xkb tree must be fixed first, see pit 2**) |
 
-通路链：`SDL_CreateWindow → SDL_GetWindowProperties → SDL_GetNumberProperty(SDL_PROP_WINDOW_X11_WINDOW_NUMBER)
-→ xid + SDL_GetPointerProperty(SDL_PROP_WINDOW_X11_DISPLAY_POINTER) → Display*`
-→ **现 `visiaengine_attach(ve, xid, (uintptr_t)dpy, kind=0)` 双槽合同直接可用（CAPI-06，与 E702 Xlib 自持形同构）**，
-协议序列逐件同 E702：create_headless(320,240)→load_gltf(twoprim.glb)→attach→render×3（帧间 SDL_PumpEvents+Delay80）→destroy。
-渲染走 lavapipe（WARNING 行系 wgpu 软件 Vulkan 常态注记，与 golden 族一致）。
+Path chain: `SDL_CreateWindow → SDL_GetWindowProperties → SDL_GetNumberProperty(SDL_PROP_WINDOW_X11_WINDOW_NUMBER)`
+`→ xid + SDL_GetPointerProperty(SDL_PROP_WINDOW_X11_DISPLAY_POINTER) → Display*`
+→ **the existing `visiaengine_attach(ve, xid, (uintptr_t)dpy, kind=0)` two-slot contract is directly usable (CAPI-06, isomorphic with the E702 self-held Xlib form)**,
+the protocol sequence is item-for-item the same as E702: create_headless(320,240)→load_gltf(twoprim.glb)→attach→render×3 (SDL_PumpEvents+Delay80 between frames)→destroy.
+Rendering runs on lavapipe (the WARNING lines are the normal-state note of wgpu software Vulkan, consistent with the golden family).
 
-## 环境事实
+## Environment facts
 
-1. **sdl3 3.4.16**（`sdl3-3.4.16-h5330f5c_0.conda`，conda-forge）run-deps 全 C 栈：
-   libstdcxx/libgcc、xorg-libx{11,xext,xfixes,xi,xrandr,xrender,xscrnsaver,xtst,xcursor,xau,xdmcp}、
-   wayland、libxkbcommon、xkeyboard-config、libgl/libegl、dbus、libvulkan-loader、libdrm、libusb、liburing、libunwind。
-   **不拉 rust 工具链**（G-12 出数：包体纯净，与 cargo 环境零纠缠）。zlib/libpng 许可。
-2. **坑（PIT-19，已入档）：pixi 文件 clobber 使 conda 版 Xvfb 恒炸 XKB**——`xorg-xvfb-server` 携
-   `share/X11/xkb/compiled/.keep` 与 `xkeyboard-config` 树冲突 → pixi 0.78 将后者**整树重定向**
-   `share/xkeyboard-config-2/`，正位 `share/X11/xkb/` 空 → `Xvfb` 起服即
-   `XKB: Failed to compile keymap` / `Failed to activate virtual core keyboard`。
-   本机解法（环境为本机态，重建后重放）：`cp -a .pixi/envs/default/share/xkeyboard-config-2/. .pixi/envs/default/share/X11/xkb/`。
-   host-spike 环境同款（历史上 smoke-x11 从未走过 Xvfb 分支=本机恒有 :0，故未暴露）。
-   CI 面：apt 系统 Xvfb 免疫；B2 子态口径据此修订=**优先 `command -v Xvfb`（系统），conda 兜底需随附修树命令，皆不可得=SKIP note 不误红**。
-3. `SDL_VIDEO_DRIVER=x11` 必须显式设（wayland 默认后端不提供 SDL_PROP_WINDOW_X11_* 属性面；attach 合同 v0=X11-only，风险③按预期成立）。
-4. 依赖入册：`pixi.toml` [feature.tools.dependencies] `sdl3 >=3.4,<4`（全平台）；
-   [feature.tools.target.linux-64.dependencies] `xorg-xvfb-server >=21.1.24,<22`（display 子态本地兜底）；pixi.lock 已随。
+1. **sdl3 3.4.16** (`sdl3-3.4.16-h5330f5c_0.conda`, conda-forge) run-deps are a full C stack:
+   libstdcxx/libgcc, xorg-libx{11,xext,xfixes,xi,xrandr,xrender,xscrnsaver,xtst,xcursor,xau,xdmcp}, 
+   wayland, libxkbcommon, xkeyboard-config, libgl/libegl, dbus, libvulkan-loader, libdrm, libusb, liburing, libunwind.
+   **Does not pull the rust toolchain** (G-12 number: the package body is pure, zero entanglement with the cargo environment). zlib/libpng licenses.
+2. **Pit (PIT-19, filed): pixi file clobber makes the conda Xvfb always blow up XKB** — `xorg-xvfb-server` ships
+   `share/X11/xkb/compiled/.keep` conflicting with the `xkeyboard-config` tree -> pixi 0.78 **redirects the latter's whole tree** to
+   `share/xkeyboard-config-2/`, leaving the canonical `share/X11/xkb/` empty -> `Xvfb` at startup immediately
+   `XKB: Failed to compile keymap` / `Failed to activate virtual core keyboard`.
+   Local fix (the environment is local state, replay after rebuild): `cp -a .pixi/envs/default/share/xkeyboard-config-2/. .pixi/envs/default/share/X11/xkb/`.
+   Same for the host-spike environment (historically smoke-x11 never walked the Xvfb branch = this machine always has :0, so it stayed hidden).
+   CI surface: the apt system Xvfb is immune; the B2 sub-state account is revised accordingly = **prefer `command -v Xvfb` (system), the conda fallback must ship the tree-fix command with it, neither available = SKIP note, no false red**.
+3. `SDL_VIDEO_DRIVER=x11` must be set explicitly (the wayland default backend does not provide the SDL_PROP_WINDOW_X11_* property surface; the attach contract is v0=X11-only, risk ③ holds as expected).
+4. Dependency registered: `pixi.toml` [feature.tools.dependencies] `sdl3 >=3.4,<4` (all platforms);
+   [feature.tools.target.linux-64.dependencies] `xorg-xvfb-server >=21.1.24,<22` (display sub-state local fallback); pixi.lock follows.
 
-## 判定
+## Verdict
 
-S0 Go——S4 窗口例按原计划走 SDL3，**无需退 Qt fallback**。E801 出生时头注须含
-`SDL_VIDEO_DRIVER=x11` 锁 + DISPLAY 缺=77 预检（原生自查，无 stub）。
+S0 Go — the S4 window example goes with SDL3 as planned, **no retreat to a Qt fallback needed**. E801's header note at birth must carry
+the `SDL_VIDEO_DRIVER=x11` lock + a DISPLAY-absent = 77 pre-check (native self-inspection, no stub).

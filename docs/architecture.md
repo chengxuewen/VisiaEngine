@@ -1,158 +1,158 @@
-# VisiaEngine 架构设计
+# VisiaEngine Architecture Design
 
-**v0.2 | 2026-09-14**（v0.1=2026-09-03 设计基线）| 输入：D2 + D4 + 证据链（`reference/evidence/` + 参考项目库 19 篇）
-状态：**批 0..5 已落地**（骨架/内容/geo/交互/宿主嵌入/wasm/渲染强化 4ab·4c·4de·4f/文档归位）。本文=设计基线+**落地校正**双层：图示为设计目标（含未建件如 style/proj 拆分），当前实况以 AGENTS.md + `.agents/memorys/status.md` 为准；决策演进走 decisions.md（D7-D10 已入册）。
+**v0.2 | 2026-09-14** (v0.1 = the 2026-09-03 design baseline) | Inputs: D2 + D4 + the evidence chain (`reference/evidence/` + the 19-file reference-project library)
+Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding/wasm/rendering hardening 4ab·4c·4de·4f/docs re-homing). This file = a two-layer design baseline + **landing corrections**: the diagrams are design goals (including unbuilt pieces such as the style/proj split); for the current state read AGENTS.md + `.agents/memorys/status.md`; decision evolution goes through decisions.md (D7-D10 registered).
 
-## 设计不变式（优先级高于一切图示）
+## Design invariants (outrank every diagram)
 
-1. **`visiaengine-core` 永不依赖 `visiaengine-render`**：数据模型可无头运行（headless 出图/测试/Studio 复用同源）。
-2. **C ABI 是唯一稳定边界**：wgpu/bevy 级类型止步于 `visiaengine-render-wgpu`，永不泄漏到 trait 之外（D4 否决 Bevy 的第一主因即此）。
-3. **单一语义源，后端只增不分叉**（Unity 三管线互斥学费）：任何后端不得引入新的场景/材质语义。
-4. **主循环归属宿主**：引擎只被 pump，不自建事件循环（rerun spawn/connect 模型为参照，Flutter embedder 为 ABI 纪律范本）。
-5. **兼容 = tier 参数化，非编译期分叉**：能力运行时查询（§图⑥）——capability_query: drawn as design goal, not yet implemented (Alpha tier).
-6. **copyleft 依赖（PROJ/GEOS/OSG 系/LGPL 件）一律 feature-gate 到扩展层**，核心包静态链零污染。
+1. **`visiaengine-core` never depends on `visiaengine-render`**: the data model runs headless (headless image output/tests/Studio share one source).
+2. **The C ABI is the only stable boundary**: wgpu/bevy-grade types stop at `visiaengine-render-wgpu` and never leak beyond the trait (this was the primary reason D4 vetoed Bevy).
+3. **One semantic source; backends only add, never fork** (Unity's three-mutually-exclusive-pipelines tuition): no backend may introduce new scene/material semantics.
+4. **The main loop belongs to the host**: the engine is only pumped, never builds its own event loop (the rerun spawn/connect model is the reference, the Flutter embedder is the ABI-discipline template).
+5. **Compatibility = tier parameterization, not compile-time forking**: capabilities queried at runtime (§ figure ⑥) — capability_query: drawn as design goal, not yet implemented (Alpha tier).
+6. **Copyleft dependencies (PROJ/GEOS/OSG family/LGPL pieces) are always feature-gated into the extension layer**, zero contamination in the core package's static link.
 
-## ① 全景分层
+## ① Full panoramic layering
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  宿主应用层        Qt/C++   C# (WPF/Unity)   Flutter   Web    │
+│  Host app layer      Qt/C++   C# (WPF/Unity)   Flutter  Web   │
 └───────────────┬─────────────────────────────────────────────┘
-                │  C ABI（唯一稳定边界，版本化握手）
+                │  C ABI (the only stable boundary, versioned handshake)
 ┌───────────────▼─────────────────────────────────────────────┐
-│  绑定生成层     visiaengine-capi(头文件) → bindgen/csbindgen/pub   │
+│  Binding-gen layer   visiaengine-capi(headers) → bindgen/csbindgen/pub │
 ├─────────────────────────────────────────────────────────────┤
-│  引擎核心层     visiaengine-core ── visiaengine-geo ── visiaengine-style       │
-│  (纯 Rust)     场景图/坐标  MVT/投影调度  图层/样式/表达式     │
+│  Engine core layer   visiaengine-core ── visiaengine-geo ── visiaengine-style │
+│  (pure Rust)         scene graph/coords  MVT/projection sched  layers/styles/expr │
 ├─────────────────────────────────────────────────────────────┤
-│  渲染抽象层     visiaengine-render：Trait + 渲染指令(IR)，无 GPU 类型 │
+│  Render abstract     visiaengine-render: Trait + render commands (IR), no GPU types │
 ├─────────────────────────────────────────────────────────────┤
-│  后端层         visiaengine-render-wgpu（默认·自研管线，D4）        │
+│  Backend layer       visiaengine-render-wgpu (default, in-house pipeline, D4) │
 ├─────────────────────────────────────────────────────────────┤
-│  平台层         wgpu v30                                     │
+│  Platform layer      wgpu v30                                 │
 │   T1: Vulkan│Metal│DX12│WebGPU   T2: GL3.3+/GLES3.0(±ANGLE)  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## ② Crate 依赖方向
+## ② Crate dependency directions
 
 ```
-                 visiaengine-capi ─(cdylib/staticlib + 手写人审头 14 入口
-                     │              gate-abi nm 符号数 + gate-docs 签名名集双锁)
+                 visiaengine-capi ─(cdylib/staticlib + hand-written, human-reviewed header, 14 entries
+                     │              gate-abi nm symbol count + gate-docs signature-name-set double lock)
                      │
    ┌───────┬────────┼─────────┬──────────┬──────────┐
 visiaengine-core  visiaengine-geo  visiaengine-style   visiaengine-io-*   visiaengine-proj
- (无 wgpu    (瓦片/     (样式spec,     (gltf/       (投影: feature-gate
-  依赖)      坐标/      表达式)        geojson/      纯Rust | C绑定二选一)
-             LOD调度)                  mvt)
+ (no wgpu     (tiles/     (style spec,    (gltf/       (projection: feature-gate
+  dependency)  coords/     expressions)    geojson/     pure Rust | C binding, pick one)
+               LOD sched)                  mvt)
    └───────┴────────┴─────┬────┴──────────┴──────────┘
-                    visiaengine-render (纯 IR/Trait)
+                    visiaengine-render (pure IR/Trait)
                           │
                   visiaengine-render-wgpu ──→ wgpu, lyon, cosmic-text, rstar
- [扩展档，核心零依赖] visiaengine-3dtiles │ visiaengine-odr(Beta) │ visiaengine-ifc(Beta+)
+ [extension tier, zero core dependency] visiaengine-3dtiles │ visiaengine-odr(Beta) │ visiaengine-ifc(Beta+)
 ```
-铁律：依赖箭头只向下；`visiaengine-style`/`visiaengine-geo` 独立性 = Open Core 插件边界的代码化。
+Iron rule: dependency arrows point down only; the independence of `visiaengine-style`/`visiaengine-geo` = the Open Core plugin boundary coded into structure.
 
-## ③ 一帧数据流
+## ③ One frame's data flow
 
 ```
-host 事件 ──▶ 输入泵 ──▶ 交互/相机状态 (主世界)
+host events ──▶ input pump ──▶ interaction/camera state (main world)
                           │
         ┌─────────────────▼──────────────────┐
-        │ 1 CULL     R-tree/quadtree + SSE 选 LOD │
-        │ 2 STREAM   瓦片调度器(需求−缓存→合并→限并发) │──▶ 后台线程 IO
-        │ 3 PREPARE  脏标记 → 渲染条目抽取(视口快照)    │
-        │ 4 BUILD    frame graph 记录(自研薄层)         │
-        │            pass: shadow✓(PCSS 4f)→tile-2D→3D→text │
+        │ 1 CULL     R-tree/quadtree + SSE picks LOD │
+        │ 2 STREAM   tile scheduler (demand − cache -> merge -> throttle) │──▶ background-thread IO
+        │ 3 PREPARE  dirty flags -> render-entry extraction (viewport snapshot) │
+        │ 4 BUILD    frame-graph recording (thin in-house layer)  │
+        │            pass: shadow✓(PCSS 4f)→tile-2D→3D→text      │
         │ 5 ENCODE   → wgpu command buffer              │
-        │ 6 SUBMIT/PRESENT (非阻塞 poll 语义)           │
+        │ 6 SUBMIT/PRESENT (non-blocking poll semantics)│
         └────────────────────────────────────┘
 ```
-- **场景存储定调（本轮 Unity-DOTS/UE6 证据收敛）**：slab-handle 索引 + 脏标记起步，**不上 ECS**；若未来性能证据推翻，替换限 `visiaengine-core` 内部，不破 C ABI。
-- **渲染条目 IR 标注 cluster-ready**（UE Nanite 启示）：数据结构预留 meshlet/indirect-draw 扩展位，MVP 不实现、不封死。
+- **Scene storage settled (converged on this round's Unity-DOTS/UE6 evidence)**: start with slab-handle indexing + dirty flags, **no ECS**; should future performance evidence overturn this, the swap is confined inside `visiaengine-core` and does not break the C ABI.
+- **Render-entry IR annotated cluster-ready** (the UE Nanite lesson): the data structures reserve the meshlet/indirect-draw extension slots — unimplemented in MVP, never sealed off.
 
-## ④ 2D/2.5D/3D 统一与坐标精度
-
-```
-     统一投影 P = mix(ortho, perspective, t)   t∈[0,1]
-  t=0 正交/鸟瞰(地图)   t=0.5 倾斜(2.5D)   t=1 透视(3D)
-     ▲ 插值的是视锥参数，单一相机模型
-
-  坐标精度：世界 f64(ECEF/投影域) ──RTC 分块──▶ 渲染 chunk 局部 f32
-     (大坐标偏移以相机/瓦片中心为原点；不这么做 = 地图引擎第一杀手)
-```
-**已裁（D7，2026-09-03）**：三层合体——core f64 全局 / 顶点 f32 局部（model·tile 级 origin）/ draw uniform f64 `origin−eye`→f32（viewer-origin 每帧）。证据链 `reference/evidence/2026-09-03-rtc-hierarchy.md`；实施=GeoJSON 片，glTF 现路径兼容。
-
-## ⑤ 宿主嵌入模型
+## ④ 2D/2.5D/3D unification and coordinate precision
 
 ```
-路径 A（自有 surface）: host 原生窗口句柄 ──raw-window-handle──▶ wgpu surface
-路径 B（纹理互操作，Qt/Unity 优先）: visia 离屏渲染 → 纹理回调 → 宿主合成
+     unified projection P = mix(ortho, perspective, t)   t∈[0,1]
+  t=0 orthographic/bird's-eye (map)   t=0.5 oblique (2.5D)   t=1 perspective (3D)
+     ▲ what is interpolated are the frustum parameters; one single camera model
 
-线程契约（仿 Flutter embedder）:
-  platform thread = 宿主主线程（visia 绝不自建事件循环、绝不抢占）
-  engine work     = 内部任务池（C API 投递/回调）
-  render work     = 宿主调 visiaengine_frame() 驱动；专职渲染线程可选开关
-ABI: 结构体首字段 {size, api_version}；只导出 opaque 句柄；
-     错误 = int code + visiaengine_last_error()
+  coordinate precision: world f64 (ECEF/projection domain) ──RTC tiling──▶ render chunk local f32
+     (large-coordinate offsets take the camera/tile center as origin; not doing so = the map engine's number-one killer)
 ```
+**Ruled (D7, 2026-09-03)**: three layers combined — core f64 global / vertex f32 local (model·tile-level origin) / draw uniform f64 `origin−eye`→f32 (viewer-origin, per frame). Evidence chain `reference/evidence/2026-09-03-rtc-hierarchy.md`; implementation = the GeoJSON slice, glTF's current path stays compatible.
 
-## ⑥ 兼容 Tier 能力矩阵
+## ⑤ Host embedding model
 
 ```
-            T1 一等            T2 降级              T3 Web
-API面        全部               全部                全部     ← "一致"承诺仅此义
-compute      ✅                 GLES3.1+/缺失        ✅(WebGPU)/—(WebGL2)
-indirect     ✅                 GL 路径模拟          ~
-阴影/MSAA    全配               半配                 半配
-纹理压缩     BC/ETC2/ASTC       按驱动               按浏览器
-→ visiaengine_capability_query() 返回 tier+flags；样式/图层按 flags 自动降画质
-```
-本轮再验证：Godot 4.7（Vulkan+D3D12+Metal+GL+ANGLE 选项）与 wgpu **独立收敛到同构矩阵**；three.js WebGL/WebGPU 双 renderer 十年并存证明"运行时选档"路线可行。
+Path A (own surface): host native window handle ──raw-window-handle──▶ wgpu surface
+Path B (texture interop, Qt/Unity first): visia offscreen render -> texture callback -> host composites
 
-## ⑦ 数据源流式调度
+Thread contract (modeled on the Flutter embedder):
+  platform thread = the host's main thread (visia never builds its own event loop, never preempts)
+  engine work     = an internal task pool (posted via the C API / callbacks)
+  render work     = driven by the host calling visiaengine_frame(); a dedicated render thread is an optional switch
+ABI: first struct fields {size, api_version}; export only opaque handles;
+     errors = int code + visiaengine_last_error()
+```
+
+## ⑥ Compatibility-tier capability matrix
 
 ```
-sources: MVT(http) │ WMTS │ GeoJSON文件 │ glTF │ [扩展: 3D Tiles │ ODR │ IFC]
+            T1 first-class        T2 degraded         T3 Web
+API surface all                  all                 all      ← the "consistency" promise means exactly this
+compute      ✅                 GLES3.1+/missing      ✅(WebGPU)/—(WebGL2)
+indirect     ✅                 simulated on GL path  ~
+shadow/MSAA  full               half                 half
+tex compress BC/ETC2/ASTC       per driver           per browser
+→ visiaengine_capability_query() returns tier+flags; styles/layers auto-degrade quality per flags
+```
+Re-validated this round: Godot 4.7 (Vulkan+D3D12+Metal+GL+ANGLE option) and wgpu **independently converged on an isomorphic matrix**; three.js's decade of coexisting WebGL/WebGPU dual renderers proves the "runtime tier selection" route is viable.
+
+## ⑦ Data-source streaming scheduling
+
+```
+sources: MVT(http) │ WMTS │ GeoJSON files │ glTF │ [extension: 3D Tiles │ ODR │ IFC]
          └──────┬──────┘
-   tile scheduler: (视口×LOD 需求) − 缓存 → 合并去重 → 限并发
-   cache: LRU(内存预算) + 可选磁盘层；淘汰 → GPU buffer 池回收
-   解码: 后台线程(geozero/open-vector-tile) → 网格化(lyon) → 上传(渲染线程)
+   tile scheduler: (viewport×LOD demand) − cache -> merge & dedup -> throttle concurrency
+   cache: LRU (memory budget) + optional disk layer; eviction -> GPU buffer pool reclamation
+   decode: background threads (geozero/open-vector-tile) -> meshing (lyon) -> upload (render thread)
 ```
-已知风险（evidence 背书）：MVT 解析件薄（open-vector-tile 10★→可 vendoring）；3D Tiles 流式无成熟件→**自研归 Beta**；draco-core 新且薄。
+Known risks (evidence-backed): the MVT parsing piece is thin (open-vector-tile 10★ -> vendoring allowed); no mature 3D Tiles streaming piece -> **in-house, assigned to Beta**; draco-core is new and thin.
 
-## ⑧ 图层/样式模型
-
-```
-Scene ─ Layer*(有序)     Layer = Source + StyleSpec + 交互开关
-StyleSpec(声明式, 可 diff): type(fill|line|symbol|heatmap|model|volume)
-    ─ paint/layout 分离 ─ zoom/tier 函数 ─ 过滤表达式子集
-渲染映射: fill/line→tile-2D pass; model→3D; symbol→text pass
-```
-悬题：spec 兼容 MapLibre v8 子集（迁移成本换生态好感）vs 自定义——样式系统设计文档时裁。
-
-## ⑨ 构建交付矩阵
+## ⑧ Layer/style model
 
 ```
-cargo ──▶ visiaengine-capi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h(手写人审，I0)
-      ──▶ wasm: visiaengine-wasm 独立 crate（CAPI-09 双面镜像）已落地；npm 打包=Alpha
-打包: vcpkg/NuGet/pub 镜像；体积预算核心 .so ≤6MB，总量标 ≤10MB —— 实测复核已销账（2026-09-24）：native cdylib strip 后 7.25 MB，达标（docs/reference/evidence/2026-09-24-native-size.md）
-CI 矩阵: 全量测试跑 T1；T2 在 LLVMPipe/Mesa 软渲 + Android 模拟器抽查；WebGL2 浏览器
-pin 纪律: wgpu 季度破坏 → 主版本 pin + 每季度升级窗口（全 tier re-verify）
+Scene ─ Layer* (ordered)     Layer = Source + StyleSpec + interaction toggles
+StyleSpec (declarative, diffable): type(fill|line|symbol|heatmap|model|volume)
+    ─ paint/layout split ─ zoom/tier functions ─ filter-expression subset
+render mapping: fill/line→tile-2D pass; model→3D; symbol→text pass
+```
+Open question: spec-compatibility with the MapLibre v8 subset (migration cost traded for ecosystem goodwill) versus a custom design — to be ruled when the style-system design doc is written.
+
+## ⑨ Build/delivery matrix
+
+```
+cargo ──▶ visiaengine-capi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h (hand-written, human-reviewed, I0)
+      ──▶ wasm: the visiaengine-wasm standalone crate (CAPI-09 dual-face mirror) has landed; npm packaging = Alpha
+packaging: vcpkg/NuGet/pub mirrors; size budget core .so ≤6MB, total marked ≤10MB — the re-measurement check has been written off (2026-09-24): native cdylib stripped to 7.25 MB, target met (docs/reference/evidence/2026-09-24-native-size.md)
+CI matrix: the full suite runs on T1; T2 spot-checked on LLVMPipe/Mesa software rendering + the Android emulator; WebGL2 in browsers
+pin discipline: wgpu's quarterly breaks -> pin the major version + a per-quarter upgrade window (re-verify all tiers)
 ```
 
-## 未决决策点
+## Open decision points
 
-| # | 悬题 | 影响面 | 裁定期 |
+| # | open question | blast radius | ruling due |
 |---|------|--------|--------|
-| ~~P1~~ | RTC 粒度 | — | **✅ D7 裁决（分层 origin）** |
-| P2 | 样式 spec 兼容性（MapLibre v8 子集?） | visiaengine-style + 迁移工具 | 样式系统设计时 |
-| P3 | RK3588 驱动栈（厂商 blob/BSP vs 主线 Panvk） | 发布矩阵/QA 成本 | **商务输入**（客户画像），不阻塞代码 |
-| P4 | 材质表达式层（TSL 式）| 渲染远期 | post-MVP，不现在设计 |
+| ~~P1~~ | RTC granularity | — | **✅ ruled by D7 (layered origin)** |
+| P2 | style-spec compatibility (MapLibre v8 subset?) | visiaengine-style + migration tooling | at style-system design time |
+| P3 | RK3588 driver stack (vendor blob/BSP vs mainline Panvk) | release matrix / QA cost | **business input** (customer persona); does not block code |
+| P4 | material expression layer (TSL-style) | rendering long-term | post-MVP, not designed now |
 
-## 开工 spike 清单（工具链就绪后 ≤1 天）
+## Kickoff spike checklist (≤1 day once the toolchain is ready)
 
-- [ ] 裸 wgpu triangle vs bevy-minimal 三平台 release 体积对照（补 evidence 数据缺口，仅归档用）
-- [ ] 10 万实体 slab 遍历+抽取帧预算（验证 P0 保守选择的量级）
-- [ ] raw-window-handle 入 Qt QWidget 最小 demo（图⑤路径 A 可行性）
-- [ ] cosmic-text CJK 字形图集上 GPU 冒烟（R7 风险）
+- [ ] bare wgpu triangle vs bevy-minimal three-platform release sizes (fills the evidence data gap, archive-only)
+- [ ] frame budget of a 100k-entity slab walk + extract (validates the magnitude of the P0 conservative choice)
+- [ ] raw-window-handle into a Qt QWidget minimal demo (figure ⑤ path A feasibility)
+- [ ] cosmic-text CJK glyph atlas smoke on GPU (risk R7)

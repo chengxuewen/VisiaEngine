@@ -1,17 +1,17 @@
-# Unity — 信任崩塌与恢复的全过程样本
+# Unity — the full-cycle sample of trust collapse and recovery
 
-**快照 2026-09-03**（Wikipedia rev 1371602628）：stable **6000.4.0f1 Mainline / 6000.3.x LTS / 6000.0.x LTS**（2026-03）；beta 6000.5；专有，C++ 运行时 + C# API；**runtime fee 2023 宣布→2024-09 撤销**（CEO 更替）；19+ 平台含 WebGL 与 WebGPU 构建目标；移动游戏份额 ~50%。
+**Snapshot 2026-09-03** (Wikipedia rev 1371602628): stable **6000.4.0f1 Mainline / 6000.3.x LTS / 6000.0.x LTS** (2026-03); beta 6000.5; proprietary, C++ runtime + C# API; **the runtime fee announced 2023 -> rescinded 2024-09** (CEO change); 19+ platforms incl. WebGL and WebGPU build targets; ~50% mobile-game share.
 
-## 画像
-21 年的"民主化"引擎：编辑器+托管体验为核，DOTS/ECS（Entities+Burst+JobSystem）为性能副轨。**渲染架构标签：三条管线（Built-in / URP / HDRP）互相不兼容**——同一引擎内三套渲染语义并存（其自家文档原文 "incompatible with each other"，当日引）。C# 源码 reference-only（不可改，2018 起）。
+## Profile
+21 years of a "democratization" engine: editor + managed experience as the core, DOTS/ECS (Entities+Burst+JobSystem) as the performance side-track. **Rendering-architecture label: three pipelines (Built-in / URP / HDRP) mutually incompatible** — three render semantics coexisting inside one engine (its own docs' original wording "incompatible with each other", quoted the same day). C# source is reference-only (not modifiable, since 2018).
 
-## 强弱
-强：移动端装机统治力；Asset Store 生态（40M+ 下载史）；非游戏渗透（汽车/建筑/美军仿真）。弱：一次定价事件烧掉的信任用两年+换 CEO 才勉强回填；三管线互斥 = 用户被迫在"渲染栈"层面做站队；闭源依赖的黑盒调试。
+## Strengths/weaknesses
+Strong: install-base dominance on mobile; the Asset Store ecosystem (40M+ download history); non-game penetration (automotive/architecture/US-military simulation). Weak: one pricing event's burned trust took 2+ years plus a CEO swap to barely backfill; three mutually-exclusive pipelines = users forced to pick sides at the "render stack" level; black-box debugging of closed-source dependencies.
 
-## 对 VisiaEngine
-- **借鉴（三条都是花钱买的教训）**：① **定价/许可突变 = 生存级风险**——Visia 白皮书"已发布版本许可不可撤销"承诺（D3 写入）正面回应了 Unity 事件，这段历史是对外沟通时最有说服力的对照案例；② **管线分叉禁令**：visia-render 抽象只允许"一个语义源 + tier 参数化"（图⑥能力矩阵），绝不允许出现"URP 还是 HDRP？"式用户站队；③ DOTS 十年没能吃掉主场景模型（托管/原生双世界摩擦）→ 对"核心要不要上 ECS"（图③决策点）是重量级保守证据：**数据模型简单直接优于范式纯度**。
-- **规避**：编辑器-运行时强耦合（Unity 的引擎不能以库形态离开 Unity 产品）——反衬 Visia"SDK 优先"的空位正是 Unity 够不着的市场（工业 HMI/嵌入式孪生屏）。
-- **现状判定**：商业叙事素材 >> 技术参考；WebGPU 构建目标存在性（当日引）说明"原生引擎 Web 化"已是行业基线，Visia 的 wasm 路线（图⑨）非激进选择。
+## For VisiaEngine
+- **Adopt (all three are lessons bought with money)**: ① **a pricing/license sudden-change = survival-level risk** — the Visia whitepaper's "licenses of released versions are irrevocable" promise (written into D3) answers the Unity event head-on; this history is the most persuasive control case for outward communication; ② **the pipeline-fork ban**: the visia-render abstraction permits only "one semantic source + tier parameterization" (figure ⑥ capability matrix), never the "URP or HDRP?" style of user side-picking; ③ DOTS failed to eat the main scene model over ten years (managed/native dual-world friction) -> for "should the core go ECS" (figure ③ decision point) this is heavyweight conservative evidence: **a simple direct data model beats paradigm purity**.
+- **Avoid**: the strong editor-runtime coupling (Unity's engine cannot leave the Unity product as a library) — throwing into relief that Visia's "SDK-first" vacancy is exactly the market Unity cannot reach (industrial HMI / embedded twin screens).
+- **Current-state ruling**: business-narrative material >> technical reference; the existence of WebGPU build targets (quoted same day) shows "native engine on the Web" is already the industry baseline, Visia's wasm route (figure ⑨) is not a radical choice.
 
-## 来源
-en.wikipedia.org/wiki/Unity_(game_engine)（2026-09-03）。
+## Sources
+en.wikipedia.org/wiki/Unity_(game_engine) (2026-09-03).

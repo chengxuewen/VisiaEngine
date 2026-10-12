@@ -1,33 +1,33 @@
-# 老旧与嵌入式平台支持矩阵 — wgpu/ANGLE/工具链三方交叉
+# Legacy and embedded-platform support matrix — the wgpu/ANGLE/toolchain three-way cross
 
-**快照 2026-09-03**。证据链：wgpu v30 README（本地抓取件）+ rustc book 平台页（当日直采）+ `evidence/2026-09-03-angle-integration`（ANGLE 后端/移除史，grep.app 代码证据）+ Wikipedia Mali 架构表（当日）。本文与 angle 备忘录重叠处不重复展开，只给判定。
+**Snapshot 2026-09-03**. Evidence chain: the wgpu v30 README (locally fetched copy) + the rustc book platform pages (fetched directly the same day) + `evidence/2026-09-03-angle-integration` (ANGLE backends/removal history, grep.app code evidence) + the Wikipedia Mali architecture table (same day). Where this file overlaps the angle memo it does not re-expand, only giving verdicts.
 
-## 核心纠偏（相对调研前的直觉假设）
-1. **wgpu 有原生 GL/GLES 后端**（README 首句 + 平台表）：Windows 🆗 GL 3.3+（默认 WGL，`cfg(windows_angle)` 切 ANGLE）；Linux/Android 🆗 **GLES 3.0+**；Web 🆗 WebGL2。"wgpu 无 GL 路" ❌。
-2. **ANGLE 已是 wgpu 的构建选项**，不是需要独立集成的第二后端。`cargo add angle` 这类需求不存在（维护件 `angle` crate 已死，但上游 wgpu 路线已通）。
-3. **ANGLE 的 D3D9 后端已从 main 移除**（2026-04~07 系列 commit，angle 备忘录 §2）→ **XP 经 ANGLE 无解**；且 **Rust MSVC 目标官方要求 Win10+**（rustc book 原文当日核验）→ XP/Win7 在工具链层就断。
-4. **Qt6 不用 ANGLE**（其调研已证伪：Qt6 RHI = 原生 D3D11/D3D12/Vulkan/Metal/GL；qtbase 3rdparty 无 angle）。Flutter Windows = 真 ANGLE 用户（BUILD.gn 链接证据）。
-5. **RK3588 GPU = Mali-G610 = Valhall 3rd gen**（Wikipedia 变体表）→ 开源 Vulkan 路径是 **Panvk**，不是 Panthor（后者管 G615/Immortalis 起）。
+## Core corrections (versus the intuitive assumptions before the research)
+1. **wgpu has native GL/GLES backends** (the README's first sentence + the platform table): Windows 🆗 GL 3.3+ (default WGL, `cfg(windows_angle)` switches to ANGLE); Linux/Android 🆗 **GLES 3.0+**; Web 🆗 WebGL2. "wgpu has no GL path" ❌.
+2. **ANGLE is already a build option of wgpu**, not a second backend requiring independent integration. The "cargo add angle" kind of need does not exist (the maintained `angle` crate is dead, but the upstream wgpu route is open).
+3. **ANGLE's D3D9 backend has been removed from main** (the 2026-04~07 commit series, angle memo §2) -> **XP via ANGLE is unsolvable**; and **the Rust MSVC targets officially require Win10+** (rustc book original text, verified the same day) -> XP/Win7 break at the toolchain layer already.
+4. **Qt6 does not use ANGLE** (refuted in its research: Qt6 RHI = native D3D11/D3D12/Vulkan/Metal/GL; qtbase 3rdparty has no angle). Flutter Windows = a real ANGLE user (BUILD.gn link evidence).
+5. **RK3588 GPU = Mali-G610 = Valhall 3rd gen** (Wikipedia variant table) -> the open-source Vulkan path is **Panvk**, not Panthor (the latter starts at G615/Immortalis).
 
-## 平台 × 路径矩阵（判定版）
+## Platform × path matrix (verdict edition)
 
-| 平台 | 可行渲染路径 | 判定 |
+| platform | feasible render path | verdict |
 |------|-------------|------|
-| Win10/11 | wgpu DX12 或 Vulkan（一等）；GL 兜底 | ✅ T1 主战场 |
-| Win7 SP1 | 技术上 wgpu-GL(ANGLE-D3D11, FL10_0) 可通；**Rust MSVC 官方线已断**（需钉旧 rustc/GNU 目标 + 自建管线） | ⚠ **非官方 best-effort tier**，除非客户显式付费要求，不进承诺 |
-| XP/Vista | Rust 1.27 起无目标支持；ANGLE D3D9 已删；Chromium 2016 停 | ❌ **不可能**，从任何承诺文本中移除 |
-| Android API 24+ | 系统 GLES（CDD 强制）或 Vulkan（新 SoC）→ wgpu GL/Vulkan 双路，无需 ANGLE | ✅ 移动端主战场（API24 覆盖 ~96.6%，与 Flutter 底线对齐） |
-| Android API 21–25 | GLES 3.0 子集 + wgpu downlevel（GL 后端） | 🆗 可跑，功能子集降级；3.4% 份额按产品决策 |
-| RK3588 (G610/Valhall) | **两条**：① Rockchip/ARM 闭源 libmali blob（Android GKI/厂商 BSP 5.10，Vulkan 1.2+，但 blob 与内核/发行版强耦合）② 主线 **Panvk**（Mesa 24.x+ Valhall 支持，成熟度 2025-26 快速演进中，*版本细节 UNCERTAIN*） | ✅ 可行，但**发布二进制锁一种驱动栈**（选①跟厂商走，选②跟 distro 走），QA 矩阵砍半否则成本翻倍 |
-| RK3566/8 级 G52 (Bifrost) | libmali 或 Panvk（Bifrost 支持更早熟）/ panfrost GLES | ✅ 同上策略 |
-| Web（宿主浏览器） | wgpu→WebGPU（Chrome/Edge 113+、Safari 26、Firefox 141 全谱）；webgl feature 兜 GLSL 老浏览器 | ✅ Web 一翼成立；**但 Win7 上 Chrome 119+ 已不可用** → Web 路不救 legacy Windows |
+| Win10/11 | wgpu DX12 or Vulkan (first-class); GL backstop | ✅ the T1 main battlefield |
+| Win7 SP1 | technically wgpu-GL(ANGLE-D3D11, FL10_0) is reachable; **the official Rust MSVC line has broken** (requires pinning an old rustc/GNU target + a self-built pipeline) | ⚠ **unofficial best-effort tier**, no commitment unless a customer explicitly pays for it |
+| XP/Vista | Rust has dropped target support since 1.27; ANGLE D3D9 deleted; Chromium stopped 2016 | ❌ **impossible**, removed from any commitment text |
+| Android API 24+ | system GLES (CDD-mandated) or Vulkan (new SoCs) -> the wgpu GL/Vulkan dual route, ANGLE not needed | ✅ the mobile main battlefield (API24 covers ~96.6%, aligned with Flutter's floor) |
+| Android API 21–25 | GLES 3.0 subset + wgpu downlevel (GL backend) | 🆗 runs, feature-subset degradation; the 3.4% share per product decision |
+| RK3588 (G610/Valhall) | **two**: ① the Rockchip/ARM closed-source libmali blob (Android GKI/vendor BSP 5.10, Vulkan 1.2+, but the blob is tightly coupled to kernel/distro) ② mainline **Panvk** (Mesa 24.x+ Valhall support, maturity rapidly evolving in 2025-26, *version details UNCERTAIN*) | ✅ viable, but **shipped binaries lock one driver stack** (pick ① follow the vendor, pick ② follow the distro), halve the QA matrix or costs double |
+| RK3566/8-class G52 (Bifrost) | libmali or Panvk (Bifrost support matured earlier) / panfrost GLES | ✅ same strategy |
+| Web (host browser) | wgpu->WebGPU (Chrome/Edge 113+, Safari 26, Firefox 141, full spectrum); the webgl feature backstops old GLSL browsers | ✅ the Web wing holds; **but Chrome 119+ is unavailable on Win7** -> the Web route does not rescue legacy Windows |
 
-## 对后端终裁与白皮书的含义
-1. 白皮书 §3.3 可诚实升级为：**"Vulkan/Metal/DX12 一等 + GLES 3.0+/GL 3.3+ 降级档 + WebGL2 兜底"** ——这比原文"适配 Vulkan、Metal、DX12 及 WebGPU"更强且全部有上游文档背书。
-2. "跨平台一致"加限定语：**一致的是 API 面与功能 tier 语义，不是一致画质/帧率**（downlevel = 特性子集，rerun 的 WebGL 兼容档是同构先例）。
-3. XP 从一切文本中消失；Win7 = "无官方承诺的 best-effort"（若销售侧有 Win7 大单，那是企业插件+定制构建的商务题，不是架构题）。
-4. Android 底线定 **API 24**（对齐 Flutter 生态，覆盖 96.6%）；老设备靠 wgpu GL downlevel 而非 ANGLE。
-5. RK3588 的真正成本在**驱动栈选择与 QA 矩阵**（blob vs 主线 distro 二选一先定客户画像），不在 API 可行性。
+## Implications for the final backend ruling and the whitepaper
+1. Whitepaper §3.3 can be honestly upgraded to: **"Vulkan/Metal/DX12 first-class + GLES 3.0+/GL 3.3+ degradation tier + WebGL2 backstop"** — stronger than the original "adapts Vulkan, Metal, DX12 and WebGPU" and fully backed by upstream documentation.
+2. Add a qualifier to "cross-platform consistency": **what is consistent is the API surface and the feature-tier semantics, not identical visual quality/framerate** (downlevel = a feature subset; rerun's WebGL compatibility tier is the isomorphic precedent).
+3. XP disappears from all texts; Win7 = "best-effort without an official commitment" (if sales lands a big Win7 order, that is a business question of enterprise plugins + custom builds, not an architecture question).
+4. The Android floor is set at **API 24** (aligned with the Flutter ecosystem, covering 96.6%); old devices rely on the wgpu GL downlevel, not ANGLE.
+5. RK3588's real cost lies in **driver-stack choice and the QA matrix** (blob vs mainline distro — pick one after fixing the customer persona first), not in API feasibility.
 
-## 来源
-本地 `wgpu_README.md`（trunk，2026-09-03 抓）；doc.rust-lang.org windows-msvc 页（当日）；`evidence/2026-09-03-angle-integration` §2-§9（含 grep.app/commit 证据）；en.wikipedia.org/wiki/Mali_(processor)（当日，rev 1369060869）；docs.rs wgpu platforms/angle 路由存在性（README 内链）。*UNCERTAIN：Panvk Valhall 精确 Mesa 版本线（gitlab 反爬未取一手）；libmali blob 具体 Vulkan 版本矩阵。*
+## Sources
+local `wgpu_README.md` (trunk, fetched 2026-09-03); the doc.rust-lang.org windows-msvc page (same day); `evidence/2026-09-03-angle-integration` §2-§9 (incl. grep.app/commit evidence); en.wikipedia.org/wiki/Mali_(processor) (same day, rev 1369060869); the docs.rs wgpu platforms/angle route existence (README internal links). *UNCERTAIN: the exact Mesa version line for Panvk Valhall (gitlab anti-scraping blocked first-hand data); the concrete Vulkan version matrix of the libmali blob.*

@@ -1,147 +1,146 @@
-# visiaengine-render 行为契约（SDD）
+# visiaengine-render behavioral contract (SDD)
 
-> 条款标题行 `## REND-NN:` 为追溯锚点；测试挂 `// spec: REND-NN`。
+> Clause header lines `## REND-NN:` are the traceability anchors; tests carry `// spec: REND-NN`.
 
 ## REND-01: backend_trait_object_safe
-`RenderBackend` 必须 object-safe：`Box<dyn RenderBackend>` 在 crate 测试中可构造（多后端分发/宿主持有的前提）。
+`RenderBackend` must be object-safe: `Box<dyn RenderBackend>` is constructible in crate tests (the precondition for multi-backend dispatch / host ownership).
 
 ## REND-02: stub_impl_without_wgpu
-本 crate 测试模块内以纯 CPU stub 实现 trait（本 crate 无 wgpu 依赖=构造事实）——证明**契约面零后端类型**（不变式②）；stub 处理 ClearColor 帧不 panic。
+The trait is implemented with a pure-CPU stub inside this crate's test module (this crate has no wgpu dependency = a construction fact) — proving **the contract surface carries zero backend types** (invariant ②); the stub handles ClearColor frames without panic.
 
 ## REND-03: ir_variants_exhaustive_construct
-IR `DrawCommand` 全部变体可构造，`kind()` 一一可辨（v0：ClearColor / DrawMesh）。
+All IR `DrawCommand` variants are constructible and `kind()` distinguishes them one-to-one (v0: ClearColor / DrawMesh).
 
 ## REND-04: viewport_roundtrip
-`Viewport::new(w, h, scale_factor)` 访问器无损往返；`logical_size()` = 物理尺寸/缩放因子。
+`Viewport::new(w, h, scale_factor)` accessors round-trip losslessly; `logical_size()` = physical size / scale factor.
 
 ## REND-05: camera_projection_variants
-`Camera::Ortho/Perspective` 构造后 `is_orthographic()` 判别正确（2D/3D 统一入口的投影侧地基；切换动画属后续片）。
+After constructing `Camera::Ortho/Perspective`, `is_orthographic()` discriminates correctly (the projection-side foundation of the unified 2D/3D entry; the switch animation belongs to a later slice).
 
 ## REND-06: mesh_desc_constructible
-`MeshDesc{positions:&[[f32;3]], normals:&[[f32;3]], indices:&[u32]}` 纯借用构造，长度约束由文档担保（positions/normals 等长）。
+`MeshDesc{positions:&[[f32;3]], normals:&[[f32;3]], indices:&[u32]}` constructs with pure borrowing; the length constraint is guaranteed by documentation (positions/normals equal length).
 
 ## REND-07: create_mesh_returns_distinct_ids
-trait 法 `create_mesh(&MeshDesc) -> Result<MeshId, BackendError>`；stub 两次调用得不同 MeshId（单调不复用）。
+Trait method `create_mesh(&MeshDesc) -> Result<MeshId, BackendError>`; two stub calls yield distinct MeshIds (monotonic, no reuse).
 
 ## REND-08: create_material_returns_distinct_ids
-trait 法 `create_material([f32;4]) -> Result<MaterialId, BackendError>`；同 REND-07 语义。
+Trait method `create_material([f32;4]) -> Result<MaterialId, BackendError>`; same semantics as REND-07.
 
 ## REND-09: frame_view_proj_fields_roundtrip
-`Frame` 增 `view/proj: [[f32;4];4]`（列主序裸数据，契约面零矩阵库）；恒等阵往返无损。
+`Frame` gains `view/proj: [[f32;4];4]` (column-major raw data, zero matrix library on the contract surface); the identity matrix round-trips losslessly.
 
 ## REND-10: camera_rig_view_matrix_lookat
-`CameraRig::look_at(eye,target,up)` → view 矩阵：eye 映射到原点、target 的 view 空间 z 分量<0（右手系约定断言）。
+`CameraRig::look_at(eye,target,up)` -> view matrix: eye maps to the origin, target's view-space z component <0 (right-handed-convention assertion).
 
 ## REND-11: persp_proj_matches_glam_std
-90°FOV/aspect1/near1/far∞(大) 透视阵对照手算标准形（RH-GL 深度 0..1 变体，实现选型声明于 camera.rs 顶注）。
+90°FOV/aspect1/near1/far∞(large) perspective matrix versus hand-computed standard form (RH-GL depth 0..1 variant, implementation choice declared in the camera.rs header comment).
 
 ## REND-12: ortho_zoom_scales_halfextents
-`CameraRig::ortho_frame(zoom)` 投影半宽半高随 zoom 线性（x 轴 [1,0,0,0] 列分量=1/zoom）。
+`CameraRig::ortho_frame(zoom)` projection half-width/half-height scales linearly with zoom (x-axis [1,0,0,0] column component = 1/zoom).
 
 ## REND-13: orbit_90deg_equivalence
-orbit_delta(45°)×2 与 orbit_delta(90°)×1 的 eye 位置 f64 容差 1e-6 等。
+orbit_delta(45°)×2 and orbit_delta(90°)×1 give equal eye positions within f64 tolerance 1e-6.
 
 ## REND-14: degenerate_near_far_rejected
-near>=far → `proj_matrix` 返回 None（构造式拒绝，零 panic）。
+near>=far -> `proj_matrix` returns None (constructive rejection, zero panic).
 
 ## REND-15: switch_midpoint_continuity
-`mix_rig(a, b, t)` 参数空间逐分量插值：`mix(0.5)` 与 `mix(0.5001)` 逐字段差 <1e-3（t 连续域无跳变）。
+`mix_rig(a, b, t)` per-component interpolation in parameter space: the field-by-field difference between `mix(0.5)` and `mix(0.5001)` is <1e-3 (t continuous domain, no jumps).
 
 ## REND-16: switch_endpoints_exact
-`mix_rig(a,b,0)==a`、`mix_rig(a,b,1)==b` 逐字段精确（端点恒等）。
+`mix_rig(a,b,0)==a`, `mix_rig(a,b,1)==b` field-exact (endpoint identity).
 
-> v0 注：yaw 线性插值（demo 角度域 <180°）；wrap 最短弧属后续相机片（ponytail 标记于实现）。
+> v0 note: yaw is linearly interpolated (demo angle domain <180°); wrap-to-shortest-arc belongs to a later camera slice (ponytail marker at the implementation).
 
 ## REND-17: frame_view_rotation_eye_split
-`Frame.view` 拆为 `view_rot:[[f32;4];4]`（纯旋转）+ `eye:[f64;3]`（世界相机位）；`camera` 型判别字段保留；裸数据构造往返无损（D7 实施态）。
+`Frame.view` splits into `view_rot:[[f32;4];4]` (pure rotation) + `eye:[f64;3]` (world camera position); the `camera` kind-discriminant field is kept; raw-data construction round-trips losslessly (D7 implementation state).
 
 ## REND-18: drawmesh_carries_origin
-`DrawMesh +{ origin: [f64;3] }`（layer 级世界 origin，D7 ②）；transform 语义改为 **origin-local** 位姿（f64）；全部构造点编译同步。
+`DrawMesh +{ origin: [f64;3] }` (layer-level world origin, D7 ②); transform semantics become the **origin-local** pose (f64); all construction sites updated in compile sync.
 
 ## REND-19: rebase_identity_at_zero_origin
-`rebase::compose_mvp(proj, view_rot, eye, origin, model_local)`：origin=0、model=世界矩阵时 ≡ P·V·M 旧组合（1e-4 容差）。
+`rebase::compose_mvp(proj, view_rot, eye, origin, model_local)`: with origin=0 and model = the world matrix, ≡ the old P·V·M composition (1e-4 tolerance).
 
 ## REND-20: far_origin_precision_preserved
-origin=(1e7,0,0) 顶点 local 0.5、相机 origin 前 10m：compose 后 clip 域相对误差 <1e-4；对照旧路（world 直 f32 cast）误差 ≥0.25m。
+origin=(1e7,0,0), vertex local 0.5, camera 10m in front of origin: post-compose clip-domain relative error <1e-4; the control legacy route (world straight f32 cast) errs ≥0.25m.
 
-## REND-21: 透视屏幕射线
-`screen_to_ray_persp(rig, px, py, w, h) -> Option<Ray>`：左上原点像素系（px=0→NDC −1，py=0 顶缘→+1）；张角 tx=tan(fov_y/2)·aspect、ty=tan(fov_y/2)，dir=归一(fwd+right·tx·nx+up·ty·ny)，origin=eye。视基=与 look_at 同 UP 约定解析构造；退化输入（w/h≤0、fov 非法、极点 fwd∥UP）→ None。
+## REND-21: perspective screen ray
+`screen_to_ray_persp(rig, px, py, w, h) -> Option<Ray>`: top-left-origin pixel frame (px=0 -> NDC −1, py=0 top edge -> +1); angular extents tx=tan(fov_y/2)·aspect, ty=tan(fov_y/2), dir=normalized(fwd+right·tx·nx+up·ty·ny), origin=eye. The view basis is constructed analytically under the same UP convention as look_at; degenerate input (w/h≤0, illegal fov, pole fwd∥UP) -> None.
 
-## REND-22: 正交屏幕射线 + D7 远场保持
-`screen_to_ray_ortho`：origin=eye+right·(hw·nx)+up·(hh·ny)（hw=rig.zoom、hh=zoom·h/w，与 REND-12 同约定），dir=fwd。两口全程 f64（世界大坐标下起点/方向无 f32 步长灾难——D7 断言面）。
+## REND-22: orthographic screen ray + D7 far-field preservation
+`screen_to_ray_ortho`: origin=eye+right·(hw·nx)+up·(hh·ny) (hw=rig.zoom, hh=zoom·h/w, same convention as REND-12), dir=fwd. Both entries run all-f64 (no f32 step-size disaster for origins/directions at large world coordinates — the D7 assertion surface).
 
-## REND-23: 场景拾取=最近命中+即算剪除
-`pick_meshes(Ray, &[MeshCandidate{entity, positions, indices, world}]) -> Option<PickHit{entity, triangle, t, point}>`：逐候选**世界 AABB 即算**（局部 8 角变换，[E3D:A5] 懒算不常存）→ `ray_aabb` 剪除 → 逐三角 `ray_triangle` 正面命中取全局 min t。空几何/索引越界候选跳过不 panic。
+## REND-23: scene picking = nearest hit + on-the-fly culling
+`pick_meshes(Ray, &[MeshCandidate{entity, positions, indices, world}]) -> Option<PickHit{entity, triangle, t, point}>`: per candidate the **world AABB is computed on the fly** (local 8 corners transformed, [E3D:A5] lazy compute, not stored) -> `ray_aabb` cull -> per-triangle `ray_triangle` front-face hit taking the global min t. Empty-geometry / out-of-range-index candidates are skipped without panic.
 
-## REND-24: 拾取世界合成
-候选顶点 = 局部 f32 经 `world`（列主序 f64，`DrawMesh.transform` 同型）变换后再求交——缩放/平移合成命中点与 t 均落世界系（f64，D7 域）。空候选数组=None。
+## REND-24: picking world composition
+Candidate vertices = local f32 transformed by `world` (column-major f64, same shape as `DrawMesh.transform`) before intersection — composed scaling/translation lands both the hit point and t in the world frame (f64, D7 domain). Empty candidate array = None.
 
-## REND-25: MeshDesc.uv 可选语义
-`MeshDesc.uv: &'a [[f32;2]]`：空片=整 mesh 零填充 (0,0)（Flat 存量形态零改动）；非空且 ≠ len(positions) = 后端拒绝（不静默补齐，防错位采样）。
+## REND-25: MeshDesc.uv optional semantics
+`MeshDesc.uv: &'a [[f32;2]]`: an empty slice = the whole mesh zero-filled (0,0) (the Flat legacy shape, zero change); non-empty and ≠ len(positions) = backend rejection (no silent padding, preventing misaligned sampling).
 
-## REND-26: RenderBackend 纹理扩展默认体
-`create_material_desc(&MaterialDesc)` 默认 = 转发 `create_material(base_color)`（texture/repeat/specular 丢弃=安全降级）；`upload_texture(&TextureDesc)` 默认 = 显式 Err（无纹理面后端不假装成功）。两者皆默认体=trait 向后兼容，存量 impl 零改动。
+## REND-26: RenderBackend texture-extension default bodies
+`create_material_desc(&MaterialDesc)` default = forwarding to `create_material(base_color)` (texture/repeat/specular dropped = safe degradation); `upload_texture(&TextureDesc)` default = explicit Err (backends without a texture plane do not pretend success). Both are default bodies = trait backward compatibility, existing impls zero change.
 
-## REND-27: 实例表契约（4c）
-`create_instances(&InstanceDesc{data:&[Instance]}) -> Result<InstanceId, BackendError>` 默认体=显式 Err（无实例面后端不假装成功，upload_texture 同款协议）。`Instance` = 32B Pod（`repr(C)`：offset[0..12]/height[12..16]/color[16..28]/pad[28..32]，与 WGSL `struct Instance` 逐字节同形，offset_of+bytes 双断言锁）；仅经 `Instance::new` 构造（pad 归零担保）。实例色为 RGB——alpha 恒住材质（裁决点 c）。
+## REND-27: instance table contract (4c)
+`create_instances(&InstanceDesc{data:&[Instance]}) -> Result<InstanceId, BackendError>` default body = explicit Err (backends without an instance plane do not pretend success, the same protocol as upload_texture). `Instance` = 32B Pod (`repr(C)`: offset[0..12]/height[12..16]/color[16..28]/pad[28..32], byte-for-byte isomorphic to the WGSL `struct Instance`, locked by the offset_of+bytes double assertion); constructed only via `Instance::new` (zeroed-pad guarantee). The instance color is RGB — alpha always lives in the material (ruling point c).
 
-## REND-28: DrawInstances 变体（4c）
-`DrawCommand::DrawInstances{mesh, material, instances: InstanceId, origin, transform}`——D7 origin 语义与 DrawMesh 同款（f64 远坐标层，实例 offset 为 origin-local f32）；`kind()="draw-instances"`；消费端穷举 match 同步器扩臂（compile-time 逼显式处理，新后端漏臂=编译失败）。v0 无实例级剔除/排序（全量单 draw，DrawMesh 纪律同款）。
+## REND-28: DrawInstances variant (4c)
+`DrawCommand::DrawInstances{mesh, material, instances: InstanceId, origin, transform}` — the D7 origin semantics are the same kind as DrawMesh (f64 far-coordinate layer, instance offsets are origin-local f32); `kind()="draw-instances"`; the consumer-side exhaustive-match synchronizer extends its arms (compile-time forced explicit handling, a new backend missing an arm = compile failure). v0 has no instance-level culling/sorting (full single draw, same DrawMesh discipline).
 
-## REND-29: Frame.px_world_scale（4de）
-`Frame +{ px_world_scale: f32 }`——1 屏幕像素≙多少世界单位 @参考深度（**宿主给**：ortho 顶视=2·zoom/width 精确；透视近似=4de 不装①注记）。扩片族（Strokes/Points）宽度/半径乘子；三角系管线不读=零影响。默认构造点=1.0。
+## REND-29: Frame.px_world_scale (4de)
+`Frame +{ px_world_scale: f32 }` — how many world units 1 screen pixel ≙ @ the reference depth (**host-provided**: ortho top-view = 2·zoom/width exact; perspective approximate = the 4de not-built ① note). The width/radius multiplier of the expansion families (Strokes/Points); the triangle-family pipelines never read it = zero impact. Default at construction sites = 1.0.
 
-## REND-30: 扩片表与命令族（4de）
-`TableId=u64` 别名（与 InstanceId 同计数域，新资源族命名）。`StrokeSeg` 48B Pod（`a[0..16] b[16..32] color[32..44] width_px[44..48]`——vec4 同宽字段消 CPU/GPU 对齐歧义 [R1]）/`PointMark` 32B Pod（pos/radius_px/color/pad）；`create_strokes`/`create_points` 默认体=显式 Err（族协议第 4/5 员）。`DrawStrokes{table,origin,transform}`/`DrawPoints{...}`：**色/宽住表不挂材质** [裁决点 a]（材质对扩片族无 base/shade 语义——光照链不参与，色直出）；D7 origin 同款；kind()="draw-strokes"/"draw-points"。
+## REND-30: expansion tables and command family (4de)
+`TableId=u64` alias (same counting domain as InstanceId, the new resource-family naming). `StrokeSeg` 48B Pod (`a[0..16] b[16..32] color[32..44] width_px[44..48]` — vec4-wide same-width fields eliminate CPU/GPU alignment ambiguity [R1]) / `PointMark` 32B Pod (pos/radius_px/color/pad); `create_strokes`/`create_points` default bodies = explicit Err (family protocol members 4/5). `DrawStrokes{table,origin,transform}` / `DrawPoints{...}`: **color/width live in the table, not on the material** [ruling point a] (materials carry no base/shade semantics for the expansion families — the lighting chain does not participate, color outputs directly); same D7 origin; kind()="draw-strokes"/"draw-points".
 
-## REND-31: ShadowSetup 契约（4f）
-`Frame +{ shadow: Option<ShadowSetup> }`：`None`=关闭且**逐位零回归**（后端 dummy 早退位，key位 语义入 WGPU-19）；`Some`=方向光。`ShadowSetup{proj, view_rot, eye(f64 D7 同 Frame), light_dir, size, bias}`——**构造契约 [PIT-5 升约]**：三元组只许 `CameraRig::perspective/ortho_frame` 产出（其 wgpu [0,1] 域由 REND-11/12 行为断言锁死）；手工 GL [-1,1] 矩阵=症状级死亡（全黑/全亮），像素死锁住 WGPU-19 面。`size`=光源角尺寸世界单位（0→硬 PCF）；`bias` 默认 `ShadowSetup::DEFAULT_BIAS{-1.2,-1.5}`（调参基线，P2 实测定数后两处同步）。
+## REND-31: ShadowSetup contract (4f)
+`Frame +{ shadow: Option<ShadowSetup> }`: `None` = off with **bitwise zero regression** (the backend's dummy early-exit position, key-position semantics go into WGPU-19); `Some` = directional light. `ShadowSetup{proj, view_rot, eye(f64 D7 same as Frame), light_dir, size, bias}` — **constructor contract [PIT-5 upgraded to contract]**: the triple may only be produced by `CameraRig::perspective/ortho_frame` (its wgpu [0,1] domain is locked by the REND-11/12 behavioral assertions); hand-built GL [-1,1] matrices = symptom-level death (all-black/all-white), the pixel deadlock sits on the WGPU-19 surface. `size` = the light's angular size in world units (0 -> hard PCF); `bias` default `ShadowSetup::DEFAULT_BIAS{-1.2,-1.5}` (tuning baseline, after the P2 measured setting the two sites stay in sync).
 
-## REND-32: ClipSetup 剖面裁切契约（B2）
-`Frame +{ clip: Option<ClipSetup> }`：`None`/`EMPTY`=全保留且**逐位零回归**（后端全零恒绑+count=0 早退，R4 护栏形，行为面=WGPU-21）。平面系数 `[nx,ny,nz,d]` **世界系 f64**，法向指向保留侧，保留判据 `dot(n,P)+d ≥ 0`（**面上=保留**，闭区间）；多面 **AND 组合**（任一负侧即裁；OR/union=非目标挂账）。`MAX_PLANES=4`（§1b：单面/角剖/三轴盒通用档，六面盒=二带）。构造契约：`ClipSetup::new` 归一化法向并**拒**零法向/非有限系数/超上限（None=显式拒，不截断不吞）。精度纪律 [§1d]：世界系数必须 f64（园区 3857 量级下 f32 面位置抖动 ~1m=不可用），shader 侧经 `clip_to_local(plane, origin, model)` 换算到 **model-space**：`n_m = Mᵀn`、`d_m = d + dot(n, origin+t_M)`（world=M·q+o 判据恒等式，q=原始顶点）；全程 f64 相乘后才降 f32（D7/rebase 同构；面过 origin 时 local d 精确=0 为条款级断言，远原点逐位同谓词之 IR 地基；非均匀缩放不归一=两侧同乘正标量语义不变）。`keeps(p)`=CPU 谓词（测试/拾取口共用，CAPI-20 消费面）。
+## REND-32: ClipSetup cross-section clipping contract (B2)
+`Frame +{ clip: Option<ClipSetup> }`: `None`/`EMPTY` = keep everything with **bitwise zero regression** (backend all-zero always-bind + count=0 early exit, the R4 guardrail form, behavior surface = WGPU-21). Plane coefficients `[nx,ny,nz,d]` in **world-frame f64**, the normal points to the kept side, the keep predicate is `dot(n,P)+d ≥ 0` (**on the plane = kept**, closed interval); multiple planes **AND-combined** (any negative side clips; OR/union = a non-goal on the tab). `MAX_PLANES=4` (§1b: the single-plane/corner-cut/3-axis-box common tier, six-face box = two bands). Constructor contract: `ClipSetup::new` normalizes normals and **rejects** zero normals / non-finite coefficients / over-cap (None = explicit rejection, no truncation, no swallowing). Precision discipline [§1d]: world coefficients must be f64 (at the park's 3857 magnitude, f32 plane-position jitter ~1m = unusable), the shader side converts to **model-space** via `clip_to_local(plane, origin, model)`: `n_m = Mᵀn`, `d_m = d + dot(n, origin+t_M)` (the world=M·q+o predicate identity, q = raw vertex); all multiplication in f64 before dropping to f32 (isomorphic to D7/rebase; when the plane passes through origin the local d is exactly 0 as a clause-level assertion, the bitwise-same-predicate at far origin = the IR foundation; non-uniform scaling not normalized = both sides multiply by the same positive scalar, semantics unchanged). `keeps(p)` = the CPU predicate (shared by the test/pick entries, the CAPI-20 consumption surface).
 
-## REND-33: LabelMark/DrawLabels 标签表契约（S2）
-`LabelMark` **64B=4×vec4 Pod** 布局锁（`pos(xyz+pad) color(线性 rgba) uv(u0v0u1v1) metrics(w_px,h_px,dx右,dy上)`——字节偏移钉 pos@0/color@16/uv@32/metrics@48，REND-30 同制）。**色=线性域**（sRGB→线性住生产者 io-text/CAPI 面，CORE-16 咽喉扩展=label 表）。`DrawCommand +{ DrawLabels{table,origin,transform} }` 第 6 变体：`table=TableId`（create_labels 产物）、origin D7 世界锚、transform=位姿（多数恒等）；`kind()="draw-labels"`；**材质不挂**（扩片族裁决 a 同谱——色住表）。`RenderBackend::create_labels` 默认体=显式 Err（族协议第 6 员，静默跳过封堵）。atlas 纹理**不入口**（后端单例通道，WGPU-24——命令仅携带 quad 表句柄）。穷举同步器四臂更新（contract_spec stub.render/kind 自检/mesh origin 测 + mesh_core clear-find/draw-loop 占位臂，出图实装=N3）。
+## REND-33: LabelMark/DrawLabels label-table contract (S2)
+`LabelMark` **64B=4×vec4 Pod** layout locked (`pos(xyz+pad) color(linear rgba) uv(u0v0u1v1) metrics(w_px,h_px,dx right,dy up)` — byte offsets pinned at pos@0/color@16/uv@32/metrics@48, same discipline as REND-30). **Color = linear domain** (sRGB->linear lives on the producer io-text/CAPI surface, the CORE-16 throat extension = the label table). `DrawCommand +{ DrawLabels{table,origin,transform} }` the 6th variant: `table=TableId` (the create_labels product), origin = D7 world anchor, transform = pose (identity in most cases); `kind()="draw-labels"`; **no material attached** (same lineage as expansion-family ruling a — color lives in the table). `RenderBackend::create_labels` default body = explicit Err (family protocol member 6, silent skipping sealed). The atlas texture **does not enter the signature** (a backend singleton channel, WGPU-24 — the command carries only the quad-table handle). The exhaustive synchronizer's four arms updated (contract_spec stub.render/kind self-check/mesh origin test + mesh_core clear-find/draw-loop placeholder arms, image production = N3).
 
-## REND-34: flyTo 位姿采样 + 缓动（⑤a）
-`Easing{Linear, CubicInOut(smoothstep 3x²−2x³), CubicOut(1−(1−x)³)}`：`ease:[0,1]→[0,1]` **单调增+端点逐位精确+域外钳制**（三锁逐位断言）。`CameraRig::fly_sample(from,to,t,easing)`：**纯函数**——墙钟推进器住 engine（分层定案：render crate 无 std::time，宿主 render() 零 dt 义务 [D8 事实的正解]）；`t=0/1` 恒 from/to 原值快路（终点 yaw 保原始数，与 mix_rig 端点语义同谱 REND-16）；**yaw 最短弧**=to.yaw 经 ±2π 整数倍归一到 from.yaw+Δ(Δ∈(−π,π]) 再插（姿态 mod 2π 等价；|Δ|≤π 零干预纯线性——wrap 修正住采样器**不动 mix_rig**，REND-15/16 存量断言零触）。near/far 不经 pose（CAPI-23 无深度域=恒 from 现值，PIT-5/REND-14 锁连带 [Momus-A1]）。飞行中改道（CAPI-23 重入）from=当前采样快照=构造性连续 [Momus-A3]。
+## REND-34: flyTo pose sampling + easing (⑤a)
+`Easing{Linear, CubicInOut(smoothstep 3x²−2x³), CubicOut(1−(1−x)³)}`: `ease:[0,1]→[0,1]` **monotonically increasing + endpoints bit-exact + out-of-domain clamped** (the three locks asserted bitwise). `CameraRig::fly_sample(from,to,t,easing)`: a **pure function** — the wall-clock driver lives in engine (the settled layering: no std::time in the render crate, zero dt obligations on the host's render() [the factual resolution of D8]); `t=0/1` take the fast path returning from/to verbatim (the endpoint keeps yaw's original number, same lineage as the mix_rig endpoint semantics REND-16); **yaw shortest arc** = to.yaw normalized by integer multiples of ±2π to from.yaw+Δ(Δ∈(−π,π]) before interpolating (attitude mod 2π equivalence; |Δ|≤π = zero intervention, pure linear — the wrap correction sits in the sampler and **does not touch mix_rig**, the REND-15/16 legacy assertions untouched). near/far do not pass through the pose (CAPI-23 has no depth domain = always from's current values, the PIT-5/REND-14 lock rides along [Momus-A1]). Mid-flight reroute (CAPI-23 re-entry) from = the current sampling snapshot = continuity by construction [Momus-A3].
 
+## REND-35: ViewportRect viewport rectangle (⑤b)
+`ViewportRect{x,y,width,height}` (u32 physical pixels, top-left origin): a standalone type that **does not touch Frame** (ruling a — Frame keeps the full-screen semantics, avoiding the wave-44 fallback; the rect travels as a render-call parameter `render_view_rects`, each projection carrying its own Frame × shared resource tables). `full(w,h)` = the full-screen form (the canary bitwise-equality entry); `contains/local` = the minimal shape of input routing (the host takes area-local px after hit-test, `screen_to_ray_*` reuses by passing the rect size as w/h, the REND-21/22 signatures zero change). Overlap between viewports is undefined (v0 discipline: non-overlapping compositions).
 
-## REND-35: ViewportRect 视口矩形（⑤b）
-`ViewportRect{x,y,width,height}`（u32 物理像素，原点顶左）：独立类型**不触 Frame**（裁决 a——Frame 保全屏语义，第 44 兜底波免交；rect 走渲染调用参数 `render_view_rects`，每投携独立 Frame×共享资源表）。`full(w,h)`=全屏形（canary 逐位等入口）；`contains/local`＝输入路由最小形（宿主 hit-test 后取区局部 px，`screen_to_ray_*` 的 w/h 传 rect 尺寸即复用，REND-21/22 签名零改）。视口间重叠未定义（v0 纪律：不重叠构图）。
+## REND-36: transparent material semantics (④)
+**Single predicate = material alpha<1** (`MatGpu.alpha=base_color[3]`, the srgb_to_linear a-channel passthrough empirically proven) -> that DrawMesh/DrawInstances part takes the transparent pipeline (WGPU-27); alpha==1 always takes the opaque route = **construction-level golden fidelity** (the sort touches it zero). **Material a==1 ∧ texel a<1 stays opaque** — texture alpha participates in the `a=base.a·texel.a` composite only inside the material-a<1 pipeline (no hidden semantics [Momus-A3]); per-vertex alpha declared as post-poned. The caster projects semi-transparent parts **as if opaque** (v0 semantics, three.js made the same choice; soft shadows = the Alpha tier trigger). The pick domain is alpha-independent (zero touch to geometric intersection). The host's only route to change alpha = re-upload the material (remove+add); the hot-edit entry `set_material_alpha` is tabbed (trigger = interactive brightness tuning).
 
-## REND-36: 透明材质语义（④）
-**单一判=材质 alpha<1**（`MatGpu.alpha=base_color[3]`，srgb_to_linear a 道透传实证）⇒ 该 DrawMesh/DrawInstances 件走透明管线（WGPU-27）；alpha==1 恒不透明路=**构造级 golden 保真**（分拣对其零触）。**材质 a==1 ∧ texel a<1 不透明**——纹理 alpha 仅在材质 a<1 管线内参与 `a=base.a·texel.a` 合成（无暗语义 [Momus-A3]）；逐顶点 alpha 后置声明。caster 对半透件**按不透明投影**（v0 语义，three.js 同择；软影=Alpha 档触发）。pick 域与 alpha 无关（几何求交零触）。宿主改 alpha 唯一路=重传材质（remove+add）；热改口 `set_material_alpha` 挂账（触发=交互调明度）。
+## REND-37: two navigation-math pieces (⑤b second wave)
+`ray_ground_intersect(Ray) -> Option<Vec3>`: intersection with the z=0 ground plane (**navigation semantics, not picking** — entity hits go through the ray-triangle REND-21/22 domain); the domain rejects three shapes = `d.z≥−1e-9` (the horizontal/upward/near-horizontal t-explosion guardrails) ∧ `t≤0` (backward/underground start) ∧ non-finite. `ViewportRect::from_frac(fx,fy,fw,fh,S,H)`: ratio table -> pixel rect (set_map's host language = ratios, the geometric base of auto-following resize); policy pinned = edges round, right/bottom edge min(surface bound), size floor kept at 1 (merging with scissor max(1)), dirty frac values clamped in-domain without panic. **Shared-edge seam law**: adjacent pieces satisfy `x+width==next.x` (round half-crossing consistency by construction) — relied on by E816/canary.
 
-## REND-37: 导航数学两件（⑤b 二波）
-`ray_ground_intersect(Ray)→Option<Vec3>`：地面平面 z=0 求交（**导航语义非拾取**——实体命中走 ray-triangle REND-21/22 域）；域内拒三形=`d.z≥−1e-9`（水平/上向/近水平 t 爆炸护栏）∧ `t≤0`（背向/地下出发）∧ 非有限。`ViewportRect::from_frac(fx,fy,fw,fh,S,H)`：比例表→像素 rect（set_map 宿主语言=比例、resize 自动跟的几何底座）；策略钉=边 round、右/下缘 min(surface 界)、尺寸下限保 1（scissor max(1) 合流）、frac 脏值 clamp 域不 panic。**共边无缝律**：邻片 `x+width==next.x`（round 半跨一致构造）——E816/canary 依赖。
+## REND-38: point-cloud screen-space picking (B2)
+`pick_points(mvp,w,h,px,py,r_px,cands) -> Option<PointHit>`: a screen-space nearest-point predicate — retained positions projected into the screen pixel domain through the render-identical MVP (`compose_mvp` D7 chain, **local points projected directly** = the origin−eye translation is already inside the matrix, zero secondary accumulation on the predicate side); among those within the `r_px` radius the nearest competes by view depth (NDC z, the RH [0,1] domain, same PIT-5 shape); beyond-domain (behind / past far) and `cw≤0` do not participate. The hit returns `(entity, screen_d2, view_z, point_index)` — point_index lets the caller run the per-point clip `keeps` filter (same lineage as the mesh route's per-point semantics, not a whole-cloud coarse sieve). **Mesh preferred**: the engine pick route reaches the point cloud only after the mesh misses (the REND-39 canary construction guarantee). Default radius 6px (same screen-pixel domain as REND-30 `radius_px`). Retention surface: the engine keeps `positions` per point-cloud entity (marks were originally GPU-table take-and-drop); the `set_visible` domain extends to point-cloud entities (completing the CAPI-13 "render/pick filtering" semantics). ponytail note: linear scan; hover throttling = upgrade slot 1, BVH = upgrade slot 2.
 
-## REND-38: 点云屏幕空间拾取（B2）
-`pick_points(mvp,w,h,px,py,r_px,cands)→Option<PointHit>`：屏幕空间最近点谓词——留存位置经渲染同源 MVP（`compose_mvp` D7 链，**局部点直投**=origin−eye 平移已在矩阵内，谓词侧零二次叠加）投影至屏幕像素域，`r_px` 半径内最近者按视深（NDC z，RH [0,1] 域 PIT-5 同款）竞争；越深域（背后/far 外）与 `cw≤0` 不参选。命中返回 `(entity, screen_d2, view_z, point_index)`——point_index 供调用方 clip 逐点 `keeps` 过滤（与 mesh 路逐点语义同谱，非整云粗筛）。**mesh 优先**：引擎 pick 路 mesh 未中才进点云（REND-39 canary 构造保证）。半径默认 6px（REND-30 `radius_px` 同屏幕像素域）。留存面：引擎侧每点云实体保留 `positions`（marks 原本 GPU 表收编即弃）；`set_visible` 域扩展到点云实体（CAPI-13「render/pick 过滤」语义补全）。ponytail 注记：线性扫描；hover 节流=升级位 1，BVH=升级位 2。
+## REND-39: pick-domain extension with zero regression (B2)
+After point picking lands, mesh picking behavior is **byte-unchanged** (the mesh-preferred order + the point cloud only backstops after a full mesh miss) — the existing pick-test family (E401/E402/golden_pick_window_mirror) is an always-installed canary; `PointHit` is a standalone type touching `PickHit` zero. After a point cloud's `set_visible(false)` it vanishes from both render and pick, `is_visible` reads back consistently (the CAPI-13 domain-extension note).
 
-## REND-39: 拾取域扩展零回归（B2）
-点拾取落地后 mesh 拾取行为**逐字节不变**（mesh 优先序 + 点云只在 mesh 全 miss 后兜底）——既有 pick 测试族（E401/E402/golden_pick_window_mirror）即永装 canary；`PointHit` 为独立类型零触 `PickHit`。点云 `set_visible(false)` 后 render/pick 双面消失、`is_visible` 读回一致（CAPI-13 域扩展注记）。
+## REND-40: EdlSetup contract (N1.5)
+`Frame +{ edl: Option<EdlSetup> }`: `None` = off with **bitwise zero regression** (behavior surface = WGPU-33: no extra pass, the depth StoreOp unchanged, no intermediate resources built). `EdlSetup{strength: f32}` (Copy/Debug/ PartialEq, same family as ShadowSetup/ClipSetup); constructor contract `EdlSetup::new` rejects non-finite/≤0 (None = explicit rejection, no truncation, no swallowing). `strength` semantics = the edge-darkening multiplier (0..∞; the pipeline side caps at clamp 0.7 against over-darkening); the multi-viewport path ignores it this band (the WGPU-33 on-account note). Host-surface note: the capi engine reaches the N1.5 `--edl` tier via the CAPI band (the E204 example = 0.35 probe-pinned).
 
-## REND-40: EdlSetup 契约（N1.5）
-`Frame +{ edl: Option<EdlSetup> }`：`None`=关闭且**逐位零回归**（行为面=WGPU-33：无额外 pass、深度 StoreOp 不变、不建中间资源）。`EdlSetup{strength: f32}`（Copy/Debug/ PartialEq，与 ShadowSetup/ClipSetup 同族）；构造契约 `EdlSetup::new` 拒非有限/≤0（None=显式拒，不截断不吞）。`strength` 语义=边缘暗化乘子（0..∞；管线侧 clamp 0.7 封顶防过暗）；多视口路本带忽略（WGPU-33 挂账注记）。宿主面注记：capi 引擎经 CAPI 带 N1.5 的 `--edl` 档位面（E204 例=0.35 探针定档）。
+## REND-41: projection morphTime (N2.1)
+`morph_proj(ortho, persp, t)` (the render::morph pure function): at t=0 bit-for-bit equal to the ortho matrix, at t=1 bit-for-bit equal to the persp matrix (endpoint canary = byte-level, `morph_spec::morph_endpoints_bitwise`); intermediate values interpolate element-wise by smoothstep (k=t·t·(3−2t), the REND-34 family). **Single law in the projection domain**: view_rot/eye/commands pass through untouched; px_world_scale interpolates linearly between the two ends (morph_px_scale: the ortho exact 2·hw/W -> persp 1.0). The Camera enum family takes ortho at t≤0.5 and persp at t>0.5 (the view-block uniform tier; the real interpolation lives in the proj matrix — the enum/matrix division of labor archived). Slider semantics: Engine::set_morph_time maps NaN->0 and clamps out-of-domain (a **deliberate fork** from EdlSetup's explicit rejection — t is a slider, strength is a threshold). Multi-viewport: each Frame carries its own mode/morph, mutually independent. The machine-honoring anchor of whitepaper §3.1 "smooth transition within the same viewport" = endpoint byte-equality + mid-path non-degeneracy (morph_spec + E304 --frames).
 
-## REND-41: 投影 morphTime（N2.1）
-`morph_proj(ortho, persp, t)`（render::morph 纯函数）：t=0 逐位等于 ortho 矩阵、t=1 逐位等于 persp 矩阵（端点金丝雀=字节级，`morph_spec::morph_endpoints_bitwise`）；中间值 smoothstep（k=t·t·(3−2t)，REND-34 族）逐元素插值。**投影域单一定律**：view_rot/eye/commands 原样穿透；px_world_scale 两端线性插值（morph_px_scale：ortho 精确 2·hw/W → persp 1.0）。Camera 枚举族 t≤0.5 取 ortho、t>0.5 取 persp（view-block uniform 档位；真插值住 proj 矩阵——枚举/矩阵分职入档）。滑杆语义：Engine::set_morph_time 对 NaN→0、越域 clamp（与 EdlSetup 显式拒**有意分叉**——t 是滑杆、strength 是阈值）。多视口：各 Frame 携各自 mode/morph，互不相干。白皮书 §3.1 "同一视口平滑过渡" 的机器兑现锚=端点逐字节等 + 中途非退化（morph_spec + E304 --frames）。
-
-## REND-42: 实体动画关键帧采样（N2.2）
-`anim_origin(keyframes, t)`（render::anim 纯函数）：端点恒等律——t≤首键 → 首 origin 原值、t≥末键 → 末 origin 原值（位等，mix_rig/REND-16 惯例）；区间内相邻键线性插值（缓动=宿主时轴编排策略，采样器不揣测）；单键表=常值。f64 全程（D7 远原点精度测试在册）。**零引擎态/零 ABI**（C5 拆分裁决：6a=采样器+demo；实体位置热更 C 口=6b 触发制）。消费形=宿主逐帧采样后走既有 origin 路径（E305 轨迹重放）。
+## REND-42: entity animation keyframe sampling (N2.2)
+`anim_origin(keyframes, t)` (the render::anim pure function): the endpoint-identity law — t≤ first key -> the first origin verbatim, t≥ last key -> the last origin verbatim (bit-equal, the mix_rig/REND-16 convention); within an interval, linear interpolation between adjacent keys (easing = the host time-axis orchestration policy, the sampler does not presume); a single-key table = a constant. All f64 (the D7 far-origin precision test on record). **Zero engine state / zero ABI** (the C5 split ruling: 6a = sampler + demo; the entity-position hot-update C entry = 6b, trigger-based). Consumption shape = the host samples per frame then routes through the existing origin path (the E305 trajectory replay).
 
 ## REND-43: PostEffect post chain IR (N4)
 `enum PostEffect{Bloom{strength}, Outline{width}}` (Clone/Copy/Debug/PartialEq, EdlSetup family); `Frame +{ post: Vec<PostEffect> }` — **empty vec = byte-identical legacy path** (no intermediate resources, depth Discard unchanged; behavior clause = WGPU-34 zero-effect byte law). Effects compose in **Vec order** (each fullscreen pass reads the previous pass output; <=2 effects = this band's stage cap). Constructor contract = EdlSetup::new same-shape **explicit reject**: `PostEffect::bloom(strength)` / `PostEffect::outline(width)` reject non-finite / <=0 -> None (no clamp, no swallow). Semantics: Bloom.strength = additive bloom contribution multiplier (threshold = shader constant THRESHOLD 0.25, sample domain = linear-decoded values); Outline.width = edge-detect texel radius, doubling as the color-mix strength (orange [1.0, 0.83, 0.29] selection color, clamped 0..1). The `edl` slot stays untouched (point-cloud-specific shipped clause, REND-40 zero-regression law carried forward); post chain may stack with edl in one frame (edl runs first). Multiview path ignores it this band (WGPU-34 on-account note).
 
 ## REND-44: Tonemap post effect (N5)
-`PostEffect +{ Tonemap { mode: u32 } }`（Clone/Copy/Debug/PartialEq 家族同谱）；构造契约 `PostEffect::tonemap(mode)` 域拒 `mode > 1 → None`（0=Reinhard、1=ACES(Narkowicz filmic 近似)；2=AgX 挂账显式拒）。着色器 `tonemap.wgsl` 全屏 pass（bloom/outline vs_main 同形）；Reinhard：`c/(1+c)`；ACES：`(x*(2.51x+0.03))/(x*(2.43x+0.59)+0.14)` 逐分量；params=(mode_f32,0,0,0)；color-only（深度槽位照绑不读=共享 bgl 形纪律）。**LDR 输入诚实注记**：管线输出 LDR（sRGB 编码后 0..1），tonemap 于 LDR 输入=对比重塑（mood）；真 HDR 显示需浮点纹理路径（ticket）。消费=管线 per-(effect,format) 懒管线（N4 WGPU-34 编排零改动，effect_idx=2 第三槽）；零效果律不动（post 空=旧路逐位）。测试=post_chain.rs tonemap 双门（off-vs-reinhard/off-vs-aces/rein-vs-aces 差分 + 确定性 + bloom-after-tonemap compose）+ contract_spec 域拒门；E507 例=四态窗面活证。
+`PostEffect +{ Tonemap { mode: u32 } }` (Clone/Copy/Debug/PartialEq, same family lineage); constructor contract `PostEffect::tonemap(mode)` domain-rejects `mode > 1 -> None` (0 = Reinhard, 1 = ACES (the Narkowicz filmic approximation); 2 = AgX, tabbed as explicit rejection). Shader `tonemap.wgsl` fullscreen pass (same shape as bloom/outline vs_main); Reinhard: `c/(1+c)`; ACES: `(x*(2.51x+0.03))/(x*(2.43x+0.59)+0.14)` per component; params=(mode_f32,0,0,0); color-only (the depth slot is bound but never read = the shared-bgl shape discipline). **LDR-input honesty note**: the pipeline outputs LDR (0..1 after sRGB encoding), tonemapping on LDR input = contrast reshaping (mood); true HDR display needs a float-texture path (ticket). Consumption = the pipeline's per-(effect,format) lazy pipelines (the N4 WGPU-34 orchestration zero change, effect_idx=2 third slot); the zero-effect law unchanged (post empty = old path bitwise). Tests = post_chain.rs tonemap double gate (off-vs-reinhard / off-vs-aces / rein-vs-aces differentials + determinism + bloom-after-tonemap compose) + the contract_spec domain-reject gate; the E507 example = live proof on the four-state window surface.
 
-## REND-45: MaterialDesc v2 + 48B 材质块 + VeMeshDesc 扩展（N6）
-`MaterialDesc +{ roughness: f32, metallic: f32 }`（v2；dielectric 默认 1.0/0.0——WGPU-35 ambient 常数探针定档的 legacy 等价带）。**mock `specular` 退役**：IR 字段保留（33 处字面量构造点兼容）但 shader 永不消费（WGPU-14 注记句收口——「真 PBR=独立轮」即本带）。材质 GPU 块 32B→48B（布局见 WGPU-35；WGSL vec4/vec2 对齐律——roughness@24 非 32，首版 CPU 块错排 @32 被 roughness ladder 全零探针当场抓出=布局三重锁纪律再兑现）。**C 面（Momus 勘误兑现：无 VeMaterialDesc，载体=VeMeshDesc）**：`VeMeshDesc +{ roughness: f32, metalness: f32 }`（值域非指针；struct_size 前瞻门自然 governs——旧宿主新引擎=零初始化尾部→`roughness≤0 映射 1.0` dielectric 默认律）；三面镜像：手写头 typedef + wasm addMesh 增 roughness/metalness 双参（同 ≤0→1.0 律）+ hpp 薄转发零改（C 结构直穿）。glTF 载入：roughness_factor/metallic_factor 直通（mock 反演 `(1−m)·r` 退役）。测试锚：contract_spec（v2 字段）+ E508 + capi add_mesh 谱（7 参签名）。
+## REND-45: MaterialDesc v2 + 48B material block + VeMeshDesc extension (N6)
+`MaterialDesc +{ roughness: f32, metallic: f32 }` (v2; dielectric defaults 1.0/0.0 — the legacy-equivalence band of the WGPU-35 ambient-constant probe setting). **The mock `specular` retires**: the IR field is kept (33 literal construction sites stay compatible) but shaders never consume it (the WGPU-14 note sentence closes — "real PBR = its own round" is exactly this band). The material GPU block 32B->48B (layout see WGPU-35; the WGSL vec4/vec2 alignment law — roughness@24, not 32; the first-draft CPU block mislaid at @32 was caught on the spot by the roughness-ladder all-zero probe = the layout triple-lock discipline honored again). **The C surface (Momus erratum honored: there is no VeMaterialDesc, the carrier = VeMeshDesc)**: `VeMeshDesc +{ roughness: f32, metalness: f32 }` (values not pointers; the struct_size forward gate naturally governs — old host + new engine = zero-initialized tail -> `roughness≤0 maps to 1.0`, the dielectric default law); three-surface mirror: the hand-written header typedef + wasm addMesh gaining the roughness/metalness two parameters (the same ≤0->1.0 law) + the hpp thin forwarder zero change (the C struct passes straight through). glTF loading: roughness_factor/metallic_factor pass through (the mock inversion `(1−m)·r` retires). Test anchors: contract_spec (v2 fields) + E508 + the capi add_mesh lineage (7-parameter signature).
 
 ## REND-46: Screen-space stroke pick predicate (W band)
 `pick_strokes(mvp,w,h,px,py,cands) -> Option<StrokeHit{seg_index, screen_d2, view_z}>`: constant-width fat-line pick mirroring REND-38's screen-space family. Both endpoints of each `StrokeSeg` project through the render-identical MVP (`compose_mvp` D7 chain; segments are world-baked by the caller — tile-layer path bakes `origin + M` at upload, so the predicate adds nothing). A segment is REJECTED when either endpoint fails the [0,1] RH depth-domain guard (behind near / beyond far / cw<=0) — v1 does NOT clamp partially-offscreen segments (documented limitation, no silently wrong hits). Hit rule: classic point-to-segment distance in screen px <= `width_px/2 + 2px` slop (input-comfort margin, same spirit as the point-pick radius). Among hits the smallest endpoint-min view depth wins (conservative front-stroke rule; equal-depth ties keep scan order). Hit granularity = segment INDEX within the candidate table — per-segment entity association is a caller concern (StrokeTableDesc is a whole-table surface; entity mapping joins when a per-seg entity table exists). Clip filtering stays caller policy (WGPU-21). Engine priority: mesh > stroke > point (REND-39 ordering law carried forward). ponytail: linear scan, per-seg O(1) after projection.
 
 ## REND-47: Parametric curves — Bezier/CatmullRom + tube/ribbon (V2.1)
-`curve` 模块（纯数学，+0 ABI——产物走常规 MeshDesc 装载路）。采样：`bezier3`（三次，端点精确）、`catmull_rom`（均匀 CR，端点复制；chordal=升级位）、`sample_*`（n 均分）。网格：`tube(center, radius, sides)`=**parallel-transport frame**（旋转最小化；垂直切线 fallback；degenerate 输入=空 Vec 契约）环焊接 quad 拓扑；`ribbon_xz(center, width)`=XZ 平面常高路带（保留中心 y）。OpenDRIVE 前置（V4.2 依赖本带）——road mesh 的曲线底座。
+The `curve` module (pure math, +0 ABI — products travel the ordinary MeshDesc loading route). Sampling: `bezier3` (cubic, endpoints exact), `catmull_rom` (uniform CR, endpoint duplication; chordal = upgrade slot), `sample_*` (n equal divisions). Meshing: `tube(center, radius, sides)` = the **parallel-transport frame** (rotation-minimizing; vertical-tangent fallback; degenerate input = empty Vec contract) ring-welded quad topology; `ribbon_xz(center, width)` = a constant-height road ribbon in the XZ plane (the center y preserved). OpenDRIVE prerequisite (V4.2 depends on this band) — the curve base of road meshes.

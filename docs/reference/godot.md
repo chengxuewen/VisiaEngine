@@ -1,13 +1,13 @@
-# Godot — 编辑器形态与"全免费对照组"
+# Godot — the editor shape and the "all-free control group"
 
-**快照 2026-09-03 实测**：117k★，昨日活跃；stable **4.7.2（2026-08-18）**（Wikipedia rev 1370124215 当日）。MIT；编辑器产物 28–189MB（OS 差异，官方数值）。商业层样本：**W4 Games**（创始码农创办，做控制台移植/支持服务——引擎本体全 MIT 不动摇）。
+**Snapshot 2026-09-03, measured**: 117k★, active yesterday; stable **4.7.2 (2026-08-18)** (Wikipedia rev 1370124215 same day). MIT; editor artifacts 28–189MB (OS-dependent, official figures). Commercial-layer sample: **W4 Games** (founded by the founding coders, doing console ports/support services — the engine itself stays fully MIT, unmoved).
 
-## 画像
-开源全栈游戏引擎+编辑器同一代码库。渲染（当日核实）：**Vulkan 为主 + D3D12 + Metal 原生 + OpenGL，且 ANGLE 为 Win/macOS 的 GL 替换选项**——与 wgpu 的后端策略同构，两个项目独立收敛到同一设计。2D/3D 为**两套引擎可同屏混用**（Viewport 节点混合）——与 Visia「同一场景树」主张不同路：Visia 的统一内核赌注更大，差异化也更大。GDExtension = C ABI 绑定面（Rust 社区绑定成熟）；物理引擎可换（Jolt 4.6 转正）。**场景 = 文本化节点树（.tscn/.tres），运行时/编辑器共享同一序列化**；GDExtension（C ABI 绑定不重编）、headless editor 跑 CI、Remote Data Source（编辑器当远端数据的可视化壳）。
+## Profile
+An open-source full-stack game engine + editor in one codebase. Rendering (verified the same day): **Vulkan-primary + D3D12 + Metal native + OpenGL, with ANGLE as the GL replacement option on Win/macOS** — isomorphic with wgpu's backend strategy; two projects independently converged on the same design. 2D/3D are **two engines mixable on one screen** (Viewport-node compositing) — a different road from Visia's "one scene tree" claim: Visia's unified-core bet is bigger, and so is the differentiation. GDExtension = the C ABI binding surface (mature Rust community bindings); the physics engine is swappable (Jolt promoted in 4.6). **Scene = a textualized node tree (.tscn/.tres), runtime/editor sharing one serialization**; GDExtension (C ABI bindings without recompiling), headless editor running CI, Remote Data Source (the editor as a visualization shell over remote data).
 
-## 对 VisiaEngine（核心是 Visia Studio 的参考）
-- **借鉴**：① **编辑器和运行时同一场景模型**——Visia Studio 架构的第一原则（别做"编辑器格式→运行时格式"双轨）；② 文本可 diff 的场景持久化格式；③ GDExtension 的 C ABI 插件面设计（宿主不重编）= Visia 扩展系统的成熟模板；④ headless 模式 = Studio 可自动化（批量出图/测试）。⑤ 治理：全 MIT 无 Open Core = **对照组**——Visia 决定"编辑器收费"边界时，Godot 证明社区全免费产品存在（以及它为何对游戏成立、对垂直 GIS 工具未必成立）。
-- **规避**：① 游戏核的包袱（物理/动画/音频/导航全在 core）——Visia 内核按 whitepaper"数据呈现"窄定位，警惕功能引力；② 4.x 渲染重写带来的迁移痛（3→4 兼容断层）= 大版本策略反面教材（Rust 库可用 feature 隔离缓解）；③ 编辑器 UX 复杂度（节点树对非游戏用户过重——Visia Studio 面向 GIS 人员，交互语言学 QGIS 不学 Godot）。
+## For VisiaEngine (the core reference is for Visia Studio)
+- **Adopt**: ① **the editor and the runtime sharing one scene model** — the first principle of Visia Studio's architecture (never do the "editor format -> runtime format" dual track); ② a text-diffable scene persistence format; ③ the C-ABI plugin-surface design of GDExtension (the host does not recompile) = a mature template for Visia's extension system; ④ headless mode = Studio automatable (batch image output/tests). ⑤ Governance: all-MIT with no Open Core = **the control group** — when Visia decides the "editor pricing" boundary, Godot proves an all-free community product exists (and why it works for games but not necessarily for vertical GIS tooling).
+- **Avoid**: ① the game-core baggage (physics/animation/audio/navigation all in core) — the Visia kernel keeps the whitepaper's narrow "data presentation" positioning, watch out for feature gravity; ② the migration pain of the 4.x render rewrite (the 3->4 compatibility break) = the counter-example of major-version strategy (a Rust library can mitigate via feature isolation); ③ editor UX complexity (the node tree is too heavy for non-game users — Visia Studio targets GIS staff, its interaction language learns from QGIS, not Godot).
 
-## 来源
-shields 实测（2026-09-03）；docs.godotengine.org 公开。
+## Sources
+shields measured (2026-09-03); docs.godotengine.org public.

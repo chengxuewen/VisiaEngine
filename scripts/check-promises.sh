@@ -8,8 +8,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES=(README.md)
-# TODO(E2): re-add docs/whitepaper.md once it is translated (its Chinese sentence shapes break these regexes today)
+FILES=(README.md docs/whitepaper.md)
 DELIVERED="MVT|scene tree|projection morph|morph"
 
 # A cited repo path must exist on disk. This family produced a false ledger line twice: a

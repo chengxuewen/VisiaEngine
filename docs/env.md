@@ -1,37 +1,37 @@
-# VisiaEngine 开发环境指南（pixi 单源，D5）
+# VisiaEngine development-environment guide (pixi single source, D5)
 
-## 新机器三步
+## Three steps on a new machine
 
 ```bash
-bash bootstrap.sh     # 1. 首次初始化：自动装 pixi(钉 0.78.0) → 求解安装全部依赖 → 冒烟
-source pixi.sh        # 2. 日常激活进 shell（cargo/rustc/cargo-deny/rust-analyzer 全部就位）
-pixi run verify       # 3. 随手自检（不激活也可：pixi run 单命令模式）
+bash bootstrap.sh     # 1. first init: auto-installs pixi (pinned 0.78.0) -> solves & installs every dependency -> smoke
+source pixi.sh        # 2. daily activation into the shell (cargo/rustc/cargo-deny/rust-analyzer all in place)
+pixi run verify       # 3. quick self-check anytime (works without activation: pixi run single-command mode)
 ```
 
-Windows：`bootstrap.bat` → `pixi.bat`（子 shell 形态）。**注：.bat 对等文件未经 Windows 实测，首台机器跑通前视为 best-effort**；若 conda rust 在 Windows 摩擦超标，逃生舱 = 单机 rustup+MSVC（见 D5 条款①，仓配置不分叉）。
+Windows: `bootstrap.bat` -> `pixi.bat` (sub-shell form). **Note: the .bat counterparts are untested on Windows; treat them as best-effort until the first machine runs green**; if conda rust causes too much friction on Windows, the escape hatch = per-machine rustup+MSVC (see D5 clause ①; the repo configuration does not fork).
 
-## 环境构成
+## Environment composition
 
-| 件 | 包（conda-forge） | 说明 |
+| piece | package (conda-forge) | notes |
 |----|------|------|
-| Rust 工具链 | `rust`（实测安装 1.98.0） | rustc/cargo/**rustfmt/clippy 由其主包提供**——`rustfmt`/`clippy` 非独立包名 |
-| 审计 | `cargo-deny` 0.20.2 | `pixi run audit` |
-| IDE | `rust-analyzer` + `rust-src` | 编辑器直连 `.pixi/envs/default/bin/` |
-| 辅助 | `ripgrep` `ccache` `pkg-config` | — |
-| wasm（冻结） | `rust-std-wasm32-unknown-unknown` `wasm-bindgen-cli` | Web SDK 到货日解开 pixi.toml 注释即用 |
+| Rust toolchain | `rust` (measured install 1.98.0) | rustc/cargo/**rustfmt/clippy are provided by its main package** — `rustfmt`/`clippy` are not standalone package names |
+| audit | `cargo-deny` 0.20.2 | `pixi run audit` |
+| IDE | `rust-analyzer` + `rust-src` | the editor connects directly to `.pixi/envs/default/bin/` |
+| helpers | `ripgrep` `ccache` `pkg-config` | — |
+| wasm (frozen) | `rust-std-wasm32-unknown-unknown` `wasm-bindgen-cli` | on Web-SDK delivery day, uncomment in pixi.toml and use |
 
-任务面（`pixi task list`）：`check/build/test/lint/fmt/fmt-fix/audit/verify`。**cargo 类任务在 Cargo workspace 落地前运行必失败（接口合同，属预期）**。
+Task surface (`pixi task list`): `check/build/test/lint/fmt/fmt-fix/audit/verify`. **cargo-class tasks are guaranteed to fail before the Cargo workspace lands (an interface contract, by design)**.
 
-## 版本与锁纪律（D5）
+## Version and lock discipline (D5)
 
-- 版本唯一来源 = `pixi.toml` + `pixi.lock`（**不存在 rust-toolchain.toml，本机不装 rustup**）。
-- `pixi.lock` 必入库；CI 用 `pixi install --frozen`；升级工具链 = 专项 `pixi update`，评审 lock diff 后提交。
-- pixi 本体钉 0.78.0（bootstrap 与 CI 同值）；升级 pixi = 两处同步改。
-- 新增任何依赖走 `pixi add <pkg>`（自动维护 lock），禁止手编依赖段后忘记重锁。
+- The single source of versions = `pixi.toml` + `pixi.lock` (**there is no rust-toolchain.toml, and rustup is not installed on this machine**).
+- `pixi.lock` must be committed; CI uses `pixi install --frozen`; upgrading the toolchain = a dedicated `pixi update`, commit only after reviewing the lock diff.
+- pixi itself pinned 0.78.0 (same value in bootstrap and CI); upgrading pixi = change both places in sync.
+- Any new dependency goes through `pixi add <pkg>` (maintains the lock automatically); hand-editing the dependency section and forgetting to relock is forbidden.
 
-## 国内镜像（个人机器配置，**不入库**）
+## Domestic mirrors (personal-machine configuration, **not committed**)
 
-`~/.pixi/config.toml`：
+`~/.pixi/config.toml`:
 
 ```toml
 [mirrors]
@@ -40,22 +40,22 @@ Windows：`bootstrap.bat` → `pixi.bat`（子 shell 形态）。**注：.bat �
 ]
 ```
 
-（schema 以 pixi 官方 docs → advanced → mirror 为准。）
+(the schema is authoritative per pixi's official docs -> advanced -> mirror.)
 
-## 故障排查
+## Troubleshooting
 
-| 症状 | 处置 |
+| symptom | handling |
 |------|------|
-| bootstrap 预检报"无法连通 conda-forge" | 配上方镜像节；或代理环境导出 `https_proxy` 后重试 |
-| 求解失败且指向某包某平台 | 按包粒度处理（IDE 类可移出该平台），结论记入 decisions.md D5 追加条款；**不回退 rustup** |
-| `--frozen` 报 lock 漂移 | 有意变更→`pixi update` 提交新 lock；无意变更→`git checkout pixi.lock` |
-| 磁盘占用 | `.pixi/` 实测 1.7GB（含全套工具链）；`pixi clean` 清缓存，重跑 bootstrap 即复原 |
-| 卸载 | `rm -rf .pixi/ ~/.pixi` + `git rm` 配置层文件；系统零残留（pixi 自含） |
+| bootstrap pre-check reports "cannot reach conda-forge" | configure the mirror section above; or in a proxied environment export `https_proxy` and retry |
+| solving fails pointing at one package on one platform | handle at package granularity (IDE-class may be moved off that platform); record the conclusion as an addendum to decisions.md D5; **do not fall back to rustup** |
+| `--frozen` reports lock drift | intentional change -> `pixi update` and commit the new lock; unintentional -> `git checkout pixi.lock` |
+| disk usage | `.pixi/` measured 1.7 GB (incl. the full toolchain); `pixi clean` clears the cache, re-run bootstrap to restore |
+| uninstall | `rm -rf .pixi/ ~/.pixi` + `git rm` the configuration-layer files; zero system residue (pixi is self-contained) |
 
-## 本机实测基线（2026-09-03，linux-64）
+## This machine's measured baseline (2026-09-03, linux-64)
 
-首跑 solve+安装 **37s**（缓存热后）· 幂等二跑 **0.24s** · `pixi run verify` 六件套全绿 · 五平台 lock 条目 linux×2:57 / osx×2:26 / win-64:42。
+First-run solve+install **37s** (after the cache warms) · idempotent second run **0.24s** · `pixi run verify` six-piece suite fully green · five-platform lock entries linux×2:57 / osx×2:26 / win-64:42.
 
-## CMake 预设构建树（T-A0' 2026-10-10）
+## CMake preset build trees (T-A0' 2026-10-10)
 
-CMake 构建树住 `cmake-build*/`（VSCode 选预设即用）。注意与旧 `target/cmake-rust` 共享增量面的差异：现在 **cargo 缓存随构建树隔离**（PolyOrch 默认 `.cargo-target/` 在各 cmake-build* 内）——每个预设首次全量编译一次 cargo；换取的是构建目录自足（删树=全清）与多预设可并行。gallery 独占 `build/`，cargo 直调独占 `target/`。
+The CMake build trees live in `cmake-build*/` (VSCode picks a preset and goes). Mind the difference from the old `target/cmake-rust` shared incremental surface: now **the cargo cache is isolated per build tree** (PolyOrch defaults `.cargo-target/` inside each cmake-build*) — each preset's first build compiles cargo fully once; what that buys is build-directory self-sufficiency (deleting the tree = deleting everything) and parallel presets. The gallery owns `build/` exclusively, direct cargo calls own `target/` exclusively.

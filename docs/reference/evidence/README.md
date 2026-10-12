@@ -1,8 +1,8 @@
-# evidence/ — 调研证据快照
+# evidence/ — research evidence snapshots
 
-D4 后端终裁的案卷。按 `YYYY-MM-DD-<topic>.md` 命名，**只增不改**：内容以当日实测为准，后续演进产生新快照文件，不修订旧件。
-- 2026-09-03-wgpu-direct.md — wgpu 自研路线（积木库存/先例时间线/人月）
-- 2026-09-03-bevy-embed.md — Bevy 嵌入式可行性（否决依据）
-- 2026-09-03-angle-integration.md — ANGLE 集成（含 Qt6 证伪、XP 判词）
-- `2026-09-03-spike-slab-budget.md` — spike-2 10 万实体 slab 帧预算实测（S1）
-- `2026-09-03-rtc-hierarchy.md` — P1/D7 分层 origin 五方案证据（Cesium glsl 实拉）
+The case files of the D4 final backend ruling. Named `YYYY-MM-DD-<topic>.md`, **append-only, never revise**: content is authoritative as of the day's measurements; later evolution produces new snapshot files, old ones are not revised.
+- 2026-09-03-wgpu-direct.md — the wgpu in-house route (building-block inventory / precedent timeline / person-months)
+- 2026-09-03-bevy-embed.md — Bevy embedding feasibility (the grounds for rejection)
+- 2026-09-03-angle-integration.md — ANGLE integration (incl. the Qt6 refutation and the XP verdict)
+- `2026-09-03-spike-slab-budget.md` — spike-2 frame-budget measurement of a 100k-entity slab walk (S1)
+- `2026-09-03-rtc-hierarchy.md` — evidence for the five schemes of the P1/D7 layered origin (Cesium glsl actually fetched)

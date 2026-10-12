@@ -1,65 +1,65 @@
-# 四家对标差距审计 · 团队调研合成（2026-09-17）
+# Four-way benchmark gap audit · team research synthesis (2026-09-17)
 
-> 方法：team-mode 四路并行解剖（`.refinfo/three.js` / `.refinfo/Easy3D` / `.refinfo/bevy` + 例子/文档生态四家横比），lead 交叉验证合成。
-> 全部结论双侧文件证据；S 级声称经七项 grep 复验（色彩管理/层级/文本/capi 回调/blend/动画/异步=全 0 命中属实）。
-> 原始四卷全文存于当次会话（分析员：threejs-gap / easy3d-gap / bevy-gap / examples-gap）；本档为合成正本。
-> ⚠ examples 卷三处不实已在合成时修正：E901=twin_city（非 wasm demo）；E403 为在库号（非空号）；E202 是 GeoJSON 点标记域（非点云数据族）。
+> Method: team-mode four-lane parallel dissection (`.refinfo/three.js` / `.refinfo/Easy3D` / `.refinfo/bevy` + the example/documentation ecosystem cross-compared across the four), lead cross-verified synthesis.
+> Every conclusion carries double-sided file evidence; the S-tier claims were re-verified with seven greps (color management/hierarchy/text/capi callback/blend/animation/async = all 0 hits confirmed).
+> The raw four volumes live in the session of that time (analysts: threejs-gap / easy3d-gap / bevy-gap / examples-gap); this file is the synthesis of record.
+> ⚠ Three untruths in the examples volume were corrected during synthesis: E901 = twin_city (not a wasm demo); E403 is an in-use number (not reserved empty); E202 is the GeoJSON point-marker domain (not the point-cloud data family).
 
-## 一句话（人话版）
+## One sentence (plain-language edition)
 
-**工程纪律与 SDK 骨架我们领先，画面正确性（色彩）、文字的地图半边、以及"宿主体验 API"（事件推送/异步加载/场景层级）是三大真空**。三家参照物各照出一类问题：three.js 照出"渲染器还幼稚"（色彩/材质/PBR/后期），bevy 照出"宿主还原始"（事件/资源/序列化），Easy3D 照出"GIS 承诺未兑现"（点云/文字/半透明/剖面——其中地形/VSM/GGX 三项其实 Easy3D 自己也没有，属自主立项账，勿挂对标名目）。
+**On engineering discipline and the SDK skeleton we lead; the three big vacuums are picture correctness (color), the map half of text, and the "host-experience API" (event push / async loading / scene hierarchy).** Each of the three reference points illuminates a different class of problem: three.js shows "the renderer is still juvenile" (color/material/PBR/post), bevy shows "the host is still primitive" (events/resources/serialization), Easy3D shows "GIS promises unfulfilled" (point cloud/text/transparency/section — of which terrain/VSM/GGX are three items Easy3D itself does not have either, so they belong to self-initiated work, do not bill them under a benchmark label).
 
-## 共识矩阵（≥2 卷独立同判才入表）
+## Consensus matrix (only entered if ≥2 volumes independently agree)
 
-### S 级（战略缺口：产品门面或定位承诺）
+### S tier (strategic gaps: the product's face or positioning promises)
 
-| # | 缺口 | 提出卷 | 证据锚点 | 本仓现状 |
+| # | gap | volume | evidence anchor | this repo's current state |
 |---|------|--------|---------|---------|
-| S1 | **色彩管理全链**（sRGB→线性→tone map→输出） | threejs | `.refinfo/three.js/src/math/ColorManagement.js` + ToneMapping 族 | 全灰度=线性域当 sRGB 画；golden 在锁错值，越晚改重录越多。成本 M |
-| S2 | **文字/标注面**（地图半边） | threejs/easy3d/examples 三卷同判 | text_renderer(T309)/Sprite/23 文字例 | 零 glyph 命中；E202 连一个 POI 标签都画不出。成本 L |
-| S3 | **事件推送半边**（loading 态对宿主黑箱） | bevy/threejs | EventDispatcher；bevy 全链 loadable→loaded(AddAsset)→LoadFailed | capi 零回调；on_ready 是拉询形，加载中间态无处安放。成本 S-M，**纯补口不动语义** |
-| S4 | **资源管线**（异步/取消/缓存/句柄失效/卸载） | bevy/threejs | asset/LoadState + Guard 防句柄复用 + LoaderCycle 依赖图；LoadingManager+AbortSignal | 同步 load 阻塞宿主线程；GLB-only；无进度/取消。成本 L |
-| S5 | **点云数据族**（白皮书一等公民未兑现） | easy3d（含旧表拆账修正） | point_cloud_io_{ply,las,...}+kdtree+normals | 演示层销过账、数据族层从未销：无 IO/类型/法向/空间索引。成本 中-大 |
+| S1 | **the full color-management chain** (sRGB->linear->tone map->output) | threejs | `.refinfo/three.js/src/math/ColorManagement.js` + the ToneMapping family | all grayscale = drawing linear domain as sRGB; the golden is locking wrong values, every round of delay grows the re-record cost. Cost M |
+| S2 | **the text/annotation plane** (the map half) | threejs/easy3d/examples, three volumes agree | text_renderer(T309)/Sprite/23 text examples | zero glyph hits; E202 cannot draw even one POI label. Cost L |
+| S3 | **the event-push half** (loading state is a black box to the host) | bevy/threejs | EventDispatcher; the bevy full chain loadable->loaded(AddAsset)->LoadFailed | capi has zero callbacks; on_ready is a pull-poll form, the loading middle state has nowhere to live. Cost S-M, **a pure port addition, no semantic change** |
+| S4 | **the resource pipeline** (async/cancel/cache/handle invalidation/unload) | bevy/threejs | asset/LoadState + Guard against handle reuse + the LoaderCycle dependency graph; LoadingManager+AbortSignal | synchronous load blocks the host thread; GLB-only; no progress/cancel. Cost L |
+| S5 | **the point-cloud data family** (a whitepaper first-class citizen, unfulfilled) | easy3d (incl. the old-table accounting correction) | point_cloud_io_{ply,las,...}+kdtree+normals | the demo layer once cashed the check, the data-family layer never did: no IO/types/normals/spatial index. Cost medium-large |
 
-### A 级（功能债：下阶段主线）
+### A tier (feature debt: next-phase mainline)
 
-| # | 缺口 | 卷 | 要点 | 成本 |
+| # | gap | volume | key point | cost |
 |---|------|-----|------|------|
-| A1 | 场景层级 parent | threejs/easy3d | 孪生"设备→部件"、图层组变换/组显隐需父子链；两级轻量形即可（parent: EntityId，不破 C ABI 扁平句柄面） | M |
-| A2 | 真 PBR GGX + glTF 通道 | threejs/bevy/easy3d | 现 4 字段 MaterialDesc；normal/emissive/occlusion/metallic 全弃（装载即哑数据）；Alpha 档在册，通道逐个点亮 | M |
-| A3 | 半透明排序（+DDP） | easy3d | blend:None 唯一路实证；白模半透+图层叠加双刚需；先 back-to-front 排序 blend，DDP 升级位 | 中 |
-| A4 | 剖面裁切 | easy3d | clip_plane+T307；**已排队 B2 候令**；uniform 平面+fs discard 最短路 | 小-中 |
-| A5 | 纹理解码（PNG/JPEG）+点云 PLY 口 | threejs | upload_texture 只吃裸字节；io-gltf 外部图像 URI 不解析（GLB-only 根因半边） | M |
-| A6 | 属性推送半边（attr_changed/dirty） | bevy | 现全量重查（E810 路）；变化通知缺 | S |
-| A7 | 拾取半边（hover 推送） | bevy | 轮询可行；E402 已证 CPU 射线路 | S |
-| A8 | 动画播放器（最小两轨） | threejs/bevy | glTF 动画轨在 io-gltf 直接丢；孪生演示/AV 仿真的时间维=零；只采变换轨+可见性轨（句柄定向，PropertyBinding 反射形在 C ABI 不成立），蒙皮不做 | L |
-| A9 | 投影/CRS 坐标系 | 白皮书/geo 域 | web_mercator 单投影；WMS/WMTS 承诺同族；地理定位刚需，**脱对标自主立项** | 中-大 |
-| A10 | 场景序列化（轻量 IR：存/恢复/部分更新） | bevy | 宿主状态持久化无口；格式走 glTF 扩展/JSON 自主设计，**不抄 .scene RON** | 中 |
-| A11 | LOD 自动切换 | bevy/threejs/易3D 三家 | 有实体级 Instance LOD，无距离切换调度；与瓦片流式同题 | 中 |
+| A1 | scene hierarchy parent | threejs/easy3d | twin "device->component", layer-group transforms/group visibility need a parent-child chain; a two-level lightweight form suffices (parent: EntityId, does not break the flat C ABI handle surface) | M |
+| A2 | real PBR GGX + glTF channels | threejs/bevy/easy3d | currently a 4-field MaterialDesc; normal/emissive/occlusion/metallic all discarded (dumb data at load); the Alpha tier is on the books, light the channels one by one | M |
+| A3 | transparent sorting (+DDP) | easy3d | blend:None as the single route, empirically; white-model transparency + layer compositing are both hard needs; first back-to-front sorted blend, DDP = upgrade slot | medium |
+| A4 | cross-section clipping | easy3d | clip_plane+T307; **already queued, B2 standby order**; the uniform plane + fs discard shortest route | small-medium |
+| A5 | texture decode (PNG/JPEG) + the point-cloud PLY entry | threejs | upload_texture only eats raw bytes; io-gltf does not resolve external image URIs (the half root-cause of GLB-only) | M |
+| A6 | the attribute-push half (attr_changed/dirty) | bevy | currently full re-query (the E810 route); change notification missing | S |
+| A7 | the pick half (hover push) | bevy | polling is viable; E402 already proved the CPU ray route | S |
+| A8 | animation player (minimal two tracks) | threejs/bevy | glTF animation tracks are dropped outright at io-gltf; the time dimension of twin demos/AV simulation = zero; take only the transform track + visibility track (handle-directed; the PropertyBinding reflection form does not hold across a C ABI), no skinning | L |
+| A9 | projection/CRS coordinate systems | whitepaper/geo domain | web_mercator single projection; the WMS/WMTS promise is the same family; a georeferencing hard need, **self-initiated, off-benchmark** | medium-large |
+| A10 | scene serialization (lightweight IR: save/restore/partial update) | bevy | no port for host-state persistence; the format goes glTF extension / a self-designed JSON, **do not copy .scene RON** | medium |
+| A11 | automatic LOD switching | bevy/threejs/Easy3D, three houses | entity-level Instance LOD exists, distance-switch scheduling does not; same issue as tile streaming | medium |
 
-### B 级（补强/体验，择机）
+### B tier (strengthening/experience, when the moment fits)
 
-几何原语公开口（box/sphere/cylinder 进 capi，孪生造体刚需，成本 S）· BVH 空间索引（触发=bench 证据，picking.rs 注记在册）· 相机阻尼+关键帧漫游（mix_rig 原语已在，残余=编排）· SSAO/EDL（4g backlog；EDL 触发=S5 落地）· rustdoc 自动生成（**成本最低收益立见**——bevy 438 例+docs.rs 全量、three 658 页 vs 本仓 0 页自动参考）· gizmo/碰撞（1.0 编辑器档）· 多视口（随站点轮）· llms.txt（成本极低）· 迁移指南（GA 前记票）。
+public geometry-primitive ports (box/sphere/cylinder into capi, a twin body-creation hard need, cost S) · BVH spatial index (trigger = bench evidence, the picking.rs note on the books) · camera damping + keyframe roaming (the mix_rig primitives exist, the residue = orchestration) · SSAO/EDL (4g backlog; the EDL trigger = S5 landing) · rustdoc auto-generation (**lowest cost, immediate payoff** — bevy 438 examples + full docs.rs, three 658 pages vs this repo's 0 auto-reference pages) · gizmo/collision (the 1.0 editor tier) · multi-viewport (with the site round) · llms.txt (extremely low cost) · migration guide (recorded as a vote before GA).
 
-### C 级（明确不做，防对标焦虑）
+### C tier (explicitly not done, anti-benchmark-anxiety)
 
-ECS 全家桶（拉模型+push patch 是 SDK 正确形，bevy 自证 ECS 不跑在库线程）· 渲染图/TSL 式 DSL（固定管线+变体键+默认拒，2 个 wgsl 够用；唯一前瞻位=样式若需运行时表达式编译再评）· XR（宿主持有）· hot-reload（桌面档）· WebGPU/GL 双后端税（wgpu 原生已支付，D4 同判）· 30-pass 后期框架（挂点枚举位替代）· 蒙皮动画 · KO/SM 私有格式 · GaussianSplat/Water/Sky 网页特效 · 脚本游戏层。
+the ECS full kit (pull model + push patch is the correct SDK shape; bevy itself proves ECS does not run on a library thread) · render graph / TSL-style DSL (fixed pipeline + variant keys + default rejection, 2 wgsl files suffice; the only forward slot = re-evaluate should styles ever need runtime expression compilation) · XR (host-held) · hot-reload (desktop tier) · the WebGPU/GL dual-backend tax (already paid by wgpu native, same verdict as D4) · a 30-pass post framework (hook-point enum slot as substitute) · skinning · KO/SM private formats · GaussianSplat/Water/Sky web showpieces · the scripting game layer.
 
-### 对标失效声明（账目卫生，easy3d 卷方法论）
+### Benchmark-invalidation statement (accounting hygiene, the easy3d volume's methodology)
 
-地形/TIN/栅格、VSM/CSSM、GGX 三项 **Easy3D 无证据**（grep 零命中）→ 移入白皮书自主立项轨，严禁挂"Easy3D 借鉴"名目（PIT-20 幽灵 API 纪律的反向适用）。bevy 卷同型修正一处：bevy 并非无视觉回归——Pixel Eagle 截图服务 + 帧事件 RON + 438 例单源元数据，本仓 golden 优势成立但措辞从"独家"收窄为"门禁族独家"。
+terrain/TIN/raster, VSM/CSSM, GGX: three items **without Easy3D evidence** (zero grep hits) -> moved into the whitepaper's self-initiated track, strictly forbidden to bill under the "Easy3D borrow" label (the reverse application of the PIT-20 phantom-API discipline). One isomorphic correction in the bevy volume: bevy is not without visual regression — the Pixel Eagle screenshot service + frame-event RON + 438-example single-source metadata; this repo's golden advantage holds but the wording narrows from "exclusive" to "exclusive among gate families".
 
-## 排序建议（裁决点，逐项过）
+## Ordering suggestions (decision points, item by item)
 
-- **D-1 下一带选谁**：现队列 B2=剖面裁切（A4 已排队）vs 插队候选=点云数据族（S5）/色彩管理（S1）。lead 推荐：**S1 色彩管理先行半拍**——理由：golden 重录成本随每轮单调上涨，且它是 S 级里唯一不动 API 面的纯渲染轮；剖面带维持排队。
-- **D-2 事件推送口（S3）**：可与任一带搭车（CAPI minor 版本，纯加法）；建议与色彩轮或剖面轮同批 RED→GREEN。
-- **D-3 文字面（S2）**：独立计划轮（字体图集选型先行），不塞进现有队列。
-- **D-4 资源管线+异步（S4）**：大工程，建议 Alpha 档单独立项（与 MVT/瓦片流式=同一张设计图）。
-- **D-5 点云族（S5）**：插队 or 排队 = 用户商业节奏裁决（白皮书承诺已欠账，easy3d 卷主张插队）。
-- **D-6 低成本立见项打包**：rustdoc + llms.txt + 几何原语口 + 属性脏通知——一个"文档与糖"小带可全收。
+- **D-1 which band next**: the current queue has B2 = cross-section clipping (A4 queued) vs interjection candidates = the point-cloud data family (S5) / color management (S1). Lead recommendation: **move S1 color management half a beat ahead** — reason: golden re-record cost grows monotonically with each round, and it is the only pure-rendering round in the S tier that does not touch the API surface; the clipping band keeps its queue place.
+- **D-2 the event-push port (S3)**: can ride with any band (CAPI minor version, pure addition); suggest RED->GREEN in the same batch as the color round or the clipping round.
+- **D-3 the text plane (S2)**: a standalone planned round (the font-atlas selection leads), not stuffed into the existing queue.
+- **D-4 the resource pipeline + async (S4)**: a large undertaking, suggest standing it up as its own Alpha-tier case (with MVT/tile streaming = the same design sheet).
+- **D-5 the point-cloud family (S5)**: interject or queue = the user's commercial-cadence ruling (the whitepaper promise is already in arrears; the easy3d volume argues for interjection).
+- **D-6 bundle the low-cost immediate wins**: rustdoc + llms.txt + geometry-primitive ports + attribute dirty notification — one small "docs and sugar" band can take them all.
 
-## 反向优势总账（四卷合并去重，勿退坡清单）
+## Reverse-advantage grand total (four volumes merged and deduplicated, the do-not-regress list)
 
-1. D7 远坐标 f64 重基（three=纯 f32 大坐标淘汰级；bevy 也盯了 projection_zoom 同款但无远原点纪律）2. **SDD 115 条↔测试双向锁**=真独家（三家全 0）3. gate-docs/gate-abi 四方一致门禁族（bevy 单源元数据最接近但仍无机器一致校验）4. `--frames`+golden 三自证=例子即 CI（bevy 例数 438 碾压但仅部分自动化；Easy3D 从不跑；本仓 19 条全执行）5. 多语言例子矩阵 5 路（各家仅单语言）6. 纯拉模型 render 时机宿主自决+零主循环绑架 7. 无 aliasing/无 GC/无 data race 构造保证+162 测试秒级 8. 双许可 vs GPL 传染（Easy3D）/纯 JS 运行时（three）——车机/HMI 出局对手 9. 样式 spec 一等公民（D9 v8 子集）10. 修复策略装载 LoadReport（三家脏数据静默进门）11. placed() 位形单源构造锁（交互正确性进机器门禁文化）。
+1. D7 far-coordinate f64 rebase (three = pure f32, large coordinates are disqualifying; bevy also eyes the same projection_zoom kind but without a far-origin discipline) 2. **the SDD 115-clause <-> tests bidirectional lock** = genuinely exclusive (all three others: 0) 3. the gate-docs/gate-abi four-way-consistent gate family (bevy's single-source metadata is closest yet still has no machine-consistency check) 4. `--frames`+golden three-way self-proof = the examples are the CI (bevy's 438 examples crush in count but only partially automated; Easy3D never runs; this repo's 19 all execute) 5. the multi-language example matrix, 5 routes (every other house single-language only) 6. the pure pull model: the host decides render timing + zero main-loop hijacking 7. construction guarantees of no aliasing / no GC / no data race + 162 tests in seconds 8. dual license versus GPL contagion (Easy3D) / pure-JS runtime (three) — automotive HMI knocks the opponents out 9. the style spec as a first-class citizen (the D9 v8 subset) 10. the LoadReport repair-policy loading (all three others let dirty data in silently) 11. the placed() configuration single-source construction lock (interaction correctness joins the machine-gate culture).
 
-**收口**：以约 1/30 的复杂度，换来无 aliasing、无 panic 穿越、可 FFI 的确定性——这是三家的架构税，我们没交。对标结论=**补 S 级三件（色彩/文字/事件推送），守全部 11 项独门，拒 C 级焦虑**。
+**Close**: at about 1/30 the complexity we gained aliasing-free, panic-free crossing, FFI-capable determinism — that is the architecture tax the three others pay, and we did not. The benchmark verdict = **fill the three S-tier items (color/text/event push), guard all 11 signature advantages, refuse the C-tier anxiety**.

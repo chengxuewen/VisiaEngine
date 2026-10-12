@@ -1,180 +1,182 @@
-# VisiaEngine 白皮书
+# VisiaEngine Whitepaper
 
-### 多维空间可视化引擎
+> Translated from the Chinese original (v0.1.0, 2026-09). The Chinese original is preserved in git history (tag: whitepaper-zh-v0.1.0).
 
-**版本 0.1.0 | 2026 年 9 月**
+### The multi-dimensional spatial visualization engine
 
----
-
-## 摘要
-
-**VisiaEngine（维视引擎）** 是一个开源的、轻量级的多维空间可视化引擎。它提供统一的 **2D、2.5D 与 3D 渲染管线**，专为处理**地图、地理信息（GIS）、三维模型、仿真场景及数字孪生数据**而设计。
-
-VisiaEngine 不追求游戏级的光影特效，而是专注于**清晰、精准、高效地展示数据**。它以高性能的 **Rust** 语言实现核心，采用灵活的 **SDK 形态**，可嵌入到 **Qt 与 Web** 应用中（Flutter/C# 为路线图项），并计划推出官方编辑器 **Visia Studio**。本项目采用 **Open Core** 模式，核心运行时永久开源，高级企业功能与编辑器作为商业产品。
+**Version 0.1.0 | September 2026**
 
 ---
 
-## 1. 问题与机遇
+## Abstract
 
-### 1.1 现状的撕裂
-当前的可视化工具市场存在显著的断层：
-- **游戏引擎（Unreal, Unity）**：体积庞大、GIS 支持薄弱、难以嵌入普通桌面/Web 应用，且"游戏风格"的渲染往往过度分散数据可视化的注意力。
-- **GIS 与 Web 三维库（Cesium, MapLibre, deck.gl）**：虽擅长地理数据展示，但大多受限于 Web 栈，深嵌原生桌面框架（Qt、WPF）代价高；即使提供 2D/2.5D/3D 模式切换的成熟产品，跨维度也往往各用一套场景语义，难以做到同一场景树、同一图层/实体语义的无缝过渡。
-- **通用图形框架（Three.js, Qt 3D）**：缺乏为空间数据专门优化的图层、坐标转换与交互系统，开发门槛高。
+**VisiaEngine** is an open-source, lightweight multi-dimensional spatial visualization engine. It provides a unified **2D, 2.5D and 3D rendering pipeline**, purpose-built for **maps, geographic information (GIS), 3D models, simulation scenes and digital-twin data**.
 
-### 1.2 未被满足的需求
-开发者迫切需要一种**介于轻量库与重型引擎之间的解决方案**：
-- 原生支持 **2D 地图、2.5D 倾斜视角与 3D 场景** 的同一视口自由切换与相机飞行过渡。
-- 对 **GIS 坐标系、矢量瓦片、ODR 高精道路** 等空间数据有原生的理解与优化。
-- 既可打包为轻量 SDK 嵌入现有应用，又能作为独立引擎驱动未来的编辑器。
-- 性能卓越，跨平台一致，且能为数字孪生和工业仿真提供可靠的可视化基底。
+VisiaEngine does not chase game-grade lighting effects; it focuses on **presenting data clearly, accurately and efficiently**. Its core is implemented in high-performance **Rust**, delivered in a flexible **SDK shape**, embeddable in **Qt and Web** applications (Flutter/C# are roadmap items), with a planned official editor, **Visia Studio**. The project follows the **Open Core** model: the core runtime is permanently open source, while advanced enterprise features and the editor are commercial products.
 
 ---
 
-## 2. VisiaEngine 是什么
+## 1. Problem and Opportunity
 
-**VisiaEngine** 是一个以 **数据清晰呈现** 为首要目标的多维度可视化引擎。
-- **Visia** 取自 vision 语族（拉丁语 visio，"视觉"），寓意 **"视觉之域"**。
-- 它不是游戏引擎，不与 Unreal 或 Unity 竞争；它专注于**将复杂的空间数据转化为直观、可交互的视图**。
+### 1.1 The split in today's market
+The current visualization tooling market has a pronounced fault line:
+- **Game engines (Unreal, Unity)**: huge footprint, weak GIS support, hard to embed into ordinary desktop/Web apps, and their "game-style" rendering habitually distracts from data visualization.
+- **GIS and Web 3D libraries (Cesium, MapLibre, deck.gl)**: good at geographic data display, but most are confined to the Web stack, and deep embedding into native desktop frameworks (Qt, WPF) is costly; even mature products that offer 2D/2.5D/3D mode switching usually run a different scene semantic per dimension, making seamless transitions over one scene tree with one layer/entity semantics hard to achieve.
+- **General graphics frameworks (Three.js, Qt 3D)**: lack the layer system, coordinate transforms and interaction purpose-built for spatial data; the development bar is high.
 
-### 核心信条
-> **Visia —— 看见数据的本质。**
+### 1.2 The unmet need
+Developers urgently need a **solution between the lightweight library and the heavy engine**:
+- Native support for **2D maps, the 2.5D oblique view and 3D scenes** with free switching and camera flight transitions **within the same viewport**.
+- Native understanding and optimization of spatial data such as **GIS coordinate systems, vector tiles, and ODR high-definition roads**.
+- Packageable as a lightweight SDK embedded into existing applications, yet able to drive the future editor as a standalone engine.
+- Outstanding performance, cross-platform consistency, and a dependable visualization base for digital twins and industrial simulation.
+
+---
+
+## 2. What VisiaEngine Is
+
+**VisiaEngine** is a multi-dimensional visualization engine whose first goal is **the clear presentation of data**.
+- **Visia** is drawn from the vision word family (Latin visio, "sight"), signifying **"the domain of vision"**.
+- It is not a game engine and does not compete with Unreal or Unity; it focuses on **turning complex spatial data into intuitive, interactive views**.
+
+### Core creed
+> **Visia — see the essence of your data.**
 > *Visia — See the essence of your data.*
 
 ---
 
-## 3. 核心特性
+## 3. Core Features
 
-### 3.1 统一的 2D / 2.5D / 3D 核心
-- 扁平实体表（场景树编组/父子偏移已交付：create_group/set_parent 族）上，自由切换 **鸟瞰地图（2D）**、**倾斜视角（2.5D）** 与 **完全沉浸的 3D 视口**。
-- 所有图层、实体、标注在多维度间保持一致的交互逻辑。
+### 3.1 A unified 2D / 2.5D / 3D core
+- On a flat entity table (scene-tree grouping / parent-child offsets already delivered: the create_group/set_parent family), switch freely between the **bird's-eye map (2D)**, the **oblique view (2.5D)** and the **fully immersive 3D viewport**.
+- All layers, entities and annotations keep consistent interaction logic across the dimensions.
 
-### 3.2 一流的空间数据能力
-- **地图与 GIS**：内置 GeoJSON 与主流坐标投影支持；矢量瓦片（MVT）支持已交付（Phase 0 = Rust-native 解码/调度；Phase 1 = C API 两口 load_mvt_dir/set_tile_view + HTTP 源 [ureq]，本带兑现；WMS/WMTS 栅格 imagery 见路线图）。
-- **自动驾驶与仿真**：通过官方仿真插件支持 **OpenDRIVE (ODR)** 与 **OpenSCENARIO (OSC)**，自动生成道路和交通场景（Beta 提供，见路线图）。
-- **模型与 BIM**：高效加载 glTF、点云等标准格式，支持建筑信息模型的高保真轻量化展示。
+### 3.2 First-class spatial data capability
+- **Maps and GIS**: built-in GeoJSON and mainstream coordinate-projection support; vector tiles (MVT) support is delivered (Phase 0 = Rust-native decode/scheduling; Phase 1 = the C API entries load_mvt_dir/set_tile_view + the HTTP source [ureq], delivered in this band; WMS/WMTS raster imagery is in the roadmap).
+- **Autonomous driving and simulation**: **OpenDRIVE (ODR)** and **OpenSCENARIO (OSC)** through official simulation plugins, auto-generating road and traffic scenes (delivered in Beta, see the roadmap).
+- **Models and BIM**: efficient loading of glTF, point clouds and other standard formats, supporting high-fidelity lightweight display of building information models.
 
-### 3.3 轻量、可嵌入、高性能
-- **Rust 内核**：内存安全，无 GC，性能可媲美 C++。
-- **基于 wgpu 的现代渲染**：一等支持 Vulkan / Metal / DX12 / WebGPU；同时提供 OpenGL 3.3+ / OpenGL ES 3.0+ / WebGL2 降级兼容档——跨平台一致的是 API 面与质量分级语义，降级档以特性子集换取覆盖度。
-- **SDK 形态交付**：作为运行时库 (`visiaengine-core`, `visiaengine-render`) 通过 C API 提供给 Qt、Flutter、C# (WPF/Unity) 等宿主使用，不绑架应用主循环。
+### 3.3 Lightweight, embeddable, high-performance
+- **Rust core**: memory safe, no GC, performance comparable to C++.
+- Modern rendering on **wgpu**: first-class Vulkan / Metal / DX12 / WebGPU; also provides the OpenGL 3.3+ / OpenGL ES 3.0+ / WebGL2 degraded compatibility tiers — what stays consistent across platforms is the API surface and the quality-tier semantics; the degraded tiers trade a feature subset for coverage.
+- **Delivered as an SDK**: shipped as runtime libraries (`visiaengine-core`, `visiaengine-render`) over a C API for hosts such as Qt, Flutter and C# (WPF/Unity), without hijacking the application main loop.
 
-### 3.4 为开发者而生
-- 紧凑且可裁剪的模块化设计，启动体积可控制在 **10 MB 以内**。
-- 清晰、稳定的 API，配合详尽的文档与示例。
-- 未来可通过官方脚本或扩展系统（考虑 WebAssembly）进行二次开发。
+### 3.4 Built for developers
+- A compact, prunable modular design; the startup size can be kept **within 10 MB**.
+- Clear, stable APIs backed by thorough documentation and examples.
+- Future second-development through official scripting or an extension system (WebAssembly considered).
 
 ---
 
-## 4. 技术架构
+## 4. Technical Architecture
 
-### 4.1 核心理念
-采用 **"引擎内核 + 可插拔渲染后端 + 应用层绑定"** 的架构。
+### 4.1 The core idea
+An architecture of **"engine kernel + pluggable rendering backends + application-layer bindings"**.
 
 ```
-┌──────────────────────────────────────────┐
-│               应用层 (宿主)               │
-│          Qt / Flutter / C# / Web         │
-└───────────────────┬──────────────────────┘
-                    │ FFI (C API)
-┌───────────────────▼──────────────────────┐
-│           VisiaEngine 核心 (Rust)        │
-│  ┌──────────────────────────────────┐    │
-│  │   visiaengine-core: 数据模型, 空间索引,  │    │
-│  │   坐标系统, 场景图, 资源管理      │    │
-│  └──────────────────────────────────┘    │
-│  ┌──────────────────────────────────┐    │
-│  │   visiaengine-render: 统一渲染抽象层    │    │
-│  │   (Trait 定义, 渲染指令生成)      │    │
-│  └──────────────┬───────────────────┘    │
-│                 │                        │
-│  ┌──────────────▼───────────────────┐    │
-│  │   visiaengine-render-wgpu (默认后端)    │    │
-│  │   基于 wgpu 的自研渲染管线         │    │
-│  └──────────────────────────────────┘    │
-│  ┌──────────────────────────────────┐    │
-│  │   未来可选后端                    │    │
-│  └──────────────────────────────────┘    │
-└──────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                Application layer (host)                │
+│              Qt / Flutter / C# / Web                   │
+└───────────────────────────┬────────────────────────────┘
+                            │ FFI (C API)
+┌───────────────────────────▼────────────────────────────┐
+│                VisiaEngine core (Rust)                 │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ visiaengine-core: data model, spatial index,     │  │
+│  │ coordinate systems, scene graph, resource mgmt   │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ visiaengine-render: unified rendering abstraction│  │
+│  │ (Trait definitions, render-command generation)   │  │
+│  └──────────────────────┬───────────────────────────┘  │
+│                         │                              │
+│  ┌──────────────────────▼───────────────────────────┐  │
+│  │ visiaengine-render-wgpu (default backend)        │  │
+│  │ in-house rendering pipeline on wgpu              │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ future optional backends                         │  │
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 关键设计决策
-- **为何 wgpu 直用、自研管线？**（2026-09 后端终审结论）wgpu 提供 Rust 原生、跨 Vulkan/Metal/DX12/WebGPU 的现代 GPU 抽象，并自带 GL/GLES 降级后端（Windows 可选 ANGLE 构建）——SDK 的主循环所有权、体积预算与兼容分级全部可由引擎自持。复用现成引擎渲染栈（Bevy）经调研评估后未采纳：其渲染层与自身 ECS/App 框架不可分离，且上游 API 稳定性节奏与 SDK 的长期兼容承诺不匹配。`visiaengine-render` 抽象层保留：未来可选后端（如移动端专属或企业定制）仍经同一 C API 兼容纪律接入。
-- **2D/2.5D/3D 如何统一？** 所有可视图元（点、线、面、体）均作为空间实体存在，透视/正交投影自由切换、鸟瞰/倾斜相机飞行，不需切换渲染器。（视点间的连续插值投影 morph 已交付：`set_morph_time` 连续滑杆，E304。）
+### 4.2 Key design decisions
+- **Why wgpu direct, pipeline in-house?** (the 2026-09 final backend ruling) wgpu provides a Rust-native modern GPU abstraction spanning Vulkan/Metal/DX12/WebGPU and ships its own GL/GLES degradation backends (an optional ANGLE build on Windows) — main-loop ownership, the size budget and compatibility tiering can all be held by the engine. Reusing an off-the-shelf engine's rendering stack (Bevy) was evaluated and not adopted: its rendering layer is inseparable from its own ECS/App framework, and the upstream API-stability cadence does not match an SDK's long-term compatibility promise. The `visiaengine-render` abstraction layer stays: future optional backends (a mobile-exclusive or an enterprise customization, say) still join through the same C API compatibility discipline.
+- **How are 2D/2.5D/3D unified?** All visual primitives (points, lines, faces, volumes) exist as spatial entities; perspective/orthographic projections switch freely and bird's-eye/oblique camera flights need no renderer swap. (The continuously interpolated projection morph between viewpoints is delivered: the `set_morph_time` continuous slider, E304.)
 
 ---
 
-## 5. 应用场景
+## 5. Application Scenarios
 
-1. **地图与地理信息系统 (GIS)**
-   作为替代 Mapbox/Leaflet 的新一代高性能桌面端/移动端地图组件，支持无级缩放和海量矢量数据叠加。
+1. **Maps and geographic information systems (GIS)**
+   A next-generation high-performance desktop/mobile map component replacing Mapbox/Leaflet, with zoomless continuous scaling and massive vector overlays.
 
-2. **数字孪生与智慧城市**
-   将实时 IoT 数据流绑定至 2.5D/3D 场景，驱动设备、建筑、交通态势的动态呈现。
+2. **Digital twins and smart cities**
+   Binding live IoT data streams into 2.5D/3D scenes, driving the dynamic presentation of devices, buildings and traffic conditions.
 
-3. **自动驾驶仿真 (AV / ADAS)**
-   通过官方插件消费 OpenDRIVE/OpenSCENARIO 数据，生成逼真的 3D 道路环境，用于传感器仿真和规控算法验证。
+3. **Autonomous-driving simulation (AV / ADAS)**
+   Consuming OpenDRIVE/OpenSCENARIO data through official plugins to generate lifelike 3D road environments, for sensor simulation and planning-and-control algorithm validation.
 
-4. **AGV/AMR 调度与监控**
-   在工业 WPF/Qt 应用程序中嵌入全场景 2D/3D 监控视口，实时绘制车辆、路径、任务和热力图。
+4. **AGV/AMR dispatch and monitoring**
+   Embedding full-scene 2D/3D monitoring viewports into industrial WPF/Qt applications, drawing vehicles, paths, tasks and heatmaps live.
 
-5. **工业设计与模型展示**
-   为 CAD/BIM 数据提供轻量、可嵌入的 3D 查看器，支持剖切、测量和标注。
-
----
-
-## 6. 商业策略与路线图
-
-### 6.1 Open Core 模型
-- **开源核心**：`visiaengine-core` 与 `visiaengine-render` 运行时库完全开源，采用 MIT OR Apache-2.0 双许可，**已发布版本许可不可撤销、核心不追溯闭源**，可被任意商业或非商业项目集成。
-- **商业产品**：
-    - **Visia Studio**：面向设计师和开发者的可视化编辑器，提供场景搭建、样式配置、数据源管理及一键部署功能。采用订阅制。
-    - **企业级插件与支持**：提供开箱即用的企业级 GIS、数字孪生及仿真插件，以及 SLA 保障的技术支持服务。
-
-### 6.2 路线图
-
-- **阶段 1: MVP (当前)**
-    - 核心 Rust 库（`visiaengine-core`、`visiaengine-render`、`visiaengine-render-wgpu`）
-    - 基本的 glTF、GeoJSON 加载
-    - 2D 地图与 3D 视口的自由切换演示
-    - Qt/Web 嵌入示例（Flutter/C# 为 Alpha 档候选）
-
-- **阶段 2: Alpha**
-    - 完善的空间索引与坐标系统
-    - 2.5D 建筑白模与倾斜视角
-    - C API 的稳定化与多语言绑定生成
-
-- **阶段 3: Beta**
-    - Visia Studio 预览版发布
-    - ODR/OSC 解析与可视化插件
-    - 数字孪生数据绑定与实时更新机制
-
-- **阶段 4: 1.0 正式版**
-    - 完整的编辑器与运行时产品发布
-    - 插件市场与开发者社区建立
-    - 正式的商业授权与支持服务上线
+5. **Industrial design and model presentation**
+   A lightweight, embeddable 3D viewer for CAD/BIM data, with sectioning, measurement and annotation.
 
 ---
 
-## 7. 团队与社区
+## 6. Commercial Strategy and Roadmap
 
-*（此部分待项目启动后填充，可包括核心贡献者、组织背景、贡献指南、行为准则等。）*
+### 6.1 The Open Core model
+- **Open-source core**: the `visiaengine-core` and `visiaengine-render` runtime libraries are fully open source under the MIT OR Apache-2.0 dual license, **licenses of released versions are irrevocable and the core is never retroactively closed**, integrable by any commercial or non-commercial project.
+- **Commercial products**:
+    - **Visia Studio**: a visual editor for designers and developers — scene building, style configuration, data-source management and one-click deployment. Subscription pricing.
+    - **Enterprise plugins and support**: out-of-the-box enterprise-grade GIS, digital-twin and simulation plugins, plus SLA-backed technical support.
 
-VisiaEngine 致力于建立一个友好、包容的全球开发者社区。我们欢迎任何形式的贡献，从代码、文档到应用案例分享。
+### 6.2 Roadmap
+
+- **Phase 1: MVP (current)**
+    - Core Rust libraries (`visiaengine-core`, `visiaengine-render`, `visiaengine-render-wgpu`)
+    - Basic glTF and GeoJSON loading
+    - Free switching between the 2D map and the 3D viewport, demonstrated
+    - Qt/Web embedding examples (Flutter/C# are Alpha-tier candidates)
+
+- **Phase 2: Alpha**
+    - Mature spatial indexing and coordinate systems
+    - 2.5D white-model buildings and the oblique view
+    - C API stabilization and multi-language binding generation
+
+- **Phase 3: Beta**
+    - Visia Studio preview released
+    - ODR/OSC parsing and visualization plugins
+    - Digital-twin data binding and live-update mechanisms
+
+- **Phase 4: 1.0 stable**
+    - The complete editor + runtime product released
+    - A plugin marketplace and developer community established
+    - Formal commercial licensing and support services launched
 
 ---
 
-## 8. 结语
+## 7. Team and Community
 
-VisiaEngine 是一个大胆的尝试——它试图填补一个长期被忽视的空白：**为一个"数据驱动"的世界，提供一个纯粹、强大、无处不在的可视化引擎**。
+*(This section fills in after the project launches: core contributors, organization background, contribution guide, code of conduct, etc.)*
 
-我们选择 Rust，是为了极致的性能与可靠；我们坚持 SDK 形态与编辑器并行，是为了赋予开发者最大的自由与效率。Visia 不仅仅是一个引擎，它是一个承诺：**让你的数据，被真正看见。**
+VisiaEngine is committed to building a friendly, inclusive global developer community. We welcome contributions of any kind, from code and documentation to sharing application cases.
 
 ---
 
-**联系方式**
-- 官方网站: *(待注册 visiaengine.dev)*
-- 仓库: gitee.com/chengxuewen/VisiaEngine（GitHub 组织待创建）
-- 邮箱: *(待定)*
+## 8. In Closing
 
-*© 2026 VisiaEngine 项目组。部分权利保留。*
+VisiaEngine is a bold attempt — it sets out to fill a long-neglected gap: **to give a "data-driven" world a pure, powerful, ubiquitous visualization engine**.
+
+We chose Rust for uncompromising performance and reliability; we insist on the SDK shape and the editor in parallel to grant developers the greatest freedom and efficiency. Visia is not merely an engine; it is a promise: **let your data be truly seen.**
+
+---
+
+**Contact**
+- Official website: *(visiaengine.dev pending registration)*
+- Repository: gitee.com/chengxuewen/VisiaEngine (GitHub organization pending creation)
+- Email: *(TBD)*
+
+*© 2026 The VisiaEngine project team. Some rights reserved.*

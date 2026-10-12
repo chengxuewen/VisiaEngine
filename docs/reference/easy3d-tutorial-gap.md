@@ -1,38 +1,38 @@
-# Easy3D tutorials 带缺口分析（对标存档）
+# Easy3D tutorials band-gap analysis (benchmark archive)
 
-> 生成：2026-09-15（cmake-example-targets 轮 S5 存档，C-3 裁决=是）。
-> 源：`.refinfo/Easy3D/tutorials/`（52 件，首位带号 1-7）只读解剖 + 本仓 E 系 11 件。
-> 用途：后续渲染/功能轮的立项依据。**引用只述机制，禁引 MediaServo/Easy3D 内部编号入新条款**。
+> Generated: 2026-09-15 (the cmake-example-targets round S5 archive, C-3 ruling = yes).
+> Source: read-only dissection of `.refinfo/Easy3D/tutorials/` (52 items, leading numbered bands 1-7) + the 11 E-series items of this repo.
+> Purpose: the case-formation basis for later render/feature rounds. **Citations describe mechanisms only; MediaServo/Easy3D internal numbering is forbidden in new clauses**.
 
-## 带映射现状
+## Band mapping, current state
 
-| Easy3D 带 | 件数 | 我方对应 | 缺口（立项候选择） |
+| Easy3D band | count | our counterpart | gap (case candidates) |
 |---|---|---|---|
-| 1xx 数据类型（cloud/mesh/graph/poly × base/connectivity/property/IO） | 15 | E201/E202/E203 **+ E701 属性读段（D13 落地）** | ~~AttrSet 属性查询例~~ ✅2026-09-15 capi 三口；**点云例=用户裁决跳过**（与 E202 重叠无专有源）；GeoJSON 写回 IO |
-| 2xx viewer/UI（默认/imgui/wx/Qt/多视口/相机插值/真相机） | 7 | E101/E301/E702/E703 | 多视口（一场景双视图）；相机插值漫游；HUD 叠加层 |
-| 3xx drawables（纹理/标量场/向量场/IMG viewer/剖面/动画/文本） | 12 | E201 texquad | **剖面裁切**（clip plane）；标量场着色；文本渲染（依赖字体面，长期） |
-| 4xx interaction（picker×2/点选/虚拟扫描/物体操控/碰撞） | 6 | E401/E203（+E402 空号预留） | hover/多选 UI（=E402 既定候补）；物体操控（gizmo→D7 rebase 面）；碰撞查询 |
-| 5xx rendering（AO/hard shadow/soft shadow/透明/EDL/depth map） | 6 | E501(PCSS) | 半透明排序（blend 序=管线议题）；EDL 点云光照；SSAO（=批 4g backlog） |
-| 6xx 算法-core（细分/凸分割/曲线） | 3 | E202 内嵌 tess | 细分独立演示；曲线带（缓冲车道线类） |
-| 7xx 算法-cloud（法向/重建/平面提取） | 3 | E203(平面量测) | 法向估计演示；平面提取演示 |
+| 1xx data types (cloud/mesh/graph/poly × base/connectivity/property/IO) | 15 | E201/E202/E203 **+ E701 property-read segment (D13 landed)** | ~~AttrSet property-query example~~ ✅ 2026-09-15 the three C entries; **point-cloud example = skipped by user ruling** (overlaps E202, no proprietary source); GeoJSON write-back IO |
+| 2xx viewer/UI (default/imgui/wx/Qt/multi-viewport/camera interpolation/real camera) | 7 | E101/E301/E702/E703 | multi-viewport (one scene, two views); camera-interpolation roaming; HUD overlay |
+| 3xx drawables (texture/scalar field/vector field/IMG viewer/section/animation/text) | 12 | E201 texquad | **cross-section clipping** (clip plane); scalar-field coloring; text rendering (depends on the font plane, long-term) |
+| 4xx interaction (picker×2/point select/virtual scan/object manipulation/collision) | 6 | E401/E203 (+E402 empty number reserved) | hover/multi-select UI (= the standing E402 candidate); object manipulation (gizmo -> the D7 rebase surface); collision query |
+| 5xx rendering (AO/hard shadow/soft shadow/transparency/EDL/depth map) | 6 | E501(PCSS) | semi-transparent sorting (blend order = a pipeline topic); EDL point-cloud lighting; SSAO (= batch 4g backlog) |
+| 6xx algorithms-core (subdivision/convex split/curves) | 3 | E202 embedded tess | standalone subdivision demo; curve band (buffered lane-line class) |
+| 7xx algorithms-cloud (normals/reconstruction/plane extraction) | 3 | E203 (plane measurement) | normal-estimation demo; plane-extraction demo |
 
-## Easy3D 结构采纳已落（本仓 cmake 面）
+## Easy3D structure adopted (this repo's cmake surface)
 
-中心函数（`visiaengine_setup_examples`）/ 名=文件=target=ctest（零映射表）/
-FOLDER 带分组 / 每例显式契约行 / 双层可选依赖门（Qt+X11）/ 注册即义务
-（glob⇄表双向校验=configure 硬错，反其注释式禁用）。
+Central function (`visiaengine_setup_examples`) / name=file=target=ctest (zero mapping tables) /
+FOLDER band grouping / an explicit contract line per example / a two-tier optional-dependency gate (Qt+X11) / registration is obligation
+(the bidirectional glob<->table check = a hard configure error, versus their comment-style disabling).
 
-## 已反超项（勿退坡）
+## Already overtaken (do not regress)
 
-- Easy3D 52 例 argv 零消费 → 结构上不可 CI 化；我方 `--frames N` 全族 +
-  ctest 同入口 + 无 X 机 77-Skip 合同。
-- 其 tutorials 零 add_test；我方 13 条 ctest 注册、ci 段常驻。
-- 其资源路径=编译期绝对宏+运行时向上爬树；我方仓根 chdir 合同（stub 单点）。
+- Easy3D's 52 examples consume argv zero -> structurally non-CI-able; our whole family supports `--frames N` +
+  the same ctest entry + a 77-Skip contract on machines without X.
+- Their tutorials carry zero add_test; we register 13 ctest entries, resident in the ci segment.
+- Their resource paths = compile-time absolute macros + runtime tree-walking; we hold the repo-root chdir contract (stub single point).
 
-## 立项建议序（并入 Alpha 队列视角）
+## Suggested case-formation order (merged into the Alpha queue view)
 
-1. 点云例 + AttrSet 属性例（数据面已齐=纯演示成本，填 1xx 带空洞）
-2. 剖面裁切（2.5D GIS 刚需；管线 depth/stencil 面已具备）
-3. E402 hover/多选（交互带收口，空号已留）
-4. 半透明排序 + SSAO（=4g backlog 合流）
-5. 多视口/相机插值（漫游演示向，批 7 站点素材可复用）
+1. point-cloud example + AttrSet property example (data planes complete = pure demonstration cost, filling the 1xx band holes)
+2. cross-section clipping (a 2.5D GIS hard need; the pipeline depth/stencil surface is in place)
+3. E402 hover/multi-select (closing the interaction band, the empty number is reserved)
+4. semi-transparent sorting + SSAO (merging with the 4g backlog)
+5. multi-viewport/camera interpolation (roaming-demo direction, batch 7 site material is reusable)

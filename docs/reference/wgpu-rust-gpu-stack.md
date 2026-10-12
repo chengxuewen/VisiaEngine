@@ -1,16 +1,16 @@
-# wgpu + Rust GPU 栈 — 生态体检
+# wgpu + the Rust GPU stack — ecosystem health check
 
-**快照 2026-09-03**（shields/crates.io 实测）：wgpu 18k★，v30.0.1（2026-08-22），33.6M dl，Apache-2.0，主分支活跃。vello 4.3k★（0.10.0，2026-08-14）。glow 0.18.0（2026-07-09，**39.1M dl——比 wgpu 还高**）。three-d 0.19.0。fyrox 1.0.1（2026-03-28）。crates.io 上 `angle` crate：0.5.0，**2022-03 停更 = 死**（ANGLE 绑定无现成维护件，集成须自建 bindgen）。
+**Snapshot 2026-09-03** (shields/crates.io measured): wgpu 18k★, v30.0.1 (2026-08-22), 33.6M dl, Apache-2.0, main branch active. vello 4.3k★ (0.10.0, 2026-08-14). glow 0.18.0 (2026-07-09, **39.1M dl — even higher than wgpu**). three-d 0.19.0. fyrox 1.0.1 (2026-03-28). The `angle` crate on crates.io: 0.5.0, **updates ceased 2022-03 = dead** (no maintained ready-made ANGLE binding; integration must self-build bindgen).
 
-## 画像
-- **wgpu**：Rust 原生 WebGPU API 实现 + WGSL(naga)，后端 Vulkan/Metal/DX12 一等、WebGL2 best-effort、wasm→浏览器 WebGPU。Firefox/Deno 的 WebGPU 即 wgpu（见 WebGPU 档）。治理：gfx-rs 组织，季度发布带破坏性变更（v29→v30 间隔 ~2 月）。
-- **linebender 系**：vello（GPU compute 2D 矢量，Vello Hybrid 为生产形态）+ lyon（GPU 路径细分事实标准）+ cosmic-text/parley/swash（文本）+ fontique/color。Raph Levien 主导。
-- **glow**：GL/GLES/WebGL 统一加载器——legacy 渲染路径（若走 GLES/ANGLE）的 Rust 标准入口。
+## Profile
+- **wgpu**: the Rust-native WebGPU API implementation + WGSL(naga), first-class Vulkan/Metal/DX12 backends, best-effort WebGL2, wasm -> browser WebGPU. The WebGPU of Firefox/Deno is wgpu (see the WebGPU file). Governance: the gfx-rs org, quarterly releases carrying breaking changes (v29->v30 gap ~2 months).
+- **the linebender family**: vello (GPU-compute 2D vector, Vello Hybrid is the production form) + lyon (the de-facto standard of GPU path tessellation) + cosmic-text/parley/swash (text) + fontique/color. Led by Raph Levien.
+- **glow**: the unified GL/GLES/WebGL loader — the standard Rust entry for the legacy rendering path (if taking GLES/ANGLE).
 
-## 对 VisiaEngine
-- **借鉴**：wgpu 的 API 面 = `visia-render` trait 设计的语义词汇表（texture binding/limits/adapter 选择逻辑直接映射）；WebGL2 兜底与 downlevel capability flag 的处理是 SDK 兼容矩阵教材；linebender 的 `color`（色彩管理）/`fontique`（字体发现）是"把基础设施做成独立小 crate"的模块化示范。
-- **规避**：① 把 vello 当现成 2D 引擎——6 年未 1.0，它是组件不是产品；② 季度破坏性节奏会打穿 SDK 稳定承诺 → **必须 pin 主版本 + 抽象层隔离 wgpu 类型出不了 visia-render**（这正是 trait 抽象存在的理由）；③ glow 39M dl 提醒：Rust 世界 GPU 负载仍大量在 GL 路径上，legacy tier 问题不是伪需求。
-- **现状判定**：wgpu 作为主栈无对手；Rust 2D 矢量渲染没有"地图级"成品（vello 无瓦片/样式概念）→ 自研 2D 样式层是必然工作量，与 `evidence/2026-09-03-wgpu-direct` §2 缺口清单一致。
+## For VisiaEngine
+- **Adopt**: wgpu's API surface = the semantic vocabulary of the `visia-render` trait design (texture binding/limits/adapter selection logic map directly); the WebGL2 backstop and the downlevel capability-flag handling are a textbook for the SDK compatibility matrix; linebender's `color` (color management) /`fontique` (font discovery) are the modularization demonstration of "infrastructure as independent small crates".
+- **Avoid**: ① treating vello as a ready-made 2D engine — 6 years without 1.0, it is a component, not a product; ② the quarterly breaking cadence would punch through an SDK stability promise -> **must pin the major version + keep the abstraction layer so wgpu types cannot escape visia-render** (exactly why the trait abstraction exists); ③ glow's 39M dl is the reminder: much of the Rust world's GPU load still runs on the GL path, the legacy-tier problem is not a pseudo-need.
+- **Current-state ruling**: wgpu is uncontested as the main stack; Rust 2D vector rendering has no "map-grade" finished product (vello has no tile/style concepts) -> an in-house 2D style layer is unavoidable work, consistent with the gap list in `evidence/2026-09-03-wgpu-direct` §2.
 
-## 来源
-img.shields.io + crates.io（2026-09-03）；`evidence/2026-09-03-wgpu-direct` §2/§4/§5。
+## Sources
+img.shields.io + crates.io (2026-09-03); `evidence/2026-09-03-wgpu-direct` §2/§4/§5.
