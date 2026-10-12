@@ -67,6 +67,24 @@ if ! grep -q "submodule update --init" <<<"$out"; then
     echo "CMAKE-SMOKE ✗ the PolyOrch-absent message lost its remediation pointer (the shim's fix guidance is gone)"; exit 1
 fi
 
+# Negative path 5: stale supplier floor -- an outer sentinel reporting 0.1.1 must FATAL on
+# the EXAMPLE-kind floor (T-D 2026-10-12: keyword capability is invisible to COMMAND probes,
+# so the floor rides the sentinel's INTERFACE_POLYORCH_VERSION)
+rm -rf "$B-neg5" "$B-neg5-host"
+mkdir -p "$B-neg5-host"
+cat > "$B-neg5-host/CMakeLists.txt" <<'NEGEOF'
+cmake_minimum_required(VERSION 3.25)
+project(neg5 LANGUAGES CXX)
+add_library(PolyOrch::PolyOrch INTERFACE IMPORTED GLOBAL)
+set_property(TARGET PolyOrch::PolyOrch PROPERTY INTERFACE_POLYORCH_CMAKE_DIR "/nonexistent")
+set_property(TARGET PolyOrch::PolyOrch PROPERTY INTERFACE_POLYORCH_VERSION "0.1.1")
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../.." V)
+NEGEOF
+out=$("$CM" -S "$B-neg5-host" -B "$B-neg5" -G Ninja 2>&1); rc5=$?
+rm -rf "$B-neg5" "$B-neg5-host"
+[ "$rc5" -ne 0 ] && grep -q "needs PolyOrch >= 0.2.0" <<<"$out" \
+    || { echo "CMAKE-SMOKE ✗ stale PolyOrch did not trip the version floor (rc=$rc5)"; exit 1; }
+
 # Negative path 4: master-switch contradiction (VISIAENGINE_USE_PIXI=OFF + VISIAENGINE_RUST_SDK=PIXI)
 # must FATAL with the contradiction message (T-B1 2026-10-10). Own build dir (negative-path-1
 # cache discipline); phrase grep survives cmake line wrapping.

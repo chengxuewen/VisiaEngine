@@ -59,6 +59,17 @@ endfunction()
 # AFTER this module's ensure call. FROM pixi REQUIRES polyorch_pixi_setup()
 # first (supplier FATALs otherwise) -- the ordering below is load-bearing.
 function(visiaengine_ensure_polyorch_rust)
+    # API floor (2026-10-12 T-D): the examples plane needs the D40 EXAMPLE kind
+    # (PolyOrch >= 0.2.0). Keyword-level capability is invisible to COMMAND probes,
+    # so the floor rides the sentinel's INTERFACE_POLYORCH_VERSION; a bare (pre-D39)
+    # sentinel fails the version read -- same loud discipline as the property fallback WARNING.
+    get_target_property(_ver PolyOrch::PolyOrch INTERFACE_POLYORCH_VERSION)
+    if(NOT _ver OR _ver VERSION_LESS "0.2.0")
+        message(FATAL_ERROR
+          "VisiaEngine needs PolyOrch >= 0.2.0 (the EXAMPLE artifact kind, D40) "
+          "but the winning sentinel reports '${_ver}' -- in reuse mode the outer copy is too old; "
+          "upgrade the supplier's checkout or unshadow this project's vendored PolyOrch.")
+    endif()
     if(TARGET PolyOrch::PolyOrch AND COMMAND polyorch_rust_setup)
         if(NOT POLYORCH_RUST_FOUND)
             if(VISIAENGINE_USE_PIXI)
