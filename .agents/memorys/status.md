@@ -695,7 +695,9 @@ promised ::qt but never landed it -- Momus round-1 BLOCKER, user-adjudicated
 BUILD; examples/qt re-linked off its raw include-dir anti-pattern). CMake
 handle names follow the home (visiaengine-ffi-*; the user-caught PIT-51 fix).
 Button grammar finalized (-build/-test/-clean plain verbs; the rusttest
-coinage retired). Machine gates: ctest 108/108, pixi run ci ALL GREEN,
+coinage retired; the wasm glue buttons merged into the deliverable-word
+aggregate visiaengine-wasm-js-build -- one button, all flavors, C22
+deliverable-word clause). Machine gates: ctest 108/108, pixi run ci ALL GREEN,
 gate-abi/gate-i18n green, negative audits both header lanes (hpp +
 visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.

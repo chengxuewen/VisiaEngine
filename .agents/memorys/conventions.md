@@ -163,10 +163,13 @@ content word (`-sources`); buttons use PLAIN verbs (`-build`/`-test`/
 `-clean` -- the rusttest coinage retired 2026-10-13: name-avoidance of a
 collision that does not exist is over-design; if a semantic clash ever
 materializes, fix the OTHER side's naming, not the button's word).
-Aggregates (`-all`/`-<verb>`) exist ONLY to
-collect a MULTI-button surface -- an aggregate over a single crate's verbs
-is a convenience bundle, not a collection (wasm-all deleted 2026-10-12:
-the rlibs aggregates stand on 9 buttons; one-crate lanes have no bundle).
+Aggregate/merged buttons carry the DELIVERABLE word, not the collection
+abstraction: `visiaengine-wasm-js-build` (2026-10-13) = one button for the
+lane's js deliverable (all glue flavors ride it; single-flavor needs
+degrade by passing one FLAVOR); `-all` retires from the lane and stays
+unique to the rlibs aggregate. An aggregate over a single crate's verbs
+with no deliverable word is a convenience bundle, not a collection
+(wasm-all deleted 2026-10-12; the rlibs aggregates stand on 9 buttons).
 Corpus: iceoryx2
 (iceoryx2-ffi crate <-> iceoryx2-c package) and zenoh (ffi crate <-> zenoh-c repo)
 both keep the two axes lexically distinct; bevy keeps crates flat.
