@@ -170,6 +170,18 @@ degrade by passing one FLAVOR); `-all` retires from the lane and stays
 unique to the rlibs aggregate. An aggregate over a single crate's verbs
 with no deliverable word is a convenience bundle, not a collection
 (wasm-all deleted 2026-10-12; the rlibs aggregates stand on 9 buttons).
+
+The EXAMPLE head word (T-H6, 2026-10-13): all four example lanes
+(rs/c/cpp/qt) share `visiaengine-example-<name>` for targets and
+`-run`/`-build` suffix verbs for buttons; source FILES keep bare E
+names (R10 amended: the family word lives on the target, not the file);
+ctest stays `example_<name>` (one spelling, two namespaces). Mechanism
+prefixes (cargo-, rs-, run_) never return to button names.
+
+```bash
+# no mechanism-prefix buttons anywhere (cargo-run_, rs-E, run_E):
+cmake --build cmake-build --target help 2>/dev/null | grep -E "cargo-run_|rs-E[0-9]|^run_E" && echo FAIL || echo PASS
+```
 Corpus: iceoryx2
 (iceoryx2-ffi crate <-> iceoryx2-c package) and zenoh (ffi crate <-> zenoh-c repo)
 both keep the two axes lexically distinct; bevy keeps crates flat.

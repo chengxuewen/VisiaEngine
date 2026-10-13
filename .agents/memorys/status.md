@@ -697,7 +697,14 @@ handle names follow the home (visiaengine-ffi-*; the user-caught PIT-51 fix).
 Button grammar finalized (-build/-test/-clean plain verbs; the rusttest
 coinage retired; the wasm glue buttons merged into the deliverable-word
 aggregate visiaengine-wasm-js-build -- one button, all flavors, C22
-deliverable-word clause). Machine gates: ctest 108/108, pixi run ci ALL GREEN,
+deliverable-word clause). T-H5/T-H6 (2026-10-13): the four example
+lanes share ONE head word -- visiaengine-example-<name>{,-run,-build}
+across rs+c+cpp+qt (source files keep bare E names, R10 amended); wasm
+gains the serve button (visiaengine-wasm-serve: assemble web-demo +
+python http.server :8017, wasm MIME pinned, stale-glue replay edge);
+PolyOrch gains polyorch_example_run + polyorch_rust_wasm_serve; the
+cargo-run_/rs-/run_ prefixes are retired repo-wide; .vscode regen on
+rename (delete + reconfigure). Machine gates: ctest 108/108, pixi run ci ALL GREEN,
 gate-abi/gate-i18n green, negative audits both header lanes (hpp +
 visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.
