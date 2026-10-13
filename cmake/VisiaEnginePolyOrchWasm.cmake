@@ -121,12 +121,4 @@ function(visiaengine_polyorch_wasm)
       CRATE visiaengine-wasm
       FOLDER "${_fold}")
 
-  # face aggregate (hidden, no FOLDER): build + glue + test in one button
-  add_custom_target(visiaengine-wasm-all
-      COMMENT "wasm lane: build + js glue + host tests"
-      VERBATIM)
-  add_dependencies(visiaengine-wasm-all
-      visiaengine-wasm-shared-build
-      visiaengine-wasm-shared-wasm-bindgen.web
-      visiaengine-wasm-rusttest)
 endfunction()
