@@ -11,7 +11,7 @@ repaired and this is the artefact they point at.
 bash scripts/spec-trace.sh | tail -1                                   # clause count, two-way trace
 grep -oE '^## (CORE|REND|WGPU|GLTF|GEO|IO|CAPI|WEB)-[0-9]+' docs/sdd/*.md |
   sed 's/.*## //' | cut -d- -f1 | sort | uniq -c                       # per-family breakdown
-grep -oE 'visiaengine_[a-z0-9_]+\(' bindings/c/visiaengine-capi/include/visiaengine.h |
+grep -oE 'visiaengine_[a-z0-9_]+\(' crates/visiaengine-ffi/include/visiaengine.h |
   sort -u | wc -l                                                      # C ABI entries
 ls examples/*/[E]*.* | wc -l                                           # example files
 ctest --test-dir target/cmake-smoke -N | tail -1                       # ctest registry
@@ -25,7 +25,7 @@ cargo metadata --no-deps --format-version 1 |
 
 | Axis | Value |
 |---|---|
-| Workspace | 12 packages: 9 crates under `crates/` + `visiaengine-capi` + `visiaengine-wasm` + `examples` shell |
+| Workspace | 12 packages: 10 crates under `crates/` (incl. ffi) + `visiaengine-wasm` + `examples` shell |
 | Behaviour contracts | **199** clauses, two-way traceable to tests: REND 47 · WGPU 34 · GEO 27 · CORE 21 · CAPI 41 · IO 18 · GLTF 11 |
 | C ABI surface | **49** entries, abi `(1<<16)\|16`, mirrored across header / hpp / wasm / d.ts |
 | Examples | **44** files in 9 bands (E1xx 1 · E2xx 6 · E3xx 6 · E4xx 3 · E5xx 11 · E6xx 1 · E7xx 4 · E8xx 11 · E9xx 1; re-counted 2026-10-09), each with a ctest consumer path and a gallery card |

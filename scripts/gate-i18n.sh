@@ -22,7 +22,7 @@ EXTS = {'.md','.rst','.txt','.cmake','.rs','.c','.cpp','.h','.hpp','.toml','.jso
 ALLOW = {  # path:lineno-allowances justified in the gate header
  'crates/visiaengine-io-text/tests/io_spec.rs',
  'crates/visiaengine-io-gltf/src/lib.rs',
- 'bindings/c/visiaengine-capi/src/engine.rs',
+ 'crates/visiaengine-ffi/src/engine.rs',
  'examples/c/E701_demo_headless.c',
  'examples/c/E814_labels_headless.c',
  'examples/rs/E505_cjk_labels.rs',

@@ -1,4 +1,4 @@
-# visiaengine-capi behavioral contract (CAPI-NN)
+# visiaengine-ffi behavioral contract (CAPI-NN)
 
 C ABI plane clauses. **The canonical bit layouts and encoding rules live in this document (the C header is not exposed [FFI-R:CS-R1])**.
 

@@ -40,7 +40,7 @@ function(visiaengine_install_tree)
   # Public headers: C face at include/ top level, C++ face in include/visiaengine/,
   # Qt widget header beside the C one (it includes "visiaengine.h" by bare name).
   install(FILES
-      "${PROJECT_SOURCE_DIR}/bindings/c/visiaengine-capi/include/visiaengine.h"
+      "${PROJECT_SOURCE_DIR}/bindings/c/include/visiaengine.h"
       "${PROJECT_SOURCE_DIR}/bindings/qt/visiaengine_widget.hpp"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
   install(FILES

@@ -1,6 +1,6 @@
 /* E704 -- binding mirror, C event callback -- the CAPI-17 push-entry acceptance example: progress/error/unregister tri-states all ride through.
  *  Build and run: ctest example_E704_host_callback (the gate/cmake-smoke road); manual run:
- *   cc -I bindings/c/visiaengine-capi/include examples/c/E704_host_callback.c \
+ *   cc -I bindings/c/include examples/c/E704_host_callback.c \
  *      -L target/debug -lvisiaengine -o target/e704 && LD_LIBRARY_PATH=target/debug ./target/e704 */
 #include <stdint.h>
 #include <stdio.h>

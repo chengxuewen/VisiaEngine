@@ -365,7 +365,7 @@ fn mesh_desc(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32]) -> VeMeshDesc {
 fn load_twoprim(ve: u64) {
     let path = std::ffi::CString::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../resources/data/twoprim.glb"
+        "/../../resources/data/twoprim.glb"
     ))
     .unwrap();
     assert_eq!(visiaengine_load_gltf(ve, path.as_ptr()), VE_OK);
@@ -607,7 +607,7 @@ fn load_pcl_mount_meta_and_gates() {
     let ve = visiaengine_create_headless(160, 120);
     let path = std::ffi::CString::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../resources/data/pcl_tetra_ascii.ply"
+        "/../../resources/data/pcl_tetra_ascii.ply"
     ))
     .unwrap();
     let mut ent: u64 = u64::MAX;
@@ -764,7 +764,7 @@ fn set_get_clips_full_domain_roundtrip_truncation() {
 
 const DEJAVU: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../../resources/data/DejaVuSans.ttf"
+    "/../../resources/data/DejaVuSans.ttf"
 ));
 
 // spec: CAPI-21

@@ -9,7 +9,7 @@ use visiaengine::{
 fn geo_path() -> CString {
     CString::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../resources/data/park.geojson"
+        "/../../resources/data/park.geojson"
     ))
     .unwrap()
 }

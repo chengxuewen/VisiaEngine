@@ -20,7 +20,7 @@ Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding
 └───────────────┬─────────────────────────────────────────────┘
                 │  C ABI (the only stable boundary, versioned handshake)
 ┌───────────────▼─────────────────────────────────────────────┐
-│  Binding-gen layer   visiaengine-capi(headers) → bindgen/csbindgen/pub │
+│  Binding-gen layer   visiaengine-ffi(headers) → bindgen/csbindgen/pub │
 ├─────────────────────────────────────────────────────────────┤
 │  Engine core layer   visiaengine-core ── visiaengine-geo ── visiaengine-style │
 │  (pure Rust)         scene graph/coords  MVT/projection sched  layers/styles/expr │
@@ -37,7 +37,7 @@ Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding
 ## ② Crate dependency directions
 
 ```
-                 visiaengine-capi ─(cdylib/staticlib + hand-written, human-reviewed header, 14 entries
+                 visiaengine-ffi ─(cdylib/staticlib + hand-written, human-reviewed header, 14 entries
                      │              gate-abi nm symbol count + gate-docs signature-name-set double lock)
                      │
    ┌───────┬────────┼─────────┬──────────┬──────────┐
@@ -134,7 +134,7 @@ Open question: spec-compatibility with the MapLibre v8 subset (migration cost tr
 ## ⑨ Build/delivery matrix
 
 ```
-cargo ──▶ visiaengine-capi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h (hand-written, human-reviewed, I0)
+cargo ──▶ visiaengine-ffi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h (hand-written, human-reviewed, I0)
       ──▶ wasm: the visiaengine-wasm standalone crate (CAPI-09 dual-face mirror) has landed; npm packaging = Alpha
 packaging: vcpkg/NuGet/pub mirrors; size budget core .so ≤6MB, total marked ≤10MB — the re-measurement check has been written off (2026-09-24): native cdylib stripped to 7.25 MB, target met (docs/reference/evidence/2026-09-24-native-size.md)
 CI matrix: the full suite runs on T1; T2 spot-checked on LLVMPipe/Mesa software rendering + the Android emulator; WebGL2 in browsers

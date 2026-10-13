@@ -29,8 +29,8 @@ sn=$(bash scripts/spec-trace.sh 2>/dev/null | grep -oE '[0-9]+ pairs aligned' | 
 [ "${rn:-x}" = "${sn:-y}" ] || { echo "GATE-DOCS ✗ ②README '${rn:-missing}' ≠ spec-trace '${sn:-missing}'"; fail=1; }
 
 # ③ header signature name set
-hs=$(grep -oE 'visiaengine_[a-z0-9_]+\(' bindings/c/visiaengine-capi/include/visiaengine.h | sed 's/(//' | sort -u)
-rs=$(grep -rhoE 'fn visiaengine_[a-z0-9_]+' bindings/c/visiaengine-capi/src/ | sed 's/^fn //' | sort -u)
+hs=$(grep -oE 'visiaengine_[a-z0-9_]+\(' bindings/c/include/visiaengine.h | sed 's/(//' | sort -u)
+rs=$(grep -rhoE 'fn visiaengine_[a-z0-9_]+' crates/visiaengine-ffi/src/ | sed 's/^fn //' | sort -u)
 [ "$hs" = "$rs" ] || { echo "GATE-DOCS ✗ ③.h prototype set ≠ Rust extern set:"; diff <(echo "$hs") <(echo "$rs"); fail=1; }
 
 # ④ relative links — extended this band from .md-only to every markdown link

@@ -8,13 +8,13 @@ NM=$(command -v nm || true); [ -n "$NM" ] || NM=.pixi/envs/host-spike/bin/x86_64
 CC=$(command -v cc || true);   [ -n "$CC" ] || CC=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-cc
 RE=$(command -v readelf || true); [ -n "$RE" ] || RE=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-readelf
   echo "GATE-ABI SKIP (no nm/readelf/cc -- gate-abi family discipline: a bare clone never goes red spuriously)"
-cargo build -p visiaengine-capi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; exit 1; }
+cargo build -p visiaengine-ffi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; exit 1; }
 SO=target/debug/libvisiaengine.so
 [ -f "$SO" ] || { echo "GATE-ABI ✗ missing $SO ([lib] name check)"; exit 1; }
 # P1 (packaging-round v1.3): the cdylib must carry its own SONAME. Without one the consumer records
 # whatever string sat on the link command line -- both forms measured locally: absolute path -> DT_NEEDED=/abs/....so; with a SONAME -> the bare name.
 # want is derived live from the Cargo [lib] name: SONAME and artifact name share one source, so a future library rename that misses this line goes red here.
-libname=$(grep -A2 '^\[lib\]' bindings/c/visiaengine-capi/Cargo.toml | sed -n 's/^name = "\([a-z_]*\)".*/\1/p' | head -1)
+libname=$(grep -A2 '^\[lib\]' crates/visiaengine-ffi/Cargo.toml | sed -n 's/^name = "\([a-z_]*\)".*/\1/p' | head -1)
 want="lib${libname}.so"
 have=$("$RE" -d "$SO" | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')
 [ -n "$want" ] || { echo "GATE-ABI ✗ failed to read the [lib] name (empty want = naming contract broken)"; exit 1; }
@@ -42,7 +42,7 @@ MISSING=$(
     grep -qE "^[[:space:]]*[^/]*\b${pat}\(" "$HPP" || echo "visiaengine_${m}";
   done)
   [ -z "$MISSING" ] || { echo "GATE-ABI ✗ hpp missing forwarding methods: $MISSING"; exit 1; }
-"$CC" -I bindings/c/visiaengine-capi/include examples/c/E701_demo_headless.c \
+"$CC" -I bindings/c/include examples/c/E701_demo_headless.c \
 -L target/debug -lvisiaengine -o target/demo_headless || { echo "GATE-ABI ✗ demo compile"; exit 1; }
 LD_LIBRARY_PATH=$PWD/target/debug ./target/demo_headless resources/data/twoprim.glb \
 || { echo "GATE-ABI ✗ demo run"; exit 1; }

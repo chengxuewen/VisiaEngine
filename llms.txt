@@ -21,7 +21,7 @@
 - [`visiaengine-io-tiles`](https://docs.rs/visiaengine-io-tiles): MVT vector tiles: hand-written protobuf decode, slippy scheduler (FileSource/HttpSource), pump budget
 - [`visiaengine-io-hdr`](https://docs.rs/visiaengine-io-hdr): .hdr (RGBE) equirect decode for HDRI environment/background
 - [`visiaengine-geo`](https://docs.rs/visiaengine-geo): GeoJSON -> Web Mercator -> tessellation -> style-expansion pipeline (GEO family)
-- [`visiaengine-capi`](https://docs.rs/visiaengine-capi): C ABI surface (44 entries, visiaengine.h): handle fences, input, tiles, scene tree, labels, clip, minimap, events — three-face mirror (header/hpp/wasm)
+- [`visiaengine-ffi`](https://docs.rs/visiaengine-ffi): C ABI surface (44 entries, visiaengine.h): handle fences, input, tiles, scene tree, labels, clip, minimap, events — three-face mirror (header/hpp/wasm)
 
 ## Examples
 

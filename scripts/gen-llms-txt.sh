@@ -16,7 +16,7 @@ CRATES=(
   "visiaengine-io-tiles|MVT vector tiles: hand-written protobuf decode, slippy scheduler (FileSource/HttpSource), pump budget"
   "visiaengine-io-hdr|.hdr (RGBE) equirect decode for HDRI environment/background"
   "visiaengine-geo|GeoJSON -> Web Mercator -> tessellation -> style-expansion pipeline (GEO family)"
-  "visiaengine-capi|C ABI surface (44 entries, visiaengine.h): handle fences, input, tiles, scene tree, labels, clip, minimap, events — three-face mirror (header/hpp/wasm)"
+  "visiaengine-ffi|C ABI surface (44 entries, visiaengine.h): handle fences, input, tiles, scene tree, labels, clip, minimap, events — three-face mirror (header/hpp/wasm)"
 )
 {
   echo "# VisiaEngine"

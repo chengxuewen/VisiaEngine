@@ -2,7 +2,7 @@
 # design = .omo/plans/visiaengine-cmake-project.md v1.0)
 
 function(visiaengine_setup_cargo)
-  set(_src ${CMAKE_SOURCE_DIR}/bindings/c/visiaengine-capi)
+  set(_src ${CMAKE_SOURCE_DIR}/crates/visiaengine-ffi)
   if(VISIAENGINE_ARTIFACT_PATH)
     set(_dir "${VISIAENGINE_ARTIFACT_PATH}")
     set(_flags "")
@@ -49,9 +49,9 @@ function(visiaengine_setup_cargo)
         "prebuilt lane -DVISIAENGINE_ARTIFACT_PATH=...")
     endif()
     polyorch_rust_build(TARGET visiaengine-capi
-        PACKAGE visiaengine-capi CRATE visiaengine
+        PACKAGE visiaengine-ffi CRATE visiaengine
         MANIFEST "${_src}/Cargo.toml"
-        FOLDER "bindings/c/visiaengine-capi")
+        FOLDER "crates/visiaengine-ffi")
     # ALL semantics kept: the default build must produce the artifacts (install-tree
     # leg, umbrella link, IDE "build all"). Wrapper carries no FOLDER (root position rule).
     add_custom_target(visiaengine-cargo ALL)
@@ -61,10 +61,10 @@ function(visiaengine_setup_cargo)
     # under the crate's FOLDER; default BASE_DIR = the same .cargo-target the
     # T-C handles use -- one cache dir serves the whole capi lane).
     polyorch_rust_test(
-        PACKAGE visiaengine-capi
+        PACKAGE visiaengine-ffi
         NAME    visiaengine-capi-rusttest
         MANIFEST "${_src}/Cargo.toml"
-        FOLDER  "bindings/c/visiaengine-capi")
+        FOLDER  "crates/visiaengine-ffi")
   endif()
 
   # Install-tree consumer point (VisiaEngineInstall.cmake): the artifact path and
@@ -84,7 +84,7 @@ function(visiaengine_setup_cargo)
   add_library(visiaengine_capi_umbrella INTERFACE)
   add_library(visiaengine::capi ALIAS visiaengine_capi_umbrella)
   target_include_directories(visiaengine_capi_umbrella INTERFACE
-    "$<BUILD_INTERFACE:${_src}/include>")
+    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/bindings/c/include>")
   target_link_libraries(visiaengine_capi_umbrella INTERFACE "${VISIAENGINE_ARTIFACT}")
   if(UNIX AND NOT APPLE) # in-tree consumers skip LD_LIBRARY_PATH (do not copy the predecessor's manual-env debt)
     get_filename_component(_adir "${VISIAENGINE_ARTIFACT}" DIRECTORY)

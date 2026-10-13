@@ -29,7 +29,7 @@ const newestMtime = (dir) => {
 };
 {
   const built = statSync(pkg + 'visiaengine_wasm.d.ts').mtimeMs;
-  for (const d of ['bindings/wasm/visiaengine-wasm/src', 'bindings/c/visiaengine-capi/src']) {
+  for (const d of ['bindings/wasm/visiaengine-wasm/src', 'crates/visiaengine-ffi/src']) {
     const src = newestMtime(root + d);
     assert.ok(src <= built,
       `stale artifact: the sources of ${d} are newer than pkg-node/visiaengine_wasm.d.ts -- run pixi run web-check, then this check`);

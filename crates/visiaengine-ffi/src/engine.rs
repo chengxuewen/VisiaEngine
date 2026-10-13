@@ -2503,7 +2503,7 @@ mod mut_spec_tests {
 
     const TWOPRIM: &str = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../resources/data/twoprim.glb"
+        "/../../resources/data/twoprim.glb"
     );
 
     fn eng() -> Engine {
@@ -2595,7 +2595,7 @@ mod mut_spec_tests {
 
     const DEJAVU: &[u8] = include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../resources/data/DejaVuSans.ttf"
+        "/../../resources/data/DejaVuSans.ttf"
     ));
 
     // spec: GEO-25

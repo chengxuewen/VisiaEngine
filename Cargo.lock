@@ -2292,7 +2292,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "visiaengine-capi"
+name = "visiaengine-core"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "visiaengine-ffi"
 version = "0.1.0"
 dependencies = [
  "js-sys",
@@ -2308,13 +2315,6 @@ dependencies = [
  "visiaengine-render-wgpu",
  "web-sys",
  "wgpu",
-]
-
-[[package]]
-name = "visiaengine-core"
-version = "0.1.0"
-dependencies = [
- "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -2409,8 +2409,8 @@ name = "visiaengine-wasm"
 version = "0.1.0"
 dependencies = [
  "js-sys",
- "visiaengine-capi",
  "visiaengine-core",
+ "visiaengine-ffi",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

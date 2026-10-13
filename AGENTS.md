@@ -13,7 +13,7 @@ VisiaEngine — a multi-dimensional spatial visualization engine: a unified 2D/2
 ├── Cargo.toml/lock   # workspace (members=crates/*+examples/rs+the two FFI crates in bindings, per S1/S2); deny.toml licenses/bans
 ├── crates/           # 7 pure-core crates: core→render (trait+IR/camera/rebase)→render-wgpu (wgpu backend/pipeline/offscreen) + io-gltf + io-points (PLY point cloud, IO-* family) + io-text (fontdue raster annotation, IO-07..09) + geo (GeoJSON→3857→tessellation→style/GPU expansion-slice output GEO-24)
 ├── examples/         # examples by language: rs=cargo example tutorial series ×12 ([[example]]-registered shell package); c=C examples (E701/702; E8xx+template from S4 on); cpp/qt open with S4; single run surface = ctest/pixi smoke
-├── bindings/         # implementation surface in one nest: c/visiaengine-capi (C ABI 41 entry points + handwritten header + CAPI clause tests) · c/probe · cpp/include (S4 hpp) · qt/widget.hpp · js/rust/visiaengine-wasm (CAPI-09 mirror) + js/demo
+├── bindings/         # implementation surface in one nest: c/include (handwritten header; the ffi crate lives in crates/) · c/probe · cpp/include (S4 hpp) · qt/widget.hpp · wasm/visiaengine-wasm (CAPI-09 mirror) + wasm/demo
 ├── docs/sdd/         # behavioral contract clauses (CORE/REND/WGPU-NN, bidirectionally traced to tests via // spec: — scripts/spec-trace.sh)
 ├── docs/tutorials.md # E-numbered tutorial index (filename = header comment = index three-way lock = scripts/gate-docs.sh)
 ├── .github/workflows # ci.yml on standby (activates on GitHub mirror day; local equivalent = pixi run ci + same greps)

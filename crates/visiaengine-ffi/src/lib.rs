@@ -1,4 +1,4 @@
-//! # visiaengine-capi
+//! # visiaengine-ffi
 //!
 //! C ABI face (batch 2): handle table / thread affinity / panic fence / single input entry.
 //! Behavior contract: `docs/sdd/capi.md` (CAPI-01..). Artifact name `libvisiaengine` (D6).
