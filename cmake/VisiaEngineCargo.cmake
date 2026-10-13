@@ -57,12 +57,12 @@ function(visiaengine_setup_cargo)
     add_custom_target(visiaengine-cargo ALL)
     add_dependencies(visiaengine-cargo visiaengine-ffi-shared-build visiaengine-ffi-static-build)
     set(VISIAENGINE_CARGO_STEP "visiaengine-cargo" PARENT_SCOPE)
-    # T-G1: the capi spec suite gets its button (crates-face precedent: rusttest
+    # T-G1: the capi spec suite gets its button (crates-face precedent: -test
     # under the crate's FOLDER; default BASE_DIR = the same .cargo-target the
     # T-C handles use -- one cache dir serves the whole capi lane).
     polyorch_rust_test(
         PACKAGE visiaengine-ffi
-        NAME    visiaengine-ffi-rusttest
+        NAME    visiaengine-ffi-test
         MANIFEST "${_src}/Cargo.toml"
         FOLDER  "crates/visiaengine-ffi")
   endif()

@@ -319,12 +319,12 @@ gates without re-running each gate verbatim; leaving a gate file carrying its ow
 crate NAME is not enough -- fixture/asset paths built from
 `env!("CARGO_MANIFEST_DIR")` + `../` chains break by DEPTH, a class invisible to
 name greps. After any crate move: grep `'CARGO_MANIFEST_DIR'` in the moved crate,
-recompute each `../` chain from the new home, then run the crate's rusttest
+recompute each `../` chain from the new home, then run the crate's test button
 button (the compile error surfaces only there).
 
 **Verification**: `grep -rn 'CARGO_MANIFEST_DIR' crates/<moved>/` -- every
 adjacent `../` count must equal the new depth; `cmake --build <tree> --target
-<crate>-rusttest` green.
+<crate>-test` green.
 
 **Blocking condition**: committing a crate move without the moved crate's
-rusttest leg executed.
+test-button leg executed.

@@ -86,7 +86,7 @@ function(visiaengine_polyorch_crates)
     # tests (polyorch verb; drives lib+deps compilation in the shared cache)
     polyorch_rust_test(
         PACKAGE ${_c}
-        NAME    ${_c}-rusttest
+        NAME    ${_c}-test
         MANIFEST "${CMAKE_SOURCE_DIR}/crates/${_c}/Cargo.toml"
         BASE_DIR "${_rlib_dir}"
         FOLDER "crates/${_c}")
@@ -104,7 +104,7 @@ function(visiaengine_polyorch_crates)
         MANIFEST "${CMAKE_SOURCE_DIR}/crates/${_c}/Cargo.toml"
         CRATE ${_c})
     list(APPEND _all_builds ${_c}-build)
-    list(APPEND _all_tests  ${_c}-rusttest)
+    list(APPEND _all_tests  ${_c}-test)
   endforeach()
 
   # face-level aggregates (the "all" entries of the three surfaces; hidden
@@ -115,8 +115,8 @@ function(visiaengine_polyorch_crates)
       COMMENT "building all 9 workspace rlibs (dependency-ordered)"
       VERBATIM)
   add_dependencies(visiaengine-rlibs-build ${_all_builds})
-  add_custom_target(visiaengine-rlibs-rusttest
+  add_custom_target(visiaengine-rlibs-test
       COMMENT "running every workspace rlib's spec suite"
       VERBATIM)
-  add_dependencies(visiaengine-rlibs-rusttest ${_all_tests})
+  add_dependencies(visiaengine-rlibs-test ${_all_tests})
 endfunction()

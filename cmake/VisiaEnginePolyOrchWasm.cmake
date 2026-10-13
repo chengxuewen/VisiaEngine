@@ -69,7 +69,7 @@ function(visiaengine_polyorch_wasm)
   # mirror leg stays ignored -- it is the ci chain's job, where glue exists)
   polyorch_rust_test(
       PACKAGE visiaengine-wasm
-      NAME    visiaengine-wasm-rusttest
+      NAME    visiaengine-wasm-test
       MANIFEST "${_manifest}"
       BASE_DIR "${_wasm_cache}"
       FOLDER "${_fold}")
