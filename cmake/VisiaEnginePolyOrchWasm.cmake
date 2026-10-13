@@ -113,6 +113,19 @@ function(visiaengine_polyorch_wasm)
       WASM_OPT AUTO
       FOLDER "${_fold}")
 
+  # the demo/serve button: assemble web-demo/ (page + park data + the
+  # web flavor as pkg/) and serve :8017 -- the scripts/web-serve.sh lane
+  # retired to this graph-internal form (T-H5.4): stale glue cannot be
+  # served, the DEPENDS edge replays it first.
+  polyorch_rust_wasm_serve(TARGET visiaengine-wasm
+      NAME_PREFIX visiaengine-wasm
+      DIRECTORY "${CMAKE_BINARY_DIR}/web-demo"
+      SOURCES  "${CMAKE_SOURCE_DIR}/examples/wasm/index.html"
+      DATA     "${CMAKE_SOURCE_DIR}/resources/data/park.geojson"
+      FLAVOR   web
+      PORT     8017
+      FOLDER   "${_fold}")
+
   # IDE sources: the WP6 sub-handle is an IMPORTED target (no SOURCES
   # property -- measured), so the mount rides the MEDIATOR (the crates
   # face mounts its custom build nodes; the mediator carries the build
