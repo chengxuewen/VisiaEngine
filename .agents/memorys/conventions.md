@@ -159,7 +159,11 @@ were both the implementation axis living under the consumer axis -- both gone).
 Target names likewise: rust crates carry rust-ecosystem suffixes (`-ffi`,
 `-wasm`), CMake real names carry the consumer word (`visiaengine-c/-cpp/-qt`),
 aliases carry the stable contract (`::c/::cpp/::qt`), IDE viewers carry the
-content word (`-sources`), aggregates carry `-all`/`-<verb>`. Corpus: iceoryx2
+content word (`-sources`). Aggregates (`-all`/`-<verb>`) exist ONLY to
+collect a MULTI-button surface -- an aggregate over a single crate's verbs
+is a convenience bundle, not a collection (wasm-all deleted 2026-10-12:
+the rlibs aggregates stand on 9 buttons; one-crate lanes have no bundle).
+Corpus: iceoryx2
 (iceoryx2-ffi crate <-> iceoryx2-c package) and zenoh (ffi crate <-> zenoh-c repo)
 both keep the two axes lexically distinct; bevy keeps crates flat.
 
@@ -168,4 +172,7 @@ both keep the two axes lexically distinct; bevy keeps crates flat.
 test -z "$(find bindings -maxdepth 2 -type d \( -name rust -o -name '*-capi' -o -name '*-wasm' \) 2>/dev/null)" && echo PASS || echo FAIL
 # crates/ is exactly the rust set (no consumer-face dirs)
 ls crates/ | grep -vE '^(visiaengine-[a-z0-9-]+|\.gitignore)$' | grep -qE 'probe|demo|include' && echo FAIL || echo PASS
+# an aggregate target may only exist where its family has >1 sibling buttons
+# (wasm-all precedent: bundling one crate's verbs is not aggregation)
+grep -rn "add_custom_target(visiaengine-wasm-all" cmake/ && echo FAIL || echo PASS
 ```
