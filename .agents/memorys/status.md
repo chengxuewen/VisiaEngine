@@ -694,6 +694,8 @@ the C header at bindings/c/include/. qt link face repaired (the T-H commit
 promised ::qt but never landed it -- Momus round-1 BLOCKER, user-adjudicated
 BUILD; examples/qt re-linked off its raw include-dir anti-pattern). CMake
 handle names follow the home (visiaengine-ffi-*; the user-caught PIT-51 fix).
-Machine gates: ctest 108/108, pixi run ci ALL GREEN, gate-abi/gate-i18n green,
-negative audits both header lanes (hpp + visiaengine.h delete->FATAL->restore).
+Button grammar finalized (-build/-test/-clean plain verbs; the rusttest
+coinage retired). Machine gates: ctest 108/108, pixi run ci ALL GREEN,
+gate-abi/gate-i18n green, negative audits both header lanes (hpp +
+visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.

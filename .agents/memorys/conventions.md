@@ -159,7 +159,11 @@ were both the implementation axis living under the consumer axis -- both gone).
 Target names likewise: rust crates carry rust-ecosystem suffixes (`-ffi`,
 `-wasm`), CMake real names carry the consumer word (`visiaengine-c/-cpp/-qt`),
 aliases carry the stable contract (`::c/::cpp/::qt`), IDE viewers carry the
-content word (`-sources`). Aggregates (`-all`/`-<verb>`) exist ONLY to
+content word (`-sources`); buttons use PLAIN verbs (`-build`/`-test`/
+`-clean` -- the rusttest coinage retired 2026-10-13: name-avoidance of a
+collision that does not exist is over-design; if a semantic clash ever
+materializes, fix the OTHER side's naming, not the button's word).
+Aggregates (`-all`/`-<verb>`) exist ONLY to
 collect a MULTI-button surface -- an aggregate over a single crate's verbs
 is a convenience bundle, not a collection (wasm-all deleted 2026-10-12:
 the rlibs aggregates stand on 9 buttons; one-crate lanes have no bundle).
