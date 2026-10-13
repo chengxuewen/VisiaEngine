@@ -169,7 +169,11 @@ both keep the two axes lexically distinct; bevy keeps crates flat.
 
 ```bash
 # no implementation-language layer under the consumer tree; no rust crates under bindings/
-test -z "$(find bindings -maxdepth 2 -type d \( -name rust -o -name '*-capi' -o -name '*-wasm' \) 2>/dev/null)" && echo PASS || echo FAIL
+# the banned shapes: an implementation-language LAYER (rust/) or the old
+# crate homes (visiaengine-capi dir, bindings/js) -- NOT a crate whose home
+# is legitimately bindings/wasm/visiaengine-wasm (that IS the wasm lane)
+test -z "$(find bindings -maxdepth 2 -type d \( -name rust -o -name visiaengine-capi \) 2>/dev/null)" \
+  && test ! -d bindings/js && echo PASS || echo FAIL
 # crates/ is exactly the rust set (no consumer-face dirs)
 ls crates/ | grep -vE '^(visiaengine-[a-z0-9-]+|\.gitignore)$' | grep -qE 'probe|demo|include' && echo FAIL || echo PASS
 # an aggregate target may only exist where its family has >1 sibling buttons
