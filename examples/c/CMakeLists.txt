@@ -17,7 +17,7 @@ visiaengine_add_example(E704_host_callback)  # events band: the CAPI-17 push ent
 visiaengine_add_example(E816_minimap_nav)  # minimap band: byte-exact canary / corner regions / minimap pick / navigate-to-station / out-of-range rejection (the CAPI-25..27 live gates)
 visiaengine_add_example(E817_two_layer_map)  # two-layer band: empty frame / single family / both orders framed / re-mount byte-exact (the CAPI-28/29/39/40 band-T revised-clause live gates)
 if(SDL3_FOUND)
-  visiaengine_add_example(E801_sdl_window DISPLAY SDL3 ARGS "--frames;3")  # dual-mode: no-arg interactive window (the run_E801 route) / --frames headless quick exit (the ctest route)
+  visiaengine_add_example(E801_sdl_window DISPLAY SDL3 ARGS "--frames;3")  # dual-mode: no-arg interactive window (the visiaengine-example-E801_sdl_window-run route) / --frames headless quick exit (the ctest route)
 else()
   set_property(GLOBAL APPEND PROPERTY VE_REGISTERED_EXAMPLES E801_sdl_window)
   message(STATUS "examples/c: SDL3 absent; E801 registration skipped (lights up when pixi tools carries sdl3)")

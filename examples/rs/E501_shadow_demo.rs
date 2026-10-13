@@ -1,6 +1,6 @@
 //! E501 · materials and light -- an instanced block-of-buildings + directional-light PCSS soft shadows (the batch-4 lighting outcome face).
 //! Dual mode: `--frames N` = headless single frame + dark assertion (the CI/ctest contract, pixi smoke-shadow-demo);
-//! no arguments = interactive window (left-drag = orbit, wheel = distance, close to exit) -- the cargo-run_E501 human light-check face.
+//! no arguments = interactive window (left-drag = orbit, wheel = distance, close to exit) -- the visiaengine-example-E501_shadow_demo-run human light-check face.
 //! Usage: `cargo run --example E501_shadow_demo [-- --frames 1]`
 
 #[path = "gallery.rs"]

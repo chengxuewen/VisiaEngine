@@ -2,7 +2,7 @@
  *  Dual mode: no args = interactive window (after the first frame SDL_WaitEvent until close, resize drives viewport -- human check face);
  *  `--frames N` = draw N frames then exit (the CI/xvfb sub-state contract).
  *  Contract: the SDL_VIDEO_DRIVER=x11 lock (attach v0 = X11-only); missing DISPLAY = exit 77 (the ctest SKIP convention,
- *  the native self-check has no stub; an IDE without DISPLAY takes run_E801's run-gui :0 fallback).
+ *  the native self-check has no stub; an IDE without DISPLAY takes visiaengine-example-E801_sdl_window-run's run-gui :0 fallback).
  *  If it does not run, the API is unfinished [E3D:D7]. */
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
         if (strcmp(argv[i], "--frames") == 0) frames = atoi(argv[++i]);
     }
     if (getenv("DISPLAY") == NULL || getenv("DISPLAY")[0] == '\0') {
-        fputs("E801: no DISPLAY (the IDE takes the run_E801 step's run-gui fallback; CI takes xvfb; ctest records Skipped)\n",
+        fputs("E801: no DISPLAY (the IDE takes the visiaengine-example-E801_sdl_window-run step's run-gui fallback; CI takes xvfb; ctest records Skipped)\n",
               stderr);
         return 77;
     }

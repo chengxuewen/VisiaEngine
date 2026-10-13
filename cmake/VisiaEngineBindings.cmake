@@ -1,6 +1,6 @@
 # The visiaengine example registration scheme (R9/R10, v1.3): the Rust trio + C/C++/Qt native examples + the unified ctest list.
 # The anti-glob explicit-registration discipline is inherited from the late VisiaEngineExamples.cmake (a file on disk but unregistered = hard error).
-# Naming (R10): real target = E-number name | step = cargo-<verb>_<object> | ctest = example_<target base name>; rs/native are separated by LABELS.
+# Naming (R10 as amended by T-H6): real target = visiaengine-example-<E-name> | run button = visiaengine-example-<name>-run | ctest = example_<E-name base> (unchanged namespace); source FILES keep the bare E names (no git mv); rs/native are separated by LABELS.
 # Design = .omo/plans/bindings-restructure-cpp-examples.md v1.3 §S3.
 
 option(VISIAENGINE_EXAMPLES "the whole examples/ family (rs steps + C/C++/Qt examples + ctest entries)" ON)
@@ -23,28 +23,31 @@ function(visiaengine_add_example _n)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_n}.cpp")
     set(_ext ".cpp")
   endif()
-  add_executable(${_n} "${CMAKE_CURRENT_SOURCE_DIR}/${_n}${_ext}")
-  target_link_libraries(${_n} PRIVATE visiaengine::c)
+  # T-H6: the target carries the example head word; the FILE keeps the
+  # bare E name (R10 amended -- one word, one spelling, four lanes)
+  set(_tgt "visiaengine-example-${_n}")
+  add_executable(${_tgt} "${CMAKE_CURRENT_SOURCE_DIR}/${_n}${_ext}")
+  target_link_libraries(${_tgt} PRIVATE visiaengine::c)
   if(_A_X11)
-    target_link_libraries(${_n} PRIVATE X11::X11)
+    target_link_libraries(${_tgt} PRIVATE X11::X11)
   endif()
   if(_A_CPP)
-    target_link_libraries(${_n} PRIVATE visiaengine::cpp)   # hpp-surface consumption = the shell's live acceptance test
+    target_link_libraries(${_tgt} PRIVATE visiaengine::cpp)   # hpp-surface consumption = the shell's live acceptance test
   endif()
   if(_A_SDL3)
-    target_link_libraries(${_n} PRIVATE SDL3::SDL3)
+    target_link_libraries(${_tgt} PRIVATE SDL3::SDL3)
     get_target_property(_sdll SDL3::SDL3 IMPORTED_LOCATION)
     if(_sdll)
       get_filename_component(_sdldir ${_sdll} DIRECTORY)      # conda libs are not on the system ld path -- carry the rpath along
-      set_property(TARGET ${_n} APPEND PROPERTY BUILD_RPATH ${_sdldir})
+      set_property(TARGET ${_tgt} APPEND PROPERTY BUILD_RPATH ${_sdldir})
     endif()
   endif()
   if(DEFINED VISIAENGINE_CARGO_STEP)
-    add_dependencies(${_n} ${VISIAENGINE_CARGO_STEP})  # umbrella .so ordering bridge (same as the probe)
+    add_dependencies(${_tgt} ${VISIAENGINE_CARGO_STEP})  # umbrella .so ordering bridge (same as the probe)
   endif()
   get_filename_component(_lang "${CMAKE_CURRENT_SOURCE_DIR}" NAME)  # FOLDER = the on-disk language directory (the band number is already encoded in the E-number's first digit; no duplicate vocabulary table)
-  set_target_properties(${_n} PROPERTIES FOLDER "examples/${_lang}")
-  add_test(NAME example_${_n} COMMAND ${_n} ${_A_ARGS})
+  set_target_properties(${_tgt} PROPERTIES FOLDER "examples/${_lang}")
+  add_test(NAME example_${_n} COMMAND ${_tgt} ${_A_ARGS})
   set_tests_properties(example_${_n} PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     SKIP_RETURN_CODE 77
@@ -52,17 +55,17 @@ function(visiaengine_add_example _n)
   # Run steps = the human-verification form, emitted for every example (the rs family's visiaengine-example-*-run symmetry): zero-arg stays resident --
   # the DISPLAY family goes through run-gui (probes and falls back to :0 when the IDE has no DISPLAY), the headless family runs directly in a terminal where the output is the acceptance surface
   if(_A_DISPLAY)
-    add_custom_target(run_${_n}
+    add_custom_target(${_tgt}-run
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-              ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh $<TARGET_FILE:${_n}>
+              ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh $<TARGET_FILE:${_tgt}>
       USES_TERMINAL)
   else()
-    add_custom_target(run_${_n}
-      COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:${_n}>
+    add_custom_target(${_tgt}-run
+      COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:${_tgt}>
       USES_TERMINAL)
   endif()
-  add_dependencies(run_${_n} ${_n})
-  set_target_properties(run_${_n} PROPERTIES FOLDER "examples/${_lang}")
+  add_dependencies(${_tgt}-run ${_tgt})
+  set_target_properties(${_tgt}-run PROPERTIES FOLDER "examples/${_lang}")
   set_property(GLOBAL APPEND PROPERTY VE_REGISTERED_EXAMPLES ${_n})
 endfunction()
 

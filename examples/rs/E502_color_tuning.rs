@@ -7,7 +7,7 @@
 //! the mid-gray panel remains the linear-domain mis-install criterion (a domain-mis-install shift is
 //! ~60 units, keeping a 3x margin).
 //! Dual mode (same system as E501/E801):
-//!   no arguments      = resident human-verified window (the IDE cargo-run_E502 road: four panels eyeball-accept the color chain, close/Esc exits)
+//!   no arguments      = resident human-verified window (the IDE visiaengine-example-E502_color_tuning-run road: four panels eyeball-accept the color chain, close/Esc exits)
 //!   --frames N        = headless self-asserting fast exit (the ctest road; per-panel byte comparison, FAIL exits nonzero)
 
 #[path = "gallery.rs"]
