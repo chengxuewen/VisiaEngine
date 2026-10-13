@@ -20,7 +20,7 @@ visiaengine_ensure_polyorch()  # D39 sentinel reuse/self-embed (first-wins; if t
 visiaengine_ensure_polyorch_rust()  # T-B1: USE_PIXI translation -> polyorch_rust_setup(FROM pixi|system)
 
 include(cmake/VisiaEngineCargo.cmake)
-visiaengine_setup_cargo()  # cargo step + the visiaengine::capi umbrella + the fake in-tree Config bridge (T-C: capi engine = PolyOrch)
+visiaengine_setup_cargo()  # cargo step + the visiaengine::c link face + the fake in-tree Config bridge (T-C: capi engine = PolyOrch)
 include(cmake/VisiaEnginePolyOrchCrates.cmake)
 visiaengine_polyorch_crates()  # T-B: workspace crate face through PolyOrch (geo + core, dependency edge visible)
 include(cmake/VisiaEnginePolyOrchWasm.cmake)

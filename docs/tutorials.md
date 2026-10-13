@@ -109,7 +109,7 @@ pixi run pack-check                                          # hygiene gate on t
 
 # CMake consumer
 find_package(visiaengine REQUIRED)        # name = project() name, lowercase
-target_link_libraries(app PRIVATE visiaengine::capi)   # or visiaengine::cpp
+target_link_libraries(app PRIVATE visiaengine::c)   # or visiaengine::cpp
 # pkg-config consumer (plain C)
 export PKG_CONFIG_PATH=/opt/visia/lib/pkgconfig
 cc app.c $(pkg-config --cflags --libs visiaengine) -o app

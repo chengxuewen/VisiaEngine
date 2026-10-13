@@ -4,8 +4,8 @@ find_package(X11 REQUIRED)   # conda has no qt6 x11extras -> talk to the host Xl
 find_package(visiaengine REQUIRED)
 
 add_executable(E703_qt_viewer E703_qt_viewer.cpp)  # name = source = target (R10)
-target_link_libraries(E703_qt_viewer PRIVATE visiaengine::capi Qt6::Widgets ${X11_LIBRARIES})
-target_include_directories(E703_qt_viewer PRIVATE ${CMAKE_SOURCE_DIR}/bindings/qt)  # the widget.hpp relocation/split fix (S3)
+target_link_libraries(E703_qt_viewer PRIVATE visiaengine::qt Qt6::Widgets ${X11_LIBRARIES})
+# the widget header rides the visiaengine::qt face (T-H2: the raw include-dir anti-pattern retired)  # the widget.hpp relocation/split fix (S3)
 if(DEFINED VISIAENGINE_CARGO_STEP)
   add_dependencies(E703_qt_viewer ${VISIAENGINE_CARGO_STEP})
 endif()

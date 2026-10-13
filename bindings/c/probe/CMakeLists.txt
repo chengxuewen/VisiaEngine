@@ -1,7 +1,7 @@
 # Probe consumer: the find_package same-text rehearsal + the ctest run lock
 find_package(visiaengine REQUIRED)
 add_executable(consume_capi consume_capi.cpp)
-target_link_libraries(consume_capi PRIVATE visiaengine::capi)
+target_link_libraries(consume_capi PRIVATE visiaengine::c)
 if(DEFINED VISIAENGINE_CARGO_STEP)
   add_dependencies(consume_capi ${VISIAENGINE_CARGO_STEP}) # the ordering bridge (prebuilt mode has no step)
 endif()

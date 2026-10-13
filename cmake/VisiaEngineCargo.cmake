@@ -1,4 +1,4 @@
-# cargo step + the visiaengine::capi umbrella contract + the fake in-tree Config bridge (§2.3; the iceoryx2 shape,
+# cargo step + the visiaengine::c link-face contract + the fake in-tree Config bridge (§2.3; the iceoryx2 shape,
 # design = .omo/plans/visiaengine-cmake-project.md v1.0)
 
 function(visiaengine_setup_cargo)
@@ -81,14 +81,14 @@ function(visiaengine_setup_cargo)
   set(VISIAENGINE_ARTIFACT "${VISIAENGINE_ARTIFACT}" PARENT_SCOPE)
   set(VISIAENGINE_SHARED_NAME "${_shared}" PARENT_SCOPE)
 
-  add_library(visiaengine_capi_umbrella INTERFACE)
-  add_library(visiaengine::capi ALIAS visiaengine_capi_umbrella)
-  target_include_directories(visiaengine_capi_umbrella INTERFACE
+  add_library(visiaengine-c INTERFACE)
+  add_library(visiaengine::c ALIAS visiaengine-c)
+  target_include_directories(visiaengine-c INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/bindings/c/include>")
-  target_link_libraries(visiaengine_capi_umbrella INTERFACE "${VISIAENGINE_ARTIFACT}")
+  target_link_libraries(visiaengine-c INTERFACE "${VISIAENGINE_ARTIFACT}")
   if(UNIX AND NOT APPLE) # in-tree consumers skip LD_LIBRARY_PATH (do not copy the predecessor's manual-env debt)
     get_filename_component(_adir "${VISIAENGINE_ARTIFACT}" DIRECTORY)
-    target_link_options(visiaengine_capi_umbrella INTERFACE "-Wl,-rpath,${_adir}")
+    target_link_options(visiaengine-c INTERFACE "-Wl,-rpath,${_adir}")
   endif()
 
   # Fake in-tree Config (the iceoryx2 two-state trick; the install-generated one = packaging round):
@@ -96,11 +96,11 @@ function(visiaengine_setup_cargo)
   set(visiaengine_DIR "${CMAKE_SOURCE_DIR}/cmake" CACHE PATH "visiaengine in-tree config" FORCE)
 
   # C++ header-only RAII facade (S4; permanent surface = consumers of ::capi also get ::cpp, independent of the examples gate)
-  add_library(visiaengine_cpp_iface INTERFACE)
-  add_library(visiaengine::cpp ALIAS visiaengine_cpp_iface)
-  target_include_directories(visiaengine_cpp_iface INTERFACE
+  add_library(visiaengine-cpp INTERFACE)
+  add_library(visiaengine::cpp ALIAS visiaengine-cpp)
+  target_include_directories(visiaengine-cpp INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/bindings/cpp/include>")
-  target_link_libraries(visiaengine_cpp_iface INTERFACE visiaengine::capi)
+  target_link_libraries(visiaengine-cpp INTERFACE visiaengine::c)
   # T-H: the IDE face. Carrier lesson (measured via the cmake-file-api): an
   # INTERFACE target never enters the generator's target list (no artifact ->
   # invisible to the File API AND the IDE tree) and an IMPORTED target cannot
@@ -109,23 +109,41 @@ function(visiaengine_setup_cargo)
   # stays the LINK surface (consumers keep linking visiaengine::cpp).
   # polyorch_header_face supplies the disk<->table audit on both carriers;
   # the HEADERS list is the single source, written once.
-  set(_cpp_headers visiaengine/visiaengine.hpp)
-  add_custom_target(visiaengine-cpp-face
-      COMMAND ${CMAKE_COMMAND} -E echo "visiaengine::cpp header face: ${CMAKE_SOURCE_DIR}/bindings/cpp/include"
+  # the C face viewer (the handwritten header is the C world's single most
+  # load-bearing file -- viewer + disk<->table audit on it)
+  add_custom_target(visiaengine-c-sources
+      COMMAND ${CMAKE_COMMAND} -E echo "visiaengine::c sources: ${CMAKE_SOURCE_DIR}/bindings/c/include"
       VERBATIM)
-  polyorch_header_face(TARGET visiaengine-cpp-face
+  polyorch_header_face(TARGET visiaengine-c-sources
+      DIRECTORY "${CMAKE_SOURCE_DIR}/bindings/c/include"
+      HEADERS visiaengine.h)
+  set_target_properties(visiaengine-c-sources PROPERTIES FOLDER "bindings/c")
+
+  set(_cpp_headers visiaengine/visiaengine.hpp)
+  add_custom_target(visiaengine-cpp-sources
+      COMMAND ${CMAKE_COMMAND} -E echo "visiaengine::cpp sources: ${CMAKE_SOURCE_DIR}/bindings/cpp/include"
+      VERBATIM)
+  polyorch_header_face(TARGET visiaengine-cpp-sources
       DIRECTORY "${CMAKE_SOURCE_DIR}/bindings/cpp/include"
       HEADERS ${_cpp_headers})
-  set_target_properties(visiaengine-cpp-face PROPERTIES FOLDER "bindings/cpp")
+  set_target_properties(visiaengine-cpp-sources PROPERTIES FOLDER "bindings/cpp")
   if(EXISTS "${CMAKE_SOURCE_DIR}/bindings/qt/visiaengine_widget.hpp")
-    add_custom_target(visiaengine-qt-face
-        COMMAND ${CMAKE_COMMAND} -E echo "visiaengine::qt header face: ${CMAKE_SOURCE_DIR}/bindings/qt/visiaengine_widget.hpp"
+    # the qt link face (the T-H commit promised ::qt but never landed it --
+    # repaired here per the T-H2 plan's BUILD ruling): the widget eats the
+    # RAII facade, mirroring how ::cpp eats ::c
+    add_library(visiaengine-qt INTERFACE)
+    add_library(visiaengine::qt ALIAS visiaengine-qt)
+    target_include_directories(visiaengine-qt INTERFACE
+      "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/bindings/qt>")
+    target_link_libraries(visiaengine-qt INTERFACE visiaengine::cpp)
+    add_custom_target(visiaengine-qt-sources
+        COMMAND ${CMAKE_COMMAND} -E echo "visiaengine::qt sources: ${CMAKE_SOURCE_DIR}/bindings/qt/visiaengine_widget.hpp"
         VERBATIM)
-    polyorch_header_face(TARGET visiaengine-qt-face
+    polyorch_header_face(TARGET visiaengine-qt-sources
         DIRECTORY "${CMAKE_SOURCE_DIR}/bindings/qt"
         HEADERS visiaengine_widget.hpp)
-    set_target_properties(visiaengine-qt-face PROPERTIES FOLDER "bindings/qt")
+    set_target_properties(visiaengine-qt-sources PROPERTIES FOLDER "bindings/qt")
   endif()
 
-  message(STATUS "visiaengine::capi umbrella in place: ${_dir}/${_shared} · visiaengine::cpp header surface in place")
+  message(STATUS "visiaengine::c link face in place: ${_dir}/${_shared} · visiaengine::cpp / ::qt header surfaces in place")
 endfunction()
