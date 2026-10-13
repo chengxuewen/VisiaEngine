@@ -60,14 +60,14 @@
 
 After `pixi run cmake --preset default` (or open the project in an IDE and pick the default/qt preset; CI uses ci-strict):
 
-- **The Rust E family (examples/rs) comes as a trio**: PolyOrch build handle `rs-<E#>` (mediator
-  `rs-<E#>-build`, the D40 EXAMPLE kind -- the cargo call lives in the supplier wrapper),
-  run step `cargo-run_<E#>` (builds the handle first, then run-gui executes the staged binary with the
+- **The Rust E family (examples/rs) comes as a trio**: PolyOrch build handle `visiaengine-example-<E#>` (mediator
+  `visiaengine-example-<E#>-build`, the D40 EXAMPLE kind -- the cargo call lives in the supplier wrapper),
+  run step `visiaengine-example-<E#>-run` (builds the handle first, then run-gui executes the staged binary with the
   DISPLAY fallback), ctest entry `example_<E#>` (runs the staged binary directly, no cargo at test time) —
   the single home of argv is the registry in `cmake/VisiaEngineBindings.cmake`, and the pixi `smoke-*` tasks
   are all `ctest -R` forwarding shells. The cargo environment's self-sufficiency is locked by the cmake-smoke state-④ triple anchor (bare PATH =
   IDE calls need no pixi activation); per-example breakpoint debugging runs through rust-analyzer Run/Debug,
-  and with the `debug` preset on, F5 rows ride the PolyOrch managed lane instead (`rs-<E#>` launch + preLaunchTask pairs).
+  and with the `debug` preset on, F5 rows ride the PolyOrch managed lane instead (`visiaengine-example-<E#>` launch + preLaunchTask pairs).
 - **The native E family is the real thing (examples/{c,cpp,qt})**: add_executable compiles what you change, one at a time,
   ctest entries from the same source, FOLDER = the disk-directory mirror (examples/<language> auto-derived; root-level steps sit bare at the top), identity semantics belong to LABELS.
 - **ctest**: the headless family always truly runs; the default testPreset already skips the display family wholesale via `-LE display`,
@@ -80,7 +80,7 @@ E703 (the Qt host band) exists under the ci-strict preset (or -DVISIAENGINE_QT=O
 
 ## Human-verification form (the dual-mode convention · one entry for IDE manual runs and automated tests)
 
-Every example splits through the unified argv dual mode: the IDE's `cargo-run_*` (rs) / `run_*` (native) targets **start with zero arguments = the human-verification form**;
+Every example splits through the unified argv dual mode: the IDE's `visiaengine-example-*-run` (rs) / `run_*` (native) targets **start with zero arguments = the human-verification form**;
 ctest / `--frames N` = the automated quick-exit form (the argv single-source discipline: registry parameters serve only ctest, the run steps take zero args — C15).
 
 | Human-verification form | Examples | Zero-arg startup behavior | What to look at |

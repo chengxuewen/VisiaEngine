@@ -9,7 +9,7 @@
 #  * Hosts do not invent cmake features -- everything below is either a
 #    PolyOrch public function call or the host's own wrapper idiom
 #    (custom targets invoking cargo via the PolyOrch-resolved toolchain,
-#    the same shape as the cargo-run_ window buttons).
+#    the same shape as the visiaengine-example-*-run window buttons).
 #  * Plain rlibs match NO D40 artifact kind (cargo emits lib<name>_.rlib,
 #    underscore), so "build" is a custom cargo button, not a fake handle.
 #  * clean is rm -rf BASE_DIR: all rlibs SHARE one cache dir

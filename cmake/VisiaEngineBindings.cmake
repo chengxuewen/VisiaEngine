@@ -49,7 +49,7 @@ function(visiaengine_add_example _n)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     SKIP_RETURN_CODE 77
     LABELS "${_lbl}")
-  # Run steps = the human-verification form, emitted for every example (the rs family's cargo-run_* symmetry): zero-arg stays resident --
+  # Run steps = the human-verification form, emitted for every example (the rs family's visiaengine-example-*-run symmetry): zero-arg stays resident --
   # the DISPLAY family goes through run-gui (probes and falls back to :0 when the IDE has no DISPLAY), the headless family runs directly in a terminal where the output is the acceptance surface
   if(_A_DISPLAY)
     add_custom_target(run_${_n}
@@ -147,32 +147,32 @@ function(visiaengine_setup_bindings)
     else()
       set(_lbl "example;rs;headless")
     endif()
-    polyorch_rust_build(TARGET rs-${_n}
+    polyorch_rust_build(TARGET visiaengine-example-${_n}
         PACKAGE examples CRATE ${_n}
         EXAMPLE MANIFEST "${CMAKE_SOURCE_DIR}/examples/rs/Cargo.toml"
         FOLDER "examples/rs")
-    list(APPEND _rs_mediators rs-${_n}-build)
-    add_custom_target(cargo-run_${_n}
+    list(APPEND _rs_mediators visiaengine-example-${_n}-build)
+    add_custom_target(visiaengine-example-${_n}-run
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
               ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh
-              $<TARGET_FILE:rs-${_n}>
+              $<TARGET_FILE:visiaengine-example-${_n}>
       VERBATIM USES_TERMINAL)  # the run-gui wrapper probes and falls back to local :0 when the IDE has no DISPLAY (CI never passes here)  # zero-argv = interactive default (registry argv is ctest-only). USES_TERMINAL rides run only (Ninja console-pool lesson)
-    add_dependencies(cargo-run_${_n} rs-${_n}-build)
-    set_target_properties(cargo-run_${_n} PROPERTIES FOLDER "examples/rs")
+    add_dependencies(visiaengine-example-${_n}-run visiaengine-example-${_n}-build)
+    set_target_properties(visiaengine-example-${_n}-run PROPERTIES FOLDER "examples/rs")
     add_test(NAME example_${_n}
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-              ${_cenv} $<TARGET_FILE:rs-${_n}> ${_args_${_n}})
+              ${_cenv} $<TARGET_FILE:visiaengine-example-${_n}> ${_args_${_n}})
     set_tests_properties(example_${_n} PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} LABELS "${_lbl}")
     if(PolyOrch_RUST_VSCODE_DEBUG)
       # T-E lane: run() registers the CodeLLDB launch + preLaunchTask pair.
-      polyorch_rust_run(TARGET rs-${_n})
+      polyorch_rust_run(TARGET visiaengine-example-${_n})
     endif()
   endforeach()
 
-  add_custom_target(cargo-build_examples ALL)
-  add_dependencies(cargo-build_examples ${_rs_mediators})
-  set_target_properties(cargo-build_examples PROPERTIES FOLDER "examples")
-  add_custom_target(cargo-clean_examples
+  add_custom_target(visiaengine-example-build ALL)
+  add_dependencies(visiaengine-example-build ${_rs_mediators})
+  set_target_properties(visiaengine-example-build PROPERTIES FOLDER "examples")
+  add_custom_target(visiaengine-example-clean
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} clean -p examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
 
