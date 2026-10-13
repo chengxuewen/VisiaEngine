@@ -37,7 +37,7 @@ function(visiaengine_setup_cargo)
   if(NOT VISIAENGINE_ARTIFACT_PATH)
     # T-C (2026-10-10): the capi build engine moved to PolyOrch. polyorch_rust_build
     # with no kind keyword dispatches the WP6 default pair -> handles
-    # visiaengine-capi-shared (cdylib) / visiaengine-capi-static (staticlib), with
+    # visiaengine-ffi-shared (cdylib) / visiaengine-ffi-static (staticlib), with
     # buildable mediators <handle>-build; the cargo env isolation (the IDE direct-call
     # PATH guard above, historically this function's job) now lives in the supplier
     # command wrapper -- probe-verified end to end (cold 1m21s, incremental 0.1s).
@@ -48,21 +48,21 @@ function(visiaengine_setup_cargo)
         "BEFORE visiaengine_setup_cargo() (the root orders this), or use the "
         "prebuilt lane -DVISIAENGINE_ARTIFACT_PATH=...")
     endif()
-    polyorch_rust_build(TARGET visiaengine-capi
+    polyorch_rust_build(TARGET visiaengine-ffi
         PACKAGE visiaengine-ffi CRATE visiaengine
         MANIFEST "${_src}/Cargo.toml"
         FOLDER "crates/visiaengine-ffi")
     # ALL semantics kept: the default build must produce the artifacts (install-tree
     # leg, umbrella link, IDE "build all"). Wrapper carries no FOLDER (root position rule).
     add_custom_target(visiaengine-cargo ALL)
-    add_dependencies(visiaengine-cargo visiaengine-capi-shared-build visiaengine-capi-static-build)
+    add_dependencies(visiaengine-cargo visiaengine-ffi-shared-build visiaengine-ffi-static-build)
     set(VISIAENGINE_CARGO_STEP "visiaengine-cargo" PARENT_SCOPE)
     # T-G1: the capi spec suite gets its button (crates-face precedent: rusttest
     # under the crate's FOLDER; default BASE_DIR = the same .cargo-target the
     # T-C handles use -- one cache dir serves the whole capi lane).
     polyorch_rust_test(
         PACKAGE visiaengine-ffi
-        NAME    visiaengine-capi-rusttest
+        NAME    visiaengine-ffi-rusttest
         MANIFEST "${_src}/Cargo.toml"
         FOLDER  "crates/visiaengine-ffi")
   endif()
@@ -76,7 +76,7 @@ function(visiaengine_setup_cargo)
   if(VISIAENGINE_ARTIFACT_PATH)
     set(VISIAENGINE_ARTIFACT "${_dir}/${_shared}")
   else()
-    get_target_property(VISIAENGINE_ARTIFACT visiaengine-capi-shared IMPORTED_LOCATION)
+    get_target_property(VISIAENGINE_ARTIFACT visiaengine-ffi-shared IMPORTED_LOCATION)
   endif()
   set(VISIAENGINE_ARTIFACT "${VISIAENGINE_ARTIFACT}" PARENT_SCOPE)
   set(VISIAENGINE_SHARED_NAME "${_shared}" PARENT_SCOPE)
