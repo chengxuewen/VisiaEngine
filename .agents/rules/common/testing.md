@@ -102,7 +102,7 @@ For multi-object assertions driven by HashMap iteration (e.g. pump eviction orde
 1. **Claim source**: any "WEB ✓ / MIRROR ✓" wording may come only from the actual output of `pixi run web-check` in the **same terminal**
    (plus `node scripts/web-mirror.mjs` when the roster is needed). A host cargo test does not count.
 2. **Compile-surface unreachability**: wasm-bindgen-only constraints like `&mut Vec<T>` / `Vec<T>` out-params
-   compile on the host target and fail on wasm32. Any change to signatures under `bindings/js/rust/visiaengine-wasm/src/`
+   compile on the host target and fail on wasm32. Any change to signatures under `bindings/wasm/visiaengine-wasm/src/`
    requires one `pixi run web-check` run inside the slice (not cargo check).
 3. **Staleness guardrail present**: `scripts/web-mirror.mjs` compares the mtime of the source directory against `pkg-node/*.d.ts`,
    turning red on a newer source and naming the remedy. That check going red ≠ a broken gate — it means "you are reporting today's green with yesterday's artifacts".

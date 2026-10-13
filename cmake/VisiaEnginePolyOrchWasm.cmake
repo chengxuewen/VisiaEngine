@@ -35,7 +35,7 @@ function(visiaengine_polyorch_wasm)
     return()
   endif()
 
-  set(_src "${CMAKE_SOURCE_DIR}/bindings/js/rust/visiaengine-wasm")
+  set(_src "${CMAKE_SOURCE_DIR}/bindings/wasm/visiaengine-wasm")
   set(_manifest "${_src}/Cargo.toml")
   if(NOT EXISTS "${_manifest}")
     message(STATUS "visiaengine wasm lane: no manifest, off")
@@ -51,7 +51,7 @@ function(visiaengine_polyorch_wasm)
   endif()
 
   set(_wasm_cache "${CMAKE_BINARY_DIR}/.cargo-target-wasm")
-  set(_fold "bindings/js/rust/visiaengine-wasm")
+  set(_fold "bindings/wasm/visiaengine-wasm")
 
   # one dedicated cache dir for the wasm32 lane (clean is rm -rf BASE_DIR --
   # mixing into a host cache would make any clean wipe host artifacts)

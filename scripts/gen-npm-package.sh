@@ -20,7 +20,7 @@ for f in visiaengine_wasm.js visiaengine_wasm_bg.wasm visiaengine_wasm.d.ts; do
   [ -f "$SRC_NODE/$f" ] || { echo "NPM-PACK ✗ missing $SRC_NODE/$f — run: pixi run web-check"; exit 1; }
   [ -f "$SRC_WEB/$f" ]  || { echo "NPM-PACK ✗ missing $SRC_WEB/$f — run: pixi run web-check"; exit 1; }
 done
-stale=$(find bindings/js/rust/visiaengine-wasm/src bindings/c/visiaengine-capi/src \
+stale=$(find bindings/wasm/visiaengine-wasm/src bindings/c/visiaengine-capi/src \
         -type f -newer "$SRC_NODE/visiaengine_wasm.d.ts" -print -quit)
 if [ -n "$stale" ]; then
   echo "NPM-PACK ✗ stale build output: $stale is newer than $SRC_NODE — run: pixi run web-check"

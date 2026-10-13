@@ -303,7 +303,7 @@
   so the C surface's "negative code + out untouched" maps to **empty-array returns** on the wasm side; ② add a **staleness guard** to the roster script (source-directory max-mtime
   newer than the d.ts → red, the report naming the directory and the remedy command), directly walling off the "report green off stale artifacts" class;
   ③ claim discipline: **"WEB ✓" may only come from same-terminal `pixi run web-check` output** (the web-surface projection of #17).
-- **Verification**: breakage probe executed — after `touch bindings/js/rust/visiaengine-wasm/src/lib.rs`, running the roster script alone
+- **Verification**: breakage probe executed — after `touch bindings/wasm/visiaengine-wasm/src/lib.rs`, running the roster script alone
   must go red (report = "artifact stale: … run pixi run web-check first", rc=1); after re-running web-check it re-greens at MIRROR 3/3.
   `grep -c "stale artifact" scripts/web-mirror.mjs` ≥1.
 - **Forbidden**: using host `cargo test -p visiaengine-wasm` results to stand in for wasm32 usability;
