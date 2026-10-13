@@ -55,7 +55,7 @@ function(visiaengine_polyorch_wasm)
 
   # one dedicated cache dir for the wasm32 lane (clean is rm -rf BASE_DIR --
   # mixing into a host cache would make any clean wipe host artifacts)
-  polyorch_rust_build(TARGET visiaengine-wasm-shared
+  polyorch_rust_build(TARGET visiaengine-wasm
       PACKAGE visiaengine-wasm CRATE visiaengine-wasm SHARED
       MANIFEST "${_manifest}"
       BASE_DIR "${_wasm_cache}"
@@ -103,7 +103,8 @@ function(visiaengine_polyorch_wasm)
   if(_bindgen_prefix)
     set(_bgpkw PREFIX "${_bindgen_prefix}")
   endif()
-  polyorch_rust_wasm_bindgen(TARGET visiaengine-wasm-shared
+  polyorch_rust_wasm_bindgen(TARGET visiaengine-wasm
+      NAME_PREFIX visiaengine-wasm
       FLAVOR web nodejs
       TYPESCRIPT
       OUT_DIR "${CMAKE_BINARY_DIR}/web"
@@ -116,7 +117,7 @@ function(visiaengine_polyorch_wasm)
   # property -- measured), so the mount rides the MEDIATOR (the crates
   # face mounts its custom build nodes; the mediator carries the build
   # inputs and IS the IDE node for this lane)
-  polyorch_rust_ide_mount(TARGET visiaengine-wasm-shared-build
+  polyorch_rust_ide_mount(TARGET visiaengine-wasm-build
       MANIFEST "${_manifest}"
       CRATE visiaengine-wasm
       FOLDER "${_fold}")
