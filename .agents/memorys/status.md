@@ -679,3 +679,21 @@ T-A0..T-F + i18n E1-E5 committed (gate-i18n in ci; PIT-49/50 recorded; C20 in fo
 Open: PolyOrch upstream push (gitee auth expired -- 457234e unpublished; fresh clones cannot
 resolve the gitlink until pushed); cargo-build_examples/cargo-run_* naming lives in smoke anchors
 swept; T-D deferred items none; examples' RA lane unaffected.
+
+## Naming + taxonomy round (2026-10-12/13, T-H2/T-H3/T-H3.5 + user-caught PIT-51 fix, in force)
+
+Bindings face normalized on the four-axis grammar: link faces
+`visiaengine::c/::cpp/::qt` (real names `visiaengine-c/-cpp/-qt`; aliases are the
+only contract -- `::capi` renamed per the iceoryx2-c/zenoh-c consumer-language
+corpus), IDE viewers `visiaengine-{c,cpp,qt}-sources` (polyorch_header_face
+viewer+audit; viewer-only STATUS contract on the PolyOrch side, 1ee0359),
+aggregate `visiaengine-wasm-all`. Directory taxonomy single-axis: crates/ = the
+rust set incl. visiaengine-ffi (ex bindings/c/visiaengine-capi, crate renamed)
+and visiaengine-wasm (ex bindings/js/rust); bindings/ = pure consumer faces with
+the C header at bindings/c/include/. qt link face repaired (the T-H commit
+promised ::qt but never landed it -- Momus round-1 BLOCKER, user-adjudicated
+BUILD; examples/qt re-linked off its raw include-dir anti-pattern). CMake
+handle names follow the home (visiaengine-ffi-*; the user-caught PIT-51 fix).
+Machine gates: ctest 108/108, pixi run ci ALL GREEN, gate-abi/gate-i18n green,
+negative audits both header lanes (hpp + visiaengine.h delete->FATAL->restore).
+Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.

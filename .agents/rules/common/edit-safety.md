@@ -312,3 +312,19 @@ the documented pass; run `bash scripts/gate-i18n.sh` after editing any gate that
 
 **Blocking condition**: landing a prose-translation batch in the same commit as its dependent
 gates without re-running each gate verbatim; leaving a gate file carrying its own scanned literals.
+
+### 29. Directory moves re-derive every CARGO_MANIFEST_DIR-relative depth (2026-10-12 T-H3.5)
+
+**Rule**: when a crate moves to a shallower/deeper directory, `git grep` for the
+crate NAME is not enough -- fixture/asset paths built from
+`env!("CARGO_MANIFEST_DIR")` + `../` chains break by DEPTH, a class invisible to
+name greps. After any crate move: grep `'CARGO_MANIFEST_DIR'` in the moved crate,
+recompute each `../` chain from the new home, then run the crate's rusttest
+button (the compile error surfaces only there).
+
+**Verification**: `grep -rn 'CARGO_MANIFEST_DIR' crates/<moved>/` -- every
+adjacent `../` count must equal the new depth; `cmake --build <tree> --target
+<crate>-rusttest` green.
+
+**Blocking condition**: committing a crate move without the moved crate's
+rusttest leg executed.

@@ -149,3 +149,23 @@ name iterated as a crate.
 # any table file: entries must not carry raw ';' inside quoted values
 grep -nE '"[^"]*;[^"]*=' cmake/VisiaEnginePolyOrchCrates.cmake && echo FAIL || echo PASS
 ```
+
+## C22: "Directory taxonomy is single-axis; names follow their axis, never a cross-axis copy" (2026-10-12, js->wasm + capi->ffi rounds)
+
+`crates/` = the rust set (implementation axis); `bindings/` = the consumer face
+(consumer-language/artifact axis); `examples/` = teaching examples. A directory
+must not embed the other axis (`bindings/js/rust/` and `bindings/c/visiaengine-capi`
+were both the implementation axis living under the consumer axis -- both gone).
+Target names likewise: rust crates carry rust-ecosystem suffixes (`-ffi`,
+`-wasm`), CMake real names carry the consumer word (`visiaengine-c/-cpp/-qt`),
+aliases carry the stable contract (`::c/::cpp/::qt`), IDE viewers carry the
+content word (`-sources`), aggregates carry `-all`/`-<verb>`. Corpus: iceoryx2
+(iceoryx2-ffi crate <-> iceoryx2-c package) and zenoh (ffi crate <-> zenoh-c repo)
+both keep the two axes lexically distinct; bevy keeps crates flat.
+
+```bash
+# no implementation-language layer under the consumer tree; no rust crates under bindings/
+test -z "$(find bindings -maxdepth 2 -type d \( -name rust -o -name '*-capi' -o -name '*-wasm' \) 2>/dev/null)" && echo PASS || echo FAIL
+# crates/ is exactly the rust set (no consumer-face dirs)
+ls crates/ | grep -vE '^(visiaengine-[a-z0-9-]+|\.gitignore)$' | grep -qE 'probe|demo|include' && echo FAIL || echo PASS
+```
