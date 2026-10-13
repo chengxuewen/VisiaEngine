@@ -101,6 +101,31 @@ function(visiaengine_setup_cargo)
   target_include_directories(visiaengine_cpp_iface INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/bindings/cpp/include>")
   target_link_libraries(visiaengine_cpp_iface INTERFACE visiaengine::capi)
+  # T-H: the IDE face. Carrier lesson (measured via the cmake-file-api): an
+  # INTERFACE target never enters the generator's target list (no artifact ->
+  # invisible to the File API AND the IDE tree) and an IMPORTED target cannot
+  # take SOURCES -- so the visible face rides a custom target (the same
+  # carrier class as the crates-face build buttons); the INTERFACE library
+  # stays the LINK surface (consumers keep linking visiaengine::cpp).
+  # polyorch_header_face supplies the disk<->table audit on both carriers;
+  # the HEADERS list is the single source, written once.
+  set(_cpp_headers visiaengine/visiaengine.hpp)
+  add_custom_target(visiaengine-cpp-face
+      COMMAND ${CMAKE_COMMAND} -E echo "visiaengine::cpp header face: ${CMAKE_SOURCE_DIR}/bindings/cpp/include"
+      VERBATIM)
+  polyorch_header_face(TARGET visiaengine-cpp-face
+      DIRECTORY "${CMAKE_SOURCE_DIR}/bindings/cpp/include"
+      HEADERS ${_cpp_headers})
+  set_target_properties(visiaengine-cpp-face PROPERTIES FOLDER "bindings/cpp")
+  if(EXISTS "${CMAKE_SOURCE_DIR}/bindings/qt/visiaengine_widget.hpp")
+    add_custom_target(visiaengine-qt-face
+        COMMAND ${CMAKE_COMMAND} -E echo "visiaengine::qt header face: ${CMAKE_SOURCE_DIR}/bindings/qt/visiaengine_widget.hpp"
+        VERBATIM)
+    polyorch_header_face(TARGET visiaengine-qt-face
+        DIRECTORY "${CMAKE_SOURCE_DIR}/bindings/qt"
+        HEADERS visiaengine_widget.hpp)
+    set_target_properties(visiaengine-qt-face PROPERTIES FOLDER "bindings/qt")
+  endif()
 
   message(STATUS "visiaengine::capi umbrella in place: ${_dir}/${_shared} · visiaengine::cpp header surface in place")
 endfunction()
