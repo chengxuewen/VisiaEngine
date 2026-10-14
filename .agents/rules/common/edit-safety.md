@@ -328,3 +328,19 @@ adjacent `../` count must equal the new depth; `cmake --build <tree> --target
 
 **Blocking condition**: committing a crate move without the moved crate's
 test-button leg executed.
+
+
+### 30. Supplier logic changes need the build tree's INTERNAL caches flushed (2026-10-13)
+
+**Rule**: after changing supplier logic that caches configure-time probes
+by path/manifest key (CACHE INTERNAL), wipe the stale keyed entries in
+every build tree before testing the change -- an empty cached value
+short-circuits before the new code runs, and the fix reads as a no-op.
+
+**Verification**: `grep -c polyorch_meta_srcs cmake-build/CMakeCache.txt`
+(entries = stale keys); File API sources query on a mounted target.
+
+**Blocking condition**: judging a supplier-mount fix by a single
+reconfigure over a warm tree.
+
+**Source**: PIT-53 (2026-10-13 ide_mount [[example]] round).

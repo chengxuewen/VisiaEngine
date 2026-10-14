@@ -450,3 +450,22 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: command-driven sweeps (run `git grep` fresh at execution time, classify hits machine-bound/auto-follow/docs/frozen) + every rename step carries its own REAL verification legs (configure, cargo metadata, rusttest, install-tree) -- each of the three catches came from a leg actually running, not from review. Fix relative-depth references by re-deriving depth from the new home, not by editing the old literal.
 - **Verification**: `cargo check -p <moved-crate>` + the moved crate's rusttest button green; `git grep -c "<old-literal>"` = 0 on machine-bound files; install-tree leg path-independent (assert by installed-relative names).
 - **Forbidden**: executing a planned rename by table lookup without re-running the sweep commands; treating "verified inventory" in a plan as a substitute for execution-time re-derivation.
+
+## PIT-53: the INTERNAL metadata-source cache outlives its keys (2026-10-13)
+- **Symptom**: a supplier fix to source-mount logic showed zero effect after
+  reconfigure; File API showed 0/29 example nodes mounted despite the data
+  provably present in cargo metadata (isolated CMake repro: hits=1).
+- **Root cause**: `_polyorch_rust_metadata_sources` caches per
+  (manifest, crate) as `CACHE INTERNAL` inside the build tree --
+  entries persist across configures keyed by OLD paths (pre-rename
+  manifests, even the retired bindings/js tree). An EMPTY cached value
+  short-circuits before the new code ever runs.
+- **Solution**: wipe the build tree's stale entries (delete
+  `polyorch_meta_srcs` lines from CMakeCache.txt or nuke the build dir)
+  after any change to the mount/metadata logic; reconfigure.
+- **Verification**:
+  `grep -c polyorch_meta_srcs cmake-build/CMakeCache.txt` before/after;
+  the File API query (codemodel -> target -> sources) must list the
+  expected .rs files.
+- **Forbidden**: concluding "the fix does not work" from one reconfigure
+  while a keyed INTERNAL cache survives from earlier runs.
