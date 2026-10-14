@@ -562,3 +562,31 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
   double-dollar absence pin fires on any regression.
 - **Forbidden**: proving a shipped string by re-typing it in the leg;
   Makefile-only shape pins for command text meant to run under Ninja.
+
+## PIT-59: a ';' inside an embedded -c script silently splits into argv (2026-10-14, serve button never bound)
+- **Symptom**: the serve button "completed 0" without a listener: python ran only the first segment `import http.server,sys` of the -c one-liner and exited clean -- no FAILED line, no traceback.
+- **Root cause**: the code string passed through an unquoted COMMAND list expansion: CMake splits on ';' FIRST, so each segment became its own argv entry. The C21 corruption class wearing the "shell one-liner" hat.
+- **Solution**: shipped shell bodies live in a generated file (file(WRITE script)) invoked by path -- zero quoting ladders; where a string must survive, '@'-join and collapse.
+- **Verification**: `grep -m1 "COMMAND" build.ninja | grep ";"` on the command text -- a ';' outside CMake's own separators = split happened; live proof = port actually listens.
+- **Forbidden**: trusting a "completed 0" for a daemon-shaped command; one-liners with semicolons through list expansion.
+
+## PIT-60: post-hoc set_property(DEPENDS) never reaches the Ninja graph -- constructor only (2026-10-14)
+- **Symptom**: polyorch_rust_wasm_serve's header promised "stale glue cannot be served", but a fresh tree served an empty pkg/: build.ninja showed only the module mediator edge.
+- **Root cause**: the promise was written as a COMMENT, never wired; the first repair attempt used set_property(APPEND PROPERTY DEPENDS) after target creation -- silently invisible to the generator (measured: the edge line never changed).
+- **Solution**: file-level deps of custom targets go through the add_custom_target(DEPENDS ...) constructor, full stop. Read the generated build.ninja as the acceptance evidence, not the source comment.
+- **Verification**: `grep "wasm-serve: CUSTOM" build.ninja` shows the flavor .js outputs among the edge's deps.
+- **Forbidden**: accepting "the property was set" as proof a dependency edge exists.
+
+## PIT-61: curl-200 is not a browser -- page surfaces need execution checks (2026-10-14, hub DOM suicide)
+- **Symptom**: every wall probe answered 200 (files, MIME, wasm) yet the user saw an empty sidebar + black iframe: render() wiped side.innerHTML and then re-appended #q -- already removed from the DOM -> appendChild(null) threw before anything rendered.
+- **Root cause**: static-asset verification (curl) proves delivery, never JS execution; all pages were authored in the same session that never opened one.
+- **Solution**: page-class work ships with (a) node --check on every inline module (write the script to a .mjs -- --input-type+--check is not a thing) and (b) ONE browser pass on the checklist before declaring done; honest escalation: a headless (playwright) leg is the real net, filed as a proposal, not built.
+- **Verification**: `grep -c '"id"' wall.json` vs user-visible entry count; the syntax sweep command lives in the T-H11 commit history.
+- **Forbidden**: reporting "wall verified live" off curl probes alone.
+
+## PIT-62: shared-target attributes rewritten per registration drift by call ORDER; an opt-in with a default name is opt-out (2026-10-14)
+- **Symptom**: the tree-wide polyorch-rust-all aggregate materialized inside the host's examples/rs FOLDER, and existed in trees that never asked for it (user: 是否不正常).
+- **Root cause**: every polyorch_rust_build call re-stamped the aggregate's FOLDER (last-writer-wins: the button "moved" to whoever registered last) and the "opt-in" knob carried a default name, so the opt was never required.
+- **Solution**: first-writer pins (create-and-fold once; later calls only add_dependencies); opt-in knobs have NO default -- unnamed means unbuilt. Applies to any shared aggregate/generator hook attribute.
+- **Verification**: t-rust-agg-optin (no-knob absence pin + folder-pin probe); `--target help` under a host that never set the knob shows zero aggregate.
+- **Forbidden**: stamping shared-target properties outside the creation branch; "optional" features that appear anyway.

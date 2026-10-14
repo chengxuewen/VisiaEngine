@@ -384,3 +384,13 @@ reaches the toolkit (no sh syntax error, no `$${`).
 shape pins.
 
 **Source**: T-H9 (E306 button, user-reported; three layers deep).
+
+### 33. Redundancy claims need a delete-probe, not a deduction (2026-10-14)
+
+**Rule**: before deleting code justified by "it's redundant now", run the probe: remove it in a scratch pass, then take generator evidence (ninja -t deps / build.ninja edges / a live consumer). If the edge survives, delete for real; if it dies, the "redundancy" was load-bearing and the WHY gets written into the comment instead. (Measured: the "legacy" add_dependencies bridge turned out load-bearing -- the link face chains the artifact FILE PATH, and file deps propagate no target edges at all; the probe reversed the verdict in 5 minutes.)
+
+**Verification**: the deletion commit cites the probe artifact (edge listing / deps output), or the surviving code carries the probe's verdict in its comment.
+
+**Blocking condition**: landing a "cleanup" commit whose redundancy claim has no probe evidence either way.
+
+**Source**: T-H12 (visiaengine-cargo bridge probe, 2b14dc5).

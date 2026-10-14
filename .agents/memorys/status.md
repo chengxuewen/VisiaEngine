@@ -709,6 +709,19 @@ gate-abi/gate-i18n green, negative audits both header lanes (hpp +
 visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.
 
+## T-H12 round (2026-10-14, the ffi aggregate cleanup)
+
+visiaengine-cargo (last cargo- coinage) -> visiaengine-ffi-build (lane
+word, symmetric with rlibs-build); smoke/install/preset texts follow,
+zero-residue sweep green. The deletion probe REVERSED the redundancy
+guess: the example->cargo ordering bridge is LOAD-BEARING (the link
+face chains the artifact file path; file deps propagate no target
+edges) -- kept with its evidence in the comment (edit-safety rule 33
+born here). FOLDER re-homed per the T-H10 rule's corollary: an
+aggregate with an on-disk home goes to it (crates/visiaengine-ffi,
+where ffi-test already lives); the root group is now strictly the
+homeless tree-level zone. Commits 2b14dc5/d6899b7.
+
 ## T-H11 round (2026-10-14, the web example wall -- P1+P2 landed)
 
 examples/wasm/ is now a three.js-style wall: hub index.html (searchable
