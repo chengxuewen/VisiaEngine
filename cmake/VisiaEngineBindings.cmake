@@ -154,6 +154,13 @@ function(visiaengine_setup_bindings)
         PACKAGE examples CRATE ${_n}
         EXAMPLE MANIFEST "${CMAKE_SOURCE_DIR}/examples/rs/Cargo.toml"
         FOLDER "examples/rs")
+    # IDE sources on the example's own build node -- the same
+    # metadata-authoritative mount the crates face uses (measured:
+    # 29x cargo metadata on this shared manifest costs <1s configure)
+    polyorch_rust_ide_mount(TARGET visiaengine-example-${_n}-build
+        MANIFEST "${CMAKE_SOURCE_DIR}/examples/rs/Cargo.toml"
+        CRATE ${_n}
+        FOLDER "examples/rs")
     list(APPEND _rs_mediators visiaengine-example-${_n}-build)
     add_custom_target(visiaengine-example-${_n}-run
       COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
