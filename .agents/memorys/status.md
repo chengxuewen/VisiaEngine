@@ -709,6 +709,20 @@ gate-abi/gate-i18n green, negative audits both header lanes (hpp +
 visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.
 
+## T-H8 round (2026-10-14, the NATIVE debug face + knob family finale)
+
+The knob family is namespace-ordered (PolyOrch_VSCODE_DEBUG_{ALL,RUST,
+NODE,PYTHON,NATIVE}), ALL boolean -- ON forces every face (the full
+octk_option port landed: six keywords + expression evaluator, user-
+adjudicated; the OR_CONDITION cache-FORCE pins display=effect). The
+NATIVE face gives c/cpp/qt executables CodeLLDB F5 rows via
+polyorch_native_debug (self-target task rows; path computed at
+registration; MC expanded). V: debug preset = 29 rs + 14 native
+launch rows (Qt's E703 arrives with the opt-in lane, VISIAENGINE_QT=ON
+-- same macro shape, wiring proven). Machine gates: suite 78/0/26,
+t-option 10 cases, t-native-debug 5 legs; V build rc=0, example ctest
+36/44 (8 = the headless display lane standing state), ci ALL GREEN.
+
 ## T-H7 pending gate (2026-10-14, the VSCode debug knob family round)
 
 - **T-H7 legacy-knob removal gate** (the T-H7.1 removal contract): delete the
