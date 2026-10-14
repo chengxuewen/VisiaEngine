@@ -28,7 +28,7 @@ rm -rf "$B" "$B-neg" "$B-negconf"
 # ↑ -LE display: the probe has no label and the headless examples really run; the display family (popup windows) is covered by smoke-x11/smoke-qt, the dedicated xvfb runners
 
 # README count lock (2026-10-08: README said 40 while the registry actually had 43, and nobody was watching). The ground truth lives only in
-# this script (it needs a configured tree), so the lock lives here; the gallery-card-count half lives in gate-docs ⑦.
+# this script (it needs a configured tree), so the lock lives here; the README-wall-count half lives in gate-docs ⑦.
 NC=$( "$CT" --test-dir "$B" -N 2>/dev/null | grep -c '^  Test ' )
 RN=$(grep -oE 'ctest unified example registry \([0-9]+ entries' README.md | grep -oE '[0-9]+' | head -1 || true)
 [ -n "$RN" ] || { echo "CMAKE-SMOKE ✗ failed to read the README count (an assert with no object is vacuously true)"; exit 1; }

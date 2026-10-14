@@ -91,25 +91,14 @@ fi
 bad=$(grep -rnE 'let clear: \[u8; 3\] = \[[0-9]' crates examples --include='*.rs' 2>/dev/null || true)
 if [ -n "$bad" ]; then echo "GATE-DOCS ✗ ⑨hand-written clear-colour literal (switch to self-calibration + a frequency guard):"; echo "$bad"; fail=1; fi
 
-# ⑥ gallery manifest lock (B5 "one artifact, four consumers": source+prose+test+card —
-# registries are the single accounting point; gallery is DERIVED, never hand-edited)
-# the manifest is produced by `pixi run gallery` (inside build/, gitignored); absent = red (reminder to run the generator first).
-GM=build/gallery/manifest.txt
-if [ ! -f "$GM" ]; then
-    echo "GATE-DOCS ✗ ⑥gallery manifest absent (run pixi run gallery first)"; fail=1
-else
-    gm_names=$(grep -oE '^E[0-9]{3}' "$GM" | sort -u)
-    reg_names=$(for d in examples/rs examples/c examples/cpp examples/qt; do ls "$d" 2>/dev/null; done | grep -oE '^E[0-9]{3}' | sort -u)
-    [ "$gm_names" = "$reg_names" ] || { echo "GATE-DOCS ✗ ⑥gallery manifest ≠ disk registry set:"; diff <(echo "$reg_names") <(echo "$gm_names"); fail=1; }
-fi
-
-# ⑦ README gallery card count == manifest live count (2026-10-08: 40≠43 drifted with no
-# owner; the lock arrived with the installed-tree band; the entry-count half lives in
-# cmake-smoke — it is the one holding the ctest truth, each lock lives in the tool with the data).
-if [ -f "$GM" ]; then
-    mc=$(grep -c '^E' "$GM")
-    rg=$(grep -oE 'Example gallery \([0-9]+ cards' README.md | grep -oE '[0-9]+' | head -1 || true)
-    [ "${rg:-x}" = "$mc" ] || { echo "GATE-DOCS ✗ ⑦README gallery '${rg:-missing}' ≠ manifest '$mc'"; fail=1; }
+# ⑦ README wall-entry count == wall.json entries (P3: the lock survives its
+# carrier -- gallery cards -> wall manifest; the drift lesson of 2026-10-08
+# (40≠43, no owner) is why this half stays a machine gate. Entry/ctest truth
+# lives in cmake-smoke; manifest/registry equality in ⑧.)
+if [ -f examples/wasm/wall.json ]; then
+    mc=$(grep -c '"id"' examples/wasm/wall.json)
+    rg=$(grep -oE 'example wall \([0-9]+ entries' README.md | grep -oE '[0-9]+' | head -1 || true)
+    [ "${rg:-x}" = "$mc" ] || { echo "GATE-DOCS ✗ ⑦README wall '${rg:-missing}' ≠ wall.json '$mc'"; fail=1; }
 fi
 
 # ⑧ wall manifest lock (T-H11): wall.json number set == registry numbers;
@@ -140,6 +129,6 @@ WALLPY
 fi
 
 if [ "$fail" = 0 ]; then
-    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / gallery $(grep -c '^E[0-9]' "$GM" 2>/dev/null || echo 0) cards / packages ${pk})"
+    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk})"
 fi
 exit $fail

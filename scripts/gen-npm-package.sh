@@ -8,7 +8,7 @@
 # Version single source: Cargo.toml [workspace.package] version — never hand-typed (#17).
 # Freshness guard mirrors scripts/web-mirror.mjs (PIT-44): stale build output must never
 # be packaged as if it were current.
-# Builder, not a gate — out of the ci chain (same policy as gallery / keys-probe).
+# Builder, not a gate — out of the ci chain (same policy as the wall serve / keys-probe).
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 

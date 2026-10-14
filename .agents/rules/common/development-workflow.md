@@ -82,8 +82,8 @@ When creating PRs:
 
 **Constraint**: every public API addition/change must ship with a runnable example (anything that can be `--frames N`-ized is wired to the pixi smoke task); otherwise it does not merge.
 **Quad-consumer extension (B5, 2026-09-24)**: each new example must land with (1) source, (2) a `docs/tutorials.md` row,
-(3) a CI-runnable test path (ctest registry argv / smoke task), and (4) a gallery card — produced by running
-`pixi run gallery` in the same band; `scripts/gate-docs.sh` check ⑥ fails if the gallery manifest is missing
+(3) a CI-runnable test path (ctest registry argv / smoke task), and (4) a wall entry — one line in
+`examples/wasm/wall.json` in the same band; `scripts/gate-docs.sh` checks ⑦/⑧ fail if the wall manifest is missing
 or disagrees with the on-disk registry set. Dual-mode discipline (C15) still applies: zero-arg run stays the
 human window, registry argv stays the CI consumer.
 **Acceptance = documentation clause only** — no machine gate; at merge review humans enforce this line by hand; "examples must compile alongside the API" is structurally implied by `cargo test --workspace` building the examples.

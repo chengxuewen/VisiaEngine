@@ -3,7 +3,7 @@
   "configurePresets": [
     {
       "name": "default",
-      "displayName": "Daily development (Debug, Qt/Rust auto-resolved; gallery owns build/, CMake tree in cmake-build/)",
+      "displayName": "Daily development (Debug, Qt/Rust auto-resolved; save-frame assets own build/, CMake tree in cmake-build/)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/cmake-build",
       "cacheVariables": {

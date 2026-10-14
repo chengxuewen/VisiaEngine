@@ -722,7 +722,7 @@ REAL file-level DEPENDS now (supplier 4dfa89b: the ';' in a -c one-liner
 split into argv -- server exited 0 silently; and serve served an EMPTY
 pkg/ without the js edge; post-hoc set_property(DEPENDS) never reaches the
 Ninja graph -- constructor only). Live: [4/5] replays both flavors, all
-probes 200, .wasm = application/wasm. gallery stays untouched (P3 carries
+probes 200, .wasm = application/wasm. gallery REMOVED at P3, same session (11-point list executed: targets/pixi tasks/gen_gallery.py/gate-docs ⑥⑦/smoke/README/tutorials/roadmap/rule text -- save_frame thumbnails KEPT per adjudication; wall.json is now the four-consumer card). Old text (P3 carries
 the removal contract: 11-point list + judgment in the plan (Momus write-back); trigger
 goes to Open Items at P3 time). Gates: suite 80/0/26, gate-docs/i18n ✓,
 ci ALL GREEN.

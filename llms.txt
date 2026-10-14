@@ -26,4 +26,4 @@
 ## Examples
 
 41 example cards (E101..E901), three-way locked (files = tutorials = registries),
-gallery at build/gallery/index.html (pixi run gallery). See docs/tutorials.md.
+web example wall: the visiaengine-wasm-serve button assembles + serves http://localhost:8017 (manifest: examples/wasm/wall.json). See docs/tutorials.md.

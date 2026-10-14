@@ -101,7 +101,7 @@ node_modules
 .refinfo
 Testing/
 
-# CMake preset build trees (T-A0' 2026-10-10): gallery owns build/, cargo owns target/
+# CMake preset build trees (T-A0' 2026-10-10): save-frame assets own build/, cargo owns target/
 cmake-build/
 cmake-build-release/
 cmake-build-prebuilt/

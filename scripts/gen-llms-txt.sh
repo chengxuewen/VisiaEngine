@@ -41,6 +41,6 @@ CRATES=(
   echo "## Examples"
   echo ""
   echo "41 example cards (E101..E901), three-way locked (files = tutorials = registries),"
-  echo "gallery at build/gallery/index.html (pixi run gallery). See docs/tutorials.md."
+  echo "web example wall: the visiaengine-wasm-serve button assembles + serves http://localhost:8017 (manifest: examples/wasm/wall.json). See docs/tutorials.md."
 } > llms.txt
 echo "llms.txt written ($(wc -l < llms.txt) lines); rustdoc at build/docs/"

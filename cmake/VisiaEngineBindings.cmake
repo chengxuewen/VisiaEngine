@@ -202,28 +202,6 @@ function(visiaengine_setup_bindings)
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} clean -p examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
 
-  # B5 developer targets: example gallery (static site) + local preview server.
-  # Serve root = repo root (card source links are repo-root relative by design);
-  # open http://127.0.0.1:8931/build/gallery/index.html after generating.
-  find_package(Python3 COMPONENTS Interpreter QUIET)
-  if(Python3_Interpreter_FOUND)
-    add_custom_target(gallery
-      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/gen_gallery.py
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT "Generating example gallery (build/gallery/index.html)"
-      VERBATIM)
-    add_custom_target(gallery-serve
-      COMMAND ${Python3_EXECUTABLE} -m http.server 8931 --bind 0.0.0.0
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT "Serving repo root at http://<host>:8931 (LAN-reachable; Ctrl-C to stop)"
-      VERBATIM)
-    # no FOLDER: the position-mirror rule (FOLDER = on-disk directory) has no
-    # tools/ source dir; targets are identified by name (gate: cmake-smoke D14/R9).
-
-  else()
-    message(STATUS "visiaengine bindings: python3 not found - gallery targets skipped")
-  endif()
-
   # Central disk<->table final audit: every source file under examples/{c,cpp}/ must be on the macro-registration list (the qt file self-registers the same way in examples/qt)
   set(_skip_note "")
   get_property(_reg GLOBAL PROPERTY VE_REGISTERED_EXAMPLES)

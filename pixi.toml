@@ -103,7 +103,7 @@ pack-check = "bash scripts/gate-pack.sh"
 # which `pixi run ci` does not promise. It starts its own private display, so
 # never wrap it in xvfb-run (PIT-22).
 keys-probe = "python3 scripts/keys-probe.py --all"
-# npm-pack: builder, not a gate — out of the ci chain (same policy as gallery /
+# npm-pack: builder, not a gate — out of the ci chain (same policy as the wall serve /
 # keys-probe). Assembles build/npm/visiaengine/ + a LOCAL .tgz from the wasm build
 # output; needs node (default env) and a prior `pixi run web-check`. Nothing is
 # published; the tarball stays on this machine.
@@ -128,8 +128,6 @@ smoke-color-tuning = "bash scripts/smoke-rs.sh E502_color_tuning"   # L2: color-
 qt-demo-build = "cmake --preset ci-strict && cmake --build --preset ci-strict"   # the Qt round's consumption smoke (requires -e qt-spike; ci-strict = both SDKs forced PIXI)
 smoke-qt = "bash scripts/smoke-qt.sh"   # three-state: no env / no X = SKIP (requires -e qt-spike)
 smoke-twin-city = "bash scripts/smoke-rs.sh E901_twin_city"   # L2: the vertical-slice seed (the batch-4 one-image deliverable + human PNG check)
-gallery = { cmd = "python3 scripts/gen_gallery.py", cwd = "." }   # B1: the gallery index.html (thumbnails first run each example with --frames 1; output build/gallery)
-gallery-serve = { cmd = "python3 -m http.server 8931 --bind 0.0.0.0", cwd = "." }   # B1: serve the repo root on 0.0.0.0 (LAN-reachable; open http://<host>:8931/build/gallery/index.html)
 bench = "bash scripts/bench.sh"   # [6b] the artifact chain (two release examples; a local lavapipe observational tier, not a gate)
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"
 smoke-morph = "bash scripts/smoke-rs.sh E304_projection_morph"
