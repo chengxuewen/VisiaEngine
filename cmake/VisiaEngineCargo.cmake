@@ -54,9 +54,11 @@ function(visiaengine_setup_cargo)
         FOLDER "crates/visiaengine-ffi")
     # ALL semantics kept: the default build must produce the artifacts (install-tree
     # leg, umbrella link, IDE "build all"). Wrapper carries no FOLDER (root position rule).
-    add_custom_target(visiaengine-cargo ALL)
-    add_dependencies(visiaengine-cargo visiaengine-ffi-shared-build visiaengine-ffi-static-build)
-    set(VISIAENGINE_CARGO_STEP "visiaengine-cargo" PARENT_SCOPE)
+    # The name is the LANE word (ffi), not the tool word -- the retired cargo-* coinage
+    # class (T-H5.5 lineage); symmetric with the visiaengine-rlibs-build sibling.
+    add_custom_target(visiaengine-ffi-build ALL)
+    add_dependencies(visiaengine-ffi-build visiaengine-ffi-shared-build visiaengine-ffi-static-build)
+    set(VISIAENGINE_FFI_STEP "visiaengine-ffi-build" PARENT_SCOPE)
     # T-G1: the capi spec suite gets its button (crates-face precedent: -test
     # under the crate's FOLDER; default BASE_DIR = the same .cargo-target the
     # T-C handles use -- one cache dir serves the whole capi lane).

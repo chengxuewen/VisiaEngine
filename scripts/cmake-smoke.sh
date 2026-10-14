@@ -44,7 +44,7 @@ env PATH=/usr/bin:/bin "$SYS_CM" -S . -B "$B-negconf" -G "Unix Makefiles" -DCMAK
     >/dev/null 2>&1 \
     || { echo "CMAKE-SMOKE ✗ bare-PATH configure (SDK/cargo self-sufficiency broken -- the .pixi fallback snap)"; exit 1; }
 rm -rf "$B-negconf"
-for _t in visiaengine-cargo visiaengine-example-build; do
+for _t in visiaengine-ffi-build visiaengine-example-build; do
   env PATH=/usr/bin:/bin "$CM" --build "$B" --target "$_t" >/dev/null 2>&1 \
       || { echo "CMAKE-SMOKE ✗ bare PATH ${_t} (cargo environment self-sufficiency broken = the IDE would explode)"; exit 1; }
 done

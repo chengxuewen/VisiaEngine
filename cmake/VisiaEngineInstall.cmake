@@ -27,11 +27,11 @@ function(visiaengine_install_tree)
   if(NOT EXISTS "${_art}")
     message(WARNING
       "visiaengine: artifact absent at configure time (normal for a fresh tree): ${_art}\n"
-      "  build tree : cmake --build <tree> --target visiaengine-cargo before --install\n"
+      "  build tree : cmake --build <tree> --target visiaengine-ffi-build before --install\n"
       "  prebuilt   : -DVISIAENGINE_ARTIFACT_PATH=<dir containing libvisiaengine.so>")
   endif()
   install(CODE "if(NOT EXISTS [[${_art}]])
-    message(FATAL_ERROR \"visiaengine: --install but the artifact is absent: ${_art} (build visiaengine-cargo first, or use the prebuilt lane)\")
+    message(FATAL_ERROR \"visiaengine: --install but the artifact is absent: ${_art} (build visiaengine-ffi-build first, or use the prebuilt lane)\")
   endif()")
 
   # Library

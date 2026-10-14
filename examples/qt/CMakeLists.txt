@@ -7,8 +7,8 @@ find_package(visiaengine REQUIRED)
 add_executable(visiaengine-example-E703_qt_viewer E703_qt_viewer.cpp)
 target_link_libraries(visiaengine-example-E703_qt_viewer PRIVATE visiaengine::qt Qt6::Widgets ${X11_LIBRARIES})
 # the widget header rides the visiaengine::qt face (T-H2: the raw include-dir anti-pattern retired)  # the widget.hpp relocation/split fix (S3)
-if(DEFINED VISIAENGINE_CARGO_STEP)
-  add_dependencies(visiaengine-example-E703_qt_viewer ${VISIAENGINE_CARGO_STEP})
+if(DEFINED VISIAENGINE_FFI_STEP)
+  add_dependencies(visiaengine-example-E703_qt_viewer ${VISIAENGINE_FFI_STEP})
 endif()
 set_target_properties(visiaengine-example-E703_qt_viewer PROPERTIES
   BUILD_RPATH "${Qt6_DIR}/../../../lib"

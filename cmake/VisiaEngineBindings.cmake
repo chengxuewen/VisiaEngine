@@ -42,8 +42,13 @@ function(visiaengine_add_example _n)
       set_property(TARGET ${_tgt} APPEND PROPERTY BUILD_RPATH ${_sdldir})
     endif()
   endif()
-  if(DEFINED VISIAENGINE_CARGO_STEP)
-    add_dependencies(${_tgt} ${VISIAENGINE_CARGO_STEP})  # umbrella .so ordering bridge (same as the probe)
+  if(DEFINED VISIAENGINE_FFI_STEP)
+    # LOAD-BEARING bridge, not legacy (probe 2026-10-14): the link face
+    # visiaengine::c chains target_link_libraries to the ARTIFACT FILE PATH
+    # (not the IMPORTED handle) -- a file dependency propagates no target
+    # deps, so the auto-build edge never reaches the example's link rule.
+    # Removing this line orphans the .so ordering (ninja -t deps evidence).
+    add_dependencies(${_tgt} ${VISIAENGINE_FFI_STEP})  # same as the probe
   endif()
   get_filename_component(_lang "${CMAKE_CURRENT_SOURCE_DIR}" NAME)  # FOLDER = the on-disk language directory (the band number is already encoded in the E-number's first digit; no duplicate vocabulary table)
   set_target_properties(${_tgt} PROPERTIES FOLDER "examples/${_lang}")
