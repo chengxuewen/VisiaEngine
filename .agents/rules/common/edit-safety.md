@@ -344,3 +344,23 @@ short-circuits before the new code runs, and the fix reads as a no-op.
 reconfigure over a warm tree.
 
 **Source**: PIT-53 (2026-10-13 ide_mount [[example]] round).
+
+### 31. A FORCE/override/knob-composite mechanism MUST carry a CMakeCache value assertion (2026-10-14)
+
+**Rule**: when landing any mechanism that forces or overrides a cache value
+(OR_CONDITION, composite switches, gate dictators, FORCE re-declaration),
+the test leg asserts the CACHE value (`file(READ CMakeCache.txt)` +
+marker match), not only the runtime behavior. Half-ported semantics are
+silent: behavior-correct + cache-stale = GUI shows one truth, build does
+another (measured: the thin-sugar OR_CONDITION port skipped the octk
+FORCE; the user caught "knob not actually set" through the GUI two rounds
+later).
+
+**Verification**: every override-class feature's test contains one
+`*_CACHE_SHOULD_SHOW*` style assertion against the cache file; grepping
+the test for `CMakeCache` proves the leg exists.
+
+**Blocking condition**: landing an override mechanism with behavior-only
+tests.
+
+**Source**: T-H7 thin-sugar lesson + the t-option/t-native-debug FORCE-cache pins.

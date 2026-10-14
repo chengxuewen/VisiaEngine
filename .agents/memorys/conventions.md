@@ -171,6 +171,19 @@ unique to the rlibs aggregate. An aggregate over a single crate's verbs
 with no deliverable word is a convenience bundle, not a collection
 (wasm-all deleted 2026-10-12; the rlibs aggregates stand on 9 buttons).
 
+The KNOB namespace order (T-H7, 2026-10-14, user-adjudicated): debug-surface knobs
+are `PolyOrch_VSCODE_DEBUG_<FACE>` (FEATURE first, FACE second) with a BOOLEAN
+composite `PolyOrch_VSCODE_DEBUG_ALL` (ON forces every face through the OR_CONDITION
+cache FORCE; display = effect). Face words are the lane words, no abbreviations,
+no old-axis coins: NATIVE for c/cpp/qt (CPP/CXX rejected: they lie about the C
+lane and CXX re-spells cpp). The full octk_option semantics live in PolyOrch
+(six keywords ported, user-ruled; extraction-roadmap note retired -- the port IS
+the surface).
+```bash
+# no old-order knob names outside the compat reads:
+grep -rn "PolyOrch_RUST_VSCODE_DEBUG\|PolyOrch_NODE_VSCODE_DEBUG\|PolyOrch_PYTHON_VSCODE_DEBUG" cmake/ 2>/dev/null | grep -v _gate.cmake | grep -v "legacy" && echo FAIL || echo PASS
+```
+
 The EXAMPLE head word (T-H6, 2026-10-13): all four example lanes
 (rs/c/cpp/qt) share `visiaengine-example-<name>` for targets and
 `-run`/`-build` suffix verbs for buttons; source FILES keep bare E

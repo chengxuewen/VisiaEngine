@@ -469,3 +469,74 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
   expected .rs files.
 - **Forbidden**: concluding "the fix does not work" from one reconfigure
   while a keyed INTERNAL cache survives from earlier runs.
+
+## PIT-54: a MID-argument quote in execute_process lands in the child cache as a literal (2026-10-13, three debug rounds)
+- **Symptom**: `-DPOLYORCH_CMAKE_DIR="${dir}"` inside execute_process(COMMAND ...) --
+  the child configure's include() failed on a path whose first segment was wrapped in
+  literal quote characters; three rounds misdiagnosed (trailing slash, then heredoc
+  escaping) before the raw argv was trusted.
+- **Root cause**: CMake-language quoting keeps quotes appearing MID-argument in the
+  resulting token; the child cmake takes everything after `=` verbatim, quotes included.
+  A direct SHELL invocation does not reproduce it (the shell strips quotes) -- so a
+  shell repro is NOT a repro of an execute_process argv path.
+- **Solution**: quote the WHOLE -D argument: `"-DPOLYORCH_CMAKE_DIR=${dir}"`.
+- **Verification**: the include() line of the generated child CMakeLists prints the
+  expanded value; a `"` inside it = this pitfall.
+- **Forbidden**: diagnosing this from a shell repro; editing the child file's $-escaping
+  while the parent's -D value is the broken side.
+
+## PIT-55: test-scaffold CMakeLists trio -- CASE reset, bracket-arg escaping, python-chain quote-eating (2026-10-13/14, six recurrences)
+- **Symptom**: (a) a generated child CMakeLists containing `set(CASE "")` reported
+  zero branch hits despite -DCASE passed (three cases: t-wasm-serve, t-option, and the
+  matrix design round); (b) `$\{POLYORCH_CMAKE_DIR\}` written "to escape" for the child
+  became a LITERAL in the file and broke include() (bracket arguments expand NOTHING --
+  write ${VAR} plainly inside [=[ ]=]); (c) python-patch chains ate the `\"` escaping
+  of CMake string content ("Syntax Warning ... Argument not separated" from a
+  de-escaped regex literal).
+- **Root cause**: three independent quoting layers (cmake -P script / file(WRITE
+  bracket-arg) / python string replace) each have DIFFERENT escape semantics; the
+  intuition of one layer applied to another produces silent literals, not errors.
+- **Solution**: inside bracket-arg templates write variables plainly (no expansion
+  happens anyway); NEVER seed a -D-influenced variable with set() in the template;
+  for CMake strings containing JSON quotes prefer the write tool over multi-layer
+  python replace.
+- **Verification**: `sed -n '3p' <generated child CMakeLists> | cat -A` -- visible
+  backslashes/quotes where none belong; zero-hit branch = grep the template for a
+  `set(CASE` line.
+- **Forbidden**: re-escaping the same content a second time because round one "didn't
+  take" -- confirm which layer mangled it first.
+
+## PIT-56: renaming one creation point INTO the name of another arms a latent CMP0002 (2026-10-13, exploded in the debug preset a full round later)
+- **Symptom**: T-H5.5 renamed rs/cargo-run buttons to visiaengine-example-<E#>-run;
+  configure green under default. The DEBUG preset (gate ON) then died on CMP0002:
+  V's manual button and polyorch_rust_run's internal `<TARGET>-run` had become the
+  SAME name. One month of three-way distinct names had hidden the two creation points.
+- **Root cause**: a rename sweep checks the renamed strings; it does not ask "does the
+  NEW name already have a creator somewhere (a supplier face that also emits one)".
+  The AFTER snapshot ran one preset -- the second creator lived behind a gate the
+  snapshot never opened.
+- **Solution**: rename target names must enumerate ALL creators of the destination
+  name (grep the supplier face for add_custom_target/${T}- patterns), and the AFTER
+  verification must run EVERY gate polarity the lane supports.
+- **Verification**: configure under BOTH presets green; `--target help` diff before/
+  after under each polarity, not just the default one.
+- **Forbidden**: closing a rename round after one preset's snapshot.
+
+## PIT-57: a gated generator hook short-circuits the WHOLE surface -- switching presets FREEZES stale rows, it does not empty them (2026-10-14, measured)
+- **Symptom**: expectation (from the launch.json empty-block report): a default-preset
+  (gate OFF) reconfigure empties the debug region. Reality after the dual-state fix:
+  the DEFER hook registers only when a face gate is ON -- gate OFF runs no generator
+  at all, the launch.json keeps its previous debug-era rows UNCHANGED (usable F5 by
+  accident, or silently pointing at renamed artifacts).
+- **Root cause**: "writes empty region" and "does not write at all" are two different
+  failure shapes; the hook architecture gives the second. The Momus one-line STATUS
+  (empty-over-nonempty) is UNREACHABLE in pure single-polarity worlds -- retained
+  only for the mixed-face case (one face ON, another switched OFF).
+- **Solution**: document "preset switch does not clear" as the architecture fact;
+  stale rows on renames die at the next gate-ON configure (rows are regenerated from
+  current targets, never from the file).
+- **Verification**: gate-off configure leaves .vscode mtime unchanged; gate-on
+  configure regenerates rows fully (rename round proof: 29 rows reappeared with the
+  new names).
+- **Forbidden**: reasoning "empty block overwrote the file" from the first
+  observation -- check the file content before attributing the mechanism.
