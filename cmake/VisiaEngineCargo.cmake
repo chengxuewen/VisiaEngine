@@ -53,11 +53,17 @@ function(visiaengine_setup_cargo)
         MANIFEST "${_src}/Cargo.toml"
         FOLDER "crates/visiaengine-ffi")
     # ALL semantics kept: the default build must produce the artifacts (install-tree
-    # leg, umbrella link, IDE "build all"). Wrapper carries no FOLDER (root position rule).
-    # The name is the LANE word (ffi), not the tool word -- the retired cargo-* coinage
-    # class (T-H5.5 lineage); symmetric with the visiaengine-rlibs-build sibling.
+    # leg, umbrella link, IDE "build all").
+    # The name is the LANE word (ffi), not the tool word -- the retired cargo-*
+    # coinage class (T-H5.5 lineage).
+    # FOLDER: the T-H10 root-group rule is for aggregates WITHOUT an on-disk
+    # home (rlibs spans 9 crates, example spans 5 lanes). This one HAS a home:
+    # it bundles exactly the visiaengine-ffi crate's mediators, and its lane
+    # sibling visiaengine-ffi-test already lives in crates/visiaengine-ffi --
+    # home exists => go home (the rule's corollary, user-adjudicated 2026-10-14).
     add_custom_target(visiaengine-ffi-build ALL)
     add_dependencies(visiaengine-ffi-build visiaengine-ffi-shared-build visiaengine-ffi-static-build)
+    set_target_properties(visiaengine-ffi-build PROPERTIES FOLDER "crates/visiaengine-ffi")
     set(VISIAENGINE_FFI_STEP "visiaengine-ffi-build" PARENT_SCOPE)
     # T-G1: the capi spec suite gets its button (crates-face precedent: -test
     # under the crate's FOLDER; default BASE_DIR = the same .cargo-target the
