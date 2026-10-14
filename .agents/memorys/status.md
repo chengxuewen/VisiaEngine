@@ -709,6 +709,24 @@ gate-abi/gate-i18n green, negative audits both header lanes (hpp +
 visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.
 
+## T-H11 round (2026-10-14, the web example wall -- P1+P2 landed)
+
+examples/wasm/ is now a three.js-style wall: hub index.html (searchable
+43-entry sidebar from wall.json; iframe viewer; placeholder cards with the
+ctest how-to for native-only entries) + common.js bootstrap + 6 LIVE pages
+(E101/E201/E202/E401/E811/E813 -- the entire wasm surface gets pressed by
+the wall itself). wall.json = the single list source; gate-docs ⑧ locks
+number-set equality wall<->registry + live-entry html existence. serve
+globs the wall, stages park.geojson + hierarchy.glb, and the glue .js are
+REAL file-level DEPENDS now (supplier 4dfa89b: the ';' in a -c one-liner
+split into argv -- server exited 0 silently; and serve served an EMPTY
+pkg/ without the js edge; post-hoc set_property(DEPENDS) never reaches the
+Ninja graph -- constructor only). Live: [4/5] replays both flavors, all
+probes 200, .wasm = application/wasm. gallery stays untouched (P3 carries
+the removal contract: 11-point list + judgment in plan/Momus回写; trigger
+goes to Open Items at P3 time). Gates: suite 80/0/26, gate-docs/i18n ✓,
+ci ALL GREEN.
+
 ## T-H10 round (2026-10-14, the aggregate opt-in flip + root-group migration)
 
 The user caught the default-named polyorch-rust-all aggregate drifting
