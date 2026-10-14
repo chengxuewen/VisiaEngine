@@ -42,7 +42,7 @@
       "displayName": "VSCode F5 (default + the PolyOrch CodeLLDB managed debug surface)",
       "inherits": "default",
       "cacheVariables": {
-        "PolyOrch_RUST_VSCODE_DEBUG": "ON"
+        "PolyOrch_VSCODE_DEBUG_ALL": "ALL"
       }
     },
     {
