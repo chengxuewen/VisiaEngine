@@ -196,7 +196,8 @@ function(visiaengine_setup_bindings)
 
   add_custom_target(visiaengine-example-build ALL)
   add_dependencies(visiaengine-example-build ${_rs_mediators})
-  set_target_properties(visiaengine-example-build PROPERTIES FOLDER "examples")
+  # T-H10: no FOLDER -- the tree-level aggregate has no on-disk home and
+  # joins the root group with the rlibs aggregates (position-mirror rule).
   add_custom_target(visiaengine-example-clean
     COMMAND ${_cenv} ${VISIAENGINE_CARGO} clean -p examples
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} VERBATIM)
