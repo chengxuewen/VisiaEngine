@@ -540,3 +540,25 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
   new names).
 - **Forbidden**: reasoning "empty block overwrote the file" from the first
   observation -- check the file content before attributing the mechanism.
+
+## PIT-58: a test leg that re-types the shipped string tests the copy, not the product (2026-10-14, live user failure)
+- **Symptom**: E306 run button died in winit ("neither WAYLAND_DISPLAY nor
+  WAYLAND_SOCKET nor DISPLAY is set") and then in sh syntax errors, while
+  t-rust-run-gui/t-example-run were all GREEN: the probe string shipped to
+  build.ninja carried literal `$${DISPLAY:-}`, leaked `]==]` bracket-close
+  garbage, and had its newlines flattened (`&&[ -z`).
+- **Root cause**: three stacked blind spots -- (1) the `$$`+REGEX collapse
+  inherited from the quoted era NEVER matched (CMake regex `\$\$` semantics);
+  (2) the MULTI-LINE command string is newline-flattened by the NINJA
+  generator, invisible under the Makefile generator the unit legs run on;
+  (3) the live leg hand-copied the script text into execute_process instead
+  of executing the shipped function's output -- so it proved the copy.
+- **Solution**: bracket argument expands nothing (single $ verbatim) + ONE
+  line, semicolon-separated (portable across generators) + the test consumes
+  `_<...>_probe_script` OUTPUT directly (absence-pin on `$$` added).
+- **Verification**:
+  `grep -n "_polyorch_gui_probe_script" tests/cases/t-rust-run-gui.cmake`
+  (the live leg must call the shipped helper, not re-type the text); the
+  double-dollar absence pin fires on any regression.
+- **Forbidden**: proving a shipped string by re-typing it in the leg;
+  Makefile-only shape pins for command text meant to run under Ninja.

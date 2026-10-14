@@ -364,3 +364,23 @@ the test for `CMakeCache` proves the leg exists.
 tests.
 
 **Source**: T-H7 thin-sugar lesson + the t-option/t-native-debug FORCE-cache pins.
+
+### 32. Command-embedded scripts must be single-line and generator-verified (2026-10-14)
+
+**Rule**: any shell script shipped inside `add_custom_target(COMMAND sh -c
+"<script>")` must be ONE line with `;` separators (the Ninja generator
+flattens embedded newlines out of quoted arguments -- measured) and the
+test leg must exercise the SHIPPED string (call the producing function and
+run/consume its output; a re-typed copy proves nothing, PIT-58). Inside
+bracket arguments [==[ ]==] write single `$` -- bracket args expand
+nothing; the `$$`+REGEX collapse is quoted-era cargo (and `\$\$` never
+matched anyway).
+
+**Verification**: live leg executes the function output (grep the case for
+the helper call, not a literal script); `--unset=DISPLAY` headless replay
+reaches the toolkit (no sh syntax error, no `$${`).
+
+**Blocking condition**: landing a COMMAND-embedded script with Makefile-only
+shape pins.
+
+**Source**: T-H9 (E306 button, user-reported; three layers deep).
