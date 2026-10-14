@@ -182,7 +182,7 @@ function(visiaengine_setup_bindings)
     # two creation points, the debug preset died).
     _polyorch_vscode_debug_gate(RUST _ve_dbg)
     if(_ve_dbg)
-      polyorch_rust_run(TARGET visiaengine-example-${_n} FOLDER "examples/rs")
+      polyorch_rust_run(TARGET visiaengine-example-${_n} GUI FOLDER "examples/rs")
     else()
       add_custom_target(visiaengine-example-${_n}-run
         COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
