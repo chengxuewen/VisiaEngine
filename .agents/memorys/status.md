@@ -708,3 +708,12 @@ rename (delete + reconfigure). Machine gates: ctest 108/108, pixi run ci ALL GRE
 gate-abi/gate-i18n green, negative audits both header lanes (hpp +
 visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.
+
+## T-H7 pending gate (2026-10-14, the VSCode debug knob family round)
+
+- **T-H7 legacy-knob removal gate** (the T-H7.1 removal contract): delete the
+  three compat reads (PolyOrch_{RUST,NODE,PYTHON}_VSCODE_DEBUG -> the
+  PolyOrch_VSCODE_DEBUG_* family) when BOTH hold: (a) zero grep hits for the
+  three old names over both repos' formal surfaces, (b) one minor cycle since
+  landing. One cleanup commit: compat reads + STATUS lines + this line,
+  together.
