@@ -5,7 +5,7 @@
 <script src="./common.js"></script>
 <script type="module">
 const st = document.getElementById('st'), canvas = document.getElementById('c');
-const eng = await veBoot(canvas); if (!eng) { veFail(st); throw new Error('no WebGPU'); }
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
 const glb = await veFile('./hierarchy.glb');
 const rc = eng.loadGltfBytes(glb);
 st.textContent = `就绪（glb rc=${rc} · 实体 ${eng.entityCount()}）——拖拽轨道 / 滚轮缩放`;

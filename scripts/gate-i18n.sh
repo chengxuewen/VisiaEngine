@@ -27,6 +27,7 @@ ALLOW = {  # path:lineno-allowances justified in the gate header
  'examples/c/E814_labels_headless.c',
  'examples/rs/E505_cjk_labels.rs',
  'examples/wasm/wall.json',  # user-facing web surface: manifest descs are hub display data (the CJK-label fixture class, T-H11)
+ 'examples/wasm/common.js',  # user-facing web surface: the veDiag triage messages ARE the product copy (T-H11 diagnostics)
 }
 bad = []
 for f in tracked:
@@ -50,5 +51,5 @@ print('\n'.join(bad) if bad else '')
 if bad:
     print(f"GATE-I18N ✗ {len(bad)} CJK lines outside the whitelist"); sys.exit(1)
 print("GATE-I18N ✓ (all tracked artifacts English; whitelist = skills surface, "
-      "7 fixture/anchor/display files, 1 conventions literal, 1 brand record)")
+      "8 fixture/anchor/display files, 1 conventions literal, 1 brand record)")
 PY
