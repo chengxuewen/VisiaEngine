@@ -709,7 +709,20 @@ gate-abi/gate-i18n green, negative audits both header lanes (hpp +
 visiaengine.h delete->FATAL->restore).
 Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.
 
-## T-H8 round (2026-10-14, the NATIVE debug face + knob family finale)
+## T-H10 round (2026-10-14, the aggregate opt-in flip + root-group migration)
+
+The user caught the default-named polyorch-rust-all aggregate drifting
+into the examples/rs folder: a redundant tree-wide button (every lane
+already aggregates: visiaengine-rlibs-{build,test,clean},
+visiaengine-example-build/-clean, wasm family) whose FOLDER was
+rewritten by the last registering lane. Supplier flipped to strictly
+opt-in + first-writer folder pin (PolyOrch 2f71338); V's own rs
+aggregates moved to the root group (no FOLDER -- the rlibs sibling
+pattern; fafe3c7). Verified: help shows zero polyorch-rust-all;
+example-build rebuilds the full gallery (32/32); suite 80/0/26;
+default preset green.
+
+
 
 The knob family is namespace-ordered (PolyOrch_VSCODE_DEBUG_{ALL,RUST,
 NODE,PYTHON,NATIVE}), ALL boolean -- ON forces every face (the full
