@@ -133,7 +133,11 @@ function(visiaengine_polyorch_wasm)
                "${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb"
       FLAVOR   web
       PORT     8017
-      FOLDER   "${_fold}")
+      # the button runs THE EXAMPLE (the hub wall) -- its home in the IDE tree
+      # is the example folder, not the crate folder (T-H11 adjudication: run-
+      # class buttons live under examples/<lang>; the glue build buttons stay
+      # under bindings/wasm where the crate artifacts are produced)
+      FOLDER   "examples/wasm")
 
   # IDE sources: the WP6 sub-handle is an IMPORTED target (no SOURCES
   # property -- measured), so the mount rides the MEDIATOR (the crates
