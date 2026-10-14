@@ -585,7 +585,7 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Forbidden**: reporting "wall verified live" off curl probes alone.
 
 ## PIT-62: shared-target attributes rewritten per registration drift by call ORDER; an opt-in with a default name is opt-out (2026-10-14)
-- **Symptom**: the tree-wide polyorch-rust-all aggregate materialized inside the host's examples/rs FOLDER, and existed in trees that never asked for it (user: 是否不正常).
+- **Symptom**: the tree-wide polyorch-rust-all aggregate materialized inside the host's examples/rs FOLDER, and existed in trees that never asked for it (user catch: “is this abnormal?”).
 - **Root cause**: every polyorch_rust_build call re-stamped the aggregate's FOLDER (last-writer-wins: the button "moved" to whoever registered last) and the "opt-in" knob carried a default name, so the opt was never required.
 - **Solution**: first-writer pins (create-and-fold once; later calls only add_dependencies); opt-in knobs have NO default -- unnamed means unbuilt. Applies to any shared aggregate/generator hook attribute.
 - **Verification**: t-rust-agg-optin (no-knob absence pin + folder-pin probe); `--target help` under a host that never set the knob shows zero aggregate.
