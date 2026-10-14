@@ -1,0 +1,365 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+// __POLYORCH_GENERATED_BEGIN__ (PolyOrch debug configs; keep this block last, regenerate via reconfigure)
+        {
+            "name": "PolyOrch: visiaengine-example-E101_clear (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E101_clear",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E101_clear (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E201_load_gltf (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E201_load_gltf",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E201_load_gltf (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E202_geo_viewer (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E202_geo_viewer",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E202_geo_viewer (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E203_measure_cli (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E203_measure_cli",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E203_measure_cli (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E204_pcl_viewer (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E204_pcl_viewer",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E204_pcl_viewer (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E205_text_labels (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E205_text_labels",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E205_text_labels (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E206_tile_viewer (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E206_tile_viewer",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E206_tile_viewer (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E302_fly_camera (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E302_fly_camera",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E302_fly_camera (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E303_split_screen (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E303_split_screen",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E303_split_screen (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E304_projection_morph (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E304_projection_morph",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E304_projection_morph (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E305_entity_anim (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E305_entity_anim",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E305_entity_anim (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E403_box_select (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E403_box_select",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E403_box_select (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E306_map_controls (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E306_map_controls",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E306_map_controls (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E504_glass_water (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E504_glass_water",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E504_glass_water (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E301_switch_camera (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E301_switch_camera",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E301_switch_camera (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E401_pick_demo (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E401_pick_demo",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E401_pick_demo (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E402_pick_interactive (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E402_pick_interactive",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E402_pick_interactive (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E501_shadow_demo (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E501_shadow_demo",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E501_shadow_demo (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E502_color_tuning (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E502_color_tuning",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E502_color_tuning (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E503_stroke_points (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E503_stroke_points",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E503_stroke_points (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E505_cjk_labels (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E505_cjk_labels",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E505_cjk_labels (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E506_postprocessing (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E506_postprocessing",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E506_postprocessing (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E507_hdr_tonemap (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E507_hdr_tonemap",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E507_hdr_tonemap (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E508_pbr_materials (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E508_pbr_materials",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E508_pbr_materials (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E509_ssao (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E509_ssao",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E509_ssao (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E510_route_flow (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E510_route_flow",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E510_route_flow (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E511_gate (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E511_gate",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E511_gate (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E601_bench_twin (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E601_bench_twin",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E601_bench_twin (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E901_twin_city (debug/examples)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/.cargo-target/debug/examples/E901_twin_city",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine/examples/rs",
+            "preLaunchTask": "PolyOrch: visiaengine-example-E901_twin_city (debug/examples)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E701_demo_headless (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E701_demo_headless",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E701_demo_headless (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E810_attr_survey (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E810_attr_survey",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E810_attr_survey (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E811_entity_hide_c (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E811_entity_hide_c",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E811_entity_hide_c (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E813_section_clip (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E813_section_clip",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E813_section_clip (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E814_labels_headless (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E814_labels_headless",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E814_labels_headless (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E815_fly_camera (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E815_fly_camera",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E815_fly_camera (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E704_host_callback (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E704_host_callback",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E704_host_callback (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E816_minimap_nav (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E816_minimap_nav",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E816_minimap_nav (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E817_two_layer_map (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E817_two_layer_map",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E817_two_layer_map (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E801_sdl_window (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E801_sdl_window",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E801_sdl_window (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E702_demo_x11 (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E702_demo_x11",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E702_demo_x11 (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E802_offscreen (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E802_offscreen",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E802_offscreen (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E811_entity_hide_cpp (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E811_entity_hide_cpp",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E811_entity_hide_cpp (debug/native)"
+        },
+        {
+            "name": "PolyOrch: visiaengine-example-E812_mesh_add (debug/native)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "/home/ubuntu/Documents/VisiaEngine/cmake-build/bin/visiaengine-example-E812_mesh_add",
+            "cwd": "/home/ubuntu/Documents/VisiaEngine",
+            "args": [],
+            "preLaunchTask": "PolyOrch: visiaengine-example-E812_mesh_add (debug/native)"
+        },
+// __POLYORCH_GENERATED_END__
+    ]
+}

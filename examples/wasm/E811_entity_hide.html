@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E811 实体显隐</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}</style></head>
+<body><p id="st">E811_entity_hide · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<script src="./common.js"></script>
+<script type="module">
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+const eng = await veBoot(canvas); if (!eng) { veFail(st); throw new Error('no WebGPU'); }
+const geo = await veFile('./park.geojson');
+eng.loadGeoJsonBytes(geo);
+const NONE = 18446744073709551615n;
+let hidden = 0;
+const all = () => Array.from({ length: eng.entityCount() }, (_, i) => eng.entityAt(i));
+st.textContent = `就绪（实体 ${eng.entityCount()}）——单击隐藏命中项，双击复原`;
+canvas.addEventListener('click', e => {
+  const h = eng.pick(e.offsetX, e.offsetY);
+  if (h !== NONE && eng.setEntityVisible(h, false) === 0) {
+    ++hidden; st.textContent = `已隐藏 #${h}（计 ${hidden}）——双击复原全部`;
+  }
+});
+canvas.addEventListener('dblclick', () => {
+  for (const h of all()) eng.setEntityVisible(h, true);
+  hidden = 0; st.textContent = '已全部复原';
+});
+veOrbit(canvas, eng);
+veLoop(eng);
+</script></body></html>

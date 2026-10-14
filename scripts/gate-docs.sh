@@ -112,6 +112,33 @@ if [ -f "$GM" ]; then
     [ "${rg:-x}" = "$mc" ] || { echo "GATE-DOCS ✗ ⑦README gallery '${rg:-missing}' ≠ manifest '$mc'"; fail=1; }
 fi
 
+# ⑧ wall manifest lock (T-H11): wall.json number set == registry numbers;
+# every kind=live entry has its html file beside the manifest. The wall is
+# hand-listed (like the gallery manifest was DERIVED) -- this lock is the drift net.
+if [ -f examples/wasm/wall.json ]; then
+    python3 - <<'WALLPY' || fail=1
+import json, re, pathlib, sys
+w = json.load(open("examples/wasm/wall.json"))
+ids = [e["id"] for e in w["entries"]]
+wnum = {i[:4] for i in ids}
+reg = set()
+for d in ("examples/rs", "examples/c", "examples/cpp", "examples/qt"):
+    p = pathlib.Path(d)
+    if p.is_dir():
+        reg |= {m.group(0) for f in p.iterdir() if (m := re.match(r"E\d{3}", f.name))}
+bad = []
+if wnum != reg:
+    bad.append(f"number-set drift: wall {sorted(wnum-reg)} extra / {sorted(reg-wnum)} missing")
+for e in w["entries"]:
+    if e["kind"] == "live" and not (pathlib.Path("examples/wasm") / (e["id"] + ".html")).is_file():
+        bad.append(f"live entry without html: {e['id']}")
+dup = {i for i in ids if ids.count(i) > 1}
+if dup: bad.append(f"duplicate ids: {sorted(dup)}")
+print("WALLPY ✗ " + "; ".join(bad) if bad else f"w11 ok: {len(ids)} entries == registry {len(reg)} numbers")
+sys.exit(1 if bad else 0)
+WALLPY
+fi
+
 if [ "$fail" = 0 ]; then
     echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / gallery $(grep -c '^E[0-9]' "$GM" 2>/dev/null || echo 0) cards / packages ${pk})"
 fi

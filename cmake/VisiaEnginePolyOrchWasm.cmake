@@ -117,11 +117,20 @@ function(visiaengine_polyorch_wasm)
   # web flavor as pkg/) and serve :8017 -- the scripts/web-serve.sh lane
   # retired to this graph-internal form (T-H5.4): stale glue cannot be
   # served, the DEPENDS edge replays it first.
+  # the wall (T-H11): hub + live pages + manifest + bootstrap are globbed.
+  # NOTE: the SOURCES list is a CONFIGURE-TIME snapshot (it bakes into
+  # fixed copy commands) -- a new E###.html joins the served dir only
+  # after a reconfigure; the wall dev loop is file + wall.json entry +
+  # reconfigure (CONFIGURE_DEPENDS does not apply to baked commands).
+  file(GLOB _wall_pages "${CMAKE_SOURCE_DIR}/examples/wasm/*.html"
+                        "${CMAKE_SOURCE_DIR}/examples/wasm/wall.json"
+                        "${CMAKE_SOURCE_DIR}/examples/wasm/common.js")
   polyorch_rust_wasm_serve(TARGET visiaengine-wasm
       NAME_PREFIX visiaengine-wasm
       DIRECTORY "${CMAKE_BINARY_DIR}/web-demo"
-      SOURCES  "${CMAKE_SOURCE_DIR}/examples/wasm/index.html"
+      SOURCES  ${_wall_pages}
       DATA     "${CMAKE_SOURCE_DIR}/resources/data/park.geojson"
+               "${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb"
       FLAVOR   web
       PORT     8017
       FOLDER   "${_fold}")

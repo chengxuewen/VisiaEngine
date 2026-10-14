@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E101 清屏渲染基线</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}</style></head>
+<body><p id="st">E101_clear · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<script src="./common.js"></script>
+<script type="module">
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+const eng = await veBoot(canvas); if (!eng) { veFail(st); throw new Error('no WebGPU'); }
+st.textContent = '就绪（空场景清屏 + 逐帧渲染循环）——这就是引擎的心跳';
+let n = 0;
+veLoop(eng, () => { if (++n % 60 === 0) st.textContent = `帧 ${n} · 60fps 走表`; });
+</script></body></html>

@@ -1,37 +1,63 @@
 <!doctype html>
 <html lang="zh">
-<head><meta charset="utf-8"><title>VisiaEngine — 同一内核 · 浏览器面</title>
+<head><meta charset="utf-8"><title>VisiaEngine · 示例墙</title>
 <style>
- body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}
- canvas{display:block;margin:2vh auto;border:1px solid #2a3340;touch-action:none}
- h2,p,ul{padding:0 16px}
- li{font-size:12px}
+ body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui;display:flex;height:100vh;overflow:hidden}
+ #side{width:300px;min-width:300px;overflow-y:auto;border-right:1px solid #2a3340;padding:10px}
+ #main{flex:1;display:flex;flex-direction:column}
+ #top{padding:8px 14px;border-bottom:1px solid #2a3340;display:flex;gap:10px;align-items:baseline}
+ #top a{color:#7ab4ff;font-size:12px;text-decoration:none}
+ iframe{flex:1;border:0;width:100%;background:#0b0f14}
+ input#q{width:100%;box-sizing:border-box;background:#121923;color:#cdd6e0;border:1px solid #2a3340;border-radius:6px;padding:6px 8px;margin-bottom:8px}
+ .band{font-size:11px;color:#7d8896;margin:12px 0 4px;letter-spacing:.08em}
+ .item{padding:5px 8px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:center}
+ .item:hover,.item.sel{background:#182230}
+ .live{color:#8fd5a0}.ph{color:#7d8896}
+ .badge{font-size:10px;border:1px solid #2a3340;border-radius:4px;padding:0 4px;color:#7d8896;margin-left:auto}
+ #card{flex:1;padding:24px 28px;overflow-y:auto;display:none;line-height:1.7}
+ #card h2{margin-top:0} #card code{background:#121923;padding:2px 6px;border-radius:4px;font-size:12px}
 </style></head>
 <body>
-<h2>VisiaEngine · web demo（批 7 J3）</h2>
-<canvas id="c" width="640" height="480"></canvas>
-<p id="status">初始化…（需 WebGPU：Chrome/Edge/Safari 26+）</p>
-<ul><li>T3-1 拖拽 → orbit 跟手</li><li>T3-2 滚轮 → zoom</li>
-<li>T3-3 点击 → pick 命中显示实体句柄</li><li>T3-4 色带/几何与 native geo_viewer 同形</li></ul>
-<script type="module">
-import init, { VisiaEngine } from './pkg/visiaengine_wasm.js';
-await init();
-const canvas = document.getElementById('c');
-const st = document.getElementById('status');
-const eng = await VisiaEngine.fromCanvas(canvas);
-if (!eng) { st.textContent = '✗ WebGPU 不可用（浏览器/flag/独显驱动）'; throw new Error('no WebGPU'); }
-const geo = new Uint8Array(await (await fetch('./park.geojson')).arrayBuffer());
-const rc = eng.loadGeoJsonBytes(geo);
-st.textContent = `就绪（load rc=${rc}，件数=${eng.entityCount()}）——拖拽/滚轮/点击试用`;
-let last = [0, 0];
-canvas.addEventListener('pointerdown', e => { last = [e.offsetX, e.offsetY]; eng.input(2, last[0], last[1], 0); canvas.setPointerCapture(e.pointerId); });
-canvas.addEventListener('pointermove', e => { if (e.buttons) { eng.input(1, e.offsetX, e.offsetY, 0); } });
-canvas.addEventListener('pointerup', e => eng.input(3, e.offsetX, e.offsetY, 0));
-canvas.addEventListener('wheel', e => { e.preventDefault(); eng.input(4, e.offsetX, e.offsetY, e.deltaY > 0 ? -1 : 1); }, { passive: false });
-canvas.addEventListener('click', e => {
-  const h = eng.pick(e.offsetX, e.offsetY);
-  st.textContent = h === 18446744073709551615n ? 'pick：未命中' : `pick：命中实体 ${h}`;
+<div id="side"><input id="q" placeholder="搜索 43 例…"></div>
+<div id="main">
+ <div id="top"><b id="ttl">VisiaEngine 示例墙</b><span id="sub" style="font-size:12px;color:#7d8896"></span>
+   <a id="ext" style="display:none" target="_blank" rel="noopener">新标签页打开 ↗</a></div>
+ <iframe id="frame" name="viewer"></iframe>
+ <div id="card"></div>
+</div>
+<script>
+const BANDS={1:"核心",2:"加载与显示",3:"相机与视图",4:"拾取选择",5:"材质与后处理",6:"性能",7:"窗口与宿主",8:"数据与交互",9:"场景"};
+let wall=[],sel=null;
+const $=id=>document.getElementById(id);
+function items(f){return wall.filter(e=>!f||e.id.toLowerCase().includes(f)||e.title.includes(f)||BANDS[e.band].includes(f));}
+function render(f){
+  const s=$("side");s.innerHTML="";s.appendChild($("q"));
+  for(const b of Object.keys(BANDS)){const es=items(f).filter(e=>e.band==b);if(!es.length)continue;
+    const h=document.createElement("div");h.className="band";h.textContent=`E${b}× ${BANDS[b]}`;s.appendChild(h);
+    for(const e of es){const d=document.createElement("div");
+      d.className="item"+(e.kind==="live"?" live":" ph")+(sel===e?" sel":"");
+      d.innerHTML=`<span>${e.id}</span><span>${e.title}</span><span class="badge">${e.langs.join("/")}${e.kind==="live"?" · 活":""}</span>`;
+      d.onclick=()=>pick(e);s.appendChild(d);}}
+}
+function pick(e){
+  sel=e;location.hash=e.id;render($("q").value.toLowerCase());
+  const c=$("card"),fr=$("frame");
+  if(e.kind==="live"){c.style.display="none";fr.style.display="block";
+    fr.src=`./${e.id}.html`;$("ttl").textContent=`${e.id} · ${e.title}`;
+    $("sub").textContent="";const x=$("ext");x.style.display="inline";x.href=`./${e.id}.html`;}
+  else{fr.style.display="none";c.style.display="block";c.innerHTML=
+    `<h2>${e.id} · ${e.title} <span class="badge">${e.langs.join("/")}</span></h2>
+     <p>${e.desc}</p><p style="color:#7d8896">此例在本地原生运行（浏览器面未收录）：</p>
+     <p><code>${e.how}</code></p>`;
+    $("ttl").textContent=`${e.id} · ${e.title}`;$("sub").textContent="（占位卡）";$("ext").style.display="none";}
+}
+fetch("./wall.json").then(r=>r.json()).then(d=>{
+  wall=d.entries;render();
+  const h=decodeURIComponent(location.hash.slice(1));
+  pick(wall.find(e=>e.id===h)||wall.find(e=>e.kind==="live")||wall[0]);
 });
-(function loop() { eng.render(); requestAnimationFrame(loop); })();
+addEventListener("hashchange",()=>{const h=decodeURIComponent(location.hash.slice(1));
+  const e=wall.find(x=>x.id===h);if(e&&e!==sel)pick(e);});
+$("q").addEventListener("input",ev=>render(ev.target.value.toLowerCase()));
 </script>
 </body></html>

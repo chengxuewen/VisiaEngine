@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E201 GLB 模型加载</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}</style></head>
+<body><p id="st">E201_load_gltf · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<script src="./common.js"></script>
+<script type="module">
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+const eng = await veBoot(canvas); if (!eng) { veFail(st); throw new Error('no WebGPU'); }
+const glb = await veFile('./hierarchy.glb');
+const rc = eng.loadGltfBytes(glb);
+st.textContent = `就绪（glb rc=${rc} · 实体 ${eng.entityCount()}）——拖拽轨道 / 滚轮缩放`;
+veOrbit(canvas, eng);
+veLoop(eng);
+</script></body></html>

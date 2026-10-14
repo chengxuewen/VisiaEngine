@@ -1,0 +1,473 @@
+{
+ "$comment": "VisiaEngine example wall manifest. Single source of the wall's list; the hub fetches this at runtime. Lock (gate-docs ⑧): the E-number set here == the cmake registry number set (43 unique); kind=live entries must have E###_*.html beside this file. New/renamed examples must update registry + wall.json together.",
+ "entries": [
+  {
+   "id": "E101_clear",
+   "band": 1,
+   "kind": "live",
+   "langs": [
+    "rs"
+   ],
+   "title": "清屏渲染基线",
+   "desc": "引擎上电第一式：建窗、清屏、逐帧渲染循环——一切例子的公分母。"
+  },
+  {
+   "id": "E201_load_gltf",
+   "band": 2,
+   "kind": "live",
+   "langs": [
+    "rs"
+   ],
+   "title": "GLB 模型加载",
+   "desc": "加载 hierarchy.glb 场景图实体并环绕观察（拖拽轨道、滚轮缩放）。"
+  },
+  {
+   "id": "E202_geo_viewer",
+   "band": 2,
+   "kind": "live",
+   "langs": [
+    "rs"
+   ],
+   "title": "地理视图（park）",
+   "desc": "park.geojson 进引擎：色带几何与 native geo_viewer 同形；点击可拾取。"
+  },
+  {
+   "id": "E203_measure_cli",
+   "band": 2,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "两点测距 CLI",
+   "desc": "命令行拾取两点量距离，终端读数。",
+   "how": "ctest -R example_E203_measure_cli"
+  },
+  {
+   "id": "E204_pcl_viewer",
+   "band": 2,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "点云查看",
+   "desc": "PLY 点云（ASCII/二进制）载入渲染——点带首秀。",
+   "how": "ctest -R example_E204_pcl_viewer"
+  },
+  {
+   "id": "E205_text_labels",
+   "band": 2,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "文字标签",
+   "desc": "TTF 字体注入 + 锚点标签 + UTF-8 活体（CAPI-21/22 带）。",
+   "how": "ctest -R example_E205_text_labels"
+  },
+  {
+   "id": "E206_tile_viewer",
+   "band": 2,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "瓦片流览",
+   "desc": "地图瓦片分层流式装载与调度。",
+   "how": "ctest -R example_E206_tile_viewer"
+  },
+  {
+   "id": "E301_switch_camera",
+   "band": 3,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "机位切换",
+   "desc": "多预设相机一键互切，插值过渡。",
+   "how": "ctest -R example_E301_switch_camera"
+  },
+  {
+   "id": "E302_fly_camera",
+   "band": 3,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "飞行相机",
+   "desc": "WASD/俯仰连续飞行漫游。",
+   "how": "ctest -R example_E302_fly_camera"
+  },
+  {
+   "id": "E303_split_screen",
+   "band": 3,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "分屏对照",
+   "desc": "双视口同场景并排（参数对照利器）。",
+   "how": "ctest -R example_E303_split_screen"
+  },
+  {
+   "id": "E304_projection_morph",
+   "band": 3,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "投影变形",
+   "desc": "透视↔正交连续插值切换（地图视角魔法）。",
+   "how": "ctest -R example_E304_projection_morph"
+  },
+  {
+   "id": "E305_entity_anim",
+   "band": 3,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "实体动画",
+   "desc": "逐帧变换驱动实体运动轨迹。",
+   "how": "ctest -R example_E305_entity_anim"
+  },
+  {
+   "id": "E306_map_controls",
+   "band": 3,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "地图操作手",
+   "desc": "2D 地图导航式交互（平移/缩放/旋转约束）。",
+   "how": "ctest -R example_E306_map_controls"
+  },
+  {
+   "id": "E401_pick_demo",
+   "band": 4,
+   "kind": "live",
+   "langs": [
+    "rs"
+   ],
+   "title": "拾取演示",
+   "desc": "点击场景 → pick 命中实体句柄回显——鼠标到 GPU 的往返票。"
+  },
+  {
+   "id": "E402_pick_interactive",
+   "band": 4,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "拾取增强",
+   "desc": "悬停高亮 + 选中态机（交互式拾取全形态）。",
+   "how": "ctest -R example_E402_pick_interactive"
+  },
+  {
+   "id": "E403_box_select",
+   "band": 4,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "框选",
+   "desc": "拖出矩形批量选中实体（GIS 刚需）。",
+   "how": "ctest -R example_E403_box_select"
+  },
+  {
+   "id": "E501_shadow_demo",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "软阴影",
+   "desc": "PCSS 软阴影：滑杆调遮挡半影。",
+   "how": "ctest -R example_E501_shadow_demo"
+  },
+  {
+   "id": "E502_color_tuning",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "色彩调校",
+   "desc": "曝光/对比/饱和全链调校面板。",
+   "how": "ctest -R example_E502_color_tuning"
+  },
+  {
+   "id": "E503_stroke_points",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "描边点渲染",
+   "desc": "点云的描边式笔画渲染族。",
+   "how": "ctest -R example_E503_stroke_points"
+  },
+  {
+   "id": "E504_glass_water",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "玻璃与水",
+   "desc": "透射材质双球对照（glass/water PBR）。",
+   "how": "ctest -R example_E504_glass_water"
+  },
+  {
+   "id": "E505_cjk_labels",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "中日韩标签",
+   "desc": "CJK 字体链路的标签渲染。",
+   "how": "ctest -R example_E505_cjk_labels"
+  },
+  {
+   "id": "E506_postprocessing",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "后处理链",
+   "desc": "后处理开关矩阵（bloom 等）对照。",
+   "how": "ctest -R example_E506_postprocessing"
+  },
+  {
+   "id": "E507_hdr_tonemap",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "HDR 色调映射",
+   "desc": "demo_sky.hdr 环境 + 可换 tonemapper。",
+   "how": "ctest -R example_E507_hdr_tonemap"
+  },
+  {
+   "id": "E508_pbr_materials",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "PBR 材质球",
+   "desc": "金属度/粗糙度参数材质球阵。",
+   "how": "ctest -R example_E508_pbr_materials"
+  },
+  {
+   "id": "E509_ssao",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "环境光遮蔽",
+   "desc": "SSAO 开关对照（凹角变暗的真相）。",
+   "how": "ctest -R example_E509_ssao"
+  },
+  {
+   "id": "E510_route_flow",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "路径流动",
+   "desc": "路线沿线流动动画（导航观感带）。",
+   "how": "ctest -R example_E510_route_flow"
+  },
+  {
+   "id": "E511_gate",
+   "band": 5,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "渲染闸门自检",
+   "desc": "带门控的渲染回归场景（验收用）。",
+   "how": "ctest -R example_E511_gate"
+  },
+  {
+   "id": "E601_bench_twin",
+   "band": 6,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "孪城性能基准",
+   "desc": "twin city 场景帧率/耗时统计。",
+   "how": "ctest -R example_E601_bench_twin"
+  },
+  {
+   "id": "E701_demo_headless",
+   "band": 7,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "无头演示（C 面）",
+   "desc": "不建窗全流程：输入→拾取→属性遍历断言。",
+   "how": "ctest -R example_E701_demo_headless"
+  },
+  {
+   "id": "E702_demo_x11",
+   "band": 7,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "X11 窗口（C 面）",
+   "desc": "原生 Xlib 窗口双模式（交互/3 帧自退）。",
+   "how": "ctest -R example_E702_demo_x11"
+  },
+  {
+   "id": "E703_qt_viewer",
+   "band": 7,
+   "kind": "native",
+   "langs": [
+    "qt"
+   ],
+   "title": "Qt 控件视图",
+   "desc": "引擎嵌进 Qt6  widgets——桌面集成面。",
+   "how": "ctest -R example_E703_qt_viewer（需 Qt 道开启）"
+  },
+  {
+   "id": "E704_host_callback",
+   "band": 7,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "宿主回调",
+   "desc": "CAPI-17 推送入口三态：进度/错误/摘除。",
+   "how": "ctest -R example_E704_host_callback"
+  },
+  {
+   "id": "E801_sdl_window",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "SDL3 窗口",
+   "desc": "SDL3 建窗双模式（无参驻留 / --frames 3 自退）。",
+   "how": "ctest -R example_E801_sdl_window"
+  },
+  {
+   "id": "E810_attr_survey",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "属性巡览",
+   "desc": "零新增入口的属性遍历全景（CAPI-04/10）。",
+   "how": "ctest -R example_E810_attr_survey"
+  },
+  {
+   "id": "E811_entity_hide",
+   "band": 8,
+   "kind": "live",
+   "langs": [
+    "c",
+    "cpp"
+   ],
+   "title": "实体显隐",
+   "desc": "点击隐藏、双击复原——C/C++ 双胞胎的浏览器亲兄弟。"
+  },
+  {
+   "id": "E802_offscreen",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "cpp"
+   ],
+   "title": "离屏渲染（C++ 面）",
+   "desc": "无窗口渲染到文件——RAII 面的 headless 验收。",
+   "how": "ctest -R example_E802_offscreen"
+  },
+  {
+   "id": "E812_mesh_add",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "cpp"
+   ],
+   "title": "程序化增删网格",
+   "desc": "运行时挂载/摘除网格实体（CAPI-15/16 活门）。",
+   "how": "ctest -R example_E812_mesh_add"
+  },
+  {
+   "id": "E813_section_clip",
+   "band": 8,
+   "kind": "live",
+   "langs": [
+    "c"
+   ],
+   "title": "剖面裁切",
+   "desc": "拖滑杆 → setClips 剖切平面扫过场景，几何应声而断。"
+  },
+  {
+   "id": "E814_labels_headless",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "无头标签",
+   "desc": "字体注入+锚点标签的 headless 验收形态。",
+   "how": "ctest -R example_E814_labels_headless"
+  },
+  {
+   "id": "E815_fly_camera",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "飞行漫游（C 面）",
+   "desc": "挂钟推进/单调进度/可取消的飞行带（CAPI-23/24）。",
+   "how": "ctest -R example_E815_fly_camera"
+  },
+  {
+   "id": "E816_minimap_nav",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "小地图导航",
+   "desc": "角部区域小地图：字节级金丝雀 + 拾取导航（CAPI-25..27）。",
+   "how": "ctest -R example_E816_minimap_nav"
+  },
+  {
+   "id": "E817_two_layer_map",
+   "band": 8,
+   "kind": "native",
+   "langs": [
+    "c"
+   ],
+   "title": "双层地图",
+   "desc": "空帧/单层/双序叠放/重挂字节级一致（带 T 修订条款）。",
+   "how": "ctest -R example_E817_two_layer_map"
+  },
+  {
+   "id": "E901_twin_city",
+   "band": 9,
+   "kind": "native",
+   "langs": [
+    "rs"
+   ],
+   "title": "孪城市景",
+   "desc": "压轴演示：数字孪生城市全景。",
+   "how": "ctest -R example_E901_twin_city"
+  }
+ ]
+}

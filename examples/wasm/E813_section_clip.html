@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E813 剖面裁切</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#ctl{padding:0 16px;display:flex;gap:10px;align-items:center}input{width:60%}button{background:#121923;color:#cdd6e0;border:1px solid #2a3340;border-radius:6px;padding:4px 10px}</style></head>
+<body><p id="st">E813_section_clip · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="ctl"><input id="s" type="range" min="-60" max="60" value="60"><button id="r">清除剖切</button></div>
+<script src="./common.js"></script>
+<script type="module">
+const st = document.getElementById('st'), canvas = document.getElementById('c'), s = document.getElementById('s');
+const eng = await veBoot(canvas); if (!eng) { veFail(st); throw new Error('no WebGPU'); }
+const geo = await veFile('./park.geojson');
+eng.loadGeoJsonBytes(geo);
+const apply = () => {
+  const v = +s.value;
+  const rc = v >= 60 ? eng.setClips([]) : eng.setClips([1, 0, 0, -v]);
+  st.textContent = v >= 60 ? `就绪（剖切已清 · 实体 ${eng.entityCount()}）——拖滑杆剖开场景`
+    : `剖切面 x=${v}（rc=${rc}）——右侧几何被裁掉`;
+};
+s.addEventListener('input', apply);
+document.getElementById('r').onclick = () => { s.value = 60; apply(); };
+apply();
+veOrbit(canvas, eng);
+veLoop(eng);
+</script></body></html>

@@ -26,6 +26,7 @@ ALLOW = {  # path:lineno-allowances justified in the gate header
  'examples/c/E701_demo_headless.c',
  'examples/c/E814_labels_headless.c',
  'examples/rs/E505_cjk_labels.rs',
+ 'examples/wasm/wall.json',  # user-facing web surface: manifest descs are hub display data (the CJK-label fixture class, T-H11)
 }
 bad = []
 for f in tracked:
