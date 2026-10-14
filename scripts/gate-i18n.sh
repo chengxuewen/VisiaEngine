@@ -50,5 +50,5 @@ print('\n'.join(bad) if bad else '')
 if bad:
     print(f"GATE-I18N ✗ {len(bad)} CJK lines outside the whitelist"); sys.exit(1)
 print("GATE-I18N ✓ (all tracked artifacts English; whitelist = skills surface, "
-      "6 source fixture/anchor files, 1 conventions literal, 1 brand record)")
+      "7 fixture/anchor/display files, 1 conventions literal, 1 brand record)")
 PY
