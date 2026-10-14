@@ -27,3 +27,12 @@ add_custom_target(visiaengine-example-E703_qt_viewer-run
   USES_TERMINAL)
 add_dependencies(visiaengine-example-E703_qt_viewer-run visiaengine-example-E703_qt_viewer)
 set_target_properties(visiaengine-example-E703_qt_viewer-run PROPERTIES FOLDER "examples/qt")
+
+# T-H8 native face: F5 for the Qt example
+if(COMMAND polyorch_native_debug)
+  _polyorch_vscode_debug_gate(NATIVE _qdebug)
+  if(_qdebug)
+    polyorch_native_debug(TARGET visiaengine-example-E703_qt_viewer
+        CWD "${CMAKE_SOURCE_DIR}" SEG "debug/qt")
+  endif()
+endif()

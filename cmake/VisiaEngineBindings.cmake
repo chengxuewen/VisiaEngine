@@ -66,6 +66,15 @@ function(visiaengine_add_example _n)
   endif()
   add_dependencies(${_tgt}-run ${_tgt})
   set_target_properties(${_tgt}-run PROPERTIES FOLDER "examples/${_lang}")
+  # T-H8 native face: F5 for the c/cpp examples (CodeLLDB rows via the
+  # supplier face; gate-off = untouched). CWD = source root (examples
+  # resolve data paths from there, same WORKING_DIRECTORY as ctest).
+  if(COMMAND polyorch_native_debug)
+    _polyorch_vscode_debug_gate(NATIVE _ndebug)
+    if(_ndebug)
+      polyorch_native_debug(TARGET ${_tgt} CWD "${CMAKE_SOURCE_DIR}")
+    endif()
+  endif()
   set_property(GLOBAL APPEND PROPERTY VE_REGISTERED_EXAMPLES ${_n})
 endfunction()
 
