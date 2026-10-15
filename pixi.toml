@@ -103,6 +103,7 @@ pack-check = "bash scripts/gate-pack.sh"
 # which `pixi run ci` does not promise. It starts its own private display, so
 # never wrap it in xvfb-run (PIT-22).
 keys-probe = "python3 scripts/keys-probe.py --all"
+gen-hdr = "python3 scripts/gen_hdr.py"   # regenerate the demo_sky.hdr fixture (discoverability; keys-probe precedent: bare python3, out of the ci chain)
 # npm-pack: builder, not a gate — out of the ci chain (same policy as the wall serve /
 # keys-probe). Assembles build/npm/visiaengine/ + a LOCAL .tgz from the wasm build
 # output; needs node (default env) and a prior `pixi run web-check`. Nothing is
