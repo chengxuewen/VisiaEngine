@@ -13,7 +13,7 @@ if(DEFINED VISIAENGINE_QT_SDK)
     "VISIAENGINE_QT_SDK=${VISIAENGINE_QT_SDK} will be ignored; delete CMakeCache.txt and reconfigure, "
     "or pass -DVISIAENGINE_QT=ON")
 endif()
-set(VISIAENGINE_QT "OFF" CACHE BOOL "Want Qt6? (ON = pixi qt-spike first -> system -> neither = FATAL; OFF = no Qt setup)")
+set(VISIAENGINE_QT "OFF" CACHE BOOL "Want Qt? (ON = Qt6 preferred, then Qt >= 5.15; the pixi env route first -> system -> neither = FATAL; OFF = no Qt setup)")
 set(VISIAENGINE_PIXI_ENV "qt-spike" CACHE STRING "pixi environment name (falls back to default when that env dir is absent)")
 set(VISIAENGINE_ARTIFACT_PATH "" CACHE PATH "Prebuilt capi artifact directory (setting it = pure consumption, no cargo step; a missing file = hard error)")
 set_property(CACHE VISIAENGINE_RUST_SDK PROPERTY STRINGS AUTO PIXI SYSTEM)
@@ -124,34 +124,83 @@ function(visiaengine_resolve_sdks)
     message(STATUS "Rust SDK: ${_cargo} [${_kind}] · MSRV ${_msrv}")
   endif()
 
-  # ---- Qt6 (T-A0' two-value contract) ----
+  # ---- Qt (T-A0' two-value contract; R2 two generations: Qt6 preferred, then Qt >= 5.15) ----
   if(NOT VISIAENGINE_QT)
     message(STATUS "Qt: OFF (Qt not enabled; pass -DVISIAENGINE_QT=ON to want Qt)")
     return()
   endif()
-  # ON = Qt is strictly required. The chain serves itself: pixi (qt-spike first, the env self-sufficiency principle) -> system -> neither = FATAL.
-  # With USE_PIXI=OFF, _pixi is already empty (the master-switch cut-off point), so only the system path remains here -- no re-check needed.
+  # ON = Qt is strictly required. The chain serves itself: ambient prefix probe -> pixi env
+  # injection -> neither = FATAL. Generation ladder: Qt6 first (qt-spike, the CI lane), then
+  # Qt5 with a 5.15 floor -- Qt 5.12 and older are OUT of contract (ruling 16). Both probes
+  # honor CMAKE_PREFIX_PATH (the -D / activated-shell injection route). Consumers must never
+  # hardcode a generation name -- the canonical VISIAENGINE_QT_* outputs below are the surface.
   find_package(Qt6 COMPONENTS Widgets QUIET)
-  set(_qkind "")
-  if(NOT Qt6_FOUND AND _pixi)
+  set(_q "")
+  if(Qt6_FOUND)
+    set(_q "6")
+  elseif(_pixi)
     list(APPEND CMAKE_PREFIX_PATH "${_pixi}")
     find_package(Qt6 COMPONENTS Widgets QUIET)
     if(Qt6_FOUND)
-      set(_qkind "pixi")
+      set(_q "6")
     endif()
-  elseif(Qt6_FOUND)
-    set(_qkind "system")
   endif()
-  if(NOT Qt6_FOUND)
+  if(NOT _q)
+    # generation 2 probe -- the prefix is as-is here (the pixi extension above already applies)
+    find_package(Qt5 5.15 COMPONENTS Widgets QUIET)
+    if(Qt5_FOUND)
+      set(_q "5")
+    endif()
+  endif()
+  if(NOT _q)
     message(FATAL_ERROR
-      "VISIAENGINE_QT=ON but Qt6 was found on neither side:\n"
-      "  pixi route: pixi install -e ${VISIAENGINE_PIXI_ENV} (qt6-main lives in the qt-spike environment)\n"
-      "  system route: install Qt6 (qt6-base-dev / the official installer) and retry\n"
+      "VISIAENGINE_QT=ON but neither Qt6 nor Qt >= 5.15 was found:\n"
+      "  pixi route: pixi install -e qt-spike (qt6-main) or pixi install -e qt5-spike (qt 5.15.*),\n"
+      "              then point at it: -DCMAKE_PREFIX_PATH=<repo>/.pixi/envs/<env>\n"
+      "  system route: Qt6 (qt6-base-dev / official installer) or Qt5 >= 5.15 (qtbase5-dev)\n"
+      "  floor: Qt 5.12 and older are out of contract (the find_package version arg rejects them)\n"
       "If you do not want Qt, pass -DVISIAENGINE_QT=OFF (the default)")
   endif()
-  if(_qkind STREQUAL "system")
-    message(STATUS "Qt: ${Qt6_VERSION} [system] ${Qt6_DIR}")
-  elseif(_qkind)
-    message(STATUS "Qt: ${Qt6_VERSION} [${_qkind}] ${Qt6_DIR}")
+  if(_q STREQUAL "6")
+    set(_qt_ver "${Qt6_VERSION}")
+    set(_qt_config_dir "${Qt6_DIR}")
+    set(_qt_link "Qt6::Widgets")
+  else()
+    set(_qt_ver "${Qt5_VERSION}")
+    set(_qt_config_dir "${Qt5_DIR}")
+    set(_qt_link "Qt5::Widgets")
   endif()
+  # [pixi] vs [system]: where the found config lives (repo pixi store or the resolved pixi
+  # prefix = pixi; everything else, including an explicit -D CMAKE_PREFIX_PATH hit, = system).
+  set(_qkind "system")
+  if(_pixi AND _qt_config_dir MATCHES "^${_pixi}")
+    set(_qkind "pixi")
+  elseif(_qt_config_dir MATCHES "^${CMAKE_SOURCE_DIR}/\\.pixi/envs/")
+    set(_qkind "pixi")
+  endif()
+  # Path derivation from the config dir -- no packaging shape is hardcoded:
+  # <x>/cmake/QtN -> <x> is the library dir (conda: <prefix>/lib; Debian multiarch: the
+  # multiarch dir itself). The plugins dir differs per packaging (conda qt6 lib/qt6/plugins,
+  # conda qt5 lib/qt5/plugins or <prefix>/plugins, system lib/plugins) -> probe by existence.
+  get_filename_component(_qlib "${_qt_config_dir}/../.." ABSOLUTE)
+  if(NOT EXISTS "${_qlib}")
+    get_filename_component(_qlib "${_qt_config_dir}/../../../lib" ABSOLUTE)
+  endif()
+  set(_qplug "")
+  foreach(_cand "${_qlib}/qt6/plugins" "${_qlib}/qt5/plugins" "${_qlib}/plugins" "${_qlib}/../plugins")
+    if(EXISTS "${_cand}/platforms")
+      set(_qplug "${_cand}")
+      break()
+    endif()
+  endforeach()
+  # Canonical outputs. CACHE INTERNAL: function-scope locals are invisible to subdirectory
+  # consumers (only the *_DIR config cache vars survived the old shape by accident).
+  set(VISIAENGINE_QT_FOUND ON CACHE INTERNAL "Qt resolved (generation in VISIAENGINE_QT_MAJOR)")
+  set(VISIAENGINE_QT_MAJOR "${_q}" CACHE INTERNAL "found generation: 6 or 5")
+  set(VISIAENGINE_QT_VERSION "${_qt_ver}" CACHE INTERNAL "found Qt version")
+  set(VISIAENGINE_QT_TARGET "${_qt_link}" CACHE INTERNAL "link handle: Qt6::Widgets | Qt5::Widgets")
+  set(VISIAENGINE_QT_LIBDIR "${_qlib}" CACHE INTERNAL "Qt library dir (rpath)")
+  set(VISIAENGINE_QT_PLUGINSDIR "${_qplug}" CACHE INTERNAL "QT_QPA_PLATFORM_PLUGIN_PATH (empty = not found)")
+  message(STATUS "Qt: ${_qt_ver} [${_qkind}] ${_qt_config_dir}")
+  message(STATUS "Qt: gen=${_q} target=${_qt_link} lib=${_qlib} plugins=${_qplug}")
 endfunction()
