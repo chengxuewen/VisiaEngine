@@ -77,7 +77,7 @@ function(visiaengine_ensure_polyorch_rust)
                 # include by absolute path via the sentinel's D39 property.
                 get_target_property(_po_mod PolyOrch::PolyOrch INTERFACE_POLYORCH_CMAKE_DIR)
                 include("${_po_mod}/PolyOrchPixiHelpers.cmake")
-                polyorch_pixi_setup()
+                polyorch_pixi_setup(COPY_SCRIPTS)
                 polyorch_rust_setup(FROM pixi)
             else()
                 polyorch_rust_setup(FROM system)

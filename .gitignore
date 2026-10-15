@@ -93,6 +93,12 @@ node_modules
 .pixi-pack
 .pixi-cache
 .pixi/
+
+# Activation trio: generated content -- bootstrap.sh copies it in the cold window,
+# configure re-installs it via polyorch_pixi_setup(COPY_SCRIPTS). Single source: PolyOrch/scripts/.
+/pixi.sh
+/pixi.bat
+/pixi.ps1
 .sisyphus
 .omo/*
 !.omo/omo.jsonc

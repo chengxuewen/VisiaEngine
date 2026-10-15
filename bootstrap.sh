@@ -24,6 +24,9 @@ if [ ! -f "$PIXI_INIT" ]; then
 fi
 [ -f "$PIXI_INIT" ] || { echo "ERROR: still missing $PIXI_INIT after submodule init" >&2; exit 1; }
 
+# Activation trio comes from the supplier; root copies are generated content.
+cp -f "$BOOT_DIR/PolyOrch/scripts/pixi.sh" "$BOOT_DIR/PolyOrch/scripts/pixi.bat" "$BOOT_DIR/PolyOrch/scripts/pixi.ps1" "$BOOT_DIR/"
+
 # --- [1/3] pixi + environment via the PolyOrch standard bootstrap ---
 bash "$PIXI_INIT" --manifest-path "$MANIFEST" || exit 1
 PIXI="$HOME/.pixi/bin/pixi"
@@ -59,5 +62,6 @@ echo ""
 echo "=============== VisiaEngine environment ready ==============="
 echo "  Daily activation:  source pixi.sh"
 echo "  One-shot commands: pixi run <task>     (all tasks: pixi task list)"
+echo "  Handy tasks:      pixi run verify (toolchain smoke) / pixi run lint (clippy -D warnings)"
 echo "  Guide:             docs/env.md"
 echo "===================================================="
