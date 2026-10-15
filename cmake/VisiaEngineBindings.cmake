@@ -58,19 +58,14 @@ function(visiaengine_add_example _n)
     SKIP_RETURN_CODE 77
     LABELS "${_lbl}")
   # Run steps = the human-verification form, emitted for every example (the rs family's visiaengine-example-*-run symmetry): zero-arg stays resident --
-  # the DISPLAY family goes through run-gui (probes and falls back to :0 when the IDE has no DISPLAY), the headless family runs directly in a terminal where the output is the acceptance surface
+  # the DISPLAY family rides the polyorch_example_run GUI probe (falls back to :0 when the IDE has no DISPLAY), the headless family runs directly in a terminal where the output is the acceptance surface
+  set(_run_gui "")
   if(_A_DISPLAY)
-    add_custom_target(${_tgt}-run
-      COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-              ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh $<TARGET_FILE:${_tgt}>
-      USES_TERMINAL)
-  else()
-    add_custom_target(${_tgt}-run
-      COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR} $<TARGET_FILE:${_tgt}>
-      USES_TERMINAL)
+    set(_run_gui GUI)
   endif()
+  polyorch_example_run(TARGET ${_tgt} ${_run_gui}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} FOLDER "examples/${_lang}")
   add_dependencies(${_tgt}-run ${_tgt})
-  set_target_properties(${_tgt}-run PROPERTIES FOLDER "examples/${_lang}")
   # T-H8 native face: F5 for the c/cpp examples (CodeLLDB rows via the
   # supplier face; gate-off = untouched). CWD = source root (examples
   # resolve data paths from there, same WORKING_DIRECTORY as ctest).
@@ -153,7 +148,7 @@ function(visiaengine_setup_bindings)
   # build site -- the ALL wrapper aggregates mediator dependencies instead of issuing
   # its own `cargo build`; run buttons and ctest execute the staged binary directly
   # (cmake-build*/bin/ via the RUNTIME staging), no cargo process at test time.
-  # The run-gui DISPLAY fallback (vscode-server finding) rides the button lane.
+  # The GUI display-probe fallback (vscode-server finding) rides the button lane.
   set(_rs_mediators "")
   foreach(_n ${_rs_items})
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/examples/rs/${_n}.rs")
@@ -182,20 +177,16 @@ function(visiaengine_setup_bindings)
     set_tests_properties(example_${_n} PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} LABELS "${_lbl}")
     # T-H7 dual-state: one creation point per configure -- the debug
     # gate ON means polyorch_rust_run OWNS the -run button (direct exec
-    # + the CodeLLDB pair); OFF means the manual run-gui button (:0
+    # + the CodeLLDB pair); OFF means the polyorch_example_run button (:0
     # fallback). Both-set = CMP0002 (measured: the rename aliased the
     # two creation points, the debug preset died).
     _polyorch_vscode_debug_gate(RUST _ve_dbg)
     if(_ve_dbg)
       polyorch_rust_run(TARGET visiaengine-example-${_n} GUI FOLDER "examples/rs")
     else()
-      add_custom_target(visiaengine-example-${_n}-run
-        COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-                ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh
-                $<TARGET_FILE:visiaengine-example-${_n}>
-        VERBATIM USES_TERMINAL)
+      polyorch_example_run(TARGET visiaengine-example-${_n} GUI
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} FOLDER "examples/rs")
       add_dependencies(visiaengine-example-${_n}-run visiaengine-example-${_n}-build)
-      set_target_properties(visiaengine-example-${_n}-run PROPERTIES FOLDER "examples/rs")
     endif()
   endforeach()
 

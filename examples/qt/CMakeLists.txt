@@ -20,13 +20,10 @@ set_tests_properties(example_E703_qt_viewer PROPERTIES
   SKIP_RETURN_CODE 77
   LABELS "example;native;display")
 
-# Interactive run step (same scheme as the visiaengine-example-*-run family: zero args = resident window [the E703 header note, 0 = interactive]; run-gui probes and falls back to :0)
-add_custom_target(visiaengine-example-E703_qt_viewer-run
-  COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}
-          ${CMAKE_SOURCE_DIR}/scripts/run-gui.sh $<TARGET_FILE:visiaengine-example-E703_qt_viewer>
-  USES_TERMINAL)
+# Interactive run step (same scheme as the visiaengine-example-*-run family: zero args = resident window [the E703 header note, 0 = interactive]; the polyorch run surface probes and falls back to :0)
+polyorch_example_run(TARGET visiaengine-example-E703_qt_viewer GUI
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} FOLDER "examples/qt")
 add_dependencies(visiaengine-example-E703_qt_viewer-run visiaengine-example-E703_qt_viewer)
-set_target_properties(visiaengine-example-E703_qt_viewer-run PROPERTIES FOLDER "examples/qt")
 
 # T-H8 native face: F5 for the Qt example
 if(COMMAND polyorch_native_debug)

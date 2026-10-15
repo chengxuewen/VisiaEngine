@@ -62,7 +62,7 @@ After `pixi run cmake --preset default` (or open the project in an IDE and pick 
 
 - **The Rust E family (examples/rs) comes as a trio**: PolyOrch build handle `visiaengine-example-<E#>` (mediator
   `visiaengine-example-<E#>-build`, the D40 EXAMPLE kind -- the cargo call lives in the supplier wrapper),
-  run step `visiaengine-example-<E#>-run` (builds the handle first, then run-gui executes the staged binary with the
+  run step `visiaengine-example-<E#>-run` (builds the handle first, then polyorch_example_run executes the staged binary with the
   DISPLAY fallback), ctest entry `example_<E#>` (runs the staged binary directly, no cargo at test time) —
   the single home of argv is the registry in `cmake/VisiaEngineBindings.cmake`, and the pixi `smoke-*` tasks
   are all `ctest -R` forwarding shells. The cargo environment's self-sufficiency is locked by the cmake-smoke state-④ triple anchor (bare PATH =
@@ -89,7 +89,7 @@ ctest / `--frames N` = the automated quick-exit form (the argv single-source dis
 | **Self-exiting self-proving** | E203 / E305 / E401 / E601 / E701 / E704 / E802 / E810 / E811_c / E811_cpp / E812 / E813 / E814 / E815 / E816 / E817 | runs, prints an `OK …` line, exits | the terminal output is the acceptance surface (E305 `--frames N` density = the trajectory marker count) |
 
 **The headless evidence examples' "exits in seconds = designed"**: their artifacts are terminal assertion lines or PNG/PPM files on disk, not interactive windows; for interactive acceptance use the window example of the same capability domain (pick→E402, color→E502 zero-arg window, lighting→E501 zero-arg window, constant width→E503). The native run steps cover every example (the DISPLAY family
-through the run-gui `:0` probe fallback; the headless family runs directly, fine in an IDE without DISPLAY).
+through the GUI run buttons' `:0` probe fallback; the headless family runs directly, fine in an IDE without DISPLAY).
 
 Native-example window classification (the census of the same round as the 2026-09-17 E702 fix): real window examples = E702/E801/E703, three (zero-arg all stay resident);
 the remaining C/C++ examples (E701/E704/E802/E810/E811×2/E812/E813/E814) = headless evidence examples, whose human-verification face is the terminal `OK …` line / PPM file on disk
