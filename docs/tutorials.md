@@ -41,7 +41,7 @@
 | E601 | Scale and performance (the 100k-building-block single-draw stress example) | `examples/rs/E601_bench_twin.rs` | REND-27/28 / WGPU-16 / [6b] | `pixi run smoke-bench-twin` (`pixi run bench` emits the artifact) |
 | E701 | Binding mirror · C headless (embedding boilerplate + attribute-read closed loop name/opacity/missing≠0; if it does not run, the API is not finished [E3D:D7]) | `examples/c/E701_demo_headless.c` | CAPI-01..08 | `bash scripts/gate-abi.sh` |
 | E702 | Binding mirror · C X11 (attach real window, dual-mode = zero-arg resident / `--frames` quick exit) | `examples/c/E702_demo_x11.c` | CAPI-06 | `bash scripts/smoke-x11.sh` |
-| E703 | Binding mirror · Qt6 real window (the widget-host band; the texquad+park two families) | `examples/qt/E703_qt_viewer.cpp` | CAPI-06 | `pixi run smoke-qt` |
+| E703 | Binding mirror · Qt real window, two generations (Qt 5.15/6; the widget-host band; the texquad+park two families) | `examples/qt/E703_qt_viewer.cpp` | CAPI-06 | `pixi run smoke-qt` |
 | E704 | Binding mirror · C event callback (the CAPI-17 push port's three states: monotonic progress / error at the same instant / NULL detaches) | `examples/c/E704_host_callback.c` | CAPI-17 | `ctest` (the native headless family) |
 | E801 | SDK consumption · C+SDL3 real window (dual-mode = zero-arg interactive window with resize linkage / `--frames` quick exit) | `examples/c/E801_sdl_window.c` | CAPI-06 | `ctest -L display` (the cmake-smoke xvfb sub-state) |
 | E810 | SDK consumption · C attribute traversal survey (name/opacity/missing≠zero-value on display) | `examples/c/E810_attr_survey.c` | CAPI-04/10/11 | `ctest -R example_E810` |

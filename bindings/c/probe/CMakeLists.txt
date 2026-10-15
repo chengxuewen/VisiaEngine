@@ -1,4 +1,5 @@
 # Probe consumer: the find_package same-text rehearsal + the ctest run lock
+# R2 exemption (adjudication 15 tail): hand-registered, NOT visiaengine_add_example -- the find_package rehearsal IS the test subject; a macro fold would defeat the probe.
 find_package(visiaengine REQUIRED)
 add_executable(consume_capi consume_capi.cpp)
 target_link_libraries(consume_capi PRIVATE visiaengine::c)

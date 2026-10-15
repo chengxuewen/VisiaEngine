@@ -62,6 +62,12 @@ binaryen = "*"
 [feature.qt.dependencies]
 qt6-main = "*"   # the full Qt6 stack. Trap on record: conda-forge `qt-main` = Qt5! The real Qt6 name is `qt6-main` (the second case in the package-name trap family)
 
+[feature.qt5.dependencies]
+qt = "5.15.*"   # the Qt5 validation stack (conda-forge metapackage -> qt-main 5.15.15). Orthography trap PIT-12 again: `qt`/`qt-main` = Qt5; `qt6-main` = Qt6
+
+[feature.qt5.target.linux-64.dependencies]
+libgl-devel = "*"   # Qt5GuiConfigExtras hard-probes GL/gl.h in the prefix; conda-forge's libglvnd 1.7 split ships it in libgl-devel (`mesa` = python shim, `libglvnd-devel` = glvnd-internal headers only -- both measured at the first live 5.15 configure)
+
 [feature.wasm.tasks]
 web-probe = "bash scripts/web-probe.sh"   # J0 acceptance (version equality + rlib presence + a full-tree check run by hand)
 web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-wasm -- --ignored'"   # J2': build -> the CAPI-09 mirror (the explicit T2 chain)
@@ -73,6 +79,10 @@ default = { features = ["tools", "ide"], solve-group = "base" }
 host-spike = { features = ["tools", "ide", "host"], solve-group = "base" }
 wasm-spike = { features = ["tools", "ide", "wasm"], solve-group = "base" }
 qt-spike = { features = ["tools", "ide", "qt"], solve-group = "base" }
+# R2 validation-only env for the Qt >= 5.15 floor (owner ruling 16: lock 5.15.15; 5.12 is out of contract).
+# Deliberately NOT in the base solve-group (the Qt5 stack must not bloat every shared lock) and in no ci
+# chain -- it is the local proof environment for the SDK's Qt5 discovery branch.
+qt5-spike = { features = ["tools", "qt5"] }
 
 [tasks]
 # The cargo-flavored tasks are an interface contract: running them before the Cargo workspace lands (build day) must fail -- that is expected

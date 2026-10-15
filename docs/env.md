@@ -60,3 +60,9 @@ First-run solve+install **37s** (after the cache warms) · idempotent second run
 
 The CMake build trees live in `cmake-build*/` (VSCode picks a preset and goes). Mind the difference from the old `target/cmake-rust` shared incremental surface: now **the cargo cache is isolated per build tree** (PolyOrch defaults `.cargo-target/` inside each cmake-build*) — each preset's first build compiles cargo fully once; what that buys is build-directory self-sufficiency (deleting the tree = deleting everything) and parallel presets. The save-frame thumbnail pipeline owns `build/gallery/assets/` (wall thumbnail source), direct cargo calls own `target/` exclusively.
 The committed `.vscode` debug lists are refreshed by `pixi run f5` — the `debug` preset is the only tree that sees every lane (Qt on + the debug knob); no other configure touches them.
+
+## Qt support matrix (R2, 2026-10-15)
+
+`-DVISIAENGINE_QT=ON` resolves two generations, Qt6 preferred then Qt5: **Qt 6.x** (pixi `qt-spike` env, the CI lane — proven by `xvfb-run -a pixi run -e qt-spike smoke-qt`) and **Qt >= 5.15** (pixi `qt5-spike` validation env, conda-forge `qt 5.15.*`; validated live at 5.15.15 — discovery, E703 real-window run and the ctest leg all green). **Qt 5.12 and older are excluded from the contract** (owner directive 2026-10-15): the `find_package(Qt5 5.15)` version arg enforces the floor and the widget header carries exactly one version guard (`QMouseEvent::position()` on Qt6 vs `pos()` on Qt5 — the only compile-measured divergence).
+
+Consumers never spell a generation name: the SDK publishes the canonical `VISIAENGINE_QT_*` variables (FOUND / MAJOR / VERSION / TARGET / LIBDIR / PLUGINSDIR — the last two probed per packaging shape, conda and Debian layouts both resolve) and the example family consumes them inside `visiaengine_add_example(... QT)`. The `qt5-spike` env is validation-only: no solve-group, no ci chain.

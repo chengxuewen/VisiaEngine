@@ -17,7 +17,8 @@ cmake --preset ci-strict >/dev/null || { echo "SMOKE-QT ✗ configure"; exit 1; 
 cmake --build --preset ci-strict >/dev/null || { echo "SMOKE-QT ✗ build"; exit 1; }
 out=$(DISPLAY=$DISP QT_QPA_PLATFORM=xcb \
       QT_QPA_PLATFORM_PLUGIN_PATH="$CONDA_PREFIX/lib/qt6/plugins" \
-      timeout -k 5 120 ./cmake-build-ci/bin/E703_qt_viewer --frames 6 2>&1) \
+      # T-H6 rename drift (R2 fix): the binary carries the example head word and ci-strict has no runtime output dir -- path below is the real one (proven by the scratch tree's link line)
+      timeout -k 5 120 ./cmake-build-ci/examples/qt/visiaengine-example-E703_qt_viewer --frames 6 2>&1) \
     || { echo "SMOKE-QT ✗ run"; echo "$out" | tail -3; exit 1; }
 grep -q "OK qt pump" <<<"$out" || { echo "SMOKE-QT ✗ exit assert missing"; echo "$out" | tail -3; exit 1; }
 echo "SMOKE-QT ✓ (real window, 6 frames @ $DISP, $out" | head -1
