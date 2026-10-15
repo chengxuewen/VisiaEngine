@@ -611,3 +611,13 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: one binaryDir per preset (`cmake-build-<name>`, repo convention); only the FULL-FEATURE tree (Qt + knob, run in the env that carries Qt) owns the refresh duty -- `pixi run f5` (debug preset, own `cmake-build-debug`); knob-less everyday configures provably leave `.vscode` untouched (cmp-verified).
 - **Verification**: `python3 -m json.tool CMakePresets.json` + each preset's binaryDir distinct; `pixi run cmake --preset default` after `f5` → `cmp` byte-identical.
 - **Forbidden**: sharing a cache across presets with asymmetric feature gates; handing region-rewrite duty to a tree that cannot see every lane.
+
+## PIT-67: audit dispatch pinned the WRONG repo's layout -- the auditor self-attested its drift via HEAD (2026-10-15, team audit round)
+- **Symptom**: the docs-and-generated team member reported on the ./PolyOrch submodule (its "HEAD 3cbc155", greet-cargo/rust-basic surface) instead of the host VisiaEngine docs the assignment needed.
+- **Root cause**: the dispatch prompt's SCOPE file list was copied from the supplier's AGENTS layout (whitepaper/tutorials/modules tree) while cwd was the host; contradictory anchors resolved silently -- the worker obeyed the file list, not the intent.
+- **Solution**: first line of any cross-repo dispatch = the absolute path of the target repo; on report arrival, check the self-attested scope (HEAD hash / path prefixes) BEFORE folding findings in. Rescoping by continuation message (same session, context kept) cost one round-trip and still produced the supplier findings as a bonus.
+- **Verification**: `grep -m1 'HEAD' <report>` names the repo the worker actually read.
+- **Forbidden**: relative-only scope lists in multi-repo workspaces; trusting dispatch intent over dispatch anchors.
+
+## PIT-68: synthesis-lead member was dead weight in a read-only audit fanout (2026-10-15, one-line capture)
+- All member reports arrive at the orchestrator INLINE as peer messages; a "dedup+rank+summarize" lead only sees what the orchestrator already holds -- plain parallel task() fanout saves the slot and the unread-message traffic. Use teams when members must message EACH OTHER; audits don't.
