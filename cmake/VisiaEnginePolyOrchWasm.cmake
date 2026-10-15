@@ -114,8 +114,8 @@ function(visiaengine_polyorch_wasm)
       FOLDER "${_fold}")
 
   # the demo/serve button: assemble web-demo/ (page + park data + the
-  # web flavor as pkg/) and serve :8017 -- the scripts/web-serve.sh lane
-  # retired to this graph-internal form (T-H5.4): stale glue cannot be
+  # web flavor as pkg/) and serve :8017 -- the old standalone serve lane
+  # retired to this graph-internal form (T-H5.4, button visiaengine-wasm-serve): stale glue cannot be
   # served, the DEPENDS edge replays it first.
   # the wall (T-H11): hub + live pages + manifest + bootstrap are globbed.
   # NOTE: the SOURCES list is a CONFIGURE-TIME snapshot (it bakes into
