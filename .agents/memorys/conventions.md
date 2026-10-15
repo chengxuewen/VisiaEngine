@@ -147,7 +147,7 @@ name iterated as a crate.
 
 ```bash
 # any table file: entries must not carry raw ';' inside quoted values
-grep -nE '"[^"]*;[^"]*=' cmake/VisiaEnginePolyOrchCrates.cmake && echo FAIL || echo PASS
+grep -nE '"[^"]*;[^"]*=' cmake/VisiaEngineCrates.cmake && echo FAIL || echo PASS
 ```
 
 ## C22: "Directory taxonomy is single-axis; names follow their axis, never a cross-axis copy" (2026-10-12, js->wasm + capi->ffi rounds)

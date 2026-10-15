@@ -1,7 +1,7 @@
 # cargo step + the visiaengine::c link-face contract + the fake in-tree Config bridge (§2.3; the iceoryx2 shape,
 # design = .omo/plans/visiaengine-cmake-project.md v1.0)
 
-function(visiaengine_setup_cargo)
+function(visiaengine_setup_ffi)
   set(_src ${CMAKE_SOURCE_DIR}/crates/visiaengine-ffi)
   if(VISIAENGINE_ARTIFACT_PATH)
     set(_dir "${VISIAENGINE_ARTIFACT_PATH}")
@@ -43,9 +43,9 @@ function(visiaengine_setup_cargo)
     # command wrapper -- probe-verified end to end (cold 1m21s, incremental 0.1s).
     if(NOT COMMAND polyorch_rust_build OR NOT POLYORCH_RUST_FOUND)
       message(FATAL_ERROR
-        "visiaengine_setup_cargo: the capi build needs the PolyOrch rust face. "
+        "visiaengine_setup_ffi: the capi build needs the PolyOrch rust face. "
         "Call visiaengine_ensure_polyorch() + visiaengine_ensure_polyorch_rust() "
-        "BEFORE visiaengine_setup_cargo() (the root orders this), or use the "
+        "BEFORE visiaengine_setup_ffi() (the root orders this), or use the "
         "prebuilt lane -DVISIAENGINE_ARTIFACT_PATH=...")
     endif()
     polyorch_rust_build(TARGET visiaengine-ffi

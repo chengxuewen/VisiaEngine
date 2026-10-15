@@ -27,7 +27,7 @@
 
 option(VISIAENGINE_POLYORCH_WASM "Register PolyOrch-driven targets for the wasm/js lane" ON)
 
-function(visiaengine_polyorch_wasm)
+function(visiaengine_wasm)
   if(NOT VISIAENGINE_POLYORCH_WASM)
     return()
   endif()

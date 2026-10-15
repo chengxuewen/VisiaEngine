@@ -36,7 +36,7 @@ set(VE_RLIB_FACE
     "visiaengine-render@visiaengine-core"
     "visiaengine-render-wgpu@visiaengine-core@visiaengine-render@visiaengine-io-gltf@visiaengine-geo@visiaengine-io-text")
 
-function(visiaengine_polyorch_crates)
+function(visiaengine_crates)
   if(NOT VISIAENGINE_POLYORCH_CRATES)
     return()
   endif()

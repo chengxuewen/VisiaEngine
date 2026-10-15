@@ -11,7 +11,7 @@ if [ ! -x "$CM" ]; then
 fi
 CT="$(dirname "$CM")/ctest"
 # Artifact file name for the manifest check (single source = the CMake naming table,
-# VisiaEngineCargo.cmake:26-35; duplicated here only as a per-OS literal).
+# VisiaEngineFfi.cmake:26-35; duplicated here only as a per-OS literal).
 case "$(uname -s)" in
   Linux)  VE_SHARED=libvisiaengine.so ;;
   Darwin) VE_SHARED=libvisiaengine.dylib ;;
