@@ -26,7 +26,7 @@ Task surface (`pixi task list`): `check/build/test/lint/fmt/fmt-fix/audit/verify
 
 - The single source of versions = `pixi.toml` + `pixi.lock` (**there is no rust-toolchain.toml, and rustup is not installed on this machine**).
 - `pixi.lock` must be committed; CI uses `pixi install --frozen`; upgrading the toolchain = a dedicated `pixi update`, commit only after reviewing the lock diff.
-- pixi itself pinned 0.78.0 (same value in bootstrap and CI); upgrading pixi = change both places in sync.
+- pixi itself pinned 0.78.0; the pin lives in two places -- CI (`.github/workflows/ci.yml`, setup-pixi) and the upstream PolyOrch `pixi-init` default (the bootstrap scripts inherit it); upgrading pixi = bump both in sync.
 - Any new dependency goes through `pixi add <pkg>` (maintains the lock automatically); hand-editing the dependency section and forgetting to relock is forbidden.
 
 ## Domestic mirrors (personal-machine configuration, **not committed**)
