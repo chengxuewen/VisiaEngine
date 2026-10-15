@@ -1,4 +1,4 @@
-// E703_qt_viewer — Qt6 real-window demo (host band of the E series; formerly qt_app) ([E3D:C3] the few-line integration recipe, delivered; if it does not run, the API is not done [E3D:D7]).
+// E703_qt_viewer — Qt real-window demo, generation-truthful (host band of the E series; formerly qt_app) ([E3D:C3] the few-line integration recipe, delivered; if it does not run, the API is not done [E3D:D7]).
 // Usage: E703_qt_viewer [--frames N] (0 = interactive); loads texquad.glb (texture family) + park.geojson (expansion-slice family).
 #include <QApplication>
 #include <cstdio>
@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
 
     VisiaEngineWidget w(ve);
     w.resize(960, 600);
-    w.setWindowTitle("VisiaEngine × Qt6 — texquad + park (mouse orbit / wheel zoom / window-drag resize)");
+    w.setWindowTitle("VisiaEngine × Qt" QT_VERSION_STR " — texquad + park (mouse orbit / wheel zoom / window-drag resize)");  // generation-truthful: QT_VERSION_STR resolves at compile time (5.15.x / 6.x)
     w.show();
     w.start(frames);
     const int rc = app.exec();

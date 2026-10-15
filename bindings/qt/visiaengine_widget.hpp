@@ -1,4 +1,4 @@
-// VisiaEngineWidget -- header-only Qt6 host (zero Q_OBJECT = zero moc; Qt round batch v1.3/Q2).
+// VisiaEngineWidget -- header-only Qt host, two generations (Qt >= 5.15 and Qt 6; zero Q_OBJECT = zero moc; Qt round batch v1.3/Q2, R2 dual-gen 2026-10-15).
 // Four contract nails: (1) the GUI thread = the engine owner (CAPI-03, zero marshaling); (2) attach in showEvent
 // (winId already realized; repeated show = re-attach, CAPI-06); (3) WA_PaintOnScreen + empty paint --
 // Qt never paints over the engine canvas; (4) the frame pump QTimer(60Hz) -> visiaengine_render (D8 trigger (1) proof face).
@@ -15,6 +15,17 @@
                        // the only X calls are XOpenDisplay/XSync, zero contact with the PIT-16 self-kill surface)
 
 #include "visiaengine.h"
+
+// R2 two-generation guard -- the ONLY divergence measured by the first 5.15.15 compile
+// (3x "error: 'class QMouseEvent' has no member named 'position'" at the handlers below:
+// Qt 6 moved mouse-local coords to the event-point position(); Qt 5.15 still spells it pos().
+// QWheelEvent::position() exists in BOTH generations (since Qt 5.0 -- the wheel handler
+// compiled clean on 5.15.15, no guard). Both accessors answer widget-local logical pixels.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#  define VE_MOUSE_POS(ev) ((ev)->position())
+#else
+#  define VE_MOUSE_POS(ev) ((ev)->pos())
+#endif
 
 class VisiaEngineWidget : public QWidget {
 public:
@@ -63,9 +74,9 @@ protected:
 
     void paintEvent(QPaintEvent*) override { /* the engine self-draws, Qt idles */ }
 
-    void mousePressEvent(QMouseEvent* e) override { send(2, e->position().x(), e->position().y(), 0, e->button()); }
-    void mouseReleaseEvent(QMouseEvent* e) override { send(3, e->position().x(), e->position().y(), 0, e->button()); }
-    void mouseMoveEvent(QMouseEvent* e) override { send(1, e->position().x(), e->position().y(), 0, Qt::NoButton); }
+    void mousePressEvent(QMouseEvent* e) override { send(2, VE_MOUSE_POS(e).x(), VE_MOUSE_POS(e).y(), 0, e->button()); }
+    void mouseReleaseEvent(QMouseEvent* e) override { send(3, VE_MOUSE_POS(e).x(), VE_MOUSE_POS(e).y(), 0, e->button()); }
+    void mouseMoveEvent(QMouseEvent* e) override { send(1, VE_MOUSE_POS(e).x(), VE_MOUSE_POS(e).y(), 0, Qt::NoButton); }
     void wheelEvent(QWheelEvent* e) override { send(4, e->position().x(), e->position().y(), e->angleDelta().y() / 120.0f, Qt::NoButton); }
 
     void resizeEvent(QResizeEvent* e) override {

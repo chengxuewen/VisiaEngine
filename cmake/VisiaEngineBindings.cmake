@@ -34,6 +34,15 @@ function(visiaengine_add_example _n)
   if(_A_CPP)
     target_link_libraries(${_tgt} PRIVATE visiaengine::cpp)   # hpp-surface consumption = the shell's live acceptance test
   endif()
+  if(_A_QT)
+    # R2 fold (adjudication 15): the generation comes from the SDK's canonical outputs --
+    # a consumer hardcoding Qt6:: spelling would break the Qt5 route. visiaengine::qt chains
+    # ::cpp -> ::c, so the generic ::c link above is a dedup'd duplicate (harmless).
+    target_link_libraries(${_tgt} PRIVATE visiaengine::qt ${VISIAENGINE_QT_TARGET})
+    if(VISIAENGINE_QT_LIBDIR)
+      set_property(TARGET ${_tgt} APPEND PROPERTY BUILD_RPATH ${VISIAENGINE_QT_LIBDIR})
+    endif()
+  endif()
   if(_A_SDL3)
     target_link_libraries(${_tgt} PRIVATE SDL3::SDL3)
     get_target_property(_sdll SDL3::SDL3 IMPORTED_LOCATION)
@@ -57,6 +66,15 @@ function(visiaengine_add_example _n)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     SKIP_RETURN_CODE 77
     LABELS "${_lbl}")
+  if(_A_QT)
+    # the headless ctest leg needs the xcb platform + the generation's plugin store
+    if(VISIAENGINE_QT_PLUGINSDIR)
+      set_tests_properties(example_${_n} PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QPA_PLATFORM_PLUGIN_PATH=${VISIAENGINE_QT_PLUGINSDIR}")
+    else()
+      set_tests_properties(example_${_n} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb")
+    endif()
+  endif()
   # Run steps = the human-verification form, emitted for every example (the rs family's visiaengine-example-*-run symmetry): zero-arg stays resident --
   # the DISPLAY family rides the polyorch_example_run GUI probe (falls back to :0 when the IDE has no DISPLAY), the headless family runs directly in a terminal where the output is the acceptance surface
   set(_run_gui "")
@@ -72,7 +90,12 @@ function(visiaengine_add_example _n)
   if(COMMAND polyorch_native_debug)
     _polyorch_vscode_debug_gate(NATIVE _ndebug)
     if(_ndebug)
-      polyorch_native_debug(TARGET ${_tgt} CWD "${CMAKE_SOURCE_DIR}")
+      # R2: the Qt row historically carried SEG "debug/qt" -- preserved via the language dir
+      set(_nseg "")
+      if(_A_QT)
+        set(_nseg SEG "debug/${_lang}")
+      endif()
+      polyorch_native_debug(TARGET ${_tgt} CWD "${CMAKE_SOURCE_DIR}" ${_nseg})
     endif()
   endif()
   set_property(GLOBAL APPEND PROPERTY VE_REGISTERED_EXAMPLES ${_n})
