@@ -212,3 +212,14 @@ ls crates/ | grep -vE '^(visiaengine-[a-z0-9-]+|\.gitignore)$' | grep -qE 'probe
 # (wasm-all precedent: bundling one crate's verbs is not aggregation)
 grep -rn "add_custom_target(visiaengine-wasm-all" cmake/ && echo FAIL || echo PASS
 ```
+
+## C23: "PolyOrch submodule work runs on dev-visiaengine; main is merged-into and tested, never committed-on directly"
+
+All supplier-side edits land on the `dev-visiaengine` branch of the ./PolyOrch submodule. Before starting: `git fetch origin` and merge `origin/main` into the branch (stay current). When the branch's suite is green: fast-forward `main` from the branch, RE-RUN the suite ON MAIN (the switch-to-main-and-test step is a step, not a vibe), push both branches, return HEAD to dev-visiaengine. Never commit directly on main; never leave the submodule on a detached HEAD (unreachable-commit hazard).
+
+```bash
+cd PolyOrch
+git symbolic-ref --quiet HEAD | grep -q 'refs/heads/dev-visiaengine' || exit 1
+git fetch origin -q 2>/dev/null
+git merge-base --is-ancestor origin/main dev-visiaengine && echo PASS || { echo FAIL; exit 1; }
+```
