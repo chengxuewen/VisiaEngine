@@ -89,6 +89,8 @@ gate-trace = "bash scripts/spec-trace.sh"   # batch 2 v1.4: traceability nativiz
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # the GEO-18 parsing-boundary gate (code shape; comments exempt)
 gate-docs = "bash scripts/gate-docs.sh"   # batch 5 T3: the four zero-drift document checks
 cmake-smoke = "bash scripts/cmake-smoke.sh"   # the CMake-layer three-state gate (SKIP on machines without cmake; includes negative-path messages)
+# f5: refresh the .vscode managed debug lists -- the only preset that sees every lane (Qt on + debug knob); run after adding/changing examples
+f5 = "pixi run cmake --preset debug"
 i18n = "bash scripts/gate-i18n.sh"   # C20 artifact-language gate (whitelisted functional CJK; red/green proof duty per C0)
 # pack-check (v1.3 P3; promoted INTO the ci chain by the publish band 2026-10-09):
 # installed-tree hygiene -- manifest / self-sufficiency / no build-machine paths.

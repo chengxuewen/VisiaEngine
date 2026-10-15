@@ -59,3 +59,4 @@ First-run solve+install **37s** (after the cache warms) · idempotent second run
 ## CMake preset build trees (T-A0' 2026-10-10)
 
 The CMake build trees live in `cmake-build*/` (VSCode picks a preset and goes). Mind the difference from the old `target/cmake-rust` shared incremental surface: now **the cargo cache is isolated per build tree** (PolyOrch defaults `.cargo-target/` inside each cmake-build*) — each preset's first build compiles cargo fully once; what that buys is build-directory self-sufficiency (deleting the tree = deleting everything) and parallel presets. The save-frame thumbnail pipeline owns `build/gallery/assets/` (wall thumbnail source), direct cargo calls own `target/` exclusively.
+The committed `.vscode` debug lists are refreshed by `pixi run f5` — the `debug` preset is the only tree that sees every lane (Qt on + the debug knob); no other configure touches them.
