@@ -1,0 +1,315 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+// __POLYORCH_GENERATED_BEGIN__ (PolyOrch rust build tasks; keep this block last, regenerate via reconfigure)
+        {
+            "label": "PolyOrch: visiaengine-example-E101_clear (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E101_clear-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E201_load_gltf (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E201_load_gltf-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E202_geo_viewer (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E202_geo_viewer-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E203_measure_cli (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E203_measure_cli-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E204_pcl_viewer (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E204_pcl_viewer-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E205_text_labels (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E205_text_labels-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E206_tile_viewer (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E206_tile_viewer-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E302_fly_camera (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E302_fly_camera-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E303_split_screen (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E303_split_screen-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E304_projection_morph (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E304_projection_morph-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E305_entity_anim (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E305_entity_anim-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E403_box_select (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E403_box_select-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E306_map_controls (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E306_map_controls-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E504_glass_water (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E504_glass_water-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E301_switch_camera (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E301_switch_camera-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E401_pick_demo (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E401_pick_demo-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E402_pick_interactive (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E402_pick_interactive-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E501_shadow_demo (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E501_shadow_demo-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E502_color_tuning (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E502_color_tuning-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E503_stroke_points (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E503_stroke_points-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E505_cjk_labels (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E505_cjk_labels-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E506_postprocessing (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E506_postprocessing-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E507_hdr_tonemap (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E507_hdr_tonemap-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E508_pbr_materials (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E508_pbr_materials-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E509_ssao (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E509_ssao-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E510_route_flow (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E510_route_flow-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E511_gate (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E511_gate-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E601_bench_twin (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E601_bench_twin-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E901_twin_city (debug/examples)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E901_twin_city-build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E701_demo_headless (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E701_demo_headless"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E810_attr_survey (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E810_attr_survey"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E811_entity_hide_c (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E811_entity_hide_c"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E813_section_clip (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E813_section_clip"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E814_labels_headless (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E814_labels_headless"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E815_fly_camera (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E815_fly_camera"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E704_host_callback (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E704_host_callback"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E816_minimap_nav (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E816_minimap_nav"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E817_two_layer_map (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E817_two_layer_map"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E801_sdl_window (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E801_sdl_window"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E702_demo_x11 (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E702_demo_x11"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E802_offscreen (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E802_offscreen"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E811_entity_hide_cpp (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E811_entity_hide_cpp"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E812_mesh_add (debug/native)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E812_mesh_add"],
+            "problemMatcher": []
+        },
+        {
+            "label": "PolyOrch: visiaengine-example-E703_qt_viewer (debug/qt)",
+            "type": "shell",
+            "command": "cmake",
+            "args": ["--build", "/home/ubuntu/Documents/VisiaEngine/cmake-build-debug", "--target", "visiaengine-example-E703_qt_viewer"],
+            "problemMatcher": []
+        },
+// __POLYORCH_GENERATED_END__
+    ]
+}
