@@ -21,9 +21,9 @@
 - [`visiaengine-io-tiles`](https://docs.rs/visiaengine-io-tiles): MVT vector tiles: hand-written protobuf decode, slippy scheduler (FileSource/HttpSource), pump budget
 - [`visiaengine-io-hdr`](https://docs.rs/visiaengine-io-hdr): .hdr (RGBE) equirect decode for HDRI environment/background
 - [`visiaengine-geo`](https://docs.rs/visiaengine-geo): GeoJSON -> Web Mercator -> tessellation -> style-expansion pipeline (GEO family)
-- [`visiaengine-ffi`](https://docs.rs/visiaengine-ffi): C ABI surface (44 entries, visiaengine.h): handle fences, input, tiles, scene tree, labels, clip, minimap, events — three-face mirror (header/hpp/wasm)
+- [`visiaengine-ffi`](https://docs.rs/visiaengine-ffi): C ABI surface (49 entries, visiaengine.h): handle fences, input, tiles, scene tree, labels, clip, minimap, events — three-face mirror (header/hpp/wasm)
 
 ## Examples
 
-41 example cards (E101..E901), three-way locked (files = tutorials = registries),
+44 example cards (E101..E901), three-way locked (files = tutorials = registries),
 web example wall: the visiaengine-wasm-serve button assembles + serves http://localhost:8017 (manifest: examples/wasm/wall.json). See docs/tutorials.md.

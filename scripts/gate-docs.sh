@@ -128,6 +128,20 @@ sys.exit(1 if bad else 0)
 WALLPY
 fi
 
+# ⑩ llms.txt numbers == live ground truth (V-A 2026-10-15: the generated file drifted to
+# 41/44 unnoticed because nothing locked it; this net reuses the existing censuses). ABI:
+# llms == README 'C ABI 49 entry points' == header signature names (③'s hs). Cards: llms ==
+# README 'example registry (44 entries' == example-file set (①'s real_files -- NOT wall.json:
+# registry 44 vs wall 43 are different ledgers, the E811 double file).
+la=$(grep -oE 'C ABI surface \([0-9]+ entries' llms.txt | grep -oE '[0-9]+' || true)
+ra=$(grep -oE 'C ABI [0-9]+ entry points' README.md | grep -oE '[0-9]+' | head -1 || true)
+ca=$(echo "$hs" | wc -l)
+[ "${la:-x}" = "$ca" ] && [ "${ra:-y}" = "$ca" ] || { echo "GATE-DOCS ✗ ⑩ABI: llms='${la:-missing}' README='${ra:-missing}' census='$ca'"; fail=1; }
+lc=$(grep -oE '[0-9]+ example cards' llms.txt | grep -oE '[0-9]+' || true)
+rc=$(grep -oE 'example registry \([0-9]+ entries' README.md | grep -oE '[0-9]+' | head -1 || true)
+cc=$(echo "$real_files" | wc -l)
+[ "${lc:-x}" = "$cc" ] && [ "${rc:-y}" = "$cc" ] || { echo "GATE-DOCS ✗ ⑩cards: llms='${lc:-missing}' README='${rc:-missing}' registry='$cc'"; fail=1; }
+
 if [ "$fail" = 0 ]; then
     echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk})"
 fi
