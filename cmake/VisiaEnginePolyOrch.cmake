@@ -26,8 +26,9 @@ function(visiaengine_ensure_polyorch)
         if(NOT _po_dir)
             message(WARNING
                 "VisiaEngine: reusing a PRE-D39 PolyOrch sentinel (no "
-                "INTERFACE_POLYORCH_CMAKE_DIR property). Location discovery "
-                "falls back to PolyOrch_SOURCE_DIR -- upgrade the supplier.")
+                "INTERFACE_POLYORCH_CMAKE_DIR property). There is no fallback: "
+                "visiaengine_ensure_polyorch_rust hard-FATALs until the supplier "
+                "is upgraded to a D39 sentinel.")
         endif()
         message(STATUS
             "VisiaEngine: reusing PolyOrch ${_po_ver} at ${_po_dir} "

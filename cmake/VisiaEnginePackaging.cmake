@@ -24,9 +24,9 @@
 # CMAKE_INSTALL_PREFIX; running cpack on the configured dir stages the install
 # itself under the build tree (DESTDIR semantics), so a non-root machine needs
 # no writable prefix:
-#   pixi run cmake --preset bare && pixi run cmake --build --preset bare
-#   .pixi/envs/default/bin/cpack --config target/cmake-bare/CPackConfig.cmake \
-#       -B target/cmake-bare
+#   pixi run cmake --preset default && pixi run cmake --build --preset default
+#   .pixi/envs/default/bin/cpack --config cmake-build/CPackConfig.cmake \
+#       -B cmake-build
 # CPack's staging install runs the same cmake_install.cmake as `cmake --install`,
 # so the packaged content is the install-tree content by construction.
 

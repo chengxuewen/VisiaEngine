@@ -42,7 +42,7 @@ bash bootstrap.sh && source pixi.sh && pixi run ci   # environment, three steps
 pixi run cmake --preset default && pixi run cmake --build --preset default   # C++/IDE entry (root CMake facade)
 
 > Output territories: `build/` = save-frame wall assets only · `target/` = cargo-direct only · `cmake-build*/` = CMake preset build trees (T-A0' 2026-10-10). VSCode: install CMake Tools and work via presets (cmake.useCMakePresets=already configured).
-# Opening the project in an IDE gives: test panel = the unified example registry for all languages (ctest --preset default); the build menu carries per-example visiaengine-example-<E#>-build mediators + visiaengine-example-*-run window buttons; Rust examples additionally have rust-analyzer Run/Debug
+# Opening the project in an IDE gives: test panel = the unified example registry for all languages (ctest --preset default); the build menu carries per-example build mediators (e.g. `visiaengine-example-E101_clear-build`) + `visiaengine-example-*-run` window buttons; Rust examples additionally have rust-analyzer Run/Debug
 ```
 
 ## Business Model
