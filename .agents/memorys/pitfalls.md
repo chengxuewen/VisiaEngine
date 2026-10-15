@@ -590,3 +590,24 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: first-writer pins (create-and-fold once; later calls only add_dependencies); opt-in knobs have NO default -- unnamed means unbuilt. Applies to any shared aggregate/generator hook attribute.
 - **Verification**: t-rust-agg-optin (no-knob absence pin + folder-pin probe); `--target help` under a host that never set the knob shows zero aggregate.
 - **Forbidden**: stamping shared-target properties outside the creation branch; "optional" features that appear anyway.
+
+## PIT-64: a head-truncated wiring grep created a phantom gap -- the call already existed (2026-10-15, stale-fixes round)
+- **Symptom**: audit concluded "E703 example is missing its native-debug wiring"; the walk-through adjudicated "add the call"; the plan-review pass found `examples/qt/CMakeLists.txt:32-36` ALREADY contains the guard+call (landed cd2ea51). Executing the adjudication as written would have duplicated a registration.
+- **Root cause**: the original evidence was a `grep ... | head -12` whose 12 lines were all consumed by earlier matches; the wiring lines sat below the cut. Both the auditor and the orchestrator trusted the truncated view.
+- **Solution**: wiring-presence greps must run UNTRUNCATED over the file (or with `-c` first), and any "missing X" adjudication gets one full-file `grep -n X <file>` re-check before dispatch. The plan-review caught it because the reviewer read the real file instead of the digest.
+- **Verification**: before writing "missing/absent" findings into any plan: `grep -n '<exact callee>' <file>` full output in hand.
+- **Forbidden**: concluding absence from a truncated grep; treating an adjudication premise as immune to a later full-file read.
+
+## PIT-65: a trailing comment on a .gitignore line voids the rule -- tasks.json never landed since T-E (2026-10-15)
+- **Symptom**: `!.vscode/tasks.json   # T-E: commit the managed region` looked like an un-ignore rule; git treats the whole string after `tasks.json` as part of the pattern (gitignore `#` is a comment ONLY at line start) -- the negation matched nothing, and tasks.json stayed ignored for its entire lifetime.
+- **Root cause**: no gate checked the TRACKED state of the trio; the IDE audit read the DISK file (the generator writes it regardless of git status) and reported "all three committed" from disk evidence.
+- **Solution**: comments go on their own line; contracts about committed files are proved with `git ls-files`, not by reading the file off disk. Fixed by `27cbbfc` (first tasks.json commit followed in b6e0e7f).
+- **Verification**: `git ls-files .vscode/` lists exactly launch.json settings.json tasks.json.
+- **Forbidden**: `pattern   # comment` shapes in .gitignore; asserting tracked-ness from disk presence.
+
+## PIT-66: two configure presets must not share one binaryDir; a refresh tree must see EVERY lane (2026-10-15)
+- **Symptom**: `debug` preset (Qt ON + debug knob) inherited `cmake-build` from `default`; one `pixi run f5` stamped `VISIAENGINE_QT=ON` into the everyday cache, and since default carries no Qt key, every later `--preset default` configure FATALed. Separately: giving the everyday preset the refresh knob made the committed .vscode ping-pong -- default sees 43 lanes, debug sees 44; last configurator wins, rows flip.
+- **Root cause**: preset cacheVariables apply only to ABSENT keys -- a stamp from a sibling preset survives as a booby trap; and the .vscode generator REWRITES its whole managed region from what the current configure registered -- a refresh tree that cannot see a lane actively deletes that lane's row.
+- **Solution**: one binaryDir per preset (`cmake-build-<name>`, repo convention); only the FULL-FEATURE tree (Qt + knob, run in the env that carries Qt) owns the refresh duty -- `pixi run f5` (debug preset, own `cmake-build-debug`); knob-less everyday configures provably leave `.vscode` untouched (cmp-verified).
+- **Verification**: `python3 -m json.tool CMakePresets.json` + each preset's binaryDir distinct; `pixi run cmake --preset default` after `f5` → `cmp` byte-identical.
+- **Forbidden**: sharing a cache across presets with asymmetric feature gates; handing region-rewrite duty to a tree that cannot see every lane.
