@@ -45,7 +45,11 @@ function(_ve_msrv_check cargo_path rust_version)
                   OUTPUT_VARIABLE _out OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
   if(_out MATCHES "([0-9]+)\\.([0-9]+)\\.([0-9]+)")
     set(_v "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
-    if(_v VERSION_LESS rust_version)
+    # R1 (2026-10-15): the comparison itself is the supplier's (PolyOrchFindRust's
+    # polyorch_rust_version_ok, VERSION form = greater-equal); the host keeps the
+    # probe, the parse, and the WARNING-only severity.
+    polyorch_rust_version_ok("${_v}" _ok VERSION "${rust_version}")
+    if(NOT _ok)
       message(WARNING "Resolved cargo ${_v} < workspace rust-version ${rust_version} (MSRV contract; upgrade the pixi environment or switch the SDK)")
     endif()
   endif()

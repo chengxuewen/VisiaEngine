@@ -1,4 +1,4 @@
-# Assembly layer: cmr / project / SDK resolution / PolyOrch assembly / options / add_subdirectory /
+# Assembly layer: cmr / project / PolyOrch assembly / SDK resolution / options / add_subdirectory /
 # install hooks (T-A 2026-10-10 adjudication 1-B+: build rules stay out of the root, except the ALIAS umbrella;
 # soft line threshold 120 + assembly-growth exemption marker, check = scripts/gate-docs.sh ⑤). Design and rulings:
 # .omo/plans/visiaengine-cmake-project.md + .omo/plans/2026-10-10-visia-embed.md
@@ -13,11 +13,13 @@ endif()
 project(visiaengine VERSION ${CMAKE_MATCH_1} LANGUAGES CXX)
 
 include(cmake/VisiaEngineSDK.cmake)
-visiaengine_resolve_sdks() # report line: Rust/Qt resolution results and sources (auto|pixi|system|prebuilt)
-
 include(cmake/VisiaEnginePolyOrch.cmake)
 visiaengine_ensure_polyorch()  # D39 sentinel reuse/self-embed (first-wins; if the superbuild added it first, reuse its copy)
 visiaengine_ensure_polyorch_rust()  # T-B1: USE_PIXI translation -> polyorch_rust_setup(FROM pixi|system)
+# R1 (2026-10-15): the SDK resolution moved behind the PolyOrch assembly -- its MSRV check
+# delegates the comparison to polyorch_rust_version_ok (supplier FindRust), defined only once
+# the sentinel's module list is loaded; the 0.2.0 floor FATAL above gates the copy before the call.
+visiaengine_resolve_sdks() # report line: Rust/Qt resolution results and sources (auto|pixi|system|prebuilt)
 
 include(cmake/VisiaEngineFfi.cmake)
 visiaengine_setup_ffi()  # cargo step + the visiaengine::c link face + the fake in-tree Config bridge (T-C: capi engine = PolyOrch)
