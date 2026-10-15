@@ -3,21 +3,32 @@
 #
 # History: born as the T-B "pilot" (geo test-only), grew verbs, then the core
 # crate, then the table -- renamed off "pilot" (2026-10-12): a file that owns
-# production targets is not a pilot.
+# production targets is not a pilot. R3b (2026-10-15): the hand-rolled cargo
+# build loop retired onto the supplier's R3 LIB kind (PolyOrch v0.3.0, D42).
 #
 # Constraints honored here:
-#  * Hosts do not invent cmake features -- everything below is either a
-#    PolyOrch public function call or the host's own wrapper idiom
-#    (custom targets invoking cargo via the PolyOrch-resolved toolchain,
-#    the same shape as the visiaengine-example-*-run window buttons).
-#  * Plain rlibs match NO D40 artifact kind (cargo emits lib<name>_.rlib,
-#    underscore), so "build" is a custom cargo button, not a fake handle.
+#  * Hosts do not invent cmake features -- everything below is a PolyOrch
+#    public function call. The per-crate clean ALIASES are the host's own
+#    wrapper idiom (echo + DEPENDS: no cargo invocation, no env surface,
+#    so no command wrapper is required there).
+#  * R3b (v0.3.0, D42): the rlib lane rides the LIB kind -- cargo --lib
+#    through the supplier command wrapper (PATH + host-env --unset
+#    isolation, the PIT-14 class the hand loop's bare PATH=... wrap used to
+#    leak). The handle is INTERFACE IMPORTED: ordering + the POLYORCH_RUST_LIB
+#    path, never a link input. The consumers are cargo-side (ffi/examples
+#    compile these crates through cargo's own dependency graph -- no CMake
+#    target reads the .rlib path; verified at conversion time against
+#    Install/Packaging/gate-pack).
+#  * Names are a contract: the face mediator is <TARGET>-build, byte-identical
+#    to the retired hand button -- the whole button surface keeps its spelling.
 #  * clean is rm -rf BASE_DIR: all rlibs SHARE one cache dir
-#    (.cargo-target-rlibs) and every clean button clears that whole dir --
-#    idempotent and honest ("clean the rlib face"), never a sibling wipe.
-#  * ide_mount hangs on the crate's own build target only (no cross-crate
-#    source mounts: dependencies are expressed as edges between build
-#    targets; rust-analyzer owns cross-crate navigation via the workspace).
+#    (.cargo-target-rlibs, kept as BASE_DIR on build and test so the three
+#    surfaces ride one cache). Every clean button clears that whole dir --
+#    idempotent and honest ("clean the rlib face"), never a sibling wipe of
+#    the shared .cargo-target the ffi/examples lanes use.
+#  * IDE source mount: the face mounts the mediator's sources at creation
+#    (metadata-authoritative list) -- the retired per-crate
+#    polyorch_rust_ide_mount call duplicated exactly that.
 
 option(VISIAENGINE_POLYORCH_CRATES "Register PolyOrch-driven targets for the workspace rlib face" ON)
 
@@ -47,7 +58,9 @@ function(visiaengine_crates)
   if(NOT POLYORCH_RUST_FOUND)
     return()
   endif()
-  get_filename_component(_cargo_bin "${POLYORCH_RUST_CARGO}" DIRECTORY)
+  # shared rlib-face cache -- one BASE_DIR across build, test and clean
+  # (the face routes cargo's --target-dir; the location is unchanged from
+  # the pre-R3b hand loop).
   set(_rlib_dir "${CMAKE_BINARY_DIR}/.cargo-target-rlibs")
 
   # shared clean: every crate's clean button clears the shared rlib face.
@@ -67,16 +80,20 @@ function(visiaengine_crates)
       list(SUBLIST _kv 1 -1 _deps)
     endif()
 
-    # build button (cargo direct through the PolyOrch-resolved toolchain)
-    add_custom_target(${_c}-build
-        COMMAND ${CMAKE_COMMAND} -E env "PATH=${_cargo_bin}:$ENV{PATH}"
-                ${POLYORCH_RUST_CARGO} build -p ${_c}
-                --manifest-path "${CMAKE_SOURCE_DIR}/crates/${_c}/Cargo.toml"
-                --target-dir "${_rlib_dir}"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        COMMENT "cargo build -p ${_c} (rlib; shared rlib-face cache)"
-        VERBATIM)
-    set_target_properties(${_c}-build PROPERTIES FOLDER "crates/${_c}")
+    # build button: the R3 LIB kind (v0.3.0). cargo --lib rides the supplier
+    # wrapper; CRATE carries the dash->underscore lib-name normalization
+    # (artifact: ${_rlib_dir}/<profile>/lib<crate>.rlib -- same dir the hand
+    # loop stamped; only the argv engine changed, and --lib is a no-op
+    # restriction here: none of the nine crates carries a bin target).
+    string(REPLACE "-" "_" _crate "${_c}")
+    polyorch_rust_build(
+        TARGET  ${_c}
+        PACKAGE ${_c}
+        CRATE   ${_crate}
+        LIB
+        MANIFEST "${CMAKE_SOURCE_DIR}/crates/${_c}/Cargo.toml"
+        BASE_DIR "${_rlib_dir}"
+        FOLDER   "crates/${_c}")
     # dependency edges: visible build order (cargo resolves the same order
     # inside its lane; the edge makes it visible in the host graph)
     foreach(_d ${_deps})
@@ -99,10 +116,9 @@ function(visiaengine_crates)
         VERBATIM)
     set_target_properties(${_c}-clean PROPERTIES FOLDER "crates/${_c}")
 
-    # IDE sources on the crate's own build node (metadata-authoritative)
-    polyorch_rust_ide_mount(TARGET ${_c}-build
-        MANIFEST "${CMAKE_SOURCE_DIR}/crates/${_c}/Cargo.toml"
-        CRATE ${_c})
+    # (IDE sources: mounted by polyorch_rust_build itself -- the mediator's
+    # own metadata-authoritative list, same content as the retired explicit
+    # polyorch_rust_ide_mount call, which this comment now documents away.)
     list(APPEND _all_builds ${_c}-build)
     list(APPEND _all_tests  ${_c}-test)
   endforeach()
