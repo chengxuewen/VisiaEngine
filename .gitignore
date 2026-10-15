@@ -111,4 +111,5 @@ Testing/
 cmake-build/
 cmake-build-release/
 cmake-build-prebuilt/
+cmake-build-debug/
 cmake-build-ci/

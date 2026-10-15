@@ -41,6 +41,7 @@
       "name": "debug",
       "displayName": "VSCode F5 (default + the PolyOrch CodeLLDB managed debug surface)",
       "inherits": "default",
+      "binaryDir": "${sourceDir}/cmake-build-debug",
       "cacheVariables": {
         "PolyOrch_VSCODE_DEBUG_ALL": "ON",
         "VISIAENGINE_QT": "ON"
