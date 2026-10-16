@@ -223,3 +223,22 @@ git symbolic-ref --quiet HEAD | grep -q 'refs/heads/dev-visiaengine' || exit 1
 git fetch origin -q 2>/dev/null
 git merge-base --is-ancestor origin/main dev-visiaengine && echo PASS || { echo FAIL; exit 1; }
 ```
+
+## C24: "Commit message = short single-concern subject + bulleted body"
+
+Subject <= 72 chars, exactly one concern, conventional prefix (`type(scope): ...`), no ';'
+double-heads, no long parenthetical chains -- the detail belongs to the body. Body: blank line,
+then one '-' bullet per line (what / why / evidence), each <= 80 chars. One commit = one concern;
+a commit never spans the host and the supplier repo. Mainstream basis: Conventional Commits
+specification + git's own submit guidelines (50/72 rule). Pre-adoption subjects (leg-11 era,
+200+ chars, double-concern) are GRANDFATHERED -- never rewrite pushed history for style; from
+adoption, every new HEAD must read green before the next commit stacks on it.
+
+```bash
+s=$(git log -1 --format=%s)
+[ "${#s}" -le 72 ] || { echo "C24 FAIL: subject ${#s} chars (>72)"; exit 1; }
+if printf '%s' "$s" | grep -q ';'; then echo "C24 FAIL: ';' double-head subject"; exit 1; fi
+b=$(git log -1 --format=%b)
+if [ -n "$b" ] && ! printf '%s\n' "$b" | grep -q '^- '; then echo "C24 FAIL: body without '-' bullets"; exit 1; fi
+echo "C24 PASS"
+```
