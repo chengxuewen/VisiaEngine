@@ -221,6 +221,8 @@ grep -c "duplicate-pattern" <file>    # expect 1; >1 = edit inserted duplicates
 **Verification**: before committing, `git diff --cached --stat` must match the message's claimed file list item by item.
 **Scope extension (2026-09-14)**: the same measure-first discipline covers **declared numbers in plan documents and READMEs** (Momus caught "six segments" that were actually 9; gate-docs ② turning the README clause count into a machine assertion is this rule's gate-ification). Any verifiable number entering a document: run it once first and take the true value.
 **Blocking condition**: a message containing "N files synced"-style plural claims without verifying the cached diff item by item.
+**Scope extension (2026-10-16)**: the generalization of this rule is "**a gate that reads RED must stop the chain**". Whenever a verification step (gate script, assert, test run) is chained to a mutating step (commit/push/checkout) by a bare newline, the mutation ignores the RED verdict — newline is not `&&`. Precedents: the leg-11-era pipe-tail false green (`cmd | tail; echo $?` reads tail's rc), and the 2026-10-16 CJK rule-text commit where gate-i18n printed red lines and the commit ran anyway (dirty commit amended before push, but only by chance of an unpushed state). Correct shape: gate as its own command with its own exit code checked, mutation only after a green; or one `&&`-chain where the gate is the first link.
+**Blocking condition (extension)**: a mutating git command following a gate in the same newline-separated sequence, executed while that gate's output showed a red verdict.
 
 ### 18. Insert-style rewrites must consume the old lines + alternation assertions must use grep -E (2026-09-16: quadruple hit + false green, both proven)
 
