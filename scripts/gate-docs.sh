@@ -142,7 +142,23 @@ rc=$(grep -oE 'example registry \([0-9]+ entries' README.md | grep -oE '[0-9]+' 
 cc=$(echo "$real_files" | wc -l)
 [ "${lc:-x}" = "$cc" ] && [ "${rc:-y}" = "$cc" ] || { echo "GATE-DOCS ✗ ⑩cards: llms='${lc:-missing}' README='${rc:-missing}' registry='$cc'"; fail=1; }
 
+# 11) gitlink three-way alignment (C23 round 2026-10-15: the recurring "M PolyOrch" class).
+# pin == submodule checkout HEAD == published. Offline-first: remote-tracking refs carry the
+# published verdict when fresh; stale tracking falls back to ONE timeboxed ls-remote; neither
+# proving publication = red (that is exactly the fresh-clone hazard this pin must never ship).
+pin=$(git ls-files -s PolyOrch | awk '{print $2}')
+ibranch=$(git -C PolyOrch symbolic-ref --quiet --short HEAD || echo "DETACHED")
+ihead=$(git -C PolyOrch rev-parse HEAD 2>/dev/null)
+[ "$ibranch" != "DETACHED" ] || { echo "GATE-DOCS x 11) submodule HEAD detached (C23 anchor rule)"; fail=1; }
+if [ -n "$pin" ] && [ "$pin" != "$ihead" ]; then echo "GATE-DOCS x 11) pin ${pin:0:7} != submodule HEAD ${ihead:0:7} -- M PolyOrch drift, bump or reset"; fail=1; fi
+if [ -n "$pin" ] && ! git -C PolyOrch branch -r --contains "$pin" 2>/dev/null | grep -q .; then
+  pub=$(GIT_TERMINAL_PROMPT=0 timeout 15 git -C PolyOrch ls-remote origin 2>/dev/null | awk -v s="$pin" '$1==s{print $2; exit}' || true)
+  if [ -n "$pub" ]; then echo "  11) pin published via ${pub##*/} (local tracking stale -- fetch to refresh)"; else
+    echo "GATE-DOCS x 11) pin ${pin:0:7} on no remote ref (fresh-clone hazard) -- push the submodule before pinning, or rewind the pin"; fail=1
+  fi
+fi
+
 if [ "$fail" = 0 ]; then
-    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk})"
+    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk} / gitlink aligned)"
 fi
 exit $fail

@@ -215,7 +215,7 @@ grep -rn "add_custom_target(visiaengine-wasm-all" cmake/ && echo FAIL || echo PA
 
 ## C23: "PolyOrch submodule work runs on dev-visiaengine; main is merged-into and tested, never committed-on directly"
 
-All supplier-side edits land on the `dev-visiaengine` branch of the ./PolyOrch submodule. Before starting: `git fetch origin` and merge `origin/main` into the branch (stay current). When the branch's suite is green: fast-forward `main` from the branch, RE-RUN the suite ON MAIN (the switch-to-main-and-test step is a step, not a vibe), push both branches, return HEAD to dev-visiaengine. Never commit directly on main; never leave the submodule on a detached HEAD (unreachable-commit hazard).
+All supplier-side edits land on the `dev-visiaengine` branch of the ./PolyOrch submodule. Before starting: `git fetch origin` and merge `origin/main` into the branch (stay current). When the branch's suite is green: fast-forward `main` from the branch, RE-RUN the suite ON MAIN (the switch-to-main-and-test step is a step, not a vibe), push both branches, return HEAD to dev-visiaengine. Never commit directly on main; never leave the submodule on a detached HEAD (unreachable-commit hazard). FREEZE clause: while a supplier push is unconfirmed by `ls-remote` (slow or failing channel counts as unconfirmed), create NO new supplier commits -- docs-only included; work pauses on the host side instead of queueing ahead on the branch (each queued commit re-matures the outer `M PolyOrch` drift by construction). The gate-docs leg 11) pins the alignment rule (pin == HEAD == published).
 
 ```bash
 cd PolyOrch
