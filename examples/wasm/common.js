@@ -8,7 +8,7 @@
 async function veDiag() {
   if (!window.isSecureContext)
     return '非安全上下文: 当前地址不是 localhost/HTTPS, WebGPU 被浏览器锁掉'
-         + ' (别用 file:// 或 LAN IP 直开; 走端口转发用 http://localhost:8017)';
+         + ' (别用 file:// 或 LAN IP 直开; 走端口转发用 http://localhost:8017, 或起 https 车道 pixi run serve-https 后访问 https://本机IP:8443)';
   if (!navigator.gpu)
     return '浏览器无 WebGPU 接口: 升级到 Edge/Chrome 113+; 无 GPU 机器可加'
          + '启动参数 --enable-unsafe-swiftshader 用软件适配器';

@@ -114,3 +114,6 @@ cmake-build-release/
 cmake-build-prebuilt/
 cmake-build-debug/
 cmake-build-ci/
+
+# Local TLS artifacts of the wasm serve-https lane (wasm-serve-https-gen.sh)
+.certs/
