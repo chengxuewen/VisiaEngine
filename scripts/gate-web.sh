@@ -6,13 +6,30 @@
 # SKIP contract: missing chromium / build tree / wall.json => SKIP rc=0.
 # Serving: the cmake serve button (:8017) replays web-demo staging exactly as
 # before; the gate OWNS a stdlib-python server on VE_GATE_PORT (8018) over the
-# assembled dir. E101's anchor <img> is held by this server until the
-# post-await beacon (VE_GATE_FRAMES frames turned) arrives: the browser then
-# survives to see it, load fires after boot, and the dump lands on the truth.
+# assembled dir. Each live page's anchor <img> is held by this server until
+# that page's post-await beacon (VE_GATE_FRAMES frames turned) arrives: the
+# browser then survives to see it, load fires after boot, dump lands on truth.
 set -u
 CHROME="${VE_CHROMIUM:-}"
 [ -x "$CHROME" ] || CHROME="$HOME/.pixi/global/bin/chromium"
 [ -x "$CHROME" ] || CHROME="$(ls "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux/chrome 2>/dev/null | head -1)"
+# Chromium pin (D26 closure lives HERE: conda-forge carries no chromium
+# package, so a pixi feature+lock path is impossible; the gate is the
+# single-source pin). Re-pinning version/URL/sha is deliberate work: the
+# GPU_FLAGS combo below was measured on this exact build and must be
+# re-verified on every re-pin.
+VE_CHROME_VERSION="Chromium 131.0.6778.33"
+VE_CHROME_URL="https://cdn.npmmirror.com/binaries/playwright/builds/chromium/1148/chromium-linux.zip"
+VE_CHROME_SHA256="7455d17b407bbcd1cc30c5bc8bc81fa4e67ac13635dbd5ca81f7824ec4b50439"
+if [ ! -x "$CHROME" ] && [ "${VE_GATE_PROVISION:-0}" = "1" ]; then  # opt-in ONLY, never auto-download
+  ZIP=/tmp/opencode/chromium-1148.zip
+  curl -fSL --retry 3 -o "$ZIP" "$VE_CHROME_URL" || fail "provision: download failed"
+  echo "$VE_CHROME_SHA256  $ZIP" | sha256sum -c - || fail "provision: sha256 mismatch"
+  mkdir -p "$HOME/.cache/ms-playwright/chromium-1148"
+  unzip -oq "$ZIP" -d "$HOME/.cache/ms-playwright/chromium-1148" || fail "provision: unzip failed"
+  chmod +x "$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
+  CHROME="$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
+fi
 TREE="${VISIAENGINE_BUILD_DIR:-cmake-build-debug}"
 WALL=examples/wasm/wall.json
 PORT="${VE_GATE_PORT:-8018}"
@@ -22,15 +39,6 @@ SRVLOG=/tmp/opencode/ve-gate-srv.log
 GPU_FLAGS="--no-sandbox --enable-unsafe-webgpu --use-angle=swiftshader --enable-unsafe-swiftshader --enable-features=Vulkan --use-vulkan=swiftshader"  # 2026-10-16 spike measured: the Vulkan pair is REQUIRED (Chrome 131 ships WebGPU off on Linux without it); --no-sandbox required in this container
 VE_GATE_MIN_FRAMES="${VE_GATE_MIN_FRAMES:-8}"  # COUPLING: matches VE_GATE_FRAMES in examples/wasm/common.js veLoop — change the two together
 VE_GATE_BEACON_BUDGET_MS="${VE_GATE_BEACON_BUDGET_MS:-20000}"  # beacon arrival budget; floor 20s per ruling; set >= measured*3 (see run log / report)
-# Chromium pin (D26 closure lives HERE: conda-forge carries no chromium
-# package (api.anaconda.org returns empty, pixi solve no-candidates, measured
-# 2026-10-16), so a pixi feature+lock path is impossible; the gate is the
-# single-source pin). Re-pinning version/URL/sha is deliberate work: the
-# GPU_FLAGS combo above was measured on this exact build and must be
-# re-verified on every re-pin.
-VE_CHROME_VERSION="Chromium 131.0.6778.33"
-VE_CHROME_URL="https://cdn.npmmirror.com/binaries/playwright/builds/chromium/1148/chromium-linux.zip"
-VE_CHROME_SHA256="7455d17b407bbcd1cc30c5bc8bc81fa4e67ac13635dbd5ca81f7824ec4b50439"
 # D-Bus env scrub (2026-10-16 live catch): the system proxy config delivered
 # over the session bus makes chromium's network service open loopback sockets
 # then send nothing (every http page hangs, file:// unaffected). Removing
@@ -39,29 +47,17 @@ VE_CHROME_SHA256="7455d17b407bbcd1cc30c5bc8bc81fa4e67ac13635dbd5ca81f7824ec4b504
 CHROME_ENV=(env -u DBUS_SESSION_BUS_ADDRESS)
 
 skip() { echo "GATE-WEB SKIP: $1"; exit 0; }
-fail() { echo "GATE-WEB FAIL: $1"; cleanup; exit 1; }
-# opt-in provisioning (owner ruling: never auto-download; sha-checked pin zip).
-# Self-contained failure lines: no server is up yet, so no cleanup needed.
-if [ ! -x "$CHROME" ] && [ "${VE_GATE_PROVISION:-0}" = "1" ]; then
-  ZIP=/tmp/opencode/chromium-1148.zip
-  curl -fSL --retry 3 -o "$ZIP" "$VE_CHROME_URL" || { echo "GATE-WEB FAIL: provision: download failed"; exit 1; }
-  echo "$VE_CHROME_SHA256  $ZIP" | sha256sum -c - >/dev/null || { echo "GATE-WEB FAIL: provision: sha256 mismatch"; exit 1; }
-  mkdir -p "$HOME/.cache/ms-playwright/chromium-1148"
-  unzip -oq "$ZIP" -d "$HOME/.cache/ms-playwright/chromium-1148" || { echo "GATE-WEB FAIL: provision: unzip failed"; exit 1; }
-  chmod +x "$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
-  CHROME="$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
-fi
-[ -x "$CHROME" ] || skip "no chromium binary"
-[ -d "$TREE" ]   || skip "no build tree $TREE"
-[ -f "$WALL" ]   || skip "no wall.json"
-
 cleanup() {
   [ -n "${SERVE_PID:-}" ] && kill -- -"$SERVE_PID" 2>/dev/null || true
   [ -n "${GATE_PID:-}" ]  && kill -- -"$GATE_PID"  2>/dev/null || true
 }  # process groups: serve and gate server are group leaders via setsid
 trap cleanup EXIT
-# version gate: exact match against the pin. Live-catch: the engine prints a
-# trailing space (od-verified) -- normalize whitespace only, never tolerance.
+fail() { echo "GATE-WEB FAIL: $1"; cleanup; exit 1; }
+[ -x "$CHROME" ] || skip "no chromium binary"
+[ -d "$TREE" ]   || skip "no build tree $TREE"
+[ -f "$WALL" ]   || skip "no wall.json"
+# the engine prints a trailing space; trim trailing whitespace before the
+# exact comparison against the pin
 VER=$("$CHROME" --version 2>/dev/null | tr -d '\r' | sed 's/[[:space:]]*$//')
 [ "$VER" = "$VE_CHROME_VERSION" ] || fail "chromium drift: found $VER, pinned $VE_CHROME_VERSION -- re-provision (VE_GATE_PROVISION=1) or re-pin deliberately"
 
@@ -69,7 +65,7 @@ N=$(python3 -c "import json;print(len(json.load(open('$WALL'))['entries']))") ||
 rm -f "$BEACON" "$SRVLOG"
 cat > /tmp/opencode/ve-gate-srv.py <<'PYEOF'
 import http.server, socketserver, sys, time, threading, struct, zlib
-from collections import deque
+from collections import defaultdict
 root, port, log = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 def _png1x1():
     ihdr = struct.pack('>IIBBBBB', 1, 1, 8, 6, 0, 0, 0)
@@ -80,32 +76,34 @@ def _png1x1():
     return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr)
             + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
 PNG1x1 = _png1x1()
-pending, lock = deque(), threading.Lock()
+pending, lock = defaultdict(list), threading.Lock()  # page_id -> held anchor events
 class H(http.server.SimpleHTTPRequestHandler):
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
                       'wasm': 'application/wasm'}
     def __init__(self, *a, **k):
         super().__init__(*a, directory=root, **k)
     def do_GET(self):
-        if self.path.startswith('/ve-gate-ready'):
-            if 't=' in self.path:            # the beacon: proof the loop turned
+        if self.path.startswith('/ve-gate-ready/'):
+            seg = self.path[14:].split('?', 1)
+            page = seg[0].strip('/')
+            if len(seg) > 1 and seg[1].startswith('t='):   # the beacon: proof the loop turned
                 with lock:
-                    while pending:
-                        pending.popleft().set()  # release ALL held anchors (chrome may issue the img twice)
+                    for ev in pending.pop(page, []):
+                        ev.set()  # release THIS page's anchors only (chrome may issue the img twice)
                 with open(log, 'a') as f:
-                    f.write('READY %.6f\n' % time.time())
+                    f.write('READY %s %.6f\n' % (page, time.time()))
                 self._png()
             else:                            # the anchor: hold load until beacon
                 ev = threading.Event()
                 with lock:
-                    pending.append(ev)
+                    pending[page].append(ev)
                 ev.wait()
                 try:
                     self._png()
                 except Exception:
                     pass                     # browser gave up at its cap
             return
-        super().do_GET()
+        super().do_GET()                     # passthrough: pages, pkg, fixtures
     def _png(self):
         self.send_response(200); self.send_header('Content-Type', 'image/png')
         self.send_header('Content-Length', str(len(PNG1x1)))
@@ -145,35 +143,41 @@ for t in 1 2 3; do
 done
 [ "$M" -eq "$N" ] || fail "wall items $M != wall.json $N (3 rolls)"
 
-# Engine boot leg: the anchor img holds load until the post-8-frame beacon
-# releases it, so this dump lands AFTER boot: a fail mark or an uncaught
-# error is visible, and so is the ready text. Hard RED on either failure sign.
-D=$("${CHROME_ENV[@]}" "$CHROME" --headless=new $GPU_FLAGS --enable-logging=stderr --timeout=30000 --dump-dom \
-     "http://127.0.0.1:$PORT/E101_clear.html" 2>&1)
-echo "$D" | grep -q '✗'          && fail "engine reported a fail mark"
-echo "$D" | grep -qiE 'uncaught' && fail "console shows uncaught error"
-
-# Heartbeat leg, dual channel: (1) server-side READY line after this leg's
-# start — race-free proof the rAF loop turned 8 frames (the page issues the
-# beacon only after veLoop's promise settles); (2) if the dump carries
-# data-frame it must still be >= VE_GATE_MIN_FRAMES. virtual-time stays
-# banned: it never resolves the boot promise (measured, both headless forms).
-F_T0=$(date +%s.%N)
-F=$("${CHROME_ENV[@]}" "$CHROME" --headless=new $GPU_FLAGS --timeout=30000 --dump-dom \
-    "http://127.0.0.1:$PORT/E101_clear.html" 2>/dev/null | grep -oE 'data-frame="[0-9]+"' | grep -oE '[0-9]+' | tail -1)
-B_MS=$(python3 -c "
-import sys, time
-t0 = float(sys.argv[1])
+# Engine + heartbeat legs, looped over all 6 live pages. The anchor img
+# holds load until the post-8-frame beacon releases it, so each dump lands
+# AFTER boot: a fail mark or an uncaught error is visible, and so is the
+# ready text. Heartbeat is dual channel: (1) server-side READY line for
+# this page after the leg start - race-free proof the rAF loop turned 8
+# frames (the page issues the beacon only after veLoop's promise settles);
+# (2) if the dump carries data-frame it must still be >= VE_GATE_MIN_FRAMES.
+# virtual-time stays banned: it never resolves the boot promise (measured,
+# both headless forms).
+PAGES="E101_clear E201_load_gltf E202_geo_viewer E401_pick_demo E811_entity_hide E813_section_clip"
+BEACON_SUM=""
+for P in $PAGES; do
+  D=$("${CHROME_ENV[@]}" "$CHROME" --headless=new $GPU_FLAGS --enable-logging=stderr --timeout=30000 --dump-dom \
+       "http://127.0.0.1:$PORT/$P.html" 2>&1)
+  echo "$D" | grep -q '✗'          && fail "engine reported a fail mark ($P)"
+  echo "$D" | grep -qiE 'uncaught' && fail "console shows uncaught error ($P)"
+  F_T0=$(date +%s.%N)
+  F=$("${CHROME_ENV[@]}" "$CHROME" --headless=new $GPU_FLAGS --timeout=30000 --dump-dom \
+      "http://127.0.0.1:$PORT/$P.html" 2>/dev/null | grep -oE 'data-frame="[0-9]+"' | grep -oE '[0-9]+' | tail -1)
+  B_MS=$(python3 -c "
+import sys
+t0, page = float(sys.argv[1]), sys.argv[3]
 try:
-    ts = [float(l.split()[1]) for l in open(sys.argv[2]) if l.startswith('READY')]
+    ts = [float(l.split()[2]) for l in open(sys.argv[2]) if l.startswith('READY ' + page + ' ')]
 except FileNotFoundError:
     ts = []
 fresh = [x for x in ts if x >= t0]
-print(int((max(fresh) - t0) * 1000) if fresh else -1)" "$F_T0" "$BEACON")
-[ "$B_MS" -ge 0 ] || fail "no beacon (engine never turned ${VE_GATE_MIN_FRAMES} frames)"
-[ "$B_MS" -le "$VE_GATE_BEACON_BUDGET_MS" ] || fail "beacon too slow (${B_MS}ms > ${VE_GATE_BEACON_BUDGET_MS}ms budget)"
-if [ -n "$F" ]; then [ "$F" -ge "$VE_GATE_MIN_FRAMES" ] || fail "heartbeat stalled (frames=$F < $VE_GATE_MIN_FRAMES)"; fi
+print(int((max(fresh) - t0) * 1000) if fresh else -1)" "$F_T0" "$BEACON" "$P")
+  [ "$B_MS" -ge 0 ] || fail "no beacon ($P: engine never turned ${VE_GATE_MIN_FRAMES} frames)"
+  [ "$B_MS" -le "$VE_GATE_BEACON_BUDGET_MS" ] || fail "beacon too slow ($P ${B_MS}ms > ${VE_GATE_BEACON_BUDGET_MS}ms budget)"
+  if [ -n "$F" ]; then [ "$F" -ge "$VE_GATE_MIN_FRAMES" ] || fail "heartbeat stalled ($P: frames=$F < $VE_GATE_MIN_FRAMES)"; fi
+  echo "GATE-WEB page $P: beacon=${B_MS}ms frames=${F:-ready(snapshot)}"
+  BEACON_SUM="$BEACON_SUM $P:$B_MS"
+done
 
 "${CHROME_ENV[@]}" "$CHROME" --headless=new --timeout=15000 --screenshot=/tmp/opencode/ve-wall.png --window-size=1280,800 \
   "http://127.0.0.1:$PORT/index.html" >/dev/null 2>&1
-echo "GATE-WEB OK ($N wall items, beacon ${B_MS}ms, frames=${F:-snapshot-pre-boot}, shot /tmp/opencode/ve-wall.png)"
+echo "GATE-WEB OK ($N wall items, 6 live pages, beacons$BEACON_SUM ms, shot /tmp/opencode/ve-wall.png)"

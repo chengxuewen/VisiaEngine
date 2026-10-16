@@ -4,7 +4,7 @@
 <body><p id="st">E101_clear · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
 <!-- gate-web load anchor: the gate server holds this response until the
      post-await beacon below arrives; 404 in real browsers (harmless) -->
-<img src="/ve-gate-ready" alt="" style="display:none">
+<img src="/ve-gate-ready/E101_clear" alt="" style="display:none">
 <script src="./common.js"></script>
 <script type="module">
 const st = document.getElementById('st'), canvas = document.getElementById('c');
@@ -18,5 +18,5 @@ await veLoop(eng, () => { if (++n % 60 === 0) st.textContent = `帧 ${n} · 60fp
 // a pending image subresource holds the load event so the gate's dump lands
 // after boot. Matches VE_GATE_MIN_FRAMES in scripts/gate-web.sh (COUPLING: both
 // named in common.js veLoop). Harmless 404 in real browsers / other servers.
-new Image().src = '/ve-gate-ready?t=' + Date.now();
+new Image().src = '/ve-gate-ready/E101_clear?t=' + Date.now();
 </script></body></html>

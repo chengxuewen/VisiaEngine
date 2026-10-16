@@ -2,6 +2,9 @@
 <html lang="zh"><head><meta charset="utf-8"><title>E202 地理视图（park）</title>
 <style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}</style></head>
 <body><p id="st">E202_geo_viewer · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<!-- gate-web load anchor: the gate server holds this response until the
+     post-await beacon below arrives; 404 in real browsers (harmless) -->
+<img src="/ve-gate-ready/E202_geo_viewer" alt="" style="display:none">
 <script src="./common.js"></script>
 <script type="module">
 const st = document.getElementById('st'), canvas = document.getElementById('c');
@@ -10,5 +13,12 @@ const geo = await veFile('./park.geojson');
 const rc = eng.loadGeoJsonBytes(geo);
 st.textContent = `就绪（load rc=${rc} · 实体 ${eng.entityCount()}）——与 native geo_viewer 同形色带`;
 veOrbit(canvas, eng);
-veLoop(eng);
+// await holds the load event until 8 heartbeat frames have turned (gate-web
+// dumps at load; see COUPLING note in common.js veLoop)
+await veLoop(eng);
+// Beacon: requested only after the 8-frame promise (VE_GATE_FRAMES) settles;
+// the gate server releases the load anchor on it. Matches VE_GATE_MIN_FRAMES
+// in scripts/gate-web.sh (COUPLING: all named in common.js veLoop).
+// Harmless 404 in real browsers / other servers.
+new Image().src = '/ve-gate-ready/E202_geo_viewer?t=' + Date.now();
 </script></body></html>

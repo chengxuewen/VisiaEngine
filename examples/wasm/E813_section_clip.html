@@ -2,6 +2,9 @@
 <html lang="zh"><head><meta charset="utf-8"><title>E813 剖面裁切</title>
 <style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#ctl{padding:0 16px;display:flex;gap:10px;align-items:center}input{width:60%}button{background:#121923;color:#cdd6e0;border:1px solid #2a3340;border-radius:6px;padding:4px 10px}</style></head>
 <body><p id="st">E813_section_clip · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<!-- gate-web load anchor: the gate server holds this response until the
+     post-await beacon below arrives; 404 in real browsers (harmless) -->
+<img src="/ve-gate-ready/E813_section_clip" alt="" style="display:none">
 <div id="ctl"><input id="s" type="range" min="-60" max="60" value="60"><button id="r">清除剖切</button></div>
 <script src="./common.js"></script>
 <script type="module">
@@ -19,5 +22,12 @@ s.addEventListener('input', apply);
 document.getElementById('r').onclick = () => { s.value = 60; apply(); };
 apply();
 veOrbit(canvas, eng);
-veLoop(eng);
+// await holds the load event until 8 heartbeat frames have turned (gate-web
+// dumps at load; see COUPLING note in common.js veLoop)
+await veLoop(eng);
+// Beacon: requested only after the 8-frame promise (VE_GATE_FRAMES) settles;
+// the gate server releases the load anchor on it. Matches VE_GATE_MIN_FRAMES
+// in scripts/gate-web.sh (COUPLING: all named in common.js veLoop).
+// Harmless 404 in real browsers / other servers.
+new Image().src = '/ve-gate-ready/E813_section_clip?t=' + Date.now();
 </script></body></html>
