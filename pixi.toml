@@ -98,6 +98,7 @@ gate-abi = "bash scripts/gate-abi.sh"   # batch 2 I2: symbol whitelist + demo co
 gate-trace = "bash scripts/spec-trace.sh"   # batch 2 v1.4: traceability nativized into the ci chain (sealing the [FFI-R:FC-6] false-green window)
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # the GEO-18 parsing-boundary gate (code shape; comments exempt)
 gate-docs = "bash scripts/gate-docs.sh"   # batch 5 T3: the four zero-drift document checks
+gate-web = "bash scripts/gate-web.sh"   # headless page gate: wall count + boot fail-marks + anchor-beacon heartbeat (self-SKIP without chromium; gate server :8018, staging replay rides :8017)
 cmake-smoke = "bash scripts/cmake-smoke.sh"   # the CMake-layer three-state gate (SKIP on machines without cmake; includes negative-path messages)
 # f5: refresh the .vscode managed debug lists -- the only preset that sees every lane (Qt on + debug knob); run after adding/changing examples
 # Runs in the qt-spike env so the SDK's designed pixi route finds Qt6 (cargo there = the same pinned toolchain; ci-qt lane precedent)

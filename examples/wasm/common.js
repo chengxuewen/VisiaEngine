@@ -47,7 +47,19 @@ function veOrbit(canvas, eng) {
 }
 
 function veLoop(eng, onFrame) {
-  (function r() { if (onFrame) onFrame(); eng.render(); requestAnimationFrame(r); })();
+  // heartbeat: gate-web samples data-frame to prove the rAF loop turns.
+  // Returns a promise settling after the first VE_GATE_FRAMES so a page
+  // can await it at module top level, holding the load event until the
+  // engine is truly turning (the gate's dump fires at load). Callers that
+  // ignore the return value behave exactly as before.
+  // COUPLING: VE_GATE_FRAMES must stay <= VE_GATE_MIN_FRAMES in
+  // scripts/gate-web.sh; change the two together.
+  let _veFrame = 0;
+  const VE_GATE_FRAMES = 8;
+  let _settle;
+  const ready = new Promise(res => { _settle = res; });
+  (function r() { if (onFrame) onFrame(); eng.render(); document.documentElement.dataset.frame = ++_veFrame; if (_veFrame === VE_GATE_FRAMES) _settle(); requestAnimationFrame(r); })();
+  return ready;
 }
 
 function vePage(title) {

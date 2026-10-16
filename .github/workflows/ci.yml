@@ -43,6 +43,7 @@ jobs:
           xvfb-run -a pixi run smoke-geo-viewer
           pixi run smoke-x11   # attach three-frame present (the script manages its own Xvfb / reuses the system DISPLAY)
           pixi run -e wasm-spike web-check   # J2': wasm build + the CAPI-09 dual-surface mirror
+          pixi run gate-web   # headless page gate (honest SKIP on runners without chromium -- the script owns the contract)
           xvfb-run -a pixi run smoke-pick
           pixi run smoke-bench-twin    # 4c: headless instantiation stress (debug-capped 5000)
           pixi run smoke-shadow-demo   # 4f: PCSS shadow-spot area assert
