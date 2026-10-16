@@ -628,3 +628,24 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: every hash/count/tip in a report must come from a command executed IN THE SAME MESSAGE's preceding tool call; swallowed push output => re-derive from `ls-remote` before declaring blocked or done.
 - **Verification**: the report's numbers traceable to pasted outputs; `git cat-file -t <every quoted hash>` resolves.
 - **Forbidden**: quoting SHAs/backlogs from session memory; declaring push state without ls-remote; the recapitulating close-out without a fresh evidence block.
+
+## PIT-70: D-Bus system-proxy config poisons every chromium loopback fetch (2026-10-16, gate-web round)
+- **Symptom**: chromium headless hung on ALL http pages (dump returned placeholders, screenshots black, "Page load timed out"); file:// pages were fine. A raw socket listener proved chrome opened the TCP connection and sent ZERO bytes.
+- **Root cause**: chromium reads the desktop system-proxy over the session D-Bus. Scrubbing http_proxy env, --no-proxy-server and --proxy-bypass-list all failed -- the proxy came from the bus, not the env.
+- **Solution**: launch chromium with the session bus removed: `env -u DBUS_SESSION_BUS_ADDRESS` (baked into gate-web.sh as CHROME_ENV).
+- **Verification**: one small served page dumps instantly after the scrub; the whole gate runs in ~4 s.
+- **Prevention**: when a browser-ish tool dies ONLY on loopback but file:// works, suspect the desktop services bus before blaming the server -- and re-test this class with the smallest possible page.
+
+## PIT-71: --dump-dom fires AT the load event; CLI snapshots cannot see post-load GPU boot (2026-10-16, gate-web round)
+- **Symptom**: the data-frame heartbeat never appeared in ANY dump (measured 20+ attempts, both headless forms, ~0.56-0.63 s exits); boot completes 1-3 s after load under swiftshader.
+- **Root cause**: Chrome 131 headless does NOT hold the load event for pending top-level await (spec-correct page semantics, unimplemented in the CLI lifecycle); --timeout is only a cap, virtual-time dumps before promises resolve.
+- **Solution**: make the page's OWN loader hold the line: a parse-time `<img src="/ve-gate-ready">` subresource whose response the gate server holds until the post-8-frame beacon arrives -> load (and dump) lands after boot; server-side READY log is the race-free proof channel. Harmless 404 outside the gate server.
+- **Verification**: green line carries `beacon <ms>, frames=8+`; negative proof (e) -- deleting the beacon line alone -- turns the leg RED while all other legs stay clean (load-bearing proven).
+- **Prevention**: to observe post-load async state from a CLI with no driver layer, hold load with a subresource, do not add a remote-control dependency.
+
+## PIT-72: restore-cp from a stale snapshot silently reverted an accepted mutation (2026-10-16, gate-web round)
+- **Symptom**: right after a "restore" in the negative-proof chain, the gate went RED impossibly (no beacon, empty server-side READY log, implausibly fast legs) -- the page had been reverted to its pre-anchor shape.
+- **Root cause**: the restore snapshot was taken BEFORE a later accepted page mutation; every accepted mutation invalidates all earlier restore snapshots -- the cp restored a legitimate-looking stale state.
+- **Solution**: retake the snapshot immediately after every accepted mutation; verify canonical state by grep + cmp BEFORE trusting any subsequent green/red.
+- **Verification**: this round re-snapshotted the anchor state, re-ran the full ledger, and only then recorded the final green; post-state cmp clean.
+- **Prevention**: in mutate/restore loops a snapshot is only valid until the next accepted edit -- stale-snapshot restores are the dangerous kind of "byte-identical".
