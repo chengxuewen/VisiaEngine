@@ -649,3 +649,17 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: retake the snapshot immediately after every accepted mutation; verify canonical state by grep + cmp BEFORE trusting any subsequent green/red.
 - **Verification**: this round re-snapshotted the anchor state, re-ran the full ledger, and only then recorded the final green; post-state cmp clean.
 - **Prevention**: in mutate/restore loops a snapshot is only valid until the next accepted edit -- stale-snapshot restores are the dangerous kind of "byte-identical".
+
+## PIT-73: with setsid, $! is NOT the server -- the port holder is (2026-10-16, serve-https round)
+- **Symptom**: `setsid python3 server & echo $!` recorded PID N; group-kill of N left the listener alive on :8443 (real holder N+4 -- setsid double-forks when the caller is not already a leader).
+- **Root cause**: trusting $! as the daemon PID under setsid; the recorded id is the intermediate parent.
+- **Solution**: after start, resolve the actual holder via `ss -tlnp` (pid=...) and kill by THAT; keep both ids recorded.
+- **Verification**: post-run `ss -tln | grep <port>` empty -- was re-proven live in the task-wiring test (holder killed, port clean).
+- **Prevention**: any lane that backgrounds a server under setsid must include a port-holder check in its cleanup path, not just a PID echo.
+
+## PIT-74: orchestrator "corrected" a working diagnostic with a spec-confabulated diagnosis; user evidence won (2026-10-16)
+- **Symptom**: remote LAN machine showed the wall's ✗ insecure-context line ("not localhost/HTTPS, WebGPU locked by the browser" — the page's own copy, translated here); the orchestrator declared the diagnostic itself buggy ("WebGPU is NOT gated on http; only mediaDevices is") and queued a fix to common.js.
+- **Root cause**: model-memory overrode both the W3C spec (WebGPU requires a secure context; navigator.gpu is simply absent on insecure origins) and the user's direct measurement; the "fix" would have corrupted a correct product string.
+- **Solution**: the queued fix was cancelled before any edit; the observed ✗ was the true behavior; the serve-https lane (c7fdeb4) is the spec-correct remedy, and the host-side beacon-over-https-untrusted-cert test empirically confirmed the secure-context boundary.
+- **Verification**: the page message matches spec; gate/web lane tests green.
+- **Prevention**: before declaring an observed diagnostic "wrong", cite the primary spec sentence or design a measurement -- chat-memory is not evidence (same family as the repo's "Do not invent facts").
