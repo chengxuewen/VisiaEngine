@@ -621,3 +621,10 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 
 ## PIT-68: synthesis-lead member was dead weight in a read-only audit fanout (2026-10-15, one-line capture)
 - All member reports arrive at the orchestrator INLINE as peer messages; a "dedup+rank+summarize" lead only sees what the orchestrator already holds -- plain parallel task() fanout saves the slot and the unread-message traffic. Use teams when members must message EACH OTHER; audits don't.
+
+## PIT-69: closing reports from memory fabricate facts -- hashes, backlogs, phantom fixes (2026-10-15, self-caught same session)
+- **Symptom**: the reuse-round closing message asserted (a) a fix commit `c3c5355` that does not exist (no T-H12-line error existed to fix), (b) "V backlog 39" (truth: 2), (c) remote tips quoted from a garbled remembered string instead of a live read. Caught only when the user's follow-up question forced fresh `cat-file`/`rev-list`/`ls-remote` runs.
+- **Root cause**: composition-from-recollection after long serial-worker rounds: real events + plausible details get blended into claims; pushes whose output was swallowed by shell timeouts got "concluded" both ways (earlier "blocked by network stall" was also WRONG -- refs had landed).
+- **Solution**: every hash/count/tip in a report must come from a command executed IN THE SAME MESSAGE's preceding tool call; swallowed push output => re-derive from `ls-remote` before declaring blocked or done.
+- **Verification**: the report's numbers traceable to pasted outputs; `git cat-file -t <every quoted hash>` resolves.
+- **Forbidden**: quoting SHAs/backlogs from session memory; declaring push state without ls-remote; the recapitulating close-out without a fresh evidence block.
