@@ -22,6 +22,15 @@ SRVLOG=/tmp/opencode/ve-gate-srv.log
 GPU_FLAGS="--no-sandbox --enable-unsafe-webgpu --use-angle=swiftshader --enable-unsafe-swiftshader --enable-features=Vulkan --use-vulkan=swiftshader"  # 2026-10-16 spike measured: the Vulkan pair is REQUIRED (Chrome 131 ships WebGPU off on Linux without it); --no-sandbox required in this container
 VE_GATE_MIN_FRAMES="${VE_GATE_MIN_FRAMES:-8}"  # COUPLING: matches VE_GATE_FRAMES in examples/wasm/common.js veLoop — change the two together
 VE_GATE_BEACON_BUDGET_MS="${VE_GATE_BEACON_BUDGET_MS:-20000}"  # beacon arrival budget; floor 20s per ruling; set >= measured*3 (see run log / report)
+# Chromium pin (D26 closure lives HERE: conda-forge carries no chromium
+# package (api.anaconda.org returns empty, pixi solve no-candidates, measured
+# 2026-10-16), so a pixi feature+lock path is impossible; the gate is the
+# single-source pin). Re-pinning version/URL/sha is deliberate work: the
+# GPU_FLAGS combo above was measured on this exact build and must be
+# re-verified on every re-pin.
+VE_CHROME_VERSION="Chromium 131.0.6778.33"
+VE_CHROME_URL="https://cdn.npmmirror.com/binaries/playwright/builds/chromium/1148/chromium-linux.zip"
+VE_CHROME_SHA256="7455d17b407bbcd1cc30c5bc8bc81fa4e67ac13635dbd5ca81f7824ec4b50439"
 # D-Bus env scrub (2026-10-16 live catch): the system proxy config delivered
 # over the session bus makes chromium's network service open loopback sockets
 # then send nothing (every http page hangs, file:// unaffected). Removing
@@ -31,6 +40,17 @@ CHROME_ENV=(env -u DBUS_SESSION_BUS_ADDRESS)
 
 skip() { echo "GATE-WEB SKIP: $1"; exit 0; }
 fail() { echo "GATE-WEB FAIL: $1"; cleanup; exit 1; }
+# opt-in provisioning (owner ruling: never auto-download; sha-checked pin zip).
+# Self-contained failure lines: no server is up yet, so no cleanup needed.
+if [ ! -x "$CHROME" ] && [ "${VE_GATE_PROVISION:-0}" = "1" ]; then
+  ZIP=/tmp/opencode/chromium-1148.zip
+  curl -fSL --retry 3 -o "$ZIP" "$VE_CHROME_URL" || { echo "GATE-WEB FAIL: provision: download failed"; exit 1; }
+  echo "$VE_CHROME_SHA256  $ZIP" | sha256sum -c - >/dev/null || { echo "GATE-WEB FAIL: provision: sha256 mismatch"; exit 1; }
+  mkdir -p "$HOME/.cache/ms-playwright/chromium-1148"
+  unzip -oq "$ZIP" -d "$HOME/.cache/ms-playwright/chromium-1148" || { echo "GATE-WEB FAIL: provision: unzip failed"; exit 1; }
+  chmod +x "$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
+  CHROME="$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
+fi
 [ -x "$CHROME" ] || skip "no chromium binary"
 [ -d "$TREE" ]   || skip "no build tree $TREE"
 [ -f "$WALL" ]   || skip "no wall.json"
@@ -40,6 +60,10 @@ cleanup() {
   [ -n "${GATE_PID:-}" ]  && kill -- -"$GATE_PID"  2>/dev/null || true
 }  # process groups: serve and gate server are group leaders via setsid
 trap cleanup EXIT
+# version gate: exact match against the pin. Live-catch: the engine prints a
+# trailing space (od-verified) -- normalize whitespace only, never tolerance.
+VER=$("$CHROME" --version 2>/dev/null | tr -d '\r' | sed 's/[[:space:]]*$//')
+[ "$VER" = "$VE_CHROME_VERSION" ] || fail "chromium drift: found $VER, pinned $VE_CHROME_VERSION -- re-provision (VE_GATE_PROVISION=1) or re-pin deliberately"
 
 N=$(python3 -c "import json;print(len(json.load(open('$WALL'))['entries']))") || fail "wall.json unreadable"
 rm -f "$BEACON" "$SRVLOG"
