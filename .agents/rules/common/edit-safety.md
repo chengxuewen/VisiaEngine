@@ -424,3 +424,23 @@ Sweep ALSO covers hardcoded ARTIFACT PATHS whose generator layout changed (the s
 **Blocking condition**: dispatching a fix ticket whose "fix these N sites" list was never existence-checked.
 
 **Source**: reuse-audit round, 3-parallel-auditor fanout, 2026-10-15.
+
+### 37. Announced work MUST carry its tool call in the SAME turn (2026-10-16)
+
+**Rule**: a message that declares execution (execute/land it/commit now/push) must contain the actual tool invocation doing it -- ending a turn on a future-tense announcement with no action is a broken promise, and the user discovers it by asking for status (this happened: an "Execute:" line was emitted, the turn died, nothing ran; C24 landed a full turn late). Execution verbs are receipts, not intentions.
+
+**Verification**: before sending any message containing an execution verb (execute/land/commit/push), check it has >=1 tool call whose output the sentence claims -- if the turn already ended without one, the NEXT turn's first act is the action, not another announcement.
+
+**Blocking condition**: writing an execution-verb line with no tool call beneath it.
+
+**Source**: 2026-10-16, the user's status-check caught it; same family as PIT-69 (claims ahead of evidence).
+
+### 38. Repo state has a ONE-TURN shelf life -- re-derive before mutating (2026-10-16)
+
+**Rule**: the host repo is shared with parallel sessions (gitee history rewrite, modukit pushing the same supplier commit chain, external `git reset`+`pull --tags` fast-forwarded main OVER a just-made withdrawal between two of our own turns). Before ANY mutating git operation (reset/commit/amend/push/cherry-pick/checkout) re-derive the CURRENT repo's real state: branch, HEAD, status, and reflog tail -- and resolve every quoted hash with `git cat-file -t` IN THAT REPO (parent-vs-submodule namespace mixups: 0b9378f/a620933 were PolyOrch objects cited in the parent). A plan premised on last turn's tree is a hypothesis, not a fact.
+
+**Verification**: the message performing a mutation begins with (or its preceding call contains) a same-turn `git status` + `git log --oneline -1` + `git reflog -3` output of the TARGET repo; cross-repo IDs appear only after a per-repo `cat-file -t` check.
+
+**Blocking condition**: `git reset/commit/amend` issued against a remembered tree state; force operations suggested without checking origin position (`ls-remote`).
+
+**Source**: 2026-10-16 the 'why did main diverge' round + the interrupted-C24 turn.
