@@ -401,4 +401,26 @@ shape pins.
 
 **Verification**: `git grep -nE '<old-file-name>' -- scripts/gate-*.sh .agents/memorys/conventions.md` = 0 (dated ledger prose exempt); gate re-run shows the check still FAILS when a violation is planted.
 
+Sweep ALSO covers hardcoded ARTIFACT PATHS whose generator layout changed (the smoke-qt fossil: script still called `cmake-build-ci/bin/E703_qt_viewer` nine rounds after T-H6 moved staging -- found by a worker, not by any gate).
+
 **Blocking condition**: committing a rename with the check-body sweep not run; leaving a gate pointing at a path that no longer exists.
+
+### 35. A generated-text assertion is decoration without an execute leg (2026-10-15)
+
+**Rule**: any test that pins a GENERATED command/build file by grepping text must ship with at least one leg that EXECUTES the generated artifact (execute_process / real build+run with rc assertions) or an explicitly declared human-pending line. Text markers survive argv splitting: the supplier's t-example-run stayed green for hours over a GUI form whose probe shattered at every ';' -- the first consumer's LIVE E801 run (rc=2) caught what nine marker pins could not. Same family: serve "completed 0" while binding nothing (PIT-59), rule text vs graph edges (PIT-60).
+
+**Verification**: in every new marker-grep test case, `grep -nE 'execute_process|--build' <case>` finds a companion leg; a leg that legitimately cannot execute (needs display/hardware) carries a SKIP-with-declaration naming what stayed unproven.
+
+**Blocking condition**: merging a test that only greps generated text for a COMMAND-generating feature.
+
+**Source**: R1c (PolyOrch PIT-65 shape), R1b T1 rc=2 (2026-10-15 reuse round).
+
+### 36. Before an audit claim enters any table, existence-check every cited path (2026-10-15)
+
+**Rule**: sub-auditor findings quoting files/lines must pass `git cat-file -e`/`test -e` per cited path BEFORE appearing in an adjudication table or dispatch ticket; a claim with a nonexistent anchor is discarded whole-and-named in the report, not partially trusted. This round's haul: the bypass auditor cited two files that do not exist (`examples/wasm/CMakeLists.txt`, `examples/rs/template.rs.in`) and four "fossil lines" inside them; I accepted one claim (`_A_TEST_LABELS` mixed vars) as "live" without my own grep and the R1 worker later proved it a phantom via git history. Skipped verification costs a rework round each (PIT-64/PIT-69 family).
+
+**Verification**: the intake message for any multi-claim report contains one existence-pass output over its cited paths (copy-pasteable), or marks each claim ORCHESTRATOR-VERIFIED / UNVERIFIED.
+
+**Blocking condition**: dispatching a fix ticket whose "fix these N sites" list was never existence-checked.
+
+**Source**: reuse-audit round, 3-parallel-auditor fanout, 2026-10-15.
