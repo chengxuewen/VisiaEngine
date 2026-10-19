@@ -82,6 +82,7 @@ fn selected_entity_renders_highlight_overlay() {
         positions: &pos,
         indices: &idx,
         world: &world4(1.0),
+        origin: [0.0; 3],
     }];
     let hit =
         visiaengine_render::pick_meshes(ray, &cands).expect("the center should hit the near piece");
@@ -317,6 +318,7 @@ fn golden_pick_window_mirror() {
             positions: &pos,
             indices: &idx,
             world: w,
+            origin: [0.0; 3],
         })
         .collect();
     let hit = visiaengine_render::pick_meshes(ray, &cands).expect("the center should hit one box");

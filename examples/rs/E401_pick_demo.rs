@@ -103,12 +103,14 @@ fn main() {
             positions: &pos,
             indices: &idx,
             world: &world_near,
+            origin: [0.0; 3],
         },
         MeshCandidate {
             entity: far,
             positions: &pos,
             indices: &idx,
             world: &world_far,
+            origin: [0.0; 3],
         },
     ];
     let hit = pick_meshes(ray, &cands).expect("center must hit a cube");
@@ -205,6 +207,7 @@ fn bench_pick_10k() {
             positions: &pos,
             indices: &idx,
             world: w,
+            origin: [0.0; 3],
         })
         .collect();
     let rig = CameraRig::look_at([50.0, -80.0, 60.0], [50.0, 50.0, 0.0], [0.0, 1.0, 0.0]);

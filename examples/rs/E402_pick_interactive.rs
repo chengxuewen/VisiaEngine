@@ -84,6 +84,7 @@ impl App {
                 positions: &self.positions,
                 indices: &self.indices,
                 world: &b.world,
+                origin: [0.0; 3],
             })
             .collect();
         let hit = visiaengine_render::pick_meshes(ray, &cands)?;

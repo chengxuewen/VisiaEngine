@@ -65,12 +65,14 @@ fn nearest_wins_pruning_and_miss() {
             positions: &pos,
             indices: &idx,
             world: &near,
+            origin: [0.0; 3],
         },
         MeshCandidate {
             entity: e9,
             positions: &pos,
             indices: &idx,
             world: &far,
+            origin: [0.0; 3],
         },
     ];
     let ray = Ray {
@@ -118,6 +120,7 @@ fn transform_scale_and_empty_inputs() {
         positions: &pos,
         indices: &idx,
         world: &scaled,
+        origin: [0.0; 3],
     }];
     let ray = Ray {
         origin: Vec3::new(0.5, 0.5, 10.0),
@@ -132,6 +135,7 @@ fn transform_scale_and_empty_inputs() {
         positions: &[],
         indices: &[],
         world: &scaled,
+        origin: [0.0; 3],
     }];
     assert!(pick_meshes(ray, &empty).is_none());
     assert!(pick_meshes(ray, &[]).is_none());

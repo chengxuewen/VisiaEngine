@@ -11,12 +11,17 @@ use crate::contract::StrokeSeg;
 use visiaengine_core::{EntityId, Ray, Vec3, ray_aabb, ray_triangle};
 
 /// Pick candidate: local vertices + world matrix (`DrawMesh.transform`-shaped column-major).
+/// `origin` rides separately (same scheme as DrawPoints/PointCloudCandidate): the render
+/// chain composes world = T(origin)·M, so pick must too -- a hardwired IDENTITY here
+/// silently picked the ORIGIN-side ghost of every translated mesh (the E401 wasm catch:
+/// a green cube rendered at its offset was pickable only at the scene origin).
 #[derive(Debug)]
 pub struct MeshCandidate<'a> {
     pub entity: EntityId,
     pub positions: &'a [[f32; 3]],
     pub indices: &'a [u32],
     pub world: &'a [[f64; 4]; 4],
+    pub origin: [f64; 3],
 }
 
 /// Hit result (triangle index + distance parameter + world hit point, all the way f64 per D7).
@@ -57,9 +62,9 @@ fn world_bbox(c: &MeshCandidate) -> Option<([f64; 3], [f64; 3])> {
         for sy in [0, 1] {
             for sz in [0, 1] {
                 let corner = [
-                    if sx == 0 { lmin[0] } else { lmax[0] },
-                    if sy == 0 { lmin[1] } else { lmax[1] },
-                    if sz == 0 { lmin[2] } else { lmax[2] },
+                    (if sx == 0 { lmin[0] } else { lmax[0] }) + c.origin[0],
+                    (if sy == 0 { lmin[1] } else { lmax[1] }) + c.origin[1],
+                    (if sz == 0 { lmin[2] } else { lmax[2] }) + c.origin[2],
                 ];
                 let w = xform(c.world, corner);
                 for i in 0..3 {
@@ -92,7 +97,10 @@ pub fn pick_meshes(ray: Ray, cands: &[MeshCandidate]) -> Option<PickHit> {
                     continue;
                 }
                 let p = c.positions[li];
-                *dst = xform(c.world, [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]);
+                let v = xform(c.world, [f64::from(p[0]), f64::from(p[1]), f64::from(p[2])]);
+                // world = T(origin)·M: left-multiplied translation touches only the
+                // result's components (M's linear part is origin-invariant)
+                *dst = [v[0] + c.origin[0], v[1] + c.origin[1], v[2] + c.origin[2]];
             }
             // degenerate triangles of index-overrun pieces (zero area) are rejected by MT
             if let Some(t) = ray_triangle(ray, tri[0], tri[1], tri[2])

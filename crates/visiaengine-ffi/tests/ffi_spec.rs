@@ -346,6 +346,13 @@ fn symbol_surface_grep_gate() {
 
 // -- B1 data band, four entries (RED first; the gate table/abi/count are the linked face) --
 
+fn mesh_desc_at(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32], origin: [f64; 3]) -> VeMeshDesc {
+    VeMeshDesc {
+        origin: origin.as_ptr(),
+        ..mesh_desc(pos, nrm, idx)
+    }
+}
+
 fn mesh_desc(pos: &[[f32; 3]], nrm: &[[f32; 3]], idx: &[u32]) -> VeMeshDesc {
     VeMeshDesc {
         struct_size: std::mem::size_of::<VeMeshDesc>(),
@@ -1450,4 +1457,54 @@ fn node_transform_write_read_domain() {
         ]
     );
     let _ = h1;
+}
+
+// spec: CAPI-04 (pick consumes the mesh's real origin -- the render chain
+// composes world = T(origin)*transform; the E401 wasm catch: a translated
+// add_mesh piece was pickable only at the scene origin because the pick
+// candidates rode a hardwired IDENTITY).
+#[test]
+fn add_mesh_pick_honors_origin() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    let pos = [
+        [0f32, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ];
+    let nrm = [[0f32, 0.0, 1.0]; 4];
+    let idx = [0u32, 1, 2, 0, 2, 3];
+    let mut h_a = u64::MAX;
+    let mut h_b = u64::MAX;
+    assert_eq!(
+        visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx), &mut h_a),
+        VE_OK
+    );
+    // the second piece translated away: render puts it at x+4, pick must agree
+    assert_eq!(
+        visiaengine_add_mesh(
+            ve,
+            &mesh_desc_at(&pos, &nrm, &idx, [4.0, 0.0, 0.0]),
+            &mut h_b
+        ),
+        VE_OK
+    );
+    assert_ne!(h_a, h_b);
+    assert_eq!(visiaengine_render(ve), 0);
+    // center of the viewport = the ORIGIN piece (default rig look_at [0,0,10])
+    let hit_c = visiaengine_pick(ve, 80.0, 60.0);
+    assert_eq!(hit_c, h_a, "center must hit the origin piece");
+    // the translated piece's screen position: walk x from the center until a
+    // hit lands on h_b (the pre-fix bug made this search ALWAYS return h_a or
+    // MISS -- the translated piece was invisible to pick everywhere).
+    let mut found = false;
+    for px in [100u32, 110, 120, 130, 140, 150, 159].iter() {
+        if visiaengine_pick(ve, *px as f32, 60.0) == h_b {
+            found = true;
+            break;
+        }
+    }
+    assert!(found, "the translated piece must be pickable AT its offset");
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

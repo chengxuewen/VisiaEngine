@@ -1461,7 +1461,8 @@ impl Engine {
                     entity: it.entity,
                     positions: &it.positions,
                     indices: &it.indices,
-                    world: &IDENTITY,
+                    world: &it.transform,
+                    origin: it.origin,
                 })
                 .collect();
             let hit = pick_meshes(ray, &cands)?;
