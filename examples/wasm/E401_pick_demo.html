@@ -7,25 +7,46 @@
 <img src="/ve-gate-ready/E401_pick_demo" alt="" style="display:none">
 <script src="./common.js"></script>
 <script type="module">
+// Parity with native E401_pick_demo.rs: a procedural two-cube scene built
+// via addMesh (red at origin, green offset), click = pick, hover = cursor
+// preview. No park.geojson -- the pick teaching point needs distinct shapes.
 const st = document.getElementById('st'), canvas = document.getElementById('c');
 let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
-const geo = await veFile('./park.geojson');
-eng.loadGeoJsonBytes(geo);
-const NONE = 18446744073709551615n;
+
+// 12-tri unit cube, same vertex/index tables as the native E401 builder
+// (the E402-era REND-23 winding fix is baked into these tables).
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+// addMesh treats empty normals as None; zeroed 24 floats keep the slot
+// explicit without inventing per-vertex data the flat pipeline ignores.
+const NRM = new Float32Array(24);
+
+const MISS = 0xFFFFFFFFFFFFFFFFn;
+const red   = eng.addMesh(P, NRM, IDX, Float32Array.from([0.85, 0.2, 0.2, 1]),
+                          Float64Array.from([0, 0, 0]), 0, 0);
+const green = eng.addMesh(P, NRM, IDX, Float32Array.from([0.2, 0.75, 0.3, 1]),
+                          Float64Array.from([2.5, 0, 1.5]), 0, 0);
+if (red === MISS || green === MISS) { veFail(st, 'addMesh failed'); throw new Error('addMesh MISS'); }
+st.textContent = `就绪（2 立方体）——单击拾取，悬停预览`;
+
 let hits = 0;
-st.textContent = `就绪（实体 ${eng.entityCount()}）——点击场景拾取`;
 canvas.addEventListener('click', e => {
   const h = eng.pick(e.offsetX, e.offsetY);
-  st.textContent = h === NONE ? `pick：未命中（累计命中 ${hits}）`
-    : `pick：命中实体 #${h}（累计命中 ${++hits}）`;
+  st.textContent = h === MISS ? `未命中（累计 ${hits}）`
+    : h === red ? `命中 红立方 #${h}（累计 ${++hits}）`
+    : h === green ? `命中 绿立方 #${h}（累计 ${++hits}）`
+    : `命中 #${h}（累计 ${++hits}）`;
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.buttons) return; // drag-orbit owns the pointer while pressed
+  const h = eng.pick(e.offsetX, e.offsetY);
+  canvas.style.cursor = h === MISS ? 'default' : 'pointer';
 });
 veOrbit(canvas, eng);
-// await holds the load event until 8 heartbeat frames have turned (gate-web
-// dumps at load; see COUPLING note in common.js veLoop)
 await veLoop(eng);
-// Beacon: requested only after the 8-frame promise (VE_GATE_FRAMES) settles;
-// the gate server releases the load anchor on it. Matches VE_GATE_MIN_FRAMES
-// in scripts/gate-web.sh (COUPLING: all named in common.js veLoop).
-// Harmless 404 in real browsers / other servers.
 new Image().src = '/ve-gate-ready/E401_pick_demo?t=' + Date.now();
 </script></body></html>
