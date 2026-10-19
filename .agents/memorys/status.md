@@ -813,3 +813,24 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 - open: commit awaiting user instruction; gate-docs has no anchor on the serve DESC
   text (checked: no gate greps it); supplier retirement condition recorded inline
   (adopt when PolyOrch grows TLS_PORT/TLS_CERT/TLS_KEY args post-unfreeze).
+
+## Review-fix band baseline (2026-10-19, 5-agent review FAILED -> three blocking fixes landed)
+
+- origin: the /review-work 5-lane round (goal/QA/quality/security/context) on the wasm band;
+  3 FAIL 1 PASS 1 INCONCLUSIVE; the QA lane's live probes caught what the green ci could not.
+- fixes (3 commits): E811 fixture = twoprim.glb (the "two-primitive" claim was a
+  1-primitive poser) / mount_gltf framing fit (E202 family law, gltf leg -- the QA
+  "wasm pick dead" report was THIS engine bug: hierarchy.glb off-frustum, 0 pick hits;
+  oblique-depression camera per the E201 pitch law) / E813 knife sign [0,0,-1,v]
+  (keeps=n*p+d>=0) + pick-target sweeping for the de-centered consumers (E701/E811_c/
+  E811cpp) + gate-web consumes the ?selftest beacon (E401 asserts RED+GREEN, 165 cells).
+- disproven en route: the matrix-transpose hypothesis (gltf crate is column-major per
+  the glTF spec, verified from crate source; the transpose was reverted same-session).
+- honest note: the QA lane's "wasm32-specific" framing was wrong -- the bug was engine-
+  level; the wasm surface just had no fit and no page-level pick probe to see it.
+- new gates: gltf_node_transform_pick_preserved / clip_knife_sign_semantics (both
+  RED-proven) / gate-web E401 pick-surface assertion (RED-proven by its first run).
+- baseline: pixi run ci rc=0 (13 segments); ctest headless lane green; gate-web OK with
+  the pick assertion; worktree clean; 3 commits this band.
+- remaining: user hard-refresh retest of E401/E811/E813 (staged artifacts good);
+  group-offset pick leg landed in the same session as the review's blocking #3.
