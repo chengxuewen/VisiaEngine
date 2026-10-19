@@ -7,19 +7,29 @@
 <img src="/ve-gate-ready/E811_entity_hide" alt="" style="display:none">
 <script src="./common.js"></script>
 <script type="module">
+// Parity with native E811_entity_hide_c.c: a TWO-PRIMITIVE scene
+// (hierarchy.glb = 2 nodes / 1 mesh, the wasm twin of twoprim.glb),
+// hide the clicked entity, visibility-query round trip in the status
+// line, double-click restores all. The C contract trio rides along:
+// a hidden piece never hits itself on pick / enumeration domain
+// unchanged / setEntityVisible round-trip.
 const st = document.getElementById('st'), canvas = document.getElementById('c');
 let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
-const geo = await veFile('./park.geojson');
-eng.loadGeoJsonBytes(geo);
+const glb = await veFile('./hierarchy.glb');
+if (eng.loadGltfBytes(glb) !== 0) { veFail(st, 'loadGltfBytes failed'); throw new Error('load failed'); }
 const NONE = 18446744073709551615n;
-let hidden = 0;
 const all = () => Array.from({ length: eng.entityCount() }, (_, i) => eng.entityAt(i));
-st.textContent = `就绪（实体 ${eng.entityCount()}）——单击隐藏命中项，双击复原`;
+let hidden = 0;
+st.textContent = `就绪（双图元 · 实体 ${eng.entityCount()}）——单击隐藏命中项，双击复原`;
 canvas.addEventListener('click', e => {
   const h = eng.pick(e.offsetX, e.offsetY);
-  if (h !== NONE && eng.setEntityVisible(h, false) === 0) {
-    ++hidden; st.textContent = `已隐藏 #${h}（计 ${hidden}）——双击复原全部`;
-  }
+  if (h === NONE) { st.textContent = '未命中 —— 单击图元隐藏它'; return; }
+  if (eng.setEntityVisible(h, false) !== 0) { st.textContent = `隐藏 #${h} 被拒`; return; }
+  // the C contract: query reflects the hide + the hidden piece misses itself
+  const q = eng.entityVisible(h) === 0 ? 'query=hidden' : 'query=STILL-VISIBLE(BUG)';
+  const selfHit = eng.pick(e.offsetX, e.offsetY) === h ? 'self-pick(BUG)' : 'self-pick=miss';
+  ++hidden;
+  st.textContent = `已隐藏 #${h}（计 ${hidden}）· ${q} · ${selfHit} —— 双击复原`;
 });
 canvas.addEventListener('dblclick', () => {
   for (const h of all()) eng.setEntityVisible(h, true);
