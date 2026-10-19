@@ -23,7 +23,11 @@ fn parses_glb_fixture() {
     assert_eq!(e.mesh.indices.len(), 6);
 }
 
-// spec: GLTF-02
+// spec: GLTF-02 (amended 2026-10-19: the engine convention is COLUMN-major
+// m[col][row] with translation in column 3 (REND-18); the pre-transpose code
+// stored translation in row 3 -- a convention clash with mul()/compose_mvp that
+// left node translations vanishing engine-wide. The gate now pins the
+// column-major slots.)
 #[test]
 fn node_hierarchy_transform_baked() {
     let doc = load_gltf(fixture(HIER)).unwrap();
@@ -31,6 +35,7 @@ fn node_hierarchy_transform_baked() {
     assert_eq!(w[3][0], 11.0);
     assert_eq!(w[3][1], 2.0);
     assert_eq!(w[3][2], 3.0);
+    assert_eq!(w[0][3], 0.0, "row-major residue: m[row][3] must be zero");
 }
 
 // spec: GLTF-03
@@ -87,13 +92,14 @@ fn missing_file_io_err() {
     assert!(matches!(err, IoError::NotFound { .. }), "got {err:?}");
 }
 
-// spec: GLTF-08
+// spec: GLTF-08 (amended with GLTF-02: translation read at the column-major slot)
 #[test]
 fn y_up_orientation_preserved() {
     let doc = load_gltf(fixture(HIER)).unwrap();
     let w = doc.entities()[0].world;
     assert_eq!(w[3][2], 3.0, "z kept as-is (no Z-up sign flip)");
     assert_eq!(w[0][0], 1.0, "unit diagonal with no rotation baked");
+    assert_eq!(w[2][3], 0.0, "row-major residue: m[row][3] must be zero");
 }
 
 // ===== GLTF-09: primitive mode filter + load report ([E3D:A4] port, a correctness fix along the way) =====

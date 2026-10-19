@@ -53,16 +53,23 @@ fn headless_load_render_readback_pipeline() {
         visiaengine_readback(ve, buf.as_mut_ptr(), buf.len() as u64),
         0
     );
-    let mid = ((60 * 160 + 80) * 4) as usize;
-    let lum = buf[mid] as u32 + buf[mid + 1] as u32 + buf[mid + 2] as u32;
-    assert!(
-        lum > 40,
-        "center pixel is not background, luminance={lum} rgba={:?}",
-        &buf[mid..mid + 4]
-    );
-    // pick rides the same frame's geometry: the center-hit entity handle is in the entity_at value domain
-    let hit = visiaengine_pick(ve, 80.0, 60.0);
-    assert_ne!(hit, MISS, "the center should hit");
+    // the mount fit chooses the framing, so visibility is asserted as
+    // "non-background pixels exist", not "the center pixel is lit"
+    let lit = buf
+        .chunks(4)
+        .filter(|px| px.len() == 4 && px[0] + px[1] + px[2] > 40)
+        .count();
+    assert!(lit > 50, "the fitted frame must show the scene (lit={lit})");
+    // pick rides the same frame's geometry: sweep for the first hit (the
+    // fit moved twoprim off the old screen center)
+    let hit = (0..120u32)
+        .step_by(2)
+        .flat_map(|y| (0..160u32).step_by(2).map(move |x| (x, y)))
+        .find_map(|(x, y)| {
+            let h = visiaengine_pick(ve, x as f32, y as f32);
+            (h != MISS).then_some(h)
+        })
+        .expect("twoprim must be pickable after fit");
     assert!(
         hit == visiaengine_entity_at(ve, 0) || hit == visiaengine_entity_at(ve, 1),
         "the hit handle must equal some loaded piece (generation stable)"

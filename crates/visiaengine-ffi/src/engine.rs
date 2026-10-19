@@ -456,6 +456,58 @@ impl Engine {
         if n == 0 {
             return Err("no primitives".to_string());
         }
+        // Load-time framing fit (the E202 gray-screen family law, gltf leg --
+        // same shape as mount_geo/E201's BBox gate): node transforms place
+        // entities anywhere (hierarchy.glb's leaf sits at x=11); without a
+        // fit the initial [0,0,10]->[0,0,0] rig shows only origin-hugging
+        // fixtures (twoprim) and pick finds nothing -- render AND pick see
+        // the same fitted rig, so the E401 invariant stays constructive.
+        let mut bmin = [f64::MAX; 3];
+        let mut bmax = [f64::MIN; 3];
+        for e in doc.entities() {
+            for pt in &e.mesh.positions {
+                let v = [
+                    e.world[0][0] * f64::from(pt[0])
+                        + e.world[1][0] * f64::from(pt[1])
+                        + e.world[2][0] * f64::from(pt[2])
+                        + e.world[3][0],
+                    e.world[0][1] * f64::from(pt[0])
+                        + e.world[1][1] * f64::from(pt[1])
+                        + e.world[2][1] * f64::from(pt[2])
+                        + e.world[3][1],
+                    e.world[0][2] * f64::from(pt[0])
+                        + e.world[1][2] * f64::from(pt[1])
+                        + e.world[2][2] * f64::from(pt[2])
+                        + e.world[3][2],
+                ];
+                for i in 0..3 {
+                    bmin[i] = bmin[i].min(v[i]);
+                    bmax[i] = bmax[i].max(v[i]);
+                }
+            }
+        }
+        if bmin[0] <= bmax[0] {
+            let center = [
+                (bmin[0] + bmax[0]) / 2.0,
+                (bmin[1] + bmax[1]) / 2.0,
+                (bmin[2] + bmax[2]) / 2.0,
+            ];
+            let radius = ((bmax[0] - bmin[0])
+                .max(bmax[1] - bmin[1])
+                .max(bmax[2] - bmin[2])
+                / 2.0)
+                .max(0.5);
+            let dist = (radius * 4.0).max(6.0);
+            // a low depression angle, not a top-down: thin +z-facing scenes
+            // (twoprim's quad) would otherwise present edge-on and vanish from
+            // BOTH render and pick (the E201 pitch law, scan proof .35 -> red)
+            self.rig = CameraRig::look_at(
+                [center[0], center[1] + dist * 0.55, center[2] + dist * 0.85],
+                center,
+                [0.0, 1.0, 0.0],
+            );
+            self.mode = Proj::Persp;
+        }
         // GLTF-11 texture slots -> GPU texture ids (deduped by image slot; one image across primitives shared)
         let mut tex_ids = Vec::with_capacity(doc.textures().len());
         for t in doc.textures() {
@@ -1394,7 +1446,7 @@ impl Engine {
             .filter(|pc| !self.is_hidden(pc.entity))
             .map(|pc| PointCloudCandidate {
                 entity: pc.entity,
-                origin: pc.origin,
+                origin: add_origin(pc.origin, self.scene.effective_offset(pc.entity)),
                 transform: &pc.transform,
                 positions: &pc.positions,
             })
@@ -1462,7 +1514,10 @@ impl Engine {
                     positions: &it.positions,
                     indices: &it.indices,
                     world: &it.transform,
-                    origin: it.origin,
+                    // same composition the render loop bakes (engine.rs:789):
+                    // T(origin + group_offset) * transform -- picking must see
+                    // what rendering shows (the E401 review-round catch, group leg)
+                    origin: add_origin(it.origin, self.scene.effective_offset(it.entity)),
                 })
                 .collect();
             let hit = pick_meshes(ray, &cands)?;
@@ -2875,7 +2930,14 @@ mod mut_spec_tests {
     #[test]
     fn hide_filters_pick_keeps_enumeration() {
         let mut e = eng();
-        let hit = e.pick(80.0, 60.0).expect("center hit (CAPI-04 family)");
+        // the mount fit chooses the framing, so the "hit somewhere" point is
+        // swept, not assumed center (the fit moved twoprim off the old center)
+        let hit = (0..120u32)
+            .step_by(2)
+            .flat_map(|y| (0..160u32).step_by(2).map(move |x| (x, y)))
+            .find_map(|(x, y)| e.pick(x as f32, y as f32).map(|h| (h, x, y)))
+            .expect("twoprim pickable after fit (CAPI-04 family)")
+            .0;
         let h = enc_entity(hit);
         assert_eq!(
             e.set_visible(h, true),
@@ -3124,5 +3186,32 @@ mod point_pick_tests {
         assert_eq!(hit, Some(bits), "off-center cloud hits at its probed px");
         // Center stays empty (6px radius ≪ 40px real offset).
         assert!(e.pick(160.0, 120.0).is_none(), "center must not bleed-hit");
+    }
+}
+
+#[cfg(test)]
+mod fit_probe {
+    use super::*;
+    const TP: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../resources/data/twoprim.glb"
+    );
+    #[test]
+    fn fit_probe_print() {
+        let mut e = Engine::new_headless(160, 120).expect("adapter");
+        let n = e.load_gltf(TP).unwrap();
+        println!("entities={n}");
+        println!("rig eye={:?} target={:?}", e.rig.eye(), e.rig.target);
+        let mut hits = 0;
+        let mut first = None;
+        for y in (0..120u32).step_by(4) {
+            for x in (0..160u32).step_by(4) {
+                if e.pick(x as f32, y as f32).is_some() {
+                    hits += 1;
+                    first = first.or(Some((x, y)));
+                }
+            }
+        }
+        println!("hits={hits} first={first:?}");
     }
 }

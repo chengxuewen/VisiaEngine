@@ -2,22 +2,22 @@
 //! rlib direct calls on the extern "C" face (true ABI shape; artifact-level nm verification belongs to gate-abi/I2).
 
 use visiaengine::{
-    KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE, VE_ERR_STATE,
-    VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeCameraPose, VeClipPlane, VeInput, VeLabelSpec,
-    VeMapView, VeMeshDesc, VePclReport, VePointMark, VePointsDesc, visiaengine_abi_version,
-    visiaengine_add_label, visiaengine_add_mesh, visiaengine_add_points, visiaengine_attach,
-    visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str, visiaengine_create_group,
-    visiaengine_create_headless, visiaengine_destroy, visiaengine_entity_at,
-    visiaengine_entity_count, visiaengine_entity_set_visible, visiaengine_entity_visible,
-    visiaengine_fly_state, visiaengine_fly_to, visiaengine_get_camera, visiaengine_get_clips,
-    visiaengine_get_group_offset, visiaengine_get_node_transform, visiaengine_get_parent,
-    visiaengine_last_error, visiaengine_load_env_hdr, visiaengine_load_font, visiaengine_load_gltf,
-    visiaengine_load_mvt_dir, visiaengine_load_pcl, visiaengine_load_raster_dir,
-    visiaengine_navigate_click, visiaengine_on_input, visiaengine_pick, visiaengine_readback,
-    visiaengine_remove_entity, visiaengine_render, visiaengine_set_clips,
-    visiaengine_set_group_offset, visiaengine_set_map, visiaengine_set_node_transform,
-    visiaengine_set_parent, visiaengine_set_raster_view, visiaengine_set_tile_source_http,
-    visiaengine_set_tile_view, visiaengine_viewport,
+    KIND_NO_SUCH, KIND_PTR_DOWN, KIND_PTR_MOVE, MISS, VE_ERR_ARG, VE_ERR_IO, VE_ERR_SIZE,
+    VE_ERR_STATE, VE_OK, VE_PCL_FASTFAIL, VE_PCL_LENIENT, VeCameraPose, VeClipPlane, VeInput,
+    VeLabelSpec, VeMapView, VeMeshDesc, VePclReport, VePointMark, VePointsDesc,
+    visiaengine_abi_version, visiaengine_add_label, visiaengine_add_mesh, visiaengine_add_points,
+    visiaengine_attach, visiaengine_attr_bool, visiaengine_attr_f64, visiaengine_attr_str,
+    visiaengine_create_group, visiaengine_create_headless, visiaengine_destroy,
+    visiaengine_entity_at, visiaengine_entity_count, visiaengine_entity_set_visible,
+    visiaengine_entity_visible, visiaengine_fly_state, visiaengine_fly_to, visiaengine_get_camera,
+    visiaengine_get_clips, visiaengine_get_group_offset, visiaengine_get_node_transform,
+    visiaengine_get_parent, visiaengine_last_error, visiaengine_load_env_hdr,
+    visiaengine_load_font, visiaengine_load_gltf, visiaengine_load_mvt_dir, visiaengine_load_pcl,
+    visiaengine_load_raster_dir, visiaengine_navigate_click, visiaengine_on_input,
+    visiaengine_pick, visiaengine_readback, visiaengine_remove_entity, visiaengine_render,
+    visiaengine_set_clips, visiaengine_set_group_offset, visiaengine_set_map,
+    visiaengine_set_node_transform, visiaengine_set_parent, visiaengine_set_raster_view,
+    visiaengine_set_tile_source_http, visiaengine_set_tile_view, visiaengine_viewport,
 };
 
 /// every entry must return -1 for stale/foreign handles (the 17->22 scheme carried and extended; the set_event_callback gate lives in event_spec) (handle validation precedes state validation; abi/last_error have no ve gate)
@@ -1506,5 +1506,151 @@ fn add_mesh_pick_honors_origin() {
         }
     }
     assert!(found, "the translated piece must be pickable AT its offset");
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: E202 family law, gltf leg (mount_gltf framing fit -- node transforms
+// place entities anywhere; without the load-time fit the initial
+// [0,0,10]->[0,0,0] rig only ever showed origin-hugging fixtures, so
+// hierarchy.glb rendered off-frustum and picked 0 hits engine-wide. The fit
+// feeds render AND pick the same rig -- the E401 invariant stays constructive).
+#[test]
+fn gltf_node_transform_pick_preserved() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    let path = std::ffi::CString::new(format!(
+        "{}/../../resources/data/hierarchy.glb",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    assert_eq!(visiaengine_load_gltf(ve, path.as_ptr()), VE_OK);
+    assert_eq!(visiaengine_render(ve), VE_OK);
+    // dense sweep: the leaf sits at world translation (11,2,3); the pick
+    // surface must find it somewhere on the fitted frame.
+    let mut hits = 0u32;
+    for y in (0..120u32).step_by(4) {
+        for x in (0..160u32).step_by(4) {
+            if visiaengine_pick(ve, x as f32, y as f32) != MISS {
+                hits += 1;
+            }
+        }
+    }
+    assert!(
+        hits > 0,
+        "node-transform mesh must be pickable after the mount fit (0 hits = fit regression)"
+    );
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-20 (clip-plane sign semantics: keeps = n*p+d >= 0, so the
+// "z <= v knife" is [0,0,-1,v] -- the review round caught a page shipping
+// [0,0,1,-v] which keeps z >= v, the exact inversion; this gate pins the
+// engine-side semantics the knife must be written against).
+#[test]
+fn clip_knife_sign_semantics() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    let pos = [
+        [0f32, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ];
+    let nrm = [[0f32, 0.0, 1.0]; 4];
+    let idx = [0u32, 1, 2, 0, 2, 3];
+    // red wall at z=2 (origin carries z), green wall at z=0
+    let mut h_red = u64::MAX;
+    let mut h_green = u64::MAX;
+    assert_eq!(
+        visiaengine_add_mesh(
+            ve,
+            &mesh_desc_at(&pos, &nrm, &idx, [0.0, 0.0, 2.0]),
+            &mut h_red
+        ),
+        VE_OK
+    );
+    assert_eq!(
+        visiaengine_add_mesh(
+            ve,
+            &mesh_desc_at(&pos, &nrm, &idx, [0.0, 0.0, 0.0]),
+            &mut h_green
+        ),
+        VE_OK
+    );
+    assert_eq!(visiaengine_render(ve), VE_OK);
+    // knife z <= 1: red (z=2) must die, green (z=0) must live.
+    let planes: [VeClipPlane; 1] = [VeClipPlane {
+        nx: 0.0,
+        ny: 0.0,
+        nz: -1.0,
+        d: 1.0,
+    }];
+    assert_eq!(visiaengine_set_clips(ve, planes.as_ptr(), 1), VE_OK);
+    assert_eq!(visiaengine_render(ve), VE_OK);
+    let mut hits = 0u32;
+    let mut entities = std::collections::HashSet::new();
+    for y in (0..120u32).step_by(2) {
+        for x in (0..160u32).step_by(2) {
+            let h = visiaengine_pick(ve, x as f32, y as f32);
+            if h != MISS {
+                hits += 1;
+                entities.insert(h);
+            }
+        }
+    }
+    assert!(hits > 0, "green wall must survive the z<=1 knife");
+    assert!(
+        !entities.contains(&h_red),
+        "red wall (z=2) must be clipped by the z<=1 knife"
+    );
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
+
+// spec: CAPI-33 (pick consumes the scene-tree group offset -- render composes
+// T(origin + effective_offset) * transform at engine.rs:789; the pick
+// candidates now carry the same term. Review-round catch: a grouped mesh
+// rendered at origin+offset was picked at the bare origin.)
+#[test]
+fn pick_honors_group_offset() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    let cname = std::ffi::CString::new("g").unwrap();
+    let mut group = u64::MAX;
+    assert_eq!(
+        visiaengine_create_group(ve, cname.as_ptr(), &mut group),
+        VE_OK
+    );
+    let pos = [
+        [0f32, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ];
+    let nrm = [[0f32, 0.0, 1.0]; 4];
+    let idx = [0u32, 1, 2, 0, 2, 3];
+    let mut h = u64::MAX;
+    assert_eq!(
+        visiaengine_add_mesh(ve, &mesh_desc(&pos, &nrm, &idx), &mut h),
+        VE_OK
+    );
+    // parent the mesh to the group, then shift the group by x+4
+    assert_eq!(visiaengine_set_parent(ve, h, group), VE_OK);
+    assert_eq!(
+        visiaengine_set_group_offset(ve, group, 4.0, 0.0, 0.0),
+        VE_OK
+    );
+    assert_eq!(visiaengine_render(ve), VE_OK);
+    // sweep: the piece must be pickable somewhere on its OFFSET position
+    let mut found = false;
+    for px in [100u32, 110, 120, 130, 140, 150, 159] {
+        if visiaengine_pick(ve, px as f32, 60.0) == h {
+            found = true;
+            break;
+        }
+    }
+    assert!(
+        found,
+        "group-offset mesh must be pickable at its rendered spot"
+    );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }

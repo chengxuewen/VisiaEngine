@@ -95,6 +95,9 @@ fn mul(a: &[[f64; 4]; 4], b: &[[f64; 4]; 4]) -> [[f64; 4]; 4] {
 }
 
 fn mat4_f64(m: [[f32; 4]; 4]) -> [[f64; 4]; 4] {
+    // gltf's Transform::matrix() is COLUMN-major (glTF spec; crate doc: "4x4
+    // transformation matrix in column-major order", translation in column 3)
+    // -- same convention as the engine (REND-18); widen verbatim, no transpose.
     m.map(|col| col.map(f64::from))
 }
 
