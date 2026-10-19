@@ -7,15 +7,16 @@
 <img src="/ve-gate-ready/E811_entity_hide" alt="" style="display:none">
 <script src="./common.js"></script>
 <script type="module">
-// Parity with native E811_entity_hide_c.c: a TWO-PRIMITIVE scene
-// (hierarchy.glb = 2 nodes / 1 mesh, the wasm twin of twoprim.glb),
+// Parity with native E811_entity_hide_c.c: the SAME twoprim.glb fixture
+// (2 primitives = 2 entities -- the review round caught hierarchy.glb as a
+// 1-primitive poser),
 // hide the clicked entity, visibility-query round trip in the status
 // line, double-click restores all. The C contract trio rides along:
 // a hidden piece never hits itself on pick / enumeration domain
 // unchanged / setEntityVisible round-trip.
 const st = document.getElementById('st'), canvas = document.getElementById('c');
 let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
-const glb = await veFile('./hierarchy.glb');
+const glb = await veFile('./twoprim.glb');
 if (eng.loadGltfBytes(glb) !== 0) { veFail(st, 'loadGltfBytes failed'); throw new Error('load failed'); }
 const NONE = 18446744073709551615n;
 const all = () => Array.from({ length: eng.entityCount() }, (_, i) => eng.entityAt(i));

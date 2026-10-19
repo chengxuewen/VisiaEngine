@@ -147,7 +147,8 @@ function(visiaengine_wasm)
   set(_copy_cmds)
   foreach(_f ${_wall_pages}
       "${CMAKE_SOURCE_DIR}/resources/data/park.geojson"
-      "${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb")
+      "${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb"
+      "${CMAKE_SOURCE_DIR}/resources/data/twoprim.glb")
     get_filename_component(_fn "${_f}" NAME)
     list(APPEND _copy_cmds
       COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_f}" "${_serve_dir}/${_fn}")
@@ -206,7 +207,7 @@ function(visiaengine_wasm)
   # the button shows its own stage list (T-H11 user catch -- custom-target
   # SOURCES are IDE display only, nothing compiles)
   set_target_properties(visiaengine-wasm-serve PROPERTIES
-    SOURCES "${_wall_pages};${CMAKE_SOURCE_DIR}/resources/data/park.geojson;${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb"
+    SOURCES "${_wall_pages};${CMAKE_SOURCE_DIR}/resources/data/park.geojson;${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb;${CMAKE_SOURCE_DIR}/resources/data/twoprim.glb"
     FOLDER  "examples/wasm")
 
   # IDE sources: the WP6 sub-handle is an IMPORTED target (no SOURCES
