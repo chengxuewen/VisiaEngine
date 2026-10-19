@@ -125,19 +125,89 @@ function(visiaengine_wasm)
   file(GLOB _wall_pages "${CMAKE_SOURCE_DIR}/examples/wasm/*.html"
                         "${CMAKE_SOURCE_DIR}/examples/wasm/wall.json"
                         "${CMAKE_SOURCE_DIR}/examples/wasm/common.js")
-  polyorch_rust_wasm_serve(TARGET visiaengine-wasm
-      NAME_PREFIX visiaengine-wasm
-      DIRECTORY "${CMAKE_BINARY_DIR}/web-demo"
-      SOURCES  ${_wall_pages}
-      DATA     "${CMAKE_SOURCE_DIR}/resources/data/park.geojson"
-               "${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb"
-      FLAVOR   web
-      PORT     8017
-      # the button runs THE EXAMPLE (the hub wall) -- its home in the IDE tree
-      # is the example folder, not the crate folder (T-H11 adjudication: run-
-      # class buttons live under examples/<lang>; the glue build buttons stay
-      # under bindings/wasm where the crate artifacts are produced)
-      FOLDER   "examples/wasm")
+  # the demo/serve button -- HOST-REGISTERED (owner request 2026-10-19): the
+  # supplier's polyorch_rust_wasm_serve bakes its Ninja DESC at add_custom_target
+  # time and is frozen (C23: no supplier commits while the push backlog is
+  # unconfirmed), so the host registers the button itself with the SAME assembly
+  # recipe (mirror of the supplier function) -- the DESC carries BOTH urls, and
+  # the entry script is dual http+https whenever .certs/ exists (pixi run
+  # serve-https-gen once); no certs = the supplier's http-only behavior. ONE
+  # code path, no overlay hacks. Retire to the supplier function when it grows
+  # TLS_PORT/TLS_CERT/TLS_KEY args.
+  set(_serve_dir "${CMAKE_BINARY_DIR}/web-demo")
+  file(MAKE_DIRECTORY "${_serve_dir}")
+  get_target_property(_pkgroot visiaengine-wasm POLYORCH_WASM_PKG_ROOT)
+  if(NOT _pkgroot)
+    message(FATAL_ERROR "visiaengine-wasm-serve: no POLYORCH_WASM_PKG_ROOT on visiaengine-wasm")
+  endif()
+  get_target_property(_jsouts visiaengine-wasm POLYORCH_WASM_JS_OUTPUTS)
+  if(NOT _jsouts OR _jsouts STREQUAL "NOTFOUND")
+    message(FATAL_ERROR "visiaengine-wasm-serve: no POLYORCH_WASM_JS_OUTPUTS on visiaengine-wasm")
+  endif()
+  set(_copy_cmds)
+  foreach(_f ${_wall_pages}
+      "${CMAKE_SOURCE_DIR}/resources/data/park.geojson"
+      "${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb")
+    get_filename_component(_fn "${_f}" NAME)
+    list(APPEND _copy_cmds
+      COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_f}" "${_serve_dir}/${_fn}")
+  endforeach()
+  list(APPEND _copy_cmds
+    COMMAND "${CMAKE_COMMAND}" -E chdir "${_serve_dir}"
+            "${CMAKE_COMMAND}" -E copy_directory "${_pkgroot}/pkg-web" pkg)
+
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  set(_serve_script "${CMAKE_BINARY_DIR}/polyorch-wasm-serve-8017.py")
+  if(EXISTS "${CMAKE_SOURCE_DIR}/.certs/server.pem"
+      AND EXISTS "${CMAKE_SOURCE_DIR}/.certs/server-key.pem")
+    set(_desc "visiaengine-wasm: assemble + serve http://127.0.0.1:8017 + https://<LAN-IP>:8443 (Ctrl-C stops)")
+    # string(JOIN): a multi-line quoted arg inside file(WRITE) breaks the
+    # CMake parser (measured: Parse error); ';' inside lines is ALSO a CMake
+    # list splitter (C21) -- keep both out of the line strings.
+    set(_py_lines
+      "import http.server, threading, ssl"
+      "h = http.server.SimpleHTTPRequestHandler"
+      "h.extensions_map['wasm'] = 'application/wasm'"
+      "httpd = http.server.ThreadingHTTPServer(('0.0.0.0', 8017), h)"
+      "threading.Thread(target=httpd.serve_forever, daemon=True).start()"
+      "print('serving: http://localhost:8017  (dev / gate replay)')"
+      "ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)"
+      "ctx.load_cert_chain('${CMAKE_SOURCE_DIR}/.certs/server.pem', '${CMAKE_SOURCE_DIR}/.certs/server-key.pem')"
+      "httpsd = http.server.ThreadingHTTPServer(('0.0.0.0', 8443), h)"
+      "httpsd.socket = ctx.wrap_socket(httpsd.socket, server_side=True)"
+      "print('serving: https://0.0.0.0:8443  (LAN secure-context WebGPU -- trust the self-signed cert once)')"
+      "try:"
+      "    httpsd.serve_forever()"
+      "except KeyboardInterrupt:"
+      "    pass")
+    message(STATUS "wasm-serve: dual http+https (certs found -- LAN WebGPU live on :8443)")
+  else()
+    set(_desc "visiaengine-wasm: assemble + serve http://127.0.0.1:8017 (Ctrl-C stops)")
+    set(_py_lines
+      "import http.server"
+      "h = http.server.SimpleHTTPRequestHandler"
+      "h.extensions_map['wasm'] = 'application/wasm'"
+      "http.server.test(HandlerClass=h, port=8017)")
+    message(STATUS "wasm-serve: http-only (no .certs/ -- pixi run serve-https-gen to enable LAN WebGPU)")
+  endif()
+  string(JOIN "\n" _py_body ${_py_lines})
+  file(WRITE "${_serve_script}" "${_py_body}\n")
+  add_custom_target(visiaengine-wasm-serve
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${_serve_dir}"
+    ${_copy_cmds}
+    COMMAND "${CMAKE_COMMAND}" -E chdir "${_serve_dir}" "${Python3_EXECUTABLE}" "${_serve_script}"
+    DEPENDS ${_jsouts}
+    USES_TERMINAL
+    VERBATIM
+    COMMENT "${_desc}")
+  if(TARGET visiaengine-wasm-build)
+    add_dependencies(visiaengine-wasm-serve visiaengine-wasm-build)
+  endif()
+  # the button shows its own stage list (T-H11 user catch -- custom-target
+  # SOURCES are IDE display only, nothing compiles)
+  set_target_properties(visiaengine-wasm-serve PROPERTIES
+    SOURCES "${_wall_pages};${CMAKE_SOURCE_DIR}/resources/data/park.geojson;${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb"
+    FOLDER  "examples/wasm")
 
   # IDE sources: the WP6 sub-handle is an IMPORTED target (no SOURCES
   # property -- measured), so the mount rides the MEDIATOR (the crates

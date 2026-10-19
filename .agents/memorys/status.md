@@ -791,3 +791,25 @@ gate-web joins the gate family (scripts/gate-web.sh, 155 lines: ~65 bash + embed
 Host-side TLS sibling of the wasm serve lane: scripts/wasm-serve-https-gen.sh (idempotent mkcert CA+leaf, SANs localhost/127.0.0.1/192.168.122.177/10.144.0.10, NSS step degrades honestly -- no certutil on this host) + scripts/wasm-serve-https.py (32-line stdlib ssl static lane :8443, guards: missing dir/cert/BUSY) + pixi tasks serve-https-gen/serve-https + .gitignore .certs/. Measured: https 200 on LAN IPs, wall 43/43 + beacon-over-https GREEN with the UNtrusted cert = secure-context confirmed (chrome 131, --ignore-certificate-errors route empirically backed); four negatives red. Cross-browser remote live-fire awaits the owner's GPU machine (T3). PIT-73 (setsid $! vs port holder) + PIT-74 (orchestrator spec-confabulation retracted before damage) filed. Commits c7fdeb4.
 
 Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match --version drift red / honest SKIP absent / opt-in sha-verified provisioning) because conda-forge provably carries no chromium; anchor-beacon heartbeat rolled to all 6 live pages with per-page READY namespaces (beacons 581-975 ms measured, E401 beacon-cut reddens only its own leg).
+
+## Dual-serve round baseline (2026-10-19, owner-adjudicated: one button, http+https)
+
+- owner request: the `visiaengine-wasm-serve` button must start BOTH servers and its
+  `[n/m]` build-line must name both URLs. Root lesson: supplier's serve function bakes
+  its Ninja DESC at add_custom_target time and is C23-frozen, so the host registers the
+  button itself (VisiaEngineWasm.cmake, assembly recipe mirrored from
+  PolyOrchRustHelpers.cmake) -- `COMMENT` written at registration carries both URLs.
+- behavior: `.certs/` present (serve-https-gen once) = dual serve, http :8017 (dev +
+  gate-web replay) + https :8443 (LAN secure-context WebGPU, self-signed cert, SANs
+  cover 192.168.122.177 / 10.144.0.10); no certs = supplier's http-only form verbatim.
+  The pixi `serve-https` standalone task stays as the non-button alternative.
+- measured: DESC line in build.ninja carries `...http://127.0.0.1:8017 +
+  https://<LAN-IP>:8443...`; generated script py_compile OK; live run http 200 + https
+  200 (real TLS handshake); verify processes cleaned, port handed back to the IDE.
+- new lessons: PIT-75 (DESC baked at registration; register, not patch) / PIT-76
+  (file(WRITE) multi-line parse error + stray-`]` smuggling; py_compile the artifact)
+  / PIT-77 (port-bound verification must return the port; setsid children survive the
+  launcher kill) + edit-safety 39/40/41.
+- open: commit awaiting user instruction; gate-docs has no anchor on the serve DESC
+  text (checked: no gate greps it); supplier retirement condition recorded inline
+  (adopt when PolyOrch grows TLS_PORT/TLS_CERT/TLS_KEY args post-unfreeze).

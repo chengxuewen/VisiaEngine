@@ -663,3 +663,24 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: the queued fix was cancelled before any edit; the observed ✗ was the true behavior; the serve-https lane (c7fdeb4) is the spec-correct remedy, and the host-side beacon-over-https-untrusted-cert test empirically confirmed the secure-context boundary.
 - **Verification**: the page message matches spec; gate/web lane tests green.
 - **Prevention**: before declaring an observed diagnostic "wrong", cite the primary spec sentence or design a measurement -- chat-memory is not evidence (same family as the repo's "Do not invent facts").
+
+## PIT-75: Ninja DESC of a custom target is baked at add_custom_target time; post-hoc COMMENT writes never reach it (2026-10-19, dual-serve round)
+- **Symptom**: after the host-side overlay called set_target_properties(COMMENT ...) on visiaengine-wasm-serve, the build log STILL printed the supplier's old `[2/3] ... http://127.0.0.1:8017` description; the new dual-URL text appeared nowhere in build.ninja.
+- **Root cause**: the Ninja generator emits `DESC = <COMMENT>` into build.ninja during add_custom_target() registration; COMMENT is read once at target creation and never re-read. Verified by two minimal probes (with/without COMMAND): set_target_properties(... COMMENT "new desc") after creation leaves `DESC = old desc` in build.ninja in both.
+- **Solution**: to change a visible build-step description, the COMMENT must be correct AT add_custom_target time. When the text lives in a frozen supplier function (C23), the host registers the target itself (mirroring the recipe) instead of trying to patch a registered target.
+- **Verification**: `grep "DESC = " cmake-build/build.ninja | grep serve` shows the intended text; or run the /tmp probe pair (add_custom_target + post-hoc set_target_properties, grep "new desc" build.ninja = 0).
+- **Forbidden**: assuming CMake target properties are live/views that regenerate ninja output; describing a "fixed" DESC without grepping build.ninja.
+
+## PIT-76: file(WRITE) with a multi-line quoted argument is a CMake parse error, and my edit-tool writes kept smuggling in a stray `]` (2026-10-19, dual-serve round)
+- **Symptom**: `Parse error. Function missing ending ")"` at the file(WRITE) call; after switching to string(JOIN), the generated python failed with `unmatched ']'` (`];    pass` on one line) -- twice across two write attempts.
+- **Root cause**: (1) CMake quoted arguments do not span lines inside a command invocation the way I wrote them -- the parser dies before any code runs; (2) the edit tool wrote the line list with a `]` on the `"except KeyboardInterrupt:"` line (list-close glued to a content line), and since string(JOIN) receives the list via ${_py_lines}, the bracket rode into the generated script as literal text.
+- **Solution**: generate multi-line text via set(list of single-line strings) + string(JOIN "\n" ...) + file(WRITE "${f}" "${body}\n"); after ANY such edit, grep the cmake file for `\]` outside real list closes AND py_compile the generated artifact before declaring success.
+- **Verification**: `python3 -m py_compile <generated.py>` (the artifact, not the generator); `grep -n '\]' cmake/VisiaEngineWasm.cmake` eyeball for glued brackets.
+- **Forbidden**: multi-line quoted args in file(WRITE); trusting generator-side syntax while skipping artifact-side compile.
+
+## PIT-77: smoke-testing a foreground serve target from the orchestrator shell kills the IDE's own run -- one port, one owner (2026-10-19, dual-serve round)
+- **Symptom**: my background verification of visiaengine-wasm-serve bound :8017; the user's IDE run of the same target then failed with `OSError: [Errno 98] Address already in use` -- twice (once from a leftover serve, once from my own detached probe).
+- **Root cause**: the serve target is a FOREGROUND dev server by design; any orchestrator-side verification run occupies the same port the IDE button wants. setsid/nohup kept the python child alive after the parent cmake was killed (PIT-73 family: kill the port holder by PID, not the launcher).
+- **Solution**: when verifying a serve/port-bound target from the agent shell, ALWAYS clean up by port holder PID (`ss -tlnp 'sport = :PORT'` -> kill pid) before ending the turn, and never leave a detached instance running. State it in the delivery message so the user knows the port is theirs.
+- **Verification**: `ss -tln 'sport = :8017'` empty at hand-off; user IDE run binds successfully.
+- **Forbidden**: leaving detached serve processes running after verification; killing the launcher PID only and assuming the child died.

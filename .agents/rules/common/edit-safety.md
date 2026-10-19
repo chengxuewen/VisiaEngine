@@ -446,3 +446,33 @@ Sweep ALSO covers hardcoded ARTIFACT PATHS whose generator layout changed (the s
 **Blocking condition**: `git reset/commit/amend` issued against a remembered tree state; force operations suggested without checking origin position (`ls-remote`).
 
 **Source**: 2026-10-16 the 'why did main diverge' round + the interrupted-C24 turn.
+
+### 39. Generated-artifact syntax must be compiled, not the generator eyeballed; CMake multi-line text goes through set+string(JOIN) (2026-10-19)
+
+**Rule**: when CMake generates a script (file(WRITE) of python/shell text), (1) never pass a multi-line quoted argument to file(WRITE) -- the CMake parser rejects it (`Parse error. Function missing ending ")"`); build the text as a set() list of single-line strings + `string(JOIN "\n" ...)`; (2) keep `;` out of the line strings (C21: it splits the list mid-line); (3) after editing the generator, run the artifact's own syntax check (`python3 -m py_compile <generated>`), because generator-side quoting errors surface only in the artifact (measured: a `]` glued onto a list line rode through string(JOIN) into the python as `];    pass` -> unmatched bracket).
+
+**Verification**: `python3 -m py_compile cmake-build/<generated>.py`; `grep -n "DESC = " cmake-build/build.ninja` when the change targets a build description.
+
+**Blocking condition**: declaring a CMake text-generation change done without compiling the generated artifact.
+
+**Source**: dual-serve round (PIT-76), two wasted configure rounds.
+
+### 40. Custom-target COMMENT/DESC is baked at registration; the fix is to register, not to patch (2026-10-19)
+
+**Rule**: to change what the build log prints for a custom target (`[n/m] <desc>`), the COMMENT must be correct inside add_custom_target(). set_target_properties(... COMMENT ...) after creation never rewrites build.ninja (probed twice). When the text lives in a frozen supplier function, the host mirrors the recipe and registers the target itself (single code path, no overlay hacks), with the retirement condition written in the comment.
+
+**Verification**: `grep "DESC = " <tree>/build.ninja | grep <target>` shows the new text after reconfigure.
+
+**Blocking condition**: claiming a description change via post-hoc property writes; describing "[n/m] line updated" without grepping build.ninja.
+
+**Source**: dual-serve round (PIT-75), one false-delivery round caught by the user.
+
+### 41. Port-bound verification runs must hand the port back before turn end (2026-10-19)
+
+**Rule**: serve/dev-server targets occupy a fixed port the user's IDE run also wants. Any orchestrator-side verification of such a target ends with a port-holder cleanup: `ss -tlnp 'sport = :PORT'` -> kill the python PID (not the cmake launcher -- setsid children survive, PIT-73 family), confirm `ss -tln 'sport = :PORT'` is empty, and say so in the delivery message.
+
+**Verification**: `ss -tln 'sport = :8017'` prints no LISTEN row at hand-off.
+
+**Blocking condition**: ending a turn with a detached serve process holding the user's dev port.
+
+**Source**: dual-serve round (PIT-77), the user's IDE run failed twice on Address-already-in-use.
