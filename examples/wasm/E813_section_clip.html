@@ -8,18 +8,39 @@
 <div id="ctl"><input id="s" type="range" min="-60" max="60" value="60"><button id="r">清除剖切</button></div>
 <script src="./common.js"></script>
 <script type="module">
+// Parity with native E813_section_clip.c: two parallel wall faces
+// (front RED at z=2, back GREEN at z=0, same 4-vert/2-tri tables),
+// slider = the z<=v knife (setClips [0,0,1,-v]); at the half cut the
+// red wall dies whole-patch and pick's retry loop lands on green --
+// the C gate's exact semantics, now live in the browser.
 const st = document.getElementById('st'), canvas = document.getElementById('c'), s = document.getElementById('s');
 let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
-const geo = await veFile('./park.geojson');
-eng.loadGeoJsonBytes(geo);
+const IDX = Uint32Array.from([0, 1, 2, 0, 2, 3]);
+const NRM = Float32Array.from([0,0,1, 0,0,1, 0,0,1, 0,0,1]);
+const FRONT = Float32Array.from([-4,-4,2,  4,-4,2,  4,4,2, -4,4,2]);
+const BACK  = Float32Array.from([-4,-4,0,  4,-4,0,  4,4,0, -4,4,0]);
+const RED   = Float32Array.from([1, 0, 0, 1]);
+const GREEN = Float32Array.from([0, 0.6, 0.2, 1]);
+const Z0 = Float64Array.from([0, 0, 0]); // positions already carry z (two frames merged, CAPI-15 note)
+const MISS = 0xFFFFFFFFFFFFFFFFn;
+const front = eng.addMesh(FRONT, NRM, IDX, RED,   Z0, 0, 0);
+const back  = eng.addMesh(BACK,  NRM, IDX, GREEN, Z0, 0, 0);
+if (front === MISS || back === MISS) { veFail(st, 'addMesh failed'); throw new Error('addMesh MISS'); }
+let knife = 60; // >=60 = no clip (the slider's clear position)
 const apply = () => {
-  const v = +s.value;
-  const rc = v >= 60 ? eng.setClips([]) : eng.setClips([1, 0, 0, -v]);
-  st.textContent = v >= 60 ? `就绪（剖切已清 · 实体 ${eng.entityCount()}）——拖滑杆剖开场景`
-    : `剖切面 x=${v}（rc=${rc}）——右侧几何被裁掉`;
+  const v = +s.value; knife = v;
+  const rc = v >= 60 ? eng.setClips([]) : eng.setClips([0, 0, 1, -v]);
+  st.textContent = v >= 60 ? `就绪（红前墙 z=2 · 绿后墙 z=0 · 剖切已清）——拖滑杆升起刀面`
+    : `刀面 z<=${v}（rc=${rc}）——红墙成片消失，拾取落到绿墙`;
 };
 s.addEventListener('input', apply);
 document.getElementById('r').onclick = () => { s.value = 60; apply(); };
+apply();
+canvas.addEventListener('click', e => {
+  const h = eng.pick(e.offsetX, e.offsetY);
+  st.textContent = (h === MISS ? '未命中' : h === front ? '命中 红前墙' : h === back ? '命中 绿后墙(retry-loop 穿过被裁红墙)' : `命中 #${h}`)
+    + (knife < 60 ? ` · 刀面 z<=${knife}` : '');
+});
 apply();
 veOrbit(canvas, eng);
 // await holds the load event until 8 heartbeat frames have turned (gate-web
