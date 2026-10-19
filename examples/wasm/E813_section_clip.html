@@ -29,7 +29,9 @@ if (front === MISS || back === MISS) { veFail(st, 'addMesh failed'); throw new E
 let knife = 60; // >=60 = no clip (the slider's clear position)
 const apply = () => {
   const v = +s.value; knife = v;
-  const rc = v >= 60 ? eng.setClips([]) : eng.setClips([0, 0, 1, -v]);
+  // keeps = n*p+d >= 0 (contract.rs) => [0,0,-1,v] keeps z<=v (the knife);
+  //  the old [0,0,1,-v] kept z>=v -- the sign was inverted (review round).
+  const rc = v >= 60 ? eng.setClips([]) : eng.setClips([0, 0, -1, v]);
   st.textContent = v >= 60 ? `就绪（红前墙 z=2 · 绿后墙 z=0 · 剖切已清）——拖滑杆升起刀面`
     : `刀面 z<=${v}（rc=${rc}）——红墙成片消失，拾取落到绿墙`;
 };

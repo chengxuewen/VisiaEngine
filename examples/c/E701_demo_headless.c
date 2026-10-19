@@ -21,11 +21,24 @@ int main(int argc, char **argv) {
     }
     static unsigned char buf[160 * 120 * 4];
     if (visiaengine_readback(ve, buf, sizeof buf) != VE_OK) { puts("FAIL readback"); return 1; }
-    size_t mid = (size_t)((60 * 160 + 80) * 4);
-    unsigned lum = (unsigned)(buf[mid] + buf[mid + 1] + buf[mid + 2]);
-    if (lum <= 40) { printf("FAIL dark center lum=%u\n", lum); return 1; }
-    uint64_t hit = visiaengine_pick(ve, 80.0f, 60.0f);
-    if (hit == VE_MISS) { puts("FAIL pick miss on lit pixel"); return 1; }
+    /* the mount fit chooses the framing: find a lit pixel and pick THERE
+     * (no center assumption -- any glb may sit anywhere in the frame);
+     * the clear color [13,18,25] sums to 56 > 40, so the scan must name
+     * the background explicitly (the golden-family center-lum lesson) */
+    /* find a lit pixel the pick surface ALSO reaches (back-face pixels render
+     * with cull off but are culled by the REND-23 front-face pick rule, so a
+     * lit pixel is not automatically pickable -- walk until both agree) */
+    uint64_t hit = VE_MISS;
+    size_t lit = SIZE_MAX;
+    for (size_t i = 0; i + 2 < sizeof buf / 4 * 4 && hit == VE_MISS; i += 4) {
+        unsigned b = buf[i], g = buf[i + 1], r = buf[i + 2];
+        if (b >= 10 && b <= 16 && g >= 15 && g <= 21 && r >= 20 && r <= 28) continue; /* clear */
+        if (b + g + r <= 40) continue;
+        lit = i;
+        hit = visiaengine_pick(ve, (float)((i / 4) % 160), (float)((i / 4) / 160));
+    }
+    if (lit == SIZE_MAX) { puts("FAIL fully dark frame"); return 1; }
+    if (hit == VE_MISS) { puts("FAIL no lit pixel is pickable"); return 1; }
     /* input segment (I4): DOWN->MOVE = orbit, WHEEL = zoom (consumption asserts 1) */
     VeInput in_ = { sizeof(VeInput), KIND_PTR_DOWN, 30.0f, 30.0f, 0.0f, 1u, 0u };
     if (visiaengine_on_input(ve, &in_) != 1) { puts("FAIL down unconsumed"); return 1; }

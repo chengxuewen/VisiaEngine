@@ -86,12 +86,14 @@ class H(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith('/ve-gate-ready/'):
             seg = self.path[14:].split('?', 1)
             page = seg[0].strip('/')
-            if len(seg) > 1 and seg[1].startswith('t='):   # the beacon: proof the loop turned
+            if len(seg) > 1 and (seg[1].startswith('t=') or seg[1].startswith('selftest=')):
+                # the beacon: proof the loop turned (t=) or the pick-surface
+                # probe reported (?selftest=... -- E401 pick grid, gated below)
                 with lock:
                     for ev in pending.pop(page, []):
                         ev.set()  # release THIS page's anchors only (chrome may issue the img twice)
                 with open(log, 'a') as f:
-                    f.write('READY %s %.6f\n' % (page, time.time()))
+                    f.write('READY %s %.6f %s\n' % (page, time.time(), seg[1]))
                 self._png()
             else:                            # the anchor: hold load until beacon
                 ev = threading.Event()
@@ -160,8 +162,12 @@ for P in $PAGES; do
   echo "$D" | grep -q '✗'          && fail "engine reported a fail mark ($P)"
   echo "$D" | grep -qiE 'uncaught' && fail "console shows uncaught error ($P)"
   F_T0=$(date +%s.%N)
+  # E401's second run carries ?selftest: the pick-surface probe beacon
+  # (its query rides the READY log line, asserted below).
+  PURL="$P.html"
+  [ "$P" = "E401_pick_demo" ] && PURL="E401_pick_demo.html?selftest"
   F=$("${CHROME_ENV[@]}" "$CHROME" --headless=new $GPU_FLAGS --timeout=30000 --dump-dom \
-      "http://127.0.0.1:$PORT/$P.html" 2>/dev/null | grep -oE 'data-frame="[0-9]+"' | grep -oE '[0-9]+' | tail -1)
+      "http://127.0.0.1:$PORT/$PURL" 2>/dev/null | grep -oE 'data-frame="[0-9]+"' | grep -oE '[0-9]+' | tail -1)
   B_MS=$(python3 -c "
 import sys
 t0, page = float(sys.argv[1]), sys.argv[3]
@@ -173,7 +179,31 @@ fresh = [x for x in ts if x >= t0]
 print(int((max(fresh) - t0) * 1000) if fresh else -1)" "$F_T0" "$BEACON" "$P")
   [ "$B_MS" -ge 0 ] || fail "no beacon ($P: engine never turned ${VE_GATE_MIN_FRAMES} frames)"
   [ "$B_MS" -le "$VE_GATE_BEACON_BUDGET_MS" ] || fail "beacon too slow ($P ${B_MS}ms > ${VE_GATE_BEACON_BUDGET_MS}ms budget)"
-  if [ -n "$F" ]; then [ "$F" -ge "$VE_GATE_MIN_FRAMES" ] || fail "heartbeat stalled ($P: frames=$F < $VE_GATE_MIN_FRAMES)"; fi
+  # the selftest run's dump races the boot (frames snapshot unreliable);
+  # its t= beacon IS the heartbeat proof, so the frames check is E401-scoped off
+  if [ "$P" != "E401_pick_demo" ] && [ -n "$F" ]; then
+    [ "$F" -ge "$VE_GATE_MIN_FRAMES" ] || fail "heartbeat stalled ($P: frames=$F < $VE_GATE_MIN_FRAMES)"
+  fi
+  # E401 pick-surface assertion: the ?selftest grid must show BOTH cubes
+  # pickable (>=1 RED and >=1 GREEN cell) -- pins the pick chain end to end.
+  if [ "$P" = "E401_pick_demo" ]; then
+    python3 - "$BEACON" <<-'PYCHK' || fail "E401 pick surface: no RED+GREEN verdict in the selftest beacon (pick chain broken or page cached)"
+import sys, urllib.parse
+try:
+    lines = open(sys.argv[1]).read().splitlines()
+except FileNotFoundError:
+    sys.exit(1)
+grids = [l.split(' ', 3)[3] for l in lines
+         if l.startswith('READY E401_pick_demo ') and 'selftest=' in l]
+if not grids:
+    sys.exit(1)
+cells = urllib.parse.unquote(grids[-1].split('selftest=', 1)[1]).split(' ')
+kinds = {c.rsplit(':', 1)[-1] for c in cells if ':' in c}
+if 'RED' not in kinds or 'GREEN' not in kinds:
+    sys.exit(1)
+print('GATE-WEB E401 pick surface: RED+GREEN present (%d cells)' % len(cells))
+PYCHK
+  fi
   echo "GATE-WEB page $P: beacon=${B_MS}ms frames=${F:-ready(snapshot)}"
   BEACON_SUM="$BEACON_SUM $P:$B_MS"
 done
