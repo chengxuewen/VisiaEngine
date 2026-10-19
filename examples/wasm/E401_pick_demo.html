@@ -47,6 +47,23 @@ canvas.addEventListener('pointermove', e => {
   canvas.style.cursor = h === MISS ? 'default' : 'pointer';
 });
 veOrbit(canvas, eng);
+// ?selftest: drive two synthetic picks (probe the pick surface, not the
+// mouse) and park the verdict in the status line -- headless-gate readable.
+if (new URLSearchParams(location.search).has('selftest')) {
+  const probe = (px, py) => {
+    const h = eng.pick(px, py);
+    return h === MISS ? 'MISS' : h === red ? 'RED' : h === green ? 'GREEN' : `#${h}`;
+  };
+  // the camera fits no scene on add_mesh (initial rig [0,0,10]->[0,0,0]):
+  // sweep a screen grid and report where each cube actually lands.
+  const grid = [];
+  for (let gy = 40; gy <= 440; gy += 40) for (let gx = 40; gx <= 600; gx += 40)
+    grid.push(`${gx},${gy}:${probe(gx, gy)}`);
+  // the selftest beacon: results ride a dedicated request (server-log
+  // readable; independent of the main beacon's construction below)
+  new Image().src = '/ve-gate-ready/E401_pick_demo?selftest='
+    + encodeURIComponent(grid.join(' '));
+}
 await veLoop(eng);
 new Image().src = '/ve-gate-ready/E401_pick_demo?t=' + Date.now();
 </script></body></html>
