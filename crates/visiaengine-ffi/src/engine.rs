@@ -763,8 +763,17 @@ impl Engine {
                 Some(true)
             }
             4 => {
-                self.zoom *= (f64::from(wheel) * ZOOM_RATE).exp();
-                self.rig.zoom = self.zoom.max(0.001);
+                // ortho zooms via half-extents (rig.zoom); persp has no
+                // half-extents -- wheel there drives the eye distance (the
+                // E201 native law: wheel = dist scaling). Before this, the
+                // gltf mount fit set Persp and the wheel was a silent no-op
+                // on every fitted gltf page (E201/E811/E813 user catch).
+                if matches!(self.mode, Proj::Ortho) {
+                    self.zoom *= (f64::from(wheel) * ZOOM_RATE).exp();
+                    self.rig.zoom = self.zoom.max(0.001);
+                } else {
+                    self.rig.dist = (self.rig.dist / (f64::from(wheel) * ZOOM_RATE).exp()).max(0.1);
+                }
                 Some(true)
             }
             5 => Some(false),

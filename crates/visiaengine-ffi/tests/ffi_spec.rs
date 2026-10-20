@@ -1654,3 +1654,62 @@ fn pick_honors_group_offset() {
     );
     assert_eq!(visiaengine_destroy(ve), VE_OK);
 }
+
+// spec: CAPI-06 companion (wheel input under a PERSPECTIVE rig scales the eye
+// distance -- ortho zooms half-extents; before the fit era the wheel leg only
+// wrote rig.zoom, which persp rendering never consumes, so the fitted gltf
+// pages had a dead wheel. Readback = VeCameraPose.dist.)
+#[test]
+fn wheel_zoom_moves_persp_eye_distance() {
+    let ve = visiaengine_create_headless(160, 120);
+    assert_ne!(ve, 0);
+    let path = std::ffi::CString::new(format!(
+        "{}/../../resources/data/hierarchy.glb",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    assert_eq!(visiaengine_load_gltf(ve, path.as_ptr()), VE_OK);
+    assert_eq!(visiaengine_render(ve), VE_OK);
+    let mut pose = VeCameraPose {
+        struct_size: std::mem::size_of::<VeCameraPose>(),
+        target: [0.0; 3],
+        yaw: 0.0,
+        pitch: 0.0,
+        dist: 0.0,
+        zoom: 0.0,
+        fov: 0.0,
+    };
+    assert_eq!(visiaengine_get_camera(ve, &mut pose), VE_OK);
+    let before = pose.dist;
+    assert!(before.is_finite() && before > 0.0);
+    let inp = VeInput {
+        struct_size: std::mem::size_of::<VeInput>(),
+        kind: 4,
+        px: 80.0,
+        py: 60.0,
+        wheel: -1.0,
+        button: 0,
+        mods: 0,
+    };
+    assert_eq!(
+        visiaengine_on_input(ve, &inp),
+        1,
+        "wheel must be consumed under persp"
+    );
+    let mut after_pose = VeCameraPose {
+        struct_size: std::mem::size_of::<VeCameraPose>(),
+        target: [0.0; 3],
+        yaw: 0.0,
+        pitch: 0.0,
+        dist: 0.0,
+        zoom: 0.0,
+        fov: 0.0,
+    };
+    assert_eq!(visiaengine_get_camera(ve, &mut after_pose), VE_OK);
+    let after = after_pose.dist;
+    assert!(
+        (after - before).abs() > 1e-6,
+        "persp wheel must change eye distance (before={before}, after={after})"
+    );
+    assert_eq!(visiaengine_destroy(ve), VE_OK);
+}
