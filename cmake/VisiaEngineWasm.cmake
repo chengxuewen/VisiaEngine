@@ -167,8 +167,12 @@ function(visiaengine_wasm)
     # list splitter (C21) -- keep both out of the line strings.
     set(_py_lines
       "import http.server, threading, ssl"
-      "h = http.server.SimpleHTTPRequestHandler"
-      "h.extensions_map['wasm'] = 'application/wasm'"
+      "class H(http.server.SimpleHTTPRequestHandler):"
+      "    extensions_map = dict(http.server.SimpleHTTPRequestHandler.extensions_map, wasm='application/wasm')"
+      "    def end_headers(self):"
+      "        self.send_header('Cache-Control', 'no-store')"
+      "        http.server.SimpleHTTPRequestHandler.end_headers(self)"
+      "h = H"
       "httpd = http.server.ThreadingHTTPServer(('0.0.0.0', 8017), h)"
       "threading.Thread(target=httpd.serve_forever, daemon=True).start()"
       "print('serving: http://localhost:8017  (dev / gate replay)')"
@@ -186,9 +190,12 @@ function(visiaengine_wasm)
     set(_desc "visiaengine-wasm: assemble + serve http://127.0.0.1:8017 (Ctrl-C stops)")
     set(_py_lines
       "import http.server"
-      "h = http.server.SimpleHTTPRequestHandler"
-      "h.extensions_map['wasm'] = 'application/wasm'"
-      "http.server.test(HandlerClass=h, port=8017)")
+      "class H(http.server.SimpleHTTPRequestHandler):"
+      "    extensions_map = dict(http.server.SimpleHTTPRequestHandler.extensions_map, wasm='application/wasm')"
+      "    def end_headers(self):"
+      "        self.send_header('Cache-Control', 'no-store')"
+      "        http.server.SimpleHTTPRequestHandler.end_headers(self)"
+      "http.server.test(HandlerClass=H, port=8017)")
     message(STATUS "wasm-serve: http-only (no .certs/ -- pixi run serve-https-gen to enable LAN WebGPU)")
   endif()
   string(JOIN "\n" _py_body ${_py_lines})
