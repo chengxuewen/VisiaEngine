@@ -684,3 +684,24 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: when verifying a serve/port-bound target from the agent shell, ALWAYS clean up by port holder PID (`ss -tlnp 'sport = :PORT'` -> kill pid) before ending the turn, and never leave a detached instance running. State it in the delivery message so the user knows the port is theirs.
 - **Verification**: `ss -tln 'sport = :8017'` empty at hand-off; user IDE run binds successfully.
 - **Forbidden**: leaving detached serve processes running after verification; killing the launcher PID only and assuming the child died.
+
+## PIT-78: "pick dead on wasm" was an ENGINE bug -- a surface the pixel gate never probes can hide a total defect (2026-10-19, review-fix round)
+- **Symptom**: E811 on wasm picked 0/307200 px while the same fixture picked 462 hits native; the 5-lane review's QA read it as "wasm32-specific glTF node-transform breakage".
+- **Root cause**: mount_gltf never fit a camera (only geo/tiles paths did) -- node-transformed fixtures sat off-frustum of the initial rig on EVERY backend. The wasm framing was wrong twice over (no fit + no page-level pick probe), so the wasm surface hid an engine-level defect and mis-attributed it to the platform.
+- **Solution**: fix the engine (mount_gltf framing fit, oblique depression per the E201 pitch law) and give every interactive page a machine-readable probe (?selftest rides the gate beacon; gate-web asserts RED+GREEN).
+- **Verification**: gltf_node_transform_pick_preserved (RED-proven) + gate-web E401 pick assertion.
+- **Forbidden**: reading a backend-specific diagnosis off a surface that shares one engine; calling a lane "verified" when its pick/interaction surface has no probe.
+
+## PIT-79: transposing a matrix to "fix" a mystery -- verify the producer's contract from its SOURCE before touching conventions (2026-10-19, same round)
+- **Symptom**: hierarchy.glb picked 0 hits; a transpose of mat4_f64 was tried, GLTF-02/08 spec gates went red, and the "fix" fight consumed several rounds before being reverted.
+- **Root cause**: the transposed form fixed a symptom (translation landing in the wrong slot) that actually belonged to the missing mount fit; the gltf crate's Transform::matrix() is COLUMN-major per glTF spec -- verified only later by reading the crate source ("4x4 transformation matrix in column-major order").
+- **Solution**: read the producing crate's source/doc FIRST (grep the vendored registry source), re-derive, then edit; when a spec gate contradicts your change, treat that as evidence AGAINST the change, not a stale gate.
+- **Verification**: git log 34931f9 (revert documented in the commit message); gltf_spec 9/9 green at the verbatim widening.
+- **Forbidden**: "the gate must be stale" reasoning; convention-level rewrites to rescue a hypothesis.
+
+## PIT-80: fit-changed framing breaks every "pick the center pixel" assumption downstream (2026-10-19, same round)
+- **Symptom**: after mount_gltf's fit landed, hide_filters/render_spec/E701/E811_c/E811cpp failed on "center must hit" -- and E701's lit-scan also mistook the clear color [13,18,25] (sums to 56 > 40) for content.
+- **Root cause**: a framing change is an invisible API break for consumers that hard-coded screen coordinates; the clear color sits above common luminance floors.
+- **Solution**: sweep for the first pick hit (or walk lit pixels until pick agrees, skipping the clear color explicitly); gates assert existence ("some pixel lit", "some hit"), not a specific pixel.
+- **Verification**: cargo test -p visiaengine-ffi (10 files green); ctest headless lane green; ctest -R example_E811_entity_hide_c/cpp green.
+- **Forbidden**: new consumers asserting a fixed screen point after any camera/framing change; luminance thresholds without a background-color exclusion.

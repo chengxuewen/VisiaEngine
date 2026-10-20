@@ -180,3 +180,12 @@ them. The order that worked (and caught every real defect this band):
    kept alive only by a comment mention becomes an unused-import **error** there. Prove
    the prune predicate bites before trusting it: plant a sample, the check must hit it
    (conventions.md C19 addendum).
+
+## Engine-behavior gates ride the page, not the screenshot (2026-10-19, review-fix round)
+
+Pages whose examples depend on engine state (pick surfaces, clip semantics, visibility) carry a
+`?selftest`-style probe and report the verdict through the gate beacon; the gate asserts on the
+payload (e.g. E401: RED+GREEN present in the 165-cell grid), not just boot+frames. A screenshot
+or a frame counter cannot see a dead pick -- gate-web ran green for days over a page whose pick
+was 0-for-320000 (PIT-78). Fit-changed framings are an API break for fixed-coordinate consumers:
+sweep for hits, never assume the center (PIT-80).
