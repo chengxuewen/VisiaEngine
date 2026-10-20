@@ -201,6 +201,11 @@ function(visiaengine_wasm)
   string(JOIN "\n" _py_body ${_py_lines})
   file(WRITE "${_serve_script}" "${_py_body}\n")
   add_custom_target(visiaengine-wasm-serve
+    # assemble-from-zero: wipe the staged dir first so stale-resident files
+    # and zombies of renamed pages cannot survive a rebuild (the copy step
+    # only overlays; review-band lesson). .certs/ lives at the repo root,
+    # NOT here -- clean can never touch certificates.
+    COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_serve_dir}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${_serve_dir}"
     ${_copy_cmds}
     COMMAND "${CMAKE_COMMAND}" -E chdir "${_serve_dir}" "${Python3_EXECUTABLE}" "${_serve_script}"
@@ -216,6 +221,19 @@ function(visiaengine_wasm)
   set_target_properties(visiaengine-wasm-serve PROPERTIES
     SOURCES "${_wall_pages};${CMAKE_SOURCE_DIR}/resources/data/park.geojson;${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb;${CMAKE_SOURCE_DIR}/resources/data/twoprim.glb"
     FOLDER  "examples/wasm")
+
+  # serve-clean (owner request): wipe the SERVE surface only -- the staged
+  # web-demo dir, the bindgen glue trees and the staged lib -- so a suspect
+  # artifact can be cleared without paying the cargo cold rebuild. The cargo
+  # cache layer has its own button (visiaengine-wasm-clean); .certs/ lives at
+  # the repo root and is never touched by any clean.
+  add_custom_target(visiaengine-wasm-serve-clean
+    COMMAND "${CMAKE_COMMAND}" -E rm -rf
+            "${_serve_dir}"
+            "${CMAKE_BINARY_DIR}/web"
+            "${CMAKE_BINARY_DIR}/lib/visiaengine_wasm.wasm"
+    COMMENT "visiaengine-wasm: cleaning the serve surface (web-demo + glue + staged lib)")
+  set_target_properties(visiaengine-wasm-serve-clean PROPERTIES FOLDER "examples/wasm")
 
   # IDE sources: the WP6 sub-handle is an IMPORTED target (no SOURCES
   # property -- measured), so the mount rides the MEDIATOR (the crates
