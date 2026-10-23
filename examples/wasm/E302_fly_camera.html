@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E302 相机飞行</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E302_fly_camera · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud">预设点位: <b>1/2/3</b> 飞行 · 任意拖拽/滚轮打断 · <b>R</b> 复位</div>
+<!-- gate-web load anchor: the gate server holds this response until the
+     post-await beacon below arrives; 404 in real browsers (harmless) -->
+<img src="/ve-gate-ready/E302_fly_camera" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E302_fly_camera.rs: keyframe-less preset flights via
+// flyTo (8-slot pose: target xyz + yaw + pitch + dist + fov), drag/wheel
+// interrupts, flyState/flyProgress echoed live in the status line.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+// a small procedural stage: three pillars to fly between (addMesh, no assets)
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+const pillar = (x, z, color) => eng.addMesh(
+  P, NRM, IDX, Float32Array.from(color),
+  Float64Array.from([x, 0, z]), 0, 0);
+pillar(0, 0, [0.85, 0.2, 0.2, 1]);
+pillar(4, 0, [0.2, 0.75, 0.3, 1]);
+pillar(0, 4, [0.25, 0.4, 0.85, 1]);
+const MISS = 0xFFFFFFFFFFFFFFFFn;
+if (eng.entityCount() !== 3) { veFail(st, 'stage build failed'); throw new Error('stage'); }
+
+// preset poses (8 slots: tx,ty,tz, yaw, pitch, dist, fov)
+const preset = (t, yaw, pitch, dist) => [t[0], t[1], t[2], yaw, pitch, dist, 0.9, 0];
+const POSES = [
+  preset([0, 0, 0], 0.6, 0.5, 8.0),   // red pillar, oblique
+  preset([4, 0, 0], 2.0, 0.7, 5.0),   // green, closer
+  preset([0, 4, 0], -1.2, 0.35, 11.0) // blue, wide
+];
+let cur = 0;
+
+// land on preset 0 immediately (teleport form, dur 0)
+eng.flyTo(POSES[0], 0);
+st.textContent = `就绪（3 支柱）—— 按 1/2/3 飞行，拖拽/滚轮打断`;
+
+const flyToPreset = (i, force) => {
+  if (i === cur && !force) return;
+  cur = i;
+  const rc = eng.flyTo(POSES[i], 900);
+  st.textContent = `飞行至预设 ${i + 1}（rc=${rc}）—— 拖拽/滚轮可打断`;
+};
+
+window.addEventListener('keydown', e => {
+  if (e.key >= '1' && e.key <= '3') flyToPreset(Number(e.key) - 1);
+  else if (e.key === 'r' || e.key === 'R') flyToPreset(0, true);
+});
+veOrbit(canvas, eng);
+// drag/wheel interrupt: fly is cancelled by any pointer input engine-side
+// (CAPI-23); surface it in the status line
+canvas.addEventListener('pointerdown', () => {
+  if (eng.flyState() === 0) st.textContent = '飞行已打断 —— 1/2/3 重新起飞';
+});
+
+// progress echo while flying (veLoop drives render; we piggyback the rAF)
+const tick = () => {
+  if (eng.flyState() === 0) {
+    st.textContent = `飞行中 ${(eng.flyProgress() * 100) | 0}% —— 拖拽/滚轮打断`;
+  }
+};
+await veLoop(eng, tick);
+new Image().src = '/ve-gate-ready/E302_fly_camera?t=' + Date.now();
+</script></body></html>
