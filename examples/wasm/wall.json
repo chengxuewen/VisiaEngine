@@ -461,12 +461,12 @@
     {
       "id": "E901_twin_city",
       "band": 9,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "孪城市景",
-      "desc": "压轴演示：数字孪生城市全景。",
+      "desc": "压轴演示：数字孪生城市全景。（web: 256 塔三色带合并网格，C 剖切刀（阴影随刀塌），[/] 刀高 ±1m，L 塔顶标签）",
       "how": "ctest -R example_E901_twin_city"
     }
   ]
