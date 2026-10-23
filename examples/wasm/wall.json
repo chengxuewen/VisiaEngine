@@ -396,12 +396,12 @@
     {
       "id": "E812_mesh_add",
       "band": 8,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "cpp"
       ],
       "title": "程序化增删网格",
-      "desc": "运行时挂载/摘除网格实体（CAPI-15/16 活门）。",
+      "desc": "运行时挂载/摘除网格实体（CAPI-15/16 活门）。（web: A 随机加柱，D 删末根，C 清空，count 实时回显）",
       "how": "ctest -R example_E812_mesh_add"
     },
     {
