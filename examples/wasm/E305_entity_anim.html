@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E305 实体动画</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E305_entity_anim · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>空格</b> 暂停/继续 · 轨迹 24 标记点常显 · 无人机沿样条循环</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E305_entity_anim" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E305 (trajectory replay): a vehicle entity rides a
+// closed Catmull-Rom loop; the trail is a static addPoints point cloud
+// (24 marks). Per-frame motion = setNodeTransform from the rAF tick --
+// the anim math lives page-side because the engine's anim sampler has no
+// wasm bridge (REND-47 families are rs-only today).
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+
+// ground pad + the drone (small cube)
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.25, 0.3, 0.35, 1]),
+  Float64Array.from([0, -0.55, 0]), 0, 0);
+const drone = eng.addMesh(
+  Float32Array.from([-0.25,-0.25,-0.25, 0.25,-0.25,-0.25, 0.25,0.25,-0.25, -0.25,0.25,-0.25,
+                      -0.25,-0.25,0.25, 0.25,-0.25,0.25, 0.25,0.25,0.25, -0.25,0.25,0.25]),
+  new Float32Array(24), IDX, Float32Array.from([0.95, 0.75, 0.2, 1]),
+  Float64Array.from([0, 0, 0]), 0, 0);
+if (drone === 0n || drone === 0xFFFFFFFFFFFFFFFFn) { veFail(st, 'drone add failed'); throw new Error('drone'); }
+
+// closed control loop (x, z) at cruise height 1.2
+const CTRL = [[-4, -2], [0, -4], [4, -2], [5, 2], [0, 4], [-5, 2]];
+const catmull = (p0, p1, p2, p3, t) => 0.5 * (
+  2 * p1 + (-p0 + p2) * t +
+  (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t +
+  (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+const posAt = u => {   // u in [0,1) around the loop
+  const n = CTRL.length, f = u * n, i = Math.floor(f), t = f - i;
+  const g = k => CTRL[((k % n) + n) % n];
+  const [p0, p1, p2, p3] = [g(i - 1), g(i), g(i + 1), g(i + 2)];
+  return [catmull(p0[0], p1[0], p2[0], p3[0], t), 1.2,
+          catmull(p0[1], p1[1], p2[1], p3[1], t)];
+};
+
+// trail: 24 marks sampled along the same loop (8 floats/mark: pos3, r, color3)
+const marks = new Float32Array(24 * 8);
+for (let k = 0; k < 24; k++) {
+  const [x, y, z] = posAt(k / 24);
+  marks.set([x, y, z, 4, 0.9, 0.6, 0.25], k * 8);
+}
+if (eng.addPoints(marks) === 0xFFFFFFFFFFFFFFFFn) { veFail(st, 'addPoints failed'); throw new Error('points'); }
+
+let playing = true, t0 = performance.now();
+const LOOP_MS = 9000;
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    playing = !playing;
+    if (playing) t0 = performance.now() - pauseAt;
+    else pauseAt = performance.now() - t0;
+    st.textContent = playing ? '回放中（空格暂停）' : '已暂停（空格继续）';
+  }
+});
+let pauseAt = 0;
+const moveDrone = () => {
+  if (!playing) return;
+  // veLoop's onFrame is called with NO arguments -- take the clock here.
+  const u = ((performance.now() - t0) % LOOP_MS) / LOOP_MS;
+  const [x, y, z] = posAt(u);
+  eng.setNodeTransform(drone, Float64Array.from([
+    1,0,0,0, 0,1,0,0, 0,0,1,0, x, y, z, 1]));
+};
+veOrbit(canvas, eng);
+await veLoop(eng, moveDrone);
+st.textContent = '回放中（空格暂停）';
+new Image().src = '/ve-gate-ready/E305_entity_anim?t=' + Date.now();
+</script></body></html>

@@ -122,12 +122,12 @@
     {
       "id": "E305_entity_anim",
       "band": 3,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "实体动画",
-      "desc": "逐帧变换驱动实体运动轨迹。",
+      "desc": "逐帧变换驱动实体运动轨迹。（web: 无人机沿 Catmull-Rom 环线回放，24 标记轨迹，空格暂停）",
       "how": "ctest -R example_E305_entity_anim"
     },
     {
