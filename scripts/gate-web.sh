@@ -154,7 +154,12 @@ done
 # (2) if the dump carries data-frame it must still be >= VE_GATE_MIN_FRAMES.
 # virtual-time stays banned: it never resolves the boot promise (measured,
 # both headless forms).
-PAGES="E101_clear E201_load_gltf E202_geo_viewer E401_pick_demo E811_entity_hide E813_section_clip"
+# live pages = the wall manifest's own list (single source; the hardcoded
+# copy drifted from wall.json twice in the live-page expansion)
+PAGES=$(python3 -c "
+import json
+w = json.load(open('$WALL'))
+print(' '.join(e['id'] for e in w['entries'] if e.get('kind') == 'live'))")
 BEACON_SUM=""
 for P in $PAGES; do
   D=$("${CHROME_ENV[@]}" "$CHROME" --headless=new $GPU_FLAGS --enable-logging=stderr --timeout=30000 --dump-dom \
@@ -210,4 +215,4 @@ done
 
 "${CHROME_ENV[@]}" "$CHROME" --headless=new --timeout=15000 --screenshot=/tmp/opencode/ve-wall.png --window-size=1280,800 \
   "http://127.0.0.1:$PORT/index.html" >/dev/null 2>&1
-echo "GATE-WEB OK ($N wall items, 6 live pages, beacons$BEACON_SUM ms, shot /tmp/opencode/ve-wall.png)"
+echo "GATE-WEB OK ($N wall items, $(echo $PAGES | wc -w) live pages, beacons$BEACON_SUM ms, shot /tmp/opencode/ve-wall.png)"
