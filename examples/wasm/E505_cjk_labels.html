@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E505 CJK 标注</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E505_cjk_labels · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>L</b> 挂/摘中文标注 · <b>1/2</b> 切 Noto/DejaVu 字体</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E505_cjk_labels" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E505: CJK glyphs through the host font-injection port
+// (the S2 band's open account). Switching fonts = loadFont is replacement
+// style; existing labels re-rasterize from the new face on the next draw.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+const TOPS = [[-3, 0, -3], [3, 0, -3], [0, 0, 3]];
+[['红塔', [0.85, 0.2, 0.2, 1]], ['绿塔', [0.2, 0.75, 0.3, 1]], ['蓝塔', [0.25, 0.4, 0.85, 1]]]
+  .forEach(([name, color], i) => {
+    eng.addMesh(P, NRM, IDX, Float32Array.from(color),
+      Float64Array.from(TOPS[i]), 0, 0);
+  });
+
+const FONTS = {
+  noto: './NotoSansSC-demo.otf',     // CJK subset (demo glyphs)
+  dejavu: './DejaVuSans.ttf',        // Latin-only control: CJK renders blank
+};
+let fontName = 'noto', labelsOn = false, shown = 0;
+const loadFont = async name => {
+  const rc = eng.loadFont(new Uint8Array(await (await fetch(FONTS[name])).arrayBuffer()));
+  if (rc !== 0) { veFail(st, `loadFont(${name}) rc=${rc}`); throw new Error('font'); }
+  fontName = name;
+};
+await loadFont('noto');
+
+const NAMES = ['红塔', '绿塔', '蓝塔'];
+const putLabels = () => {
+  if (!labelsOn) return 0;
+  let n = 0;
+  NAMES.forEach((t, i) => {
+    const h = eng.addLabel(
+      Float64Array.from([TOPS[i][0], 1.2, TOPS[i][2]]),
+      Float32Array.from([1, 1, 1, 1]), t, 20);
+    if (h !== 0xFFFFFFFFFFFFFFFFn) n++;
+  });
+  return n;
+};
+const echo = msg => { st.textContent = `${msg}（labels=${labelsOn ? shown : 0}, font=${fontName}）`; };
+
+window.addEventListener('keydown', async e => {
+  if (e.key === 'l' || e.key === 'L') {
+    labelsOn = !labelsOn;
+    shown = putLabels();
+    echo(labelsOn ? '标注挂载' : '标注摘除');
+  } else if (e.key === '1' || e.key === '2') {
+    await loadFont(e.key === '1' ? 'noto' : 'dejavu');
+    shown = putLabels();   // replacement style: re-rasterize from the new face
+    echo(fontName === 'noto' ? 'Noto（CJK 应显示）' : 'DejaVu（CJK 应缺字）');
+  }
+});
+veOrbit(canvas, eng);
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E505_cjk_labels?t=' + Date.now();
+</script></body></html>

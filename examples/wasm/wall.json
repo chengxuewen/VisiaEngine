@@ -220,12 +220,12 @@
     {
       "id": "E505_cjk_labels",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "中日韩标签",
-      "desc": "CJK 字体链路的标签渲染。",
+      "desc": "CJK 字体链路的标签渲染。（web: L 挂/摘中文柱顶标注，1/2 切字体）",
       "how": "ctest -R example_E505_cjk_labels"
     },
     {
