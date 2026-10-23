@@ -187,12 +187,12 @@
     {
       "id": "E502_color_tuning",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "色彩调校",
-      "desc": "曝光/对比/饱和全链调校面板。",
+      "desc": "曝光/对比/饱和全链调校面板。（web: 1..4 随机换色（remove+re-add = 宿主重传材质），R 复位）",
       "how": "ctest -R example_E502_color_tuning"
     },
     {

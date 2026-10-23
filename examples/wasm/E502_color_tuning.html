@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E502 颜色调试板</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E502_color_tuning · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud">四色板 WYSIWYG: <b>1..4</b> 随机换该板色 · <b>R</b> 复位</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E502_color_tuning" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E502_color_tuning: four color boards, WYSIWYG host-side
+// re-upload changes alpha/color live. No material hot-update bridge exists
+// (attrs are data-only), so a color change = remove + re-add that board --
+// the same "host re-uploads materials" teaching point, expressed via the
+// scene-graph verbs the web face has.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+
+// 2x2 board layout (x right, z down), 1.5-unit gap, boards face the default camera
+const SLOTS = [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]];
+const BASE = [
+  [0.85, 0.2, 0.2, 1],   // red
+  [0.2, 0.75, 0.3, 1],   // green
+  [0.25, 0.4, 0.85, 1],  // blue
+  [0.9, 0.8, 0.3, 1],    // yellow
+];
+let ents = [];
+
+const putBoard = i => {
+  if (ents[i]) eng.removeEntity(ents[i]);
+  const [x, z] = SLOTS[i];
+  ents[i] = eng.addMesh(P, NRM, IDX, Float32Array.from(BASE[i]),
+    Float64Array.from([x, 0, z]), 0.5, 0.0);
+};
+for (let i = 0; i < 4; i++) putBoard(i);
+if (eng.entityCount() !== 4) { veFail(st, 'stage build failed'); throw new Error('stage'); }
+
+const rand = () => 0.15 + Math.random() * 0.8;
+window.addEventListener('keydown', e => {
+  if (e.key >= '1' && e.key <= '4') {
+    const i = Number(e.key) - 1;
+    BASE[i] = [rand(), rand(), rand(), 1];
+    putBoard(i);   // remove + re-add: the host-side re-upload shape
+    st.textContent = `板 ${i + 1} 换色 rgb(${BASE[i].map(v => v.toFixed(2)).join(',')})`;
+  } else if (e.key === 'r' || e.key === 'R') {
+    BASE[0] = [0.85,0.2,0.2,1]; BASE[1] = [0.2,0.75,0.3,1];
+    BASE[2] = [0.25,0.4,0.85,1]; BASE[3] = [0.9,0.8,0.3,1];
+    for (let i = 0; i < 4; i++) putBoard(i);
+    st.textContent = '四板复位';
+  }
+});
+veOrbit(canvas, eng);
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E502_color_tuning?t=' + Date.now();
+</script></body></html>
