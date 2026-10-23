@@ -715,3 +715,10 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution 2**: any manual chrome probe copies gate-web's environment (`env -u DBUS_SESSION_BUS_ADDRESS`) or just runs the gate; empty-dom + no-console = probe-side, not page-side.
 - **Verification**: gate-web E305 beacon 947ms; grep CONSOLE lines in the gated dom shows only the WebGPU-experimental INFO.
 - **Forbidden**: consuming shared scaffolding without reading its signatures; hand-rolled chrome probes without the gate's env scrub.
+
+## PIT-82: an unclosed <script type="module"> tag silently disables the whole page -- and my own degenerate write caused it (2026-10-23, E901 band)
+- **Symptom**: E901 failed gate with "no beacon" while showing ZERO console output; the status line never left its initial text. Every manual probe (node --check, ESM check, screenshots on a bare server) looked healthy or inconclusive.
+- **Root cause**: two stacked defects. (1) The degenerate write that authored the page ate the closing `</script></body></html>` tail -- an unclosed module block swallows the rest of the document and is NEVER evaluated, silently (no SyntaxError reaches the console). (2) node --check on the sed-extracted body cannot catch this: the sed range `/<script type="module">/,/<\/script>/p` falls through to EOF when no close exists, so the "JS-OK" check validated JS that the browser never ran.
+- **Solution**: structural self-check before any page gate: `grep -c "<script" ` must equal `grep -c "</script>"` (and `</html>` must be the last line). In-page stage probes (`st.textContent = 'stage...'` after each await) localize a hang on the next gate run.
+- **Verification**: after the close landed, the SAME file immediately progressed from "no beacon" to "engine reported a fail mark" (evaluation began) and then to beacon green once the normals-tiling bug (addMesh rejects normals shorter than positions -- tile the zero block per merged tower) was fixed.
+- **Forbidden**: trusting node --check as page-level proof (it checks text, not the document); diagnosing "page dead" without a tag-balance grep first.
