@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E402 交互拾取</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E402_pick_interactive · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud">左键选中/取消（选中柱抬升）· 拖拽环绕 · 滚轮缩放 · <b>R</b> 清空选择 · 同族: E403（框选版）</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E402_pick_interactive" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E402: click toggles multi-select, drag orbits, wheel
+// zooms, R clears. The engine-side highlight stack has no wasm bridge yet,
+// so selection renders as a transform lift (setNodeTransform) -- the same
+// "pick world = render transform" single-source the native page teaches,
+// expressed through the pose port.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+
+// 3x3 pillar grid; track each handle's base origin + selection state
+const CELL = 2.2, HOME = -(CELL);
+const cells = [];
+const colorFor = (i, j) => [0.35 + i * 0.2, 0.35 + j * 0.15, 0.5, 1];
+for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+  const x = HOME + i * CELL, z = HOME + j * CELL;
+  const h = eng.addMesh(P, NRM, IDX, Float32Array.from(colorFor(i, j)),
+    Float64Array.from([x, 0, z]), 0, 0);
+  cells.push({ h, x, z, on: false });
+}
+const MISS = 0xFFFFFFFFFFFFFFFFn;
+
+const putPose = (c, lift) => {
+  // 16 f64, identity rotation/scale, translation carries the lift
+  eng.setNodeTransform(c.h, Float64Array.from([
+    1,0,0,0, 0,1,0,0, 0,0,1,0, c.x, lift, c.z, 1]));
+};
+const echo = () => {
+  const n = cells.filter(c => c.on).length;
+  st.textContent = n ? `已选 ${n} 根（左键切换，R 清空）` : '就绪（左键选中柱子）';
+};
+canvas.addEventListener('click', e => {
+  if (e.button !== 0) return;
+  const h = eng.pick(e.offsetX, e.offsetY);
+  if (h === MISS) { echo(); return; }
+  const c = cells.find(c => c.h === h);
+  if (!c) return;
+  c.on = !c.on;
+  putPose(c, c.on ? 0.45 : 0);
+  echo();
+});
+window.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') {
+    for (const c of cells) { if (c.on) { c.on = false; putPose(c, 0); } }
+    echo();
+  }
+});
+veOrbit(canvas, eng);
+await veLoop(eng);
+echo();
+new Image().src = '/ve-gate-ready/E402_pick_interactive?t=' + Date.now();
+</script></body></html>

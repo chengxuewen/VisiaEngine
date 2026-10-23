@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E403 框选</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}#box{position:fixed;border:1px dashed #e8b339;pointer-events:none;display:none}</style></head>
+<body><p id="st">E403_box_select · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="box"></div>
+<div id="hud">左键拖出矩形框选（框内柱子抬升）· 拖拽从空白处开始 = 环绕 · <b>R</b> 清空</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E403_box_select" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E403: rubber-band box select. No ray-rect bridge, so
+// the band tests the GRID INSIDE the rectangle -- pick() at a coarse lattice
+// (every 16px), unique handles only. False positives shrink with the step;
+// this is the E401 ?selftest technique promoted into a user-facing gesture.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+const box = document.getElementById('box');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+
+const CELL = 2.2, HOME = -CELL;
+const cells = [];
+for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+  const x = HOME + i * CELL, z = HOME + j * CELL;
+  const h = eng.addMesh(P, NRM, IDX,
+    Float32Array.from([0.35 + i * 0.2, 0.35 + j * 0.15, 0.5, 1]),
+    Float64Array.from([x, 0, z]), 0, 0);
+  cells.push({ h, x, z, on: false });
+}
+const MISS = 0xFFFFFFFFFFFFFFFFn;
+
+const putPose = (c, lift) => eng.setNodeTransform(c.h, Float64Array.from([
+  1,0,0,0, 0,1,0,0, 0,0,1,0, c.x, lift, c.z, 1]));
+const echo = () => {
+  const n = cells.filter(c => c.on).length;
+  st.textContent = n ? `框中 ${n} 根（R 清空）` : '就绪（拖出矩形框选）';
+};
+
+let drag = null;
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 0) drag = { x: e.offsetX, y: e.offsetY };
+});
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  const x = Math.min(drag.x, e.offsetX), y = Math.min(drag.y, e.offsetY);
+  const w = Math.abs(e.offsetX - drag.x), h = Math.abs(e.offsetY - drag.y);
+  box.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;display:block`;
+});
+window.addEventListener('mouseup', e => {
+  if (!drag) return;
+  const x0 = Math.min(drag.x, e.offsetX), y0 = Math.min(drag.y, e.offsetY);
+  const x1 = Math.max(drag.x, e.offsetX), y1 = Math.max(drag.y, e.offsetY);
+  drag = null; box.style.display = 'none';
+  if (x1 - x0 < 8 || y1 - y0 < 8) return;   // a click, not a band: ignore
+  const hit = new Set();
+  for (let px = x0; px <= x1; px += 16)
+    for (let py = y0; py <= y1; py += 16) {
+      const h = eng.pick(px, py);
+      if (h !== MISS) hit.add(h);
+    }
+  for (const c of cells) {
+    const nowOn = hit.has(c.h);
+    if (nowOn !== c.on) { c.on = nowOn; putPose(c, c.on ? 0.45 : 0); }
+  }
+  echo();
+});
+window.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') {
+    for (const c of cells) { if (c.on) { c.on = false; putPose(c, 0); } }
+    echo();
+  }
+});
+veOrbit(canvas, eng);
+await veLoop(eng);
+echo();
+new Image().src = '/ve-gate-ready/E403_box_select?t=' + Date.now();
+</script></body></html>

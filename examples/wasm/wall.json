@@ -154,23 +154,23 @@
     {
       "id": "E402_pick_interactive",
       "band": 4,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "拾取增强",
-      "desc": "悬停高亮 + 选中态机（交互式拾取全形态）。",
+      "desc": "悬停高亮 + 选中态机（交互式拾取全形态）。（web: 左键多选=抬升高亮，R 清空；同族 E403 框选版）",
       "how": "ctest -R example_E402_pick_interactive"
     },
     {
       "id": "E403_box_select",
       "band": 4,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "框选",
-      "desc": "拖出矩形批量选中实体（GIS 刚需）。",
+      "desc": "拖出矩形批量选中实体（GIS 刚需）。（web: 矩形框选=带内网格 pick 扫描，R 清空）",
       "how": "ctest -R example_E403_box_select"
     },
     {
