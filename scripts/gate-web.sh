@@ -30,6 +30,7 @@ if [ ! -x "$CHROME" ] && [ "${VE_GATE_PROVISION:-0}" = "1" ]; then  # opt-in ONL
   chmod +x "$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
   CHROME="$HOME/.cache/ms-playwright/chromium-1148/chrome-linux/chrome"
 fi
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TREE="${VISIAENGINE_BUILD_DIR:-cmake-build-debug}"
 WALL=examples/wasm/wall.json
 PORT="${VE_GATE_PORT:-8018}"
@@ -166,6 +167,12 @@ for P in $PAGES; do
        "http://127.0.0.1:$PORT/$P.html" 2>&1)
   echo "$D" | grep -q '✗'          && fail "engine reported a fail mark ($P)"
   echo "$D" | grep -qiE 'uncaught' && fail "console shows uncaught error ($P)"
+  # PIT-82: tag balance is a build-time shape, checked on the SOURCE file --
+  # an unclosed module tag never evaluates and never reaches the console.
+  _src="$REPO/examples/wasm/$P.html"
+  if [ "$(grep -c '<script' "$_src")" != "$(grep -c '</script>' "$_src")" ]; then
+    fail "tag imbalance: $(grep -c '<script' "$_src") opens vs $(grep -c '</script>' "$_src") closes ($P)"
+  fi
   F_T0=$(date +%s.%N)
   # E401's second run carries ?selftest: the pick-surface probe beacon
   # (its query rides the READY log line, asserted below).
