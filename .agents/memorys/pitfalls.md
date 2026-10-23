@@ -705,3 +705,13 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: sweep for the first pick hit (or walk lit pixels until pick agrees, skipping the clear color explicitly); gates assert existence ("some pixel lit", "some hit"), not a specific pixel.
 - **Verification**: cargo test -p visiaengine-ffi (10 files green); ctest headless lane green; ctest -R example_E811_entity_hide_c/cpp green.
 - **Forbidden**: new consumers asserting a fixed screen point after any camera/framing change; luminance thresholds without a background-color exclusion.
+
+## PIT-81: veLoop's onFrame callback receives NO arguments; ad-hoc harness chrome runs need the D-Bus scrub (2026-10-23, E305 band)
+- **Symptom 1**: E305's drone never moved and the page threw `Uncaught TypeError: Cannot read properties of undefined (reading '0')` at the Catmull-Rom call site -- `moveDrone(now)` received `now === undefined` because `common.js` veLoop invokes `onFrame()` bare.
+- **Root cause 1**: the callback contract is "page takes its own clock" (deliberate: the rAF timestamp belongs to the closure that owns the loop); assuming an rAF-timestamp parameter is writing against an unverified signature (ghost-API family).
+- **Solution 1**: `const moveDrone = () => { const now = performance.now(); ... }`. Rule: every new page reads common.js's actual signatures before consuming shared scaffolding.
+- **Symptom 2**: an ad-hoc `chrome --dump-dom http://127.0.0.1:...` run returned an EMPTY dom (40 bytes) with zero console lines, mimicking a dead page.
+- **Root cause 2**: the shell's proxy/D-Bus environment; gate-web.sh already documents the measured fix (`env -u DBUS_SESSION_BUS_ADDRESS`, "every http page hangs, file:// unaffected") -- the probe bypassed the gate's own environment.
+- **Solution 2**: any manual chrome probe copies gate-web's environment (`env -u DBUS_SESSION_BUS_ADDRESS`) or just runs the gate; empty-dom + no-console = probe-side, not page-side.
+- **Verification**: gate-web E305 beacon 947ms; grep CONSOLE lines in the gated dom shows only the WebGPU-experimental INFO.
+- **Forbidden**: consuming shared scaffolding without reading its signatures; hand-rolled chrome probes without the gate's env scrub.
