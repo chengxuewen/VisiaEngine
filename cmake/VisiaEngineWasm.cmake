@@ -148,7 +148,8 @@ function(visiaengine_wasm)
   foreach(_f ${_wall_pages}
       "${CMAKE_SOURCE_DIR}/resources/data/park.geojson"
       "${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb"
-      "${CMAKE_SOURCE_DIR}/resources/data/twoprim.glb")
+      "${CMAKE_SOURCE_DIR}/resources/data/twoprim.glb"
+      "${CMAKE_SOURCE_DIR}/resources/data/DejaVuSans.ttf")
     get_filename_component(_fn "${_f}" NAME)
     list(APPEND _copy_cmds
       COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_f}" "${_serve_dir}/${_fn}")
@@ -219,7 +220,7 @@ function(visiaengine_wasm)
   # the button shows its own stage list (T-H11 user catch -- custom-target
   # SOURCES are IDE display only, nothing compiles)
   set_target_properties(visiaengine-wasm-serve PROPERTIES
-    SOURCES "${_wall_pages};${CMAKE_SOURCE_DIR}/resources/data/park.geojson;${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb;${CMAKE_SOURCE_DIR}/resources/data/twoprim.glb"
+    SOURCES "${_wall_pages};${CMAKE_SOURCE_DIR}/resources/data/park.geojson;${CMAKE_SOURCE_DIR}/resources/data/hierarchy.glb;${CMAKE_SOURCE_DIR}/resources/data/twoprim.glb;${CMAKE_SOURCE_DIR}/resources/data/DejaVuSans.ttf"
     FOLDER  "examples/wasm")
 
   # serve-clean (owner request): wipe the SERVE surface only -- the staged

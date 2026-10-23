@@ -417,12 +417,12 @@
     {
       "id": "E814_labels_headless",
       "band": 8,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "c"
       ],
       "title": "无头标签",
-      "desc": "字体注入+锚点标签的 headless 验收形态。",
+      "desc": "字体注入+锚点标签的 headless 验收形态。（web: L 挂/摘柱顶标签，+/- 字号；字体 fetch 注入）",
       "how": "ctest -R example_E814_labels_headless"
     },
     {

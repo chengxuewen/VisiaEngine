@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E814 标签闭环</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E814_labels_headless · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>L</b> 挂/摘 3 根柱顶标签 · <b>+</b>/<b>-</b> 字号 ±2px</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E814_labels_headless" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E814: the loadFont -> addLabel closed loop. Font bytes
+// are fetched and injected via loadFont(&[u8]) (replacement style); labels
+// anchor to pillar tops. L toggles, +/- resizes live (labels rebuilt per
+// the S2 band's "redraw frame concatenates per switches" lesson).
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+// three pillars (same stage family as E302/E502/E812)
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+const TOPS = [[-3, 0, -3], [3, 0, -3], [0, 0, 3]];
+[['Alpha', [0.85, 0.2, 0.2, 1]], ['Bravo', [0.2, 0.75, 0.3, 1]], ['Charlie', [0.25, 0.4, 0.85, 1]]]
+  .forEach(([name, color], i) => {
+    eng.addMesh(P, NRM, IDX, Float32Array.from(color),
+      Float64Array.from(TOPS[i]), 0, 0);
+  });
+
+// load the committed fixture font (bytes bridge, replacement style)
+const fontRc = eng.loadFont(new Uint8Array(await (await fetch('./DejaVuSans.ttf')).arrayBuffer()));
+if (fontRc !== 0) { veFail(st, `loadFont rc=${fontRc}`); throw new Error('font'); }
+
+let labelsOn = false, sizePx = 18;
+const NAMES = ['Alpha', 'Bravo', 'Charlie'];
+const putLabels = () => {
+  if (!labelsOn) return 0;
+  let n = 0;
+  NAMES.forEach((t, i) => {
+    const h = eng.addLabel(
+      Float64Array.from([TOPS[i][0], 1.2, TOPS[i][2]]),
+      Float32Array.from([1, 1, 1, 1]), t, sizePx);
+    if (h !== 0xFFFFFFFFFFFFFFFFn) n++;
+  });
+  return n;
+};
+let shown = 0;
+const redraw = msg => {
+  if (labelsOn) { shown = putLabels(); echo(msg); }
+};
+const echo = msg => { st.textContent = `${msg}（labels=${labelsOn ? shown : 0}, size=${sizePx}px）`; };
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'l' || e.key === 'L') {
+    labelsOn = !labelsOn;
+    shown = putLabels();
+    echo(labelsOn ? '标签挂载' : '标签摘除');
+  } else if (e.key === '+' || e.key === '=') {
+    sizePx = Math.min(48, sizePx + 2);
+    redraw('字号加大');
+  } else if (e.key === '-') {
+    sizePx = Math.max(8, sizePx - 2);
+    redraw('字号缩小');
+  }
+});
+veOrbit(canvas, eng);
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E814_labels_headless?t=' + Date.now();
+</script></body></html>
