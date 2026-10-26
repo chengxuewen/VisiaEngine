@@ -32,7 +32,7 @@ const MISS = 0xFFFFFFFFFFFFFFFFn;
 if (eng.entityCount() !== 3) { veFail(st, 'stage build failed'); throw new Error('stage'); }
 
 // preset poses (8 slots: tx,ty,tz, yaw, pitch, dist, fov)
-const preset = (t, yaw, pitch, dist) => [t[0], t[1], t[2], yaw, pitch, dist, 0.9, 0];
+const preset = (t, yaw, pitch, dist) => [t[0], t[1], t[2], yaw, pitch, dist, 0.9, 0.9];
 const POSES = [
   preset([0, 0, 0], 0.6, 0.5, 8.0),   // red pillar, oblique
   preset([4, 0, 0], 2.0, 0.7, 5.0),   // green, closer
@@ -48,7 +48,9 @@ const flyToPreset = (i, force) => {
   if (i === cur && !force) return;
   cur = i;
   const rc = eng.flyTo(POSES[i], 900);
-  st.textContent = `飞行至预设 ${i + 1}（rc=${rc}）—— 拖拽/滚轮可打断`;
+  st.textContent = rc === 0
+    ? `飞行至预设 ${i + 1} —— 拖拽/滚轮可打断`
+    : `flyTo 被拒（rc=${rc}，pose 域外）`;
 };
 
 window.addEventListener('keydown', e => {
