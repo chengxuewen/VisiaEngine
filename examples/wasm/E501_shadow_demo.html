@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E501 阴影</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E501_shadow_demo · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>S</b> 阴影开关 · <b>C</b> 剖切刀（阴影随刀塌）· 塔群+背光长影</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E501_shadow_demo" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E501: PCSS soft shadows over a 16x16 tower cluster
+// (light dir [0.35,0.5,0.79], the long anti-light shadow band), C adds the
+// clip knife -- shadows collapse with the blade (casters clip alike, the
+// 4f band lesson). setShadow carries the same construction the C face has.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+// 16x16 city, deterministic heights (E901 family, compact spacing)
+for (let i = 0; i < 256; i++) {
+  const gx = i % 16, gz = (i / 16) | 0;
+  const h = 1.6 + ((i * 7919) % 11) * 0.8;
+  const v = 0.72 + ((i * 104729) % 7) * 0.03;
+  eng.addMesh(P, NRM, IDX,
+    Float32Array.from([v, v * 0.97, v * 0.94, 1]),
+    Float64Array.from([-15 + gx * 2, 0, -15 + gz * 2]), 0.5, 0);
+}
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.2, 0.22, 0.26, 1]),
+  Float64Array.from([0, -0.52, 0]), 0, 0);
+
+let shadowOn = true, knifeOn = false, knifeH = 6;
+const apply = () => {
+  if (shadowOn) eng.setShadow(0.35, 0.5, 0.79);
+  else eng.setShadow(-1, 0, 0);
+  eng.setClips(knifeOn ? Float64Array.from([0, 0, -1, knifeH]) : new Float64Array(0));
+  st.textContent = `阴影: ${shadowOn ? 'on' : 'off'} · 刀: ${knifeOn ? knifeH.toFixed(1) + 'm' : 'off'}（S / C / [ ]）`;
+};
+window.addEventListener('keydown', e => {
+  if (e.key === 's' || e.key === 'S') shadowOn = !shadowOn;
+  else if (e.key === 'c' || e.key === 'C') knifeOn = !knifeOn;
+  else if (e.key === '[') knifeH = Math.max(0.5, knifeH - 1);
+  else if (e.key === ']') knifeH = Math.min(15, knifeH + 1);
+  else return;
+  apply();
+});
+veOrbit(canvas, eng);
+apply();
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E501_shadow_demo?t=' + Date.now();
+</script></body></html>

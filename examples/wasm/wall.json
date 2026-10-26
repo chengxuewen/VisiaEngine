@@ -176,12 +176,12 @@
     {
       "id": "E501_shadow_demo",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "软阴影",
-      "desc": "PCSS 软阴影：滑杆调遮挡半影。",
+      "desc": "PCSS 软阴影：滑杆调遮挡半影。（web: S 阴影开关，C 剖切刀阴影随刀塌，16x16 塔群长影）",
       "how": "ctest -R example_E501_shadow_demo"
     },
     {

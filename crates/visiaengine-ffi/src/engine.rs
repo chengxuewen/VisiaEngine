@@ -119,6 +119,8 @@ pub struct Engine {
     edl: Option<visiaengine_render::EdlSetup>,
     /// N4 post-effect chain (empty = the bit-for-bit legacy path).
     post: Vec<visiaengine_render::PostEffect>,
+    /// 4f shadow pass (None = the legacy lit path bit-for-bit).
+    shadow: Option<visiaengine_render::ShadowSetup>,
     /// CAPI-23: flight thruster (wall clock lives in the engine -- the layering decision behind zero std::time in the render crate;
     /// None = merged idle/done state)
     fly: Option<Fly>,
@@ -345,6 +347,7 @@ impl Engine {
             clip: None,
             edl: None,
             post: Vec::new(),
+            shadow: None,
             fly: None,
             map: None,
             font: None,
@@ -1094,7 +1097,7 @@ impl Engine {
             // ortho: world width 2*hw spans W px -> px_world_scale = 2*hw/W (REND-29 exact path;
             // mid-morph = linear interpolation of the two ends, REND-41)
             px_world_scale,
-            shadow: None,
+            shadow: self.shadow.clone(),
             clip: self.clip,
             edl: self.edl,
             post: self.post.clone(),
@@ -1124,7 +1127,7 @@ impl Engine {
                 eye: mrig.eye(),
                 proj,
                 px_world_scale: (2.0 * mrig.zoom / f64::from(rw)) as f32,
-                shadow: None,
+                shadow: self.shadow.clone(),
                 clip: self.clip,
                 edl: self.edl,
                 post: self.post.clone(),
@@ -1727,6 +1730,34 @@ impl Engine {
     }
 
     /// EDL eye-dome lighting, None = off (the legacy path bit-for-bit).
+    /// PCSS shadow toggle from a normalized light direction (the E501
+    /// construction, engine-side): None = off (bit-identical legacy path).
+    /// Non-finite / zero vector = ignored (keeps the current state).
+    pub fn set_shadow(&mut self, light_dir: Option<[f64; 3]>) {
+        let Some(ld) = light_dir else {
+            self.shadow = None;
+            return;
+        };
+        if !ld.iter().all(|v| v.is_finite()) {
+            return;
+        }
+        let n = (ld[0] * ld[0] + ld[1] * ld[1] + ld[2] * ld[2]).sqrt();
+        if n < 1e-6 {
+            return;
+        }
+        let eye = [ld[0] / n * 80.0, ld[1] / n * 80.0, ld[2] / n * 80.0];
+        let lrig = visiaengine_render::CameraRig::look_at(eye, [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
+        let (w, h) = (self.w.max(1), self.h.max(1));
+        self.shadow = Some(visiaengine_render::ShadowSetup {
+            proj: lrig.ortho_frame(40.0, w as f32, h as f32, 1.0, 160.0).expect("light proj"),
+            view_rot: lrig.view_rotation(),
+            eye: lrig.eye(),
+            light_dir: [ld[0] as f32 / n as f32, ld[1] as f32 / n as f32, ld[2] as f32 / n as f32],
+            size: 2.0,
+            bias: visiaengine_render::ShadowSetup::DEFAULT_BIAS,
+        });
+    }
+
     pub fn set_edl(&mut self, strength: Option<f64>) {
         self.edl = strength.map(|v| {
             visiaengine_render::EdlSetup::new(v as f32).expect("edl strength")
@@ -2510,6 +2541,7 @@ impl Engine {
             clip: None,
             edl: None,
             post: Vec::new(),
+            shadow: None,
             fly: None,
             map: None,
             font: None,

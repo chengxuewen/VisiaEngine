@@ -127,6 +127,17 @@ impl VisiaEngine {
         }
     }
 
+    /// PCSS shadows from a light direction; all-zero/negative-x = off.
+    #[wasm_bindgen(js_name = setShadow)]
+    pub fn set_shadow(&mut self, lx: f64, ly: f64, lz: f64) -> i32 {
+        if lx < 0.0 || (lx == 0.0 && ly == 0.0 && lz == 0.0) {
+            self.inner.set_shadow(None);
+        } else {
+            self.inner.set_shadow(Some([lx, ly, lz]));
+        }
+        0
+    }
+
     /// EDL eye-dome lighting (negative strength = off).
     #[wasm_bindgen(js_name = setEdl)]
     pub fn set_edl(&mut self, strength: f64) -> i32 {
