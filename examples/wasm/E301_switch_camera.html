@@ -34,10 +34,30 @@ const echo = () => {
   const p = eng.getProjection() === 1;
   st.textContent = `当前: ${NAME[p ? 1 : 0]}（P 透视 / O 正交 / G 读回）`;
 };
+// ortho half-width = zoom (meters); persp framing = dist. Keep the view
+// continuous across the switch: on O the zoom takes the persp eye distance,
+// on P the dist takes the ortho zoom (getCameraPose is the readback port).
+const pose = () => eng.getCameraPose();
 window.addEventListener('keydown', e => {
-  if (e.key === 'p' || e.key === 'P') { eng.setProjection(true); echo(); }
-  else if (e.key === 'o' || e.key === 'O') { eng.setProjection(false); echo(); }
-  else if (e.key === 'g' || e.key === 'G') echo();
+  if (e.key === 'p' || e.key === 'P') {
+    if (eng.getProjection() !== 1) {
+      const z = pose()[6];
+      eng.setProjection(true);
+      // land the persp eye near the ortho framing: dist = zoom / tan(fov/2)
+      eng.flyTo([pose()[0], pose()[1], pose()[2], pose()[3], pose()[4],
+                 Math.max(1.0, z * 2.2), z, 0.9], 0);
+    }
+    echo();
+  } else if (e.key === 'o' || e.key === 'O') {
+    if (eng.getProjection() === 1) {
+      const d = pose()[5];
+      eng.setProjection(false);
+      // ortho half-width ≈ the persp view width at the target depth
+      eng.flyTo([pose()[0], pose()[1], pose()[2], pose()[3], pose()[4],
+                 d, Math.max(1.0, d / 2.2), 0.9], 0);
+    }
+    echo();
+  } else if (e.key === 'g' || e.key === 'G') echo();
 });
 veOrbit(canvas, eng);
 eng.setProjection(true);
