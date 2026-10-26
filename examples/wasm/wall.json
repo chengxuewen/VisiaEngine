@@ -34,12 +34,12 @@
     {
       "id": "E203_measure_cli",
       "band": 2,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "两点测距 CLI",
-      "desc": "命令行拾取两点量距离，终端读数。",
+      "desc": "命令行拾取两点量距离，终端读数。（web: 双击取两点（pickPoint 世界坐标），3D 距离页侧计算，R 清除）",
       "how": "ctest -R example_E203_measure_cli"
     },
     {

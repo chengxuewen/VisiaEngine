@@ -1404,6 +1404,25 @@ impl Engine {
 
     /// Screen picking (reuses REND-21..24; ortho/persp dual paths; B2: point-cloud fallback when the mesh misses).
     /// Hit = EntityId. Point-cloud path same scheme: hidden filter + clip keeps negative-side exclusion (REND-38).
+    /// Pick with the world-space hit point (the E203 measuring family).
+    /// Same routing as `pick` (minimap region first), point = surface hit.
+    pub fn pick_hit(&self, px: f32, py: f32) -> Option<(EntityId, [f64; 3])> {
+        if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig())
+            && let Some((lx, ly)) = r.local(px.max(0.0) as u32, py.max(0.0) as u32)
+        {
+            if let Some((id, pt)) = self.pick_geo(&mrig, true, lx, ly, r.width, r.height) {
+                return Some((id, pt));
+            }
+            return self.pick_points_in(&mrig, lx, ly, r.width, r.height).map(|id| (id, [0.0; 3]));
+        }
+        let ortho = matches!(self.mode, Proj::Ortho);
+        if let Some((id, pt)) = self.pick_geo(&self.rig, ortho, px, py, self.w, self.h) {
+            return Some((id, pt));
+        }
+        self.pick_points_in(&self.rig, px, py, self.w, self.h)
+            .map(|id| (id, [0.0; 3]))
+    }
+
     pub fn pick(&self, px: f32, py: f32) -> Option<EntityId> {
         // 5b second wave routing: minimap region first (visual top = input top); everything else = main rig original semantics
         if let (Some(r), Some(mrig)) = (self.map_rect(), self.map_rig())
@@ -1511,7 +1530,7 @@ impl Engine {
         py: f32,
         w: u32,
         h: u32,
-    ) -> Option<(EntityId, [f64; 2])> {
+    ) -> Option<(EntityId, [f64; 3])> {
         let ray = if ortho {
             screen_to_ray_ortho(rig, px, py, w as f32, h.max(1) as f32)?
         } else {
@@ -1542,7 +1561,7 @@ impl Engine {
                     continue;
                 }
             }
-            return Some((hit.entity, [hit.point.x, hit.point.y]));
+            return Some((hit.entity, [hit.point.x, hit.point.y, hit.point.z]));
         }
     }
 

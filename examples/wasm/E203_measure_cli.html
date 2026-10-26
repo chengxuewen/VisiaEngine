@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E203 测距</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E203_measure_cli · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>双击</b> 取点（两次成一对，3D 距离）· <b>R</b> 清除</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E203_measure_cli" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E203: two-point measurement. The wasm pickPoint leaf
+// returns [entityAsF64, x, y, z] (empty = miss) -- the same world-space
+// surface point the native face reports. Distance = the plain Euclidean
+// norm page-side; the labels on the native CLI face are the C text port.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+// two separated blocks so a measurement pair has obvious endpoints
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.8, 0.3, 0.25, 1]),
+  Float64Array.from([-3, 0, 0]), 0.5, 0);
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.25, 0.5, 0.85, 1]),
+  Float64Array.from([3, 0, 0]), 0.5, 0);
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.22, 0.26, 0.3, 1]),
+  Float64Array.from([0, -0.52, 0]), 0, 0);
+
+let first = null;
+const fmt = p => `(${p[0].toFixed(2)}, ${p[1].toFixed(2)}, ${p[2].toFixed(2)})`;
+window.addEventListener('dblclick', e => {
+  const hit = eng.pickPoint(e.offsetX, e.offsetY);
+  if (!hit || hit.length === 0) {
+    st.textContent = '该点未命中（双击实体表面）';
+    return;
+  }
+  const pt = [hit[1], hit[2], hit[3]];
+  if (!first) {
+    first = pt;
+    st.textContent = `起点 ${fmt(pt)} —— 再双击终点`;
+  } else {
+    const d = Math.hypot(pt[0] - first[0], pt[1] - first[1], pt[2] - first[2]);
+    st.textContent = `${fmt(first)} -> ${fmt(pt)} = ${d.toFixed(3)}（R 清除）`;
+    first = null;
+  }
+});
+window.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') { first = null; st.textContent = '已清除（双击取点）'; }
+});
+veOrbit(canvas, eng);
+st.textContent = '就绪（双击实体表面取点）';
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E203_measure_cli?t=' + Date.now();
+</script></body></html>

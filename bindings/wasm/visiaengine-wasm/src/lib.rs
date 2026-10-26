@@ -66,6 +66,19 @@ impl VisiaEngine {
         self.inner.pick(px, py).map_or(MISS, enc_entity)
     }
 
+    /// Pick with the world-space hit point: [entityAsF64, x, y, z] (entity
+    /// handles are small integers, exact in f64; empty = miss). The E203
+    /// measuring family's wasm face.
+    #[wasm_bindgen(js_name = pickPoint)]
+    pub fn pick_point(&mut self, px: f32, py: f32) -> Box<[f64]> {
+        match self.inner.pick_hit(px, py) {
+            Some((id, pt)) => Box::new([
+                enc_entity(id) as f64, pt[0], pt[1], pt[2],
+            ]),
+            None => Box::new([]),
+        }
+    }
+
     #[wasm_bindgen(js_name = entityAt)]
     pub fn entity_at(&mut self, index: u32) -> u64 {
         self.inner.entity_at(index).map_or(MISS, enc_entity)
