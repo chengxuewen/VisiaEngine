@@ -867,3 +867,22 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   via addMesh rebuild is possible but the native page teaches the material
   hot path), E601/E70x/E801/E802/E810 (bench/window/CLI families, non-web),
   E815/E816 (C twins cross-referenced), E817 (loadRasterDir bytes needed).
+
+## Web wall expansion addendum (2026-10-23 same band, live pages 26 -> 29)
+
+- three bytes-bridge pages: E204 (loadPclBytes was already on the face --
+  zero new bridge), E206 (MemSource in io-tiles + load_tile_bytes on the
+  engine; mount_tile_layer tail carved out of load_mvt_dir and shared),
+  E817 (load_raster_bytes single-tile quad tail + loadRasterBytes; the
+  band-T same-domain pair: raster_over underlay + vector overlay, z10).
+- wall now 29/43 live (67%). Bridge face 41 -> 51 across the whole band.
+- a botched extraction (mount_tile_layer) produced duplicate mount_layer
+  blocks and an unclosed fn -- reverted to HEAD and redone with window-based
+  string surgery; the compiler spans named every defect. Lesson: large
+  multi-site extractions go through revert-and-redo, not incremental patches.
+- remaining native-only (14): E205 (C text-port semantics), E303
+  (render_view_rects bridge, the largest face), E503 (strokes bridge),
+  E504 (material hot-path semantics), E601/E70x/E801/E802/E810 (non-web
+  families), E815/E816 (C twins cross-referenced).
+- 17 commits ahead at close; worktree clean; ports returned after every
+  verification run.

@@ -722,3 +722,10 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: structural self-check before any page gate: `grep -c "<script" ` must equal `grep -c "</script>"` (and `</html>` must be the last line). In-page stage probes (`st.textContent = 'stage...'` after each await) localize a hang on the next gate run.
 - **Verification**: after the close landed, the SAME file immediately progressed from "no beacon" to "engine reported a fail mark" (evaluation began) and then to beacon green once the normals-tiling bug (addMesh rejects normals shorter than positions -- tile the zero block per merged tower) was fixed.
 - **Forbidden**: trusting node --check as page-level proof (it checks text, not the document); diagnosing "page dead" without a tag-balance grep first.
+
+## PIT-83: wasm-bindgen glue does not track lib.rs -- a stale pkg passes host checks and ships without the new bridge (2026-10-23, bytes-bridge band)
+- **Symptom**: after adding a wasm-bindgen leaf (e.g. loadTileBytes), `cargo check --target wasm32` passed, web-check passed, but the served `pkg/visiaengine_wasm.js` did not contain the new export -- the page died calling an undefined function.
+- **Root cause**: the js-build target's ninja graph judged the bindgen step up-to-date (the wasm artifact was rebuilt, but the glue generation was not re-run; "Re-running CMake" consumed the build round). Stale glue is invisible to every host-side check because only the page actually calls the export.
+- **Solution**: force the replay whenever lib.rs changed under bindings/wasm: `rm -rf cmake-build/web/pkg-web && cmake --build ... --target visiaengine-wasm-js-build`, then grep the generated js for the new `js_name` BEFORE any page-level verification (expect >=2 hits: export + d.ts shape).
+- **Verification**: `grep -c "<BridgeName>" cmake-build/web/pkg-web/visiaengine_wasm.js` >= 2 after the forced replay; gate-web page beacon green.
+- **Forbidden**: trusting web-check/cargo-check as evidence a new bridge shipped; building pages against a bridge before grepping the generated glue.
