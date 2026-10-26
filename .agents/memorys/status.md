@@ -834,3 +834,36 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   the pick assertion; worktree clean; 3 commits this band.
 - remaining: user hard-refresh retest of E401/E811/E813 (staged artifacts good);
   group-offset pick leg landed in the same session as the review's blocking #3.
+
+## Web wall expansion band baseline (2026-10-23, live pages 6 -> 26)
+
+- six sessions of wall expansion: E302/E306/E502/E814/E505/E812/E402/E403/
+  E305/E901/E304/E301/E203/E506/E509/E511/E508/E510/E501 live, plus the
+  E302/E306 C-twin cross-references (E815/E816 stay native by family).
+- bridges added: setMorphTime/clearMorph (REND-41), loadEnvHdrBytes (bytes
+  entry + wasm leaf), setProjection/getProjection (N2.1 seam + query),
+  pickPoint (pick_geo now returns the full surface point; pick_hit engine
+  face), setPostEffects (flat kind/p1/p2 chain: bloom/outline/tonemap/ssao/
+  haze; post field wired through BOTH Frame sites AND the wasm-only
+  new_canvas constructor -- the N4 band's web-check catch repeating), setEdl,
+  setShadow (light-dir -> CameraRig construction, E501 family).
+- gate hardening: gate-web PAGES + summary derive from wall.json (the
+  hardcoded list drifted twice); tag-balance check per live page (PIT-82
+  breakage probe red-proven naming E812).
+- lessons: PIT-81 (veLoop onFrame takes NO arguments; ad-hoc chrome probes
+  need the D-Bus scrub -- empty dom + no console = probe-side), PIT-82
+  (unclosed <script type="module"> = the page NEVER evaluates, zero console
+  evidence; node --check cannot catch it -- sed range falls through to EOF;
+  tag balance grep is the gate), C21 re-sighting (quoted 'a;b' in the copy
+  foreach is ONE string; assemble failed loudly), bindgen glue does not
+  track lib.rs (rm -rf web/pkg-web forces the replay).
+- baseline: pixi run ci rc=0; web-check + MIRROR 3/3; gate-web 26 live
+  pages all beacon green (396-2219ms, E501's shadow pass the slowest);
+  43 wall items = ctest = registry; worktree clean; 14 commits ahead.
+- remaining native-only: E204 (load_pcl bytes needed), E205 (text labels
+  need the C text port semantics), E206 (load_tile_file bytes needed),
+  E303 (render_view_rects bridge, the largest face), E503 (strokes bridge
+  absent -- addPoints covers dots only), E504 (alpha hot-update semantics
+  via addMesh rebuild is possible but the native page teaches the material
+  hot path), E601/E70x/E801/E802/E810 (bench/window/CLI families, non-web),
+  E815/E816 (C twins cross-referenced), E817 (loadRasterDir bytes needed).
