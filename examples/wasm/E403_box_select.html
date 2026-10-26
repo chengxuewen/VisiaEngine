@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh"><head><meta charset="utf-8"><title>E403 框选</title>
-<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}#box{position:fixed;border:1px dashed #e8b339;pointer-events:none;display:none}</style></head>
-<body><p id="st">E403_box_select · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}#box{position:absolute;border:1px dashed #e8b339;pointer-events:none;display:none}</style></head>
+<body><p id="st">E403_box_select · 初始化…</p><div id="wrap" style="position:relative;width:640px;margin:2vh auto"><canvas id="c" width="640" height="480"></canvas><div id="box"></div></div>
 <div id="box"></div>
 <div id="hud">左键拖出矩形框选（相机不动）· <b>右键拖拽</b>环绕 · 滚轮缩放 · <b>R</b> 清空</div>
 <!-- gate-web load anchor -->
@@ -48,14 +48,20 @@ canvas.addEventListener('pointerdown', e => {
 });
 window.addEventListener('pointermove', e => {
   if (!drag) return;
-  const x = Math.min(drag.x, e.offsetX), y = Math.min(drag.y, e.offsetY);
-  const w = Math.abs(e.offsetX - drag.x), h = Math.abs(e.offsetY - drag.y);
+  // clamp into the canvas: offsetX/Y is canvas-local, but leaving the
+  // canvas hands the event to another element and the offsets jump.
+  const cx = Math.max(0, Math.min(640, e.offsetX));
+  const cy = Math.max(0, Math.min(480, e.offsetY));
+  const x = Math.min(drag.x, cx), y = Math.min(drag.y, cy);
+  const w = Math.abs(cx - drag.x), h = Math.abs(cy - drag.y);
   box.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;display:block`;
 });
 window.addEventListener('pointerup', e => {
   if (!drag) return;
-  const x0 = Math.min(drag.x, e.offsetX), y0 = Math.min(drag.y, e.offsetY);
-  const x1 = Math.max(drag.x, e.offsetX), y1 = Math.max(drag.y, e.offsetY);
+  const cx = Math.max(0, Math.min(640, e.offsetX));
+  const cy = Math.max(0, Math.min(480, e.offsetY));
+  const x0 = Math.min(drag.x, cx), y0 = Math.min(drag.y, cy);
+  const x1 = Math.max(drag.x, cx), y1 = Math.max(drag.y, cy);
   drag = null; box.style.display = 'none';
   if (x1 - x0 < 8 || y1 - y0 < 8) return;   // a click, not a band: ignore
   const hit = new Set();
