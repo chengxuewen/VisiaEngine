@@ -30,9 +30,16 @@ eng.addMesh(P, NRM, IDX, Float32Array.from([0.22, 0.26, 0.3, 1]),
   Float64Array.from([0, -0.52, 0]), 0, 0);
 
 const NAME = ['正交', '透视'];
-const echo = () => {
+// G reads the FULL pose back (mode + framing numbers), so the query has
+// visible output even when nothing changed: mode / dist / zoom.
+const echo = full => {
   const p = eng.getProjection() === 1;
-  st.textContent = `当前: ${NAME[p ? 1 : 0]}（P 透视 / O 正交 / G 读回）`;
+  if (!full) {
+    st.textContent = `当前: ${NAME[p ? 1 : 0]}（P 透视 / O 正交 / G 读回）`;
+    return;
+  }
+  const pose = eng.getCameraPose();
+  st.textContent = `读回: ${NAME[p ? 1 : 0]} · dist=${pose[5].toFixed(1)}m · zoom(半宽)=${pose[6].toFixed(1)}m · fov=${pose[7].toFixed(2)}rad`;
 };
 // ortho half-width = zoom (meters); persp framing = dist. Keep the view
 // continuous across the switch: on O the zoom takes the persp eye distance,
@@ -57,7 +64,7 @@ window.addEventListener('keydown', e => {
                  d, Math.max(1.0, d / 2.2), 0.9], 0);
     }
     echo();
-  } else if (e.key === 'g' || e.key === 'G') echo();
+  } else if (e.key === 'g' || e.key === 'G') echo(true);
 });
 veOrbit(canvas, eng);
 eng.setProjection(true);
