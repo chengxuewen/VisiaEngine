@@ -450,12 +450,12 @@
     {
       "id": "E817_two_layer_map",
       "band": 8,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "c"
       ],
       "title": "双层地图",
-      "desc": "空帧/单层/双序叠放/重挂字节级一致（带 T 修订条款）。",
+      "desc": "空帧/单层/双序叠放/重挂字节级一致（带 T 修订条款）。（web: raster_over 底 + vector 顶 bytes 双挂，同域 z10）",
       "how": "ctest -R example_E817_two_layer_map"
     },
     {

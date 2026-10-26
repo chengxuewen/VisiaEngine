@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E817 双层图</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E817_two_layer_map · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud">raster 底层 + vector 顶层（同域 z10）· RASTER_UNDERLAY_Z 仅在双 kind 并挂时压底</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E817_two_layer_map" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E817 (band T): a raster underlay and a vector overlay
+// in the SAME tile domain (resources/data/raster_over is the vector-domain
+// re-key of the four raster fixtures -- the two original fixture domains
+// sit on opposite sides of the planet and never share a frame). Both mounts
+// ride bytes: loadRasterBytes x4 (underlay) + loadTileBytes x9 (overlay).
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+st.textContent = '挂 raster 底层（z10 0..1）…';
+for (let x = 0; x <= 1; x++) {
+  for (let y = 0; y <= 1; y++) {
+    const bytes = new Uint8Array(
+      await (await fetch(`./raster_over/10/${x}/${y}.png`)).arrayBuffer());
+    const rc = eng.loadRasterBytes(10, x, y, bytes);
+    if (rc < 0) { st.textContent = `raster ${x}/${y} rc=${rc}`; throw new Error('raster'); }
+  }
+}
+st.textContent = '挂 vector 顶层（z10 0..2）…';
+for (let x = 0; x <= 2; x++) {
+  for (let y = 0; y <= 2; y++) {
+    const bytes = new Uint8Array(
+      await (await fetch(`./tiles/10/${x}/${y}.mvt`)).arrayBuffer());
+    const rc = eng.loadTileBytes(10, x, y, bytes);
+    if (rc < 0) { st.textContent = `tile ${x}/${y} rc=${rc}`; throw new Error('tile'); }
+  }
+}
+st.textContent = '就绪（双层并挂：raster 压底 + vector 顶绘）';
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E817_two_layer_map?t=' + Date.now();
+</script></body></html>

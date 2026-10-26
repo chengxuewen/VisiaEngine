@@ -164,6 +164,10 @@ function(visiaengine_wasm)
   list(APPEND _copy_cmds
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
             "${CMAKE_SOURCE_DIR}/resources/data/tiles" "${_serve_dir}/tiles")
+  # the vector-domain raster fixtures (E817 web face, band-T same-domain pair)
+  list(APPEND _copy_cmds
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${CMAKE_SOURCE_DIR}/resources/data/raster_over" "${_serve_dir}/raster_over")
 
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   set(_serve_script "${CMAKE_BINARY_DIR}/polyorch-wasm-serve-8017.py")

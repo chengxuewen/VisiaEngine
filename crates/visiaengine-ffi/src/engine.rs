@@ -1218,6 +1218,71 @@ impl Engine {
     /// Camera fit mirrors load_mvt_dir (ortho top-down). Returns the tile
     /// count. claim discipline (N1.2): flat raster basemap — NOT terrain,
     /// no drape, no LOD.
+    /// Single raster-tile bytes injection (the wasm face; the C dir scan
+    /// wraps the same quad-baking tail). Kind = Raster.
+    pub fn load_raster_bytes(
+        &mut self,
+        z: u8,
+        x: u32,
+        y: u32,
+        bytes: &[u8],
+    ) -> Result<u64, String> {
+        let id = visiaengine_io_tiles::TileId::new(z, x, y)
+            .ok_or_else(|| format!("tile id out of range: {z}/{x}/{y}"))?;
+        let source = visiaengine_io_tiles::MemSource::new();
+        source.insert(z, x, y, bytes.to_vec());
+        let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
+            .map_err(|e| format!("tiles: {e:?}"))?;
+        set.ensure(&[id]).map_err(|e| format!("tiles ensure: {e:?}"))?;
+        if set.decoded_raster(&id).is_none() {
+            return Err(format!("raster decode failed: {z}/{x}/{y}"));
+        }
+        // Raster quad tail, single tile (mirrors load_raster_dir's batch).
+        let (min_x, min_y, max_x, max_y) = union_bbox(&[id]);
+        let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
+        let tile_w = visiaengine_io_tiles::WORLD_EXTENT / f64::from(1u32 << z);
+        let mut quads: Vec<[([f32; 3], [f32; 2]); 4]> = Vec::new();
+        if set.decoded_raster(&id).is_some() {
+            let (x0, y1) = (
+                -visiaengine_io_tiles::WORLD_EXTENT / 2.0 + f64::from(id.x) * tile_w,
+                visiaengine_io_tiles::WORLD_EXTENT / 2.0 - f64::from(id.y) * tile_w,
+            );
+            let (x1, y0) = (x0 + tile_w, y1 - tile_w);
+            quads.push([
+                ([((x0 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0], [0.0f32, 0.0]),
+                ([((x1 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0], [1.0, 0.0]),
+                ([((x1 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0], [1.0, 1.0]),
+                ([((x0 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0], [0.0, 1.0]),
+            ]);
+        }
+        let count = quads.len() as u64;
+        if self.layers.is_empty() {
+            let radius = ((max_x - min_x) / 2.0).max((max_y - min_y) / 2.0) * FIT_PAD;
+            self.mode = Proj::Ortho;
+            self.zoom = radius.max(10.0);
+            self.rig = CameraRig::look_at(
+                [center[0], center[1], radius.max(10.0)],
+                center,
+                [0.0, 1.0, 0.0],
+            );
+        }
+        self.mount_layer(TileLayer {
+            kind: LayerKind::Raster,
+            set,
+            ids: vec![id],
+            http: false,
+            center,
+            wpos: Vec::new(),
+            widx: Vec::new(),
+            strokes: Vec::new(),
+            points: Vec::new(),
+            raster_quads: quads,
+            raster_gpu: Vec::new(),
+            uploaded: None,
+        });
+        Ok(count)
+    }
+
     pub fn load_raster_dir(&mut self, path: &str, z: u8) -> Result<u64, String> {
         let source = visiaengine_io_tiles::FileSource::raster(path);
         let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))

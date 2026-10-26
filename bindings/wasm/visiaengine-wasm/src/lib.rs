@@ -363,6 +363,15 @@ impl VisiaEngine {
         }
     }
 
+    /// Single raster-tile bytes injection (0 = mounted quads, negative = rejected).
+    #[wasm_bindgen(js_name = loadRasterBytes)]
+    pub fn load_raster_bytes(&mut self, z: u32, x: u32, y: u32, data: &[u8]) -> i32 {
+        match (u8::try_from(z), self.inner.load_raster_bytes(z as u8, x, y, data)) {
+            (Ok(_), Ok(n)) => n as i32,
+            _ => -1,
+        }
+    }
+
     #[wasm_bindgen(js_name = loadRasterDir)]
     pub fn load_raster_dir(&mut self, path: &str, z: u32) -> i32 {
         match u8::try_from(z) {
