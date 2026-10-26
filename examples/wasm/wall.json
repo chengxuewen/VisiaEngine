@@ -253,12 +253,12 @@
     {
       "id": "E508_pbr_materials",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "PBR 材质球",
-      "desc": "金属度/粗糙度参数材质球阵。",
+      "desc": "金属度/粗糙度参数材质球阵。（web: 材质球三联粗糙度×金属度，1 bloom / 2 outline / 3 全关；mock specular）",
       "how": "ctest -R example_E508_pbr_materials"
     },
     {
@@ -275,12 +275,12 @@
     {
       "id": "E510_route_flow",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "路径流动",
-      "desc": "路线沿线流动动画（导航观感带）。",
+      "desc": "路线沿线流动动画（导航观感带）。（web: S 曲线 64 定点 + 12 点流动窗（逐帧换云），空格暂停）",
       "how": "ctest -R example_E510_route_flow"
     },
     {

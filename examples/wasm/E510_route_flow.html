@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E510 航线流</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E510_route_flow · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>空格</b> 暂停/继续 · S 曲线上 24 点流（标记沿 CatmullRom 巡航）· 拖拽环绕</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E510_route_flow" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E510: CatmullRom route + a flow of point markers
+// riding it (PointMark family). The route is static addPoints dots along
+// the full curve; the moving markers are a second cloud rebuilt per frame
+// via removeEntity+addPoints (the sampling window slides with u). The
+// endpoint law (REND-47) is honored by sampling t in [0,1] inclusive.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const MISS = 0xFFFFFFFFFFFFFFFFn;
+// S-curved knots (XZ, y=1.2 cruise)
+const KNOTS = [[-6, 0], [-3, 2.5], [0, -2.5], [3, 2.5], [6, 0]];
+const catmull = (p0, p1, p2, p3, t) => 0.5 * (
+  2 * p1 + (-p0 + p2) * t +
+  (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t +
+  (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+const posAt = u => {
+  const n = KNOTS.length, f = Math.min(0.9999, Math.max(0, u)) * (n - 1);
+  const i = Math.floor(f), t = f - i;
+  const g = k => KNOTS[Math.min(n - 1, Math.max(0, k))];
+  const [p0, p1, p2, p3] = [g(i - 1), g(i), g(i + 1), g(i + 2)];
+  return [catmull(p0[0], p1[0], p2[0], p3[0], t), 1.2,
+          catmull(p0[1], p1[1], p2[1], p3[1], t)];
+};
+// static route dots (the full curve, dim)
+const ROUTE_N = 64;
+const routeMarks = new Float32Array(ROUTE_N * 8);
+for (let k = 0; k < ROUTE_N; k++) {
+  const [x, y, z] = posAt(k / (ROUTE_N - 1));
+  routeMarks.set([x, y, z, 2.5, 0.4, 0.5, 0.65], k * 8);
+}
+if (eng.addPoints(routeMarks) === MISS) { veFail(st, 'route addPoints failed'); throw new Error('route'); }
+// ground pad
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.22, 0.26, 0.3, 1]),
+  Float64Array.from([0, -0.52, 0]), 0, 0);
+
+// flowing markers: a sliding sampling window (12 points), cloud swapped per frame
+const FLOW_N = 12;
+let flowEnt = null;
+let playing = true, t0 = performance.now(), LOOP_MS = 8000;
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (playing) { pauseAt = performance.now() - t0; playing = false; }
+    else { t0 = performance.now() - pauseAt; playing = true; }
+    st.textContent = playing ? '流动中（空格暂停）' : '已暂停（空格继续）';
+  }
+});
+let pauseAt = 0;
+const tick = () => {
+  if (!playing) return;
+  const u0 = (((performance.now() - t0) % LOOP_MS) / LOOP_MS);
+  if (flowEnt !== null) eng.removeEntity(flowEnt);
+  const marks = new Float32Array(FLOW_N * 8);
+  for (let k = 0; k < FLOW_N; k++) {
+    const [x, y, z] = posAt((u0 + k / (FLOW_N * 3)) % 1);
+    const fade = 1 - k / FLOW_N;   // head bright, tail dim
+    marks.set([x, y, z, 5, 1 * fade + 0.1, 0.9 * fade, 0.2], k * 8);
+  }
+  flowEnt = eng.addPoints(marks);
+};
+veOrbit(canvas, eng);
+await veLoop(eng, tick);
+st.textContent = '流动中（空格暂停）';
+new Image().src = '/ve-gate-ready/E510_route_flow?t=' + Date.now();
+</script></body></html>
