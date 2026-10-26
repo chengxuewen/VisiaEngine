@@ -264,12 +264,12 @@
     {
       "id": "E509_ssao",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "环境光遮蔽",
-      "desc": "SSAO 开关对照（凹角变暗的真相）。",
+      "desc": "SSAO 开关对照（凹角变暗的真相）。（web: 1 开关 / 2+0.5 / 3−0.5 / 0 全关，密集塔群看接触阴影）",
       "how": "ctest -R example_E509_ssao"
     },
     {
@@ -286,12 +286,12 @@
     {
       "id": "E511_gate",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "渲染闸门自检",
-      "desc": "带门控的渲染回归场景（验收用）。",
+      "desc": "带门控的渲染回归场景（验收用）。（web: 空格开/合门叶，绕枢轴旋转动画，同几何双叶异变换）",
       "how": "ctest -R example_E511_gate"
     },
     {

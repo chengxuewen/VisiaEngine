@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E509 SSAO</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E509_ssao · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>1</b> SSAO 开关 · <b>2</b> 强度 +0.5（帽 4.0）· <b>3</b> −0.5（底 0.5）· <b>0</b> 全关 · 密集塔群看接触阴影</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E509_ssao" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E509: SSAO toggle + intensity walk (WGPU-36, depth-only
+// v1). A dense tower cluster makes the contact darkening readable; the same
+// flat post bridge as E506, intensity rebuilt per keypress.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+// 3x3 tower cluster, tight spacing = creases everywhere
+for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+  const h = 2 + ((i * 3 + j) % 3) * 1.5;
+  eng.addMesh(P, NRM, IDX,
+    Float32Array.from([0.55, 0.55, 0.6, 1]),
+    Float64Array.from([-2.4 + i * 2.4, 0, -2.4 + j * 2.4]), 0.5, 0);
+}
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.22, 0.26, 0.3, 1]),
+  Float64Array.from([0, -0.52, 0]), 0, 0);
+
+let on = false, intensity = 1.5;
+const apply = () => {
+  const post = on ? [3, 4.0, intensity] : [];
+  const rc = eng.setPostEffects(Float64Array.from(post));
+  st.textContent = rc === 0
+    ? (on ? `SSAO on（radius 4.0, intensity ${intensity.toFixed(1)}）` : 'SSAO off（1 开）')
+    : `setPostEffects rc=${rc}`;
+};
+window.addEventListener('keydown', e => {
+  if (e.key === '1') on = !on;
+  else if (e.key === '2' && on) intensity = Math.min(4.0, intensity + 0.5);
+  else if (e.key === '3' && on) intensity = Math.max(0.5, intensity - 0.5);
+  else if (e.key === '0') { on = false; }
+  else return;
+  apply();
+});
+veOrbit(canvas, eng);
+apply();
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E509_ssao?t=' + Date.now();
+</script></body></html>

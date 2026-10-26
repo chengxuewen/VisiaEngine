@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E511 闸门</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E511_gate · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>空格</b> 开/合门叶（绕柱旋转动画）· 两叶同枢对称开合</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E511_gate" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E511: two gate leaves rotating around their hinge
+// posts (the two leaves share one geometry, differing only by transform --
+// the DrawMesh.transform teaching point). Page-side animation rides
+// setNodeTransform per frame; the clock is ours (PIT-81: veLoop passes
+// no args).
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+// flat box geometry (3 wide, 4 tall, 0.2 thick, centered) for the leaves
+const LW = 3, LH = 4, LT = 0.2;
+const BOX = Float32Array.from([
+  -LW/2,-LH/2,-LT/2,  LW/2,-LH/2,-LT/2,  LW/2,LH/2,-LT/2,  -LW/2,LH/2,-LT/2,
+  -LW/2,-LH/2, LT/2,  LW/2,-LH/2, LT/2,  LW/2,LH/2, LT/2,  -LW/2,LH/2, LT/2]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+// posts + lintel (dark stone); leaves hinge at the inner edges of the posts
+const MAT = Float32Array.from([0.35, 0.33, 0.3, 1]);
+const POST = (x, z, sx, sy, sz) => {
+  const b = Float32Array.from(BOX);
+  for (let k = 0; k < b.length; k += 3) {
+    b[k] = b[k] / LW * sx; b[k+1] = b[k+1] / LH * sy; b[k+2] = b[k+2] / LT * sz;
+  }
+  eng.addMesh(b, NRM, IDX, MAT, Float64Array.from([x, sy / 2 - 0.5, z]), 0.6, 0);
+};
+POST(-3.2, 0, 0.4, 4.6, 0.4);   // left post
+POST(3.2, 0, 0.4, 4.6, 0.4);    // right post
+POST(0, 0, 6.8, 0.4, 0.4);      // lintel across the top
+eng.addMesh(BOX, NRM, IDX, Float32Array.from([0.75, 0.6, 0.25, 1]),
+  Float64Array.from([-1.5, 1.5, 0]), 0.5, 0);   // left leaf (hinge at x=-3)
+eng.addMesh(BOX, NRM, IDX, Float32Array.from([0.75, 0.6, 0.25, 1]),
+  Float64Array.from([1.5, 1.5, 0]), 0.5, 0);    // right leaf (hinge at x=+3)
+
+// leaves: rotation about the hinge = translate to hinge, rotate, translate back.
+// setNodeTransform takes a column-major 4x4: R * T(hinge) applied to the leaf
+// centered at origin; we bake the centered shape by passing origin=0 meshes.
+// Simpler faithful form: keep the leaf meshes as addMesh'd (offset baked),
+// and animate a small rotation by rebuilding the matrix per frame.
+const HINGE_L = -3.0, HINGE_R = 3.0;
+let ents = null;
+const makeLeaves = () => {
+  if (ents) { for (const h of ents) eng.removeEntity(h); }
+  ents = [
+    eng.addMesh(BOX, NRM, IDX, Float32Array.from([0.75, 0.6, 0.25, 1]),
+      Float64Array.from([0, 0, 0]), 0.5, 0),
+    eng.addMesh(BOX, NRM, IDX, Float32Array.from([0.75, 0.6, 0.25, 1]),
+      Float64Array.from([0, 0, 0]), 0.5, 0),
+  ];
+};
+makeLeaves();
+const LEAF = 2.95;   // leaf half-width reach from hinge when closed
+
+const poseLeaf = (h, hingeX, sign, theta) => {
+  // closed: leaf extends from hinge toward center (dir = -sign)
+  // open: rotated by theta around Y at the hinge
+  const c = Math.cos(theta), s = Math.sin(theta);
+  // R_y * [dx,0,0] where dx = sign*LEAF/2 (leaf center offset from hinge)
+  const dx = -sign * LEAF / 2;
+  const cx = hingeX + dx * c, cz = -dx * s;   // R_y: x' = x c + z s; z' = -x s + z c (z=0)
+  eng.setNodeTransform(h, Float64Array.from([
+    c, 0, s, 0,
+    0, 1, 0, 0,
+    -s, 0, c, 0,
+    cx, 1.5, cz, 1]));
+};
+
+let open = false, anim0 = null;
+const DUR = 900;
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    open = !open;
+    anim0 = performance.now();
+    st.textContent = open ? '开门中…' : '关门中…';
+  }
+});
+const tick = () => {
+  if (anim0 === null) return;
+  const u = Math.min(1, (performance.now() - anim0) / DUR);
+  const ease = u * u * (3 - 2 * u);   // smoothstep
+  const theta = (open ? ease : 1 - ease) * (Math.PI / 2) * 0.92;
+  poseLeaf(ents[0], HINGE_L, -1, theta);
+  poseLeaf(ents[1], HINGE_R, 1, theta);
+  if (u >= 1) { anim0 = null; st.textContent = open ? '门已开（空格合上）' : '门已关（空格打开）'; }
+};
+veOrbit(canvas, eng);
+await veLoop(eng, tick);
+poseLeaf(ents[0], HINGE_L, -1, 0);
+poseLeaf(ents[1], HINGE_R, 1, 0);
+st.textContent = '门已关（空格打开）';
+new Image().src = '/ve-gate-ready/E511_gate?t=' + Date.now();
+</script></body></html>
