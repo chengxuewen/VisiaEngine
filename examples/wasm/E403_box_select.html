@@ -3,7 +3,7 @@
 <style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}#box{position:fixed;border:1px dashed #e8b339;pointer-events:none;display:none}</style></head>
 <body><p id="st">E403_box_select · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
 <div id="box"></div>
-<div id="hud">左键拖出矩形框选（框内柱子抬升）· 拖拽从空白处开始 = 环绕 · <b>R</b> 清空</div>
+<div id="hud">左键拖出矩形框选（相机不动）· <b>右键拖拽</b>环绕 · 滚轮缩放 · <b>R</b> 清空</div>
 <!-- gate-web load anchor -->
 <img src="/ve-gate-ready/E403_box_select" alt="" style="display:none">
 <script src="./common.js"></script>
@@ -43,16 +43,16 @@ const echo = () => {
 };
 
 let drag = null;
-canvas.addEventListener('mousedown', e => {
+canvas.addEventListener('pointerdown', e => {
   if (e.button === 0) drag = { x: e.offsetX, y: e.offsetY };
 });
-window.addEventListener('mousemove', e => {
+window.addEventListener('pointermove', e => {
   if (!drag) return;
   const x = Math.min(drag.x, e.offsetX), y = Math.min(drag.y, e.offsetY);
   const w = Math.abs(e.offsetX - drag.x), h = Math.abs(e.offsetY - drag.y);
   box.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;display:block`;
 });
-window.addEventListener('mouseup', e => {
+window.addEventListener('pointerup', e => {
   if (!drag) return;
   const x0 = Math.min(drag.x, e.offsetX), y0 = Math.min(drag.y, e.offsetY);
   const x1 = Math.max(drag.x, e.offsetX), y1 = Math.max(drag.y, e.offsetY);
@@ -76,7 +76,28 @@ window.addEventListener('keydown', e => {
     echo();
   }
 });
-veOrbit(canvas, eng);
+// Left button belongs to the band (native semantics: L=band, camera still);
+// right-drag orbits via the raw input path so the scene stays navigable.
+// veOrbit cannot be used here: its left-button orbit fought the band --
+// the camera spun WHILE selecting, so the mouseup lattice swept a rotated
+// scene (the pick results were garbage by construction).
+let orbiting = null;
+canvas.addEventListener('pointerdown', e => {
+  if (e.button === 2) { orbiting = [e.offsetX, e.offsetY]; eng.input(2, e.offsetX, e.offsetY, 0); }
+});
+canvas.addEventListener('pointermove', e => {
+  if (orbiting && e.buttons & 2) { eng.input(1, e.offsetX, e.offsetY, 0); orbiting = [e.offsetX, e.offsetY]; }
+});
+canvas.addEventListener('pointerup', e => {
+  if (e.button === 2) { eng.input(3, e.offsetX, e.offsetY, 0); orbiting = null; }
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const p = eng.getCameraPose();
+  const k = e.deltaY > 0 ? 0.9 : 1.1;
+  eng.flyTo([p[0], p[1], p[2], p[3], p[4], Math.max(1, p[5] * k), p[6], p[7]], 0);
+}, { passive: false });
 await veLoop(eng);
 echo();
 new Image().src = '/ve-gate-ready/E403_box_select?t=' + Date.now();
