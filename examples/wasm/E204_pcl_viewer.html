@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E204 点云</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E204_pcl_viewer · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>L</b> 加载 PLY fixture（loadPclBytes 加载路）· 程序化螺旋常显 · 拖拽环绕</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E204_pcl_viewer" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E204: the deterministic spiral cloud (programmatic =
+// assertable) plus the loadPclBytes loading road (L fetches the committed
+// PLY fixture and injects it -- the bytes form the C path face wraps).
+// Spiral colors ride the sRGB host face; the threshold follows the
+// point-count unit system.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const MISS = 0xFFFFFFFFFFFFFFFFn;
+// deterministic spiral (radius domain [-4,4], 600 points)
+const N = 600;
+const spiral = new Float32Array(N * 8);
+for (let i = 0; i < N; i++) {
+  const u = i / N;
+  const r = 0.5 + u * 3.5, a = u * Math.PI * 10;
+  const x = Math.cos(a) * r, z = Math.sin(a) * r, y = u * 5;
+  spiral.set([x, y, z, 4, 1 - u * 0.7, 0.4 + u * 0.5, 0.25 + u * 0.3], i * 8);
+}
+if (eng.addPoints(spiral) === MISS) { veFail(st, 'spiral addPoints failed'); throw new Error('spiral'); }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.22, 0.26, 0.3, 1]),
+  Float64Array.from([0, -0.52, 0]), 0, 0);
+
+let loaded = false;
+window.addEventListener('keydown', async e => {
+  if (e.key !== 'l' && e.key !== 'L') return;
+  if (loaded) return;
+  st.textContent = '拉取 pcl_tetra_ascii.ply…';
+  const bytes = new Uint8Array(await (await fetch('./pcl_tetra_ascii.ply')).arrayBuffer());
+  const h = eng.loadPclBytes(bytes, false);
+  if (h === MISS) { st.textContent = 'loadPclBytes 被拒'; return; }
+  loaded = true;
+  st.textContent = `PLY 已挂（tetra ascii）—— 加载路闭环`;
+});
+veOrbit(canvas, eng);
+st.textContent = '螺旋就绪（L 加载 PLY fixture）';
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E204_pcl_viewer?t=' + Date.now();
+</script></body></html>

@@ -45,12 +45,12 @@
     {
       "id": "E204_pcl_viewer",
       "band": 2,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "点云查看",
-      "desc": "PLY 点云（ASCII/二进制）载入渲染——点带首秀。",
+      "desc": "PLY 点云（ASCII/二进制）载入渲染——点带首秀。（web: 程序化螺旋常显，L 加载 PLY fixture）",
       "how": "ctest -R example_E204_pcl_viewer"
     },
     {
