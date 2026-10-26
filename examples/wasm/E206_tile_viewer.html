@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E206 瓦片</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E206_tile_viewer · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud">3x3 MVT 网格（bytes 注入）· 拖拽平移 · 滚轮缩放（正交半宽）</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E206_tile_viewer" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E206: the z10 3x3 tile neighborhood. The web face
+// injects each tile via loadTileBytes (MemSource; the C faces scan a
+// directory or an HTTP root -- same ensure+decode+fit tail per the band-T
+// clause). First-mount camera fit is engine-side (the tiles live around
+// x=-2e7 in 3857 meters; without the fit everything is off-screen -- the
+// PIT-8 lesson that page learned the hard way).
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+st.textContent = '拉取 9 片 z10 瓦片…';
+let mounted = 0;
+for (let x = 0; x < 3; x++) {
+  for (let y = 0; y < 3; y++) {
+    const bytes = new Uint8Array(
+      await (await fetch(`./tiles/10/${x}/${y}.mvt`)).arrayBuffer());
+    const rc = eng.loadTileBytes(10, x, y, bytes);
+    if (rc < 0) { st.textContent = `tile ${x}/${y} rc=${rc}`; throw new Error('tile'); }
+    mounted += rc;
+  }
+}
+st.textContent = `就绪（9 片注入，${mounted} 面要挂载）`;
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E206_tile_viewer?t=' + Date.now();
+</script></body></html>

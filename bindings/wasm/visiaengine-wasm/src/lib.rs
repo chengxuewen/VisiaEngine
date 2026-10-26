@@ -354,6 +354,15 @@ impl VisiaEngine {
 
     // -- R band raster mirror (CAPI-39/40 thin leaves; tiled quad = non-terrain) --
     /// CAPI-39: mount a PNG raster tile directory. Return = mounted count; negative = rejected.
+    /// Single MVT tile bytes injection (the wasm face; 0 = mounted, negative = rejected).
+    #[wasm_bindgen(js_name = loadTileBytes)]
+    pub fn load_tile_bytes(&mut self, z: u32, x: u32, y: u32, data: &[u8]) -> i32 {
+        match (u8::try_from(z), self.inner.load_tile_bytes(z as u8, x, y, data)) {
+            (Ok(_), Ok(n)) => n as i32,
+            _ => -1,
+        }
+    }
+
     #[wasm_bindgen(js_name = loadRasterDir)]
     pub fn load_raster_dir(&mut self, path: &str, z: u32) -> i32 {
         match u8::try_from(z) {

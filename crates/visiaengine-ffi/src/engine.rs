@@ -2092,50 +2092,36 @@ impl Engine {
     }
 
     /// CAPI-28: mount an MVT tile directory (FileSource; same scheme = geometry ready at load time, the view fed afterwards).
-    pub fn load_mvt_dir(&mut self, path: &str, z: u8) -> Result<u64, String> {
-        let source = visiaengine_io_tiles::FileSource::new(path);
+    /// Single-tile bytes injection (the wasm face; the C dir scan wraps the
+    /// same ensure+decode+fit tail). z/x/y domain-checked by TileId::new.
+    pub fn load_tile_bytes(
+        &mut self,
+        z: u8,
+        x: u32,
+        y: u32,
+        bytes: &[u8],
+    ) -> Result<u64, String> {
+        let id = visiaengine_io_tiles::TileId::new(z, x, y)
+            .ok_or_else(|| format!("tile id out of range: {z}/{x}/{y}"))?;
+        let source = visiaengine_io_tiles::MemSource::new();
+        source.insert(z, x, y, bytes.to_vec());
         let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
             .map_err(|e| format!("tiles: {e:?}"))?;
-        // enumerate the tiles actually present in the directory (z fixed; scan {path}/{z}/*/*.mvt)
-        let mut ids: Vec<visiaengine_io_tiles::TileId> = Vec::new();
-        let zdir = std::path::Path::new(path).join(z.to_string());
-        let entries =
-            std::fs::read_dir(&zdir).map_err(|e| format!("read_dir {}: {e}", zdir.display()))?;
-        for xentry in entries.flatten() {
-            let xname = xentry.file_name().to_string_lossy().into_owned();
-            let Ok(x) = xname.parse::<u32>() else {
-                continue;
-            };
-            let xdir = zdir.join(&xname);
-            let Ok(files) = std::fs::read_dir(&xdir) else {
-                continue;
-            };
-            for f in files.flatten() {
-                let fname = f.file_name().to_string_lossy().into_owned();
-                if let Some(ystr) = fname.strip_suffix(".mvt")
-                    && let Ok(y) = ystr.parse::<u32>()
-                    && let Some(id) = visiaengine_io_tiles::TileId::new(z, x, y)
-                {
-                    ids.push(id);
-                }
-            }
-        }
-        if ids.is_empty() {
-            return Err(format!("no .mvt tiles under {}/{z}", zdir.display()));
-        }
-        ids.sort_by_key(|i| (i.y, i.x));
-        set.ensure(&ids)
-            .map_err(|e| format!("tiles ensure: {e:?}"))?;
-        let decoded: Vec<_> = ids
-            .iter()
-            .map(|id| {
-                (
-                    *id,
-                    set.decoded(id)
-                        .map(|t| visiaengine_io_tiles::GeoTile::from_layers(*id, &t.layers)),
-                )
-            })
-            .collect();
+        set.ensure(&[id]).map_err(|e| format!("tiles ensure: {e:?}"))?;
+        let decoded = set
+            .decoded(&id)
+            .map(|t| visiaengine_io_tiles::GeoTile::from_layers(id, &t.layers));
+        self.mount_tile_layer(set, vec![id], vec![(id, decoded)])
+    }
+
+    /// Shared tile-layer mount tail (dir scan and bytes injection both land
+    /// here): bbox center fit on the first layer + GeoTile baking.
+    fn mount_tile_layer(
+        &mut self,
+        set: visiaengine_io_tiles::TileSet,
+        ids: Vec<visiaengine_io_tiles::TileId>,
+        decoded: Vec<(visiaengine_io_tiles::TileId, Option<visiaengine_io_tiles::GeoTile>)>,
+    ) -> Result<u64, String> {
         // scene center = center of the union bbox of all tiles (batch vertices baked into a center small-value-range frame).
         let (min_x, min_y, max_x, max_y) = union_bbox(&ids);
         let center = [(min_x + max_x) / 2.0, (min_y + max_y) / 2.0, 0.0];
@@ -2203,7 +2189,7 @@ impl Engine {
             }
         }
         let count = ids.len() as u64;
-        self.mount_layer(TileLayer {
+        let layer = TileLayer {
             kind: LayerKind::Vector,
             set,
             ids,
@@ -2216,9 +2202,57 @@ impl Engine {
             raster_quads: Vec::new(),
             raster_gpu: Vec::new(),
             uploaded: None,
-        });
+        };
+        self.mount_layer(layer);
         let _ = decoded;
         Ok(count)
+    }
+
+    pub fn load_mvt_dir(&mut self, path: &str, z: u8) -> Result<u64, String> {
+        let source = visiaengine_io_tiles::FileSource::new(path);
+        let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
+            .map_err(|e| format!("tiles: {e:?}"))?;
+        // enumerate the tiles actually present in the directory (z fixed; scan {path}/{z}/*/*.mvt)
+        let mut ids: Vec<visiaengine_io_tiles::TileId> = Vec::new();
+        let zdir = std::path::Path::new(path).join(z.to_string());
+        let entries =
+            std::fs::read_dir(&zdir).map_err(|e| format!("read_dir {}: {e}", zdir.display()))?;
+        for xentry in entries.flatten() {
+            let xname = xentry.file_name().to_string_lossy().into_owned();
+            let Ok(x) = xname.parse::<u32>() else {
+                continue;
+            };
+            let xdir = zdir.join(&xname);
+            let Ok(files) = std::fs::read_dir(&xdir) else {
+                continue;
+            };
+            for f in files.flatten() {
+                let fname = f.file_name().to_string_lossy().into_owned();
+                if let Some(ystr) = fname.strip_suffix(".mvt")
+                    && let Ok(y) = ystr.parse::<u32>()
+                    && let Some(id) = visiaengine_io_tiles::TileId::new(z, x, y)
+                {
+                    ids.push(id);
+                }
+            }
+        }
+        if ids.is_empty() {
+            return Err(format!("no .mvt tiles under {}/{z}", zdir.display()));
+        }
+        ids.sort_by_key(|i| (i.y, i.x));
+        set.ensure(&ids)
+            .map_err(|e| format!("tiles ensure: {e:?}"))?;
+        let decoded: Vec<_> = ids
+            .iter()
+            .map(|id| {
+                (
+                    *id,
+                    set.decoded(id)
+                        .map(|t| visiaengine_io_tiles::GeoTile::from_layers(*id, &t.layers)),
+                )
+            })
+            .collect();
+        self.mount_tile_layer(set, ids, decoded)
     }
 
     /// CAPI-35: mount an HTTP tile source (N1.4). HTTP has no directory

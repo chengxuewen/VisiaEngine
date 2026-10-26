@@ -160,6 +160,10 @@ function(visiaengine_wasm)
   list(APPEND _copy_cmds
     COMMAND "${CMAKE_COMMAND}" -E chdir "${_serve_dir}"
             "${CMAKE_COMMAND}" -E copy_directory "${_pkgroot}/pkg-web" pkg)
+  # the z10 tile neighborhood (E206 web face fetches tiles/10/x/y.mvt)
+  list(APPEND _copy_cmds
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${CMAKE_SOURCE_DIR}/resources/data/tiles" "${_serve_dir}/tiles")
 
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   set(_serve_script "${CMAKE_BINARY_DIR}/polyorch-wasm-serve-8017.py")

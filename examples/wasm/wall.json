@@ -67,12 +67,12 @@
     {
       "id": "E206_tile_viewer",
       "band": 2,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "瓦片流览",
-      "desc": "地图瓦片分层流式装载与调度。",
+      "desc": "地图瓦片分层流式装载与调度。（web: 3x3 网格 loadTileBytes 注入，首层自动相机 fit）",
       "how": "ctest -R example_E206_tile_viewer"
     },
     {

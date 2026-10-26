@@ -26,6 +26,35 @@ pub enum SourceError {
 /// frames; a thread pool would be YAGNI for file sources). The trait is the
 /// seam where an async HTTP implementation lands in Phase 1 without touching
 /// the scheduler.
+/// In-memory source (the wasm face has no filesystem; the C path sources
+/// wrap it). Seeded per tile via `insert`.
+#[derive(Default)]
+pub struct MemSource {
+    tiles: std::sync::Mutex<std::collections::HashMap<(u8, u32, u32), Vec<u8>>>,
+}
+
+impl MemSource {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn insert(&self, z: u8, x: u32, y: u32, bytes: Vec<u8>) {
+        self.tiles.lock().expect("mem source").insert((z, x, y), bytes);
+    }
+}
+
+impl TileSource for MemSource {
+    fn load(&self, z: u8, x: u32, y: u32) -> Result<Vec<u8>, SourceError> {
+        self.tiles
+            .lock()
+            .expect("mem source")
+            .get(&(z, x, y))
+            .cloned()
+            .ok_or_else(|| SourceError::NotFound(format!("mem: no tile {z}/{x}/{y}")))
+    }
+}
+
 pub trait TileSource: Send {
     fn load(&self, z: u8, x: u32, y: u32) -> Result<Vec<u8>, SourceError>;
 }
