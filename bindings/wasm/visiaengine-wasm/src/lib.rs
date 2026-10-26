@@ -352,6 +352,15 @@ impl VisiaEngine {
         }
     }
 
+    /// Bytes form of the HDR environment (the web face has no filesystem).
+    #[wasm_bindgen(js_name = loadEnvHdrBytes)]
+    pub fn load_env_hdr_bytes(&mut self, data: &[u8]) -> i32 {
+        match self.inner.load_env_hdr_bytes(data) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
     // -- Scene-tree mirror (CAPI-30..34 thin leaves) --
     /// CAPI-30: create a group node (returns the handle; 0 = err). name = NULL is passed as an empty string.
     #[wasm_bindgen(js_name = createGroup)]

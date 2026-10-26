@@ -242,12 +242,12 @@
     {
       "id": "E507_hdr_tonemap",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "HDR 色调映射",
-      "desc": "demo_sky.hdr 环境 + 可换 tonemapper。",
+      "desc": "demo_sky.hdr 环境 + 可换 tonemapper。（web: demo_sky.hdr bytes 注入 SH9 环境光）",
       "how": "ctest -R example_E507_hdr_tonemap"
     },
     {

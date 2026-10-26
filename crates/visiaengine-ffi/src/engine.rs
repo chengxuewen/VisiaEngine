@@ -1390,7 +1390,12 @@ impl Engine {
     /// separate ticket. Returns 0 on success.
     pub fn load_env_hdr(&mut self, path: &str) -> Result<(), String> {
         let bytes = std::fs::read(path).map_err(|e| format!("read {path}: {e}"))?;
-        let img = visiaengine_io_hdr::decode_hdr(&bytes).map_err(|e| e.to_string())?;
+        self.load_env_hdr_bytes(&bytes)
+    }
+
+    /// Bytes entry (the wasm face has no filesystem; the C path form wraps this).
+    pub fn load_env_hdr_bytes(&mut self, bytes: &[u8]) -> Result<(), String> {
+        let img = visiaengine_io_hdr::decode_hdr(bytes).map_err(|e| e.to_string())?;
         let sh = visiaengine_io_hdr::project_sh9(&img, 256);
         self.env_sh = Some(sh);
         self.backend.set_env_sh(sh);
