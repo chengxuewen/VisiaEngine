@@ -104,6 +104,23 @@ impl VisiaEngine {
         }
     }
 
+    /// Discrete projection switch (N2.1 seam): true = persp, false = ortho; clears the morph envelope.
+    #[wasm_bindgen(js_name = setProjection)]
+    pub fn set_projection(&mut self, persp: bool) -> i32 {
+        self.inner.set_projection(if persp {
+            visiaengine::Proj::Persp
+        } else {
+            visiaengine::Proj::Ortho
+        });
+        0
+    }
+
+    /// Current discrete mode (true = persp). Morph outranks when active.
+    #[wasm_bindgen(js_name = getProjection)]
+    pub fn get_projection(&self) -> i32 {
+        i32::from(self.inner.projection_is_persp())
+    }
+
     // -- N2.1 projection-morph mirror (REND-41 thin leaf) --
     /// Continuous projection morph, t clamps into [0,1] (NaN -> 0); 0 = ortho bytes, 1 = persp bytes.
     #[wasm_bindgen(js_name = setMorphTime)]

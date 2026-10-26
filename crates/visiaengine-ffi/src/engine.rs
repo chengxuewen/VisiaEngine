@@ -1642,6 +1642,12 @@ impl Engine {
         self.morph = None;
     }
 
+    /// Current discrete mode (true = persp). The morph envelope outranks it when active.
+    #[must_use]
+    pub fn projection_is_persp(&self) -> bool {
+        matches!(self.mode, Proj::Persp)
+    }
+
     /// N2.1 test seam (rs-only): full RGBA bytes of the last rendered frame
     /// (None = nothing rendered yet). Byte-comparison consumer for the
     /// endpoint canaries.

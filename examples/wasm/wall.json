@@ -78,12 +78,12 @@
     {
       "id": "E301_switch_camera",
       "band": 3,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "机位切换",
-      "desc": "多预设相机一键互切，插值过渡。",
+      "desc": "多预设相机一键互切，插值过渡。（web: P/O 离散切换透视/正交，G 读回；退行柱列对照纵深）",
       "how": "ctest -R example_E301_switch_camera"
     },
     {
