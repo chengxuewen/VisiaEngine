@@ -231,12 +231,12 @@
     {
       "id": "E506_postprocessing",
       "band": 5,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "后处理链",
-      "desc": "后处理开关矩阵（bloom 等）对照。",
+      "desc": "后处理开关矩阵（bloom 等）对照。（web: 1 bloom / 2 outline / 4 haze / 3 全关 / 5 EDL，单桥扁平链）",
       "how": "ctest -R example_E506_postprocessing"
     },
     {

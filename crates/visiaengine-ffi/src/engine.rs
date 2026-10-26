@@ -117,6 +117,8 @@ pub struct Engine {
     clip: Option<visiaengine_render::ClipSetup>,
     /// CAPI band N1.5: EDL opt-in switch (None=off, byte-identical legacy path).
     edl: Option<visiaengine_render::EdlSetup>,
+    /// N4 post-effect chain (empty = the bit-for-bit legacy path).
+    post: Vec<visiaengine_render::PostEffect>,
     /// CAPI-23: flight thruster (wall clock lives in the engine -- the layering decision behind zero std::time in the render crate;
     /// None = merged idle/done state)
     fly: Option<Fly>,
@@ -342,6 +344,7 @@ impl Engine {
             node_names: std::collections::HashMap::new(),
             clip: None,
             edl: None,
+            post: Vec::new(),
             fly: None,
             map: None,
             font: None,
@@ -1094,7 +1097,7 @@ impl Engine {
             shadow: None,
             clip: self.clip,
             edl: self.edl,
-            post: Vec::new(),
+            post: self.post.clone(),
             commands,
         };
         // 5b second wave: map = Some -> main full-face + minimap corner window, dual projection; None -> the old single-frame path (canary construction fidelity)
@@ -1124,7 +1127,7 @@ impl Engine {
                 shadow: None,
                 clip: self.clip,
                 edl: self.edl,
-                post: Vec::new(),
+                post: self.post.clone(),
                 commands: frame.commands.clone(),
             };
             let passes = [(frame, ViewportRect::full(self.w, self.h)), (map_frame, r)];
@@ -1688,6 +1691,45 @@ impl Engine {
             } else {
                 MorphT(v.clamp(0.0, 1.0))
             }
+        });
+    }
+
+    /// Post-effect chain (flat triplets [kind, p1, p2, ...]): 0=bloom(strength)
+    /// 1=outline(width) 2=tonemap(mode) 3=ssao(radius,intensity) 4=haze(start,full).
+    /// Empty = clear. Invalid kind / non-finite param = Err (zero side effects).
+    pub fn set_post_effects(&mut self, flat: &[f64]) -> Result<(), String> {
+        if flat.len() % 3 != 0 {
+            return Err("set_post_effects: len%3 != 0".into());
+        }
+        let mut post = Vec::new();
+        for t in flat.chunks_exact(3) {
+            let f = |v: f64, name: &str| -> Result<f32, String> {
+                let x = v as f32;
+                if x.is_finite() { Ok(x) } else { Err(format!("set_post_effects: {name} non-finite")) }
+            };
+            post.push(match t[0] as u32 {
+                0 => visiaengine_render::PostEffect::Bloom { strength: f(t[1], "strength")? },
+                1 => visiaengine_render::PostEffect::Outline { width: f(t[1], "width")? },
+                2 => visiaengine_render::PostEffect::Tonemap { mode: t[1] as u32 },
+                3 => visiaengine_render::PostEffect::Ssao {
+                    radius: f(t[1], "radius")?,
+                    intensity: f(t[2], "intensity")?,
+                },
+                4 => visiaengine_render::PostEffect::Haze {
+                    far_start: f(t[1], "far_start")?,
+                    far_full: f(t[2], "far_full")?,
+                },
+                _ => return Err(format!("set_post_effects: kind {} unknown", t[0])),
+            });
+        }
+        self.post = post;
+        Ok(())
+    }
+
+    /// EDL eye-dome lighting, None = off (the legacy path bit-for-bit).
+    pub fn set_edl(&mut self, strength: Option<f64>) {
+        self.edl = strength.map(|v| {
+            visiaengine_render::EdlSetup::new(v as f32).expect("edl strength")
         });
     }
 
@@ -2467,6 +2509,7 @@ impl Engine {
             node_names: std::collections::HashMap::new(),
             clip: None,
             edl: None,
+            post: Vec::new(),
             fly: None,
             map: None,
             font: None,

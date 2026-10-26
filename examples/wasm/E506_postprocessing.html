@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>E506 后处理</title>
+<style>body{margin:0;background:#0b0f14;color:#cdd6e0;font:14px system-ui}canvas{display:block;margin:2vh auto;border:1px solid #2a3340}p{padding:0 16px}#hud{padding:0 16px;color:#8fa3b8}b{color:#e8b339}</style></head>
+<body><p id="st">E506_postprocessing · 初始化…</p><canvas id="c" width="640" height="480"></canvas>
+<div id="hud"><b>1</b> bloom · <b>2</b> outline · <b>4</b> haze · <b>3</b> 全关 · <b>5</b> +EDL · 亮块供 bloom 提亮</div>
+<!-- gate-web load anchor -->
+<img src="/ve-gate-ready/E506_postprocessing" alt="" style="display:none">
+<script src="./common.js"></script>
+<script type="module">
+// Parity with native E506: bloom (1) / outline (2) / haze (4) toggles, 3 =
+// all off. 5 adds EDL (the review-band family). The post chain rides one
+// flat bridge: setPostEffects([kind,p1,p2,...]) rebuilt per toggle set --
+// the host-side re-upload shape, same as the color page teaches.
+const st = document.getElementById('st'), canvas = document.getElementById('c');
+let eng; try { eng = await veBoot(canvas); } catch (e) { veFail(st, e.message); throw e; }
+
+const P = Float32Array.from([
+  -1,-1,-1,  1,-1,-1,  1,1,-1, -1,1,-1,
+  -1,-1, 1,  1,-1, 1,  1,1, 1, -1,1, 1]);
+const IDX = Uint32Array.from([
+  0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
+  2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
+const NRM = new Float32Array(24);
+// stage: tower row + two bright blocks (luma above the bloom threshold)
+for (let i = 0; i < 4; i++) {
+  eng.addMesh(P, NRM, IDX, Float32Array.from([0.35 + i * 0.12, 0.45, 0.55, 1]),
+    Float64Array.from([-4.5 + i * 3, 0, 0]), 0.5, 0);
+}
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.98, 0.95, 0.85, 1]),
+  Float64Array.from([-1.5, 2.4, 0]), 0, 0);
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.95, 0.9, 0.8, 1]),
+  Float64Array.from([1.5, 2.4, 0]), 0, 0);
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.22, 0.26, 0.3, 1]),
+  Float64Array.from([0, -0.52, 0]), 0, 0);
+
+let bloom = false, outline = false, haze = false, edl = false;
+const apply = () => {
+  const post = [];
+  if (bloom) post.push(0, 0.9, 0);
+  if (outline) post.push(1, 2.0, 0);
+  if (haze) post.push(4, 8.0, 60.0);
+  const rc = eng.setPostEffects(Float64Array.from(post));
+  eng.setEdl(edl ? 3.0 : -1);
+  const on = [bloom && 'bloom', outline && 'outline', haze && 'haze', edl && 'EDL']
+    .filter(Boolean).join('+');
+  st.textContent = rc === 0 ? `后处理: ${on || 'off'}（1/2/4 切换，3 关，5 EDL）` : `setPostEffects rc=${rc}`;
+};
+window.addEventListener('keydown', e => {
+  if (e.key === '1') bloom = !bloom;
+  else if (e.key === '2') outline = !outline;
+  else if (e.key === '4') haze = !haze;
+  else if (e.key === '3') { bloom = outline = haze = false; }
+  else if (e.key === '5') edl = !edl;
+  else return;
+  apply();
+});
+veOrbit(canvas, eng);
+apply();
+await veLoop(eng);
+new Image().src = '/ve-gate-ready/E506_postprocessing?t=' + Date.now();
+</script></body></html>

@@ -117,6 +117,27 @@ impl VisiaEngine {
         }
     }
 
+    /// Post-effect chain (flat triplets [kind,p1,p2,...]): 0=bloom 1=outline
+    /// 2=tonemap 3=ssao 4=haze; empty = clear. 0 = ok, -1 = rejected.
+    #[wasm_bindgen(js_name = setPostEffects)]
+    pub fn set_post_effects(&mut self, flat: &[f64]) -> i32 {
+        match self.inner.set_post_effects(flat) {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
+    }
+
+    /// EDL eye-dome lighting (negative strength = off).
+    #[wasm_bindgen(js_name = setEdl)]
+    pub fn set_edl(&mut self, strength: f64) -> i32 {
+        if strength < 0.0 {
+            self.inner.set_edl(None);
+        } else {
+            self.inner.set_edl(Some(strength));
+        }
+        0
+    }
+
     /// Discrete projection switch (N2.1 seam): true = persp, false = ortho; clears the morph envelope.
     #[wasm_bindgen(js_name = setProjection)]
     pub fn set_projection(&mut self, persp: bool) -> i32 {
