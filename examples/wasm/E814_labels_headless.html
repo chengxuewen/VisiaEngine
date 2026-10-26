@@ -33,7 +33,7 @@ const TOPS = [[-3, 0, -3], [3, 0, -3], [0, 0, 3]];
 const fontRc = eng.loadFont(new Uint8Array(await (await fetch('./DejaVuSans.ttf')).arrayBuffer()));
 if (fontRc !== 0) { veFail(st, `loadFont rc=${fontRc}`); throw new Error('font'); }
 
-let labelsOn = false, sizePx = 16;
+let labelsOn = false, sizePx = 10;
 let labelHandles = [];
 const NAMES = ['Alpha', 'Bravo', 'Charlie'];
 const putLabels = () => {
