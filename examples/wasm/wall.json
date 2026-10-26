@@ -111,12 +111,12 @@
     {
       "id": "E304_projection_morph",
       "band": 3,
-      "kind": "native",
+      "kind": "live",
       "langs": [
         "rs"
       ],
       "title": "投影变形",
-      "desc": "透视↔正交连续插值切换（地图视角魔法）。",
+      "desc": "透视↔正交连续插值切换（地图视角魔法）。（web: 滑杆/[ ] 连续变形 t 0=正交↔1=透视，X 回离散）",
       "how": "ctest -R example_E304_projection_morph"
     },
     {

@@ -104,6 +104,20 @@ impl VisiaEngine {
         }
     }
 
+    // -- N2.1 projection-morph mirror (REND-41 thin leaf) --
+    /// Continuous projection morph, t clamps into [0,1] (NaN -> 0); 0 = ortho bytes, 1 = persp bytes.
+    #[wasm_bindgen(js_name = setMorphTime)]
+    pub fn set_morph_time(&mut self, t: f64) -> i32 {
+        self.inner.set_morph_time(Some(t));
+        0
+    }
+
+    /// Back to the legacy discrete projection mode (morph off).
+    #[wasm_bindgen(js_name = clearMorph)]
+    pub fn clear_morph(&mut self) -> i32 {
+        self.inner.set_morph_time(None);
+        0
+    }
     // -- B2 clip band mirror (CAPI-20 pure-marshaling thin leaf [FFI-R:BS-5]) --
     /// Flat 4n f64 coefficient face ([] = the only clearing form); bounds/angle misalignment/degenerate = -1 = same scheme as the C face.
     #[wasm_bindgen(js_name = setClips)]
