@@ -30,7 +30,9 @@ for (let i = 0; i < 256; i++) {
     Float32Array.from([v, v * 0.97, v * 0.94, 1]),
     Float64Array.from([-15 + gx * 2, 0, -15 + gz * 2]), 0.5, 0);
 }
-eng.addMesh(P, NRM, IDX, Float32Array.from([0.2, 0.22, 0.26, 1]),
+// mid-gray ground: the PCSS band reads against it (a dark ground swallows
+// the shadow; a light one washes it out)
+eng.addMesh(P, NRM, IDX, Float32Array.from([0.42, 0.44, 0.47, 1]),
   Float64Array.from([0, -0.52, 0]), 0, 0);
 
 let shadowOn = true, knifeOn = false, knifeH = 6;
