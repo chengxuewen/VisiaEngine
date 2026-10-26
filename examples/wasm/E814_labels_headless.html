@@ -33,16 +33,19 @@ const TOPS = [[-3, 0, -3], [3, 0, -3], [0, 0, 3]];
 const fontRc = eng.loadFont(new Uint8Array(await (await fetch('./DejaVuSans.ttf')).arrayBuffer()));
 if (fontRc !== 0) { veFail(st, `loadFont rc=${fontRc}`); throw new Error('font'); }
 
-let labelsOn = false, sizePx = 18;
+let labelsOn = false, sizePx = 30;
+let labelHandles = [];
 const NAMES = ['Alpha', 'Bravo', 'Charlie'];
 const putLabels = () => {
+  for (const h of labelHandles) eng.removeEntity(h);
+  labelHandles = [];
   if (!labelsOn) return 0;
   let n = 0;
   NAMES.forEach((t, i) => {
     const h = eng.addLabel(
       Float64Array.from([TOPS[i][0], 1.2, TOPS[i][2]]),
       Float32Array.from([0.15, 0.16, 0.18, 1]), t, sizePx);
-    if (h !== 0xFFFFFFFFFFFFFFFFn) n++;
+    if (h !== 0xFFFFFFFFFFFFFFFFn) { labelHandles.push(h); n++; }
   });
   return n;
 };

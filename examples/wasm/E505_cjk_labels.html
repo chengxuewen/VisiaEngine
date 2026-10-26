@@ -32,6 +32,7 @@ const FONTS = {
   dejavu: './DejaVuSans.ttf',        // Latin-only control: CJK renders blank
 };
 let fontName = 'noto', labelsOn = false, shown = 0;
+let labelHandles = [];
 const loadFont = async name => {
   const rc = eng.loadFont(new Uint8Array(await (await fetch(FONTS[name])).arrayBuffer()));
   if (rc !== 0) { veFail(st, `loadFont(${name}) rc=${rc}`); throw new Error('font'); }
@@ -40,14 +41,17 @@ const loadFont = async name => {
 await loadFont('noto');
 
 const NAMES = ['红塔', '绿塔', '蓝塔'];
+const MISS = 0xFFFFFFFFFFFFFFFFn;
 const putLabels = () => {
+  for (const h of labelHandles) eng.removeEntity(h);
+  labelHandles = [];
   if (!labelsOn) return 0;
   let n = 0;
   NAMES.forEach((t, i) => {
     const h = eng.addLabel(
       Float64Array.from([TOPS[i][0], 1.2, TOPS[i][2]]),
-      Float32Array.from([0.15, 0.16, 0.18, 1]), t, 20);
-    if (h !== 0xFFFFFFFFFFFFFFFFn) n++;
+      Float32Array.from([0.15, 0.16, 0.18, 1]), t, 30);
+    if (h !== MISS) { labelHandles.push(h); n++; }
   });
   return n;
 };
