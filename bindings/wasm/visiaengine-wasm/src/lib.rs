@@ -127,6 +127,17 @@ impl VisiaEngine {
         }
     }
 
+    /// Host-set clear color (srgb 0..1 rgb; negative r = restore the default).
+    #[wasm_bindgen(js_name = setClearColor)]
+    pub fn set_clear_color(&mut self, r: f64, g: f64, b: f64) -> i32 {
+        if r < 0.0 {
+            self.inner.set_clear_color(None);
+        } else {
+            self.inner.set_clear_color(Some([r, g, b]));
+        }
+        0
+    }
+
     /// PCSS shadows from a light direction; all-zero/negative-x = off.
     #[wasm_bindgen(js_name = setShadow)]
     pub fn set_shadow(&mut self, lx: f64, ly: f64, lz: f64) -> i32 {

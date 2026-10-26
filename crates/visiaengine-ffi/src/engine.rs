@@ -119,6 +119,9 @@ pub struct Engine {
     edl: Option<visiaengine_render::EdlSetup>,
     /// N4 post-effect chain (empty = the bit-for-bit legacy path).
     post: Vec<visiaengine_render::PostEffect>,
+    /// Host-set clear color (linear-domain rgb triple; None = the deep-slate
+    /// default, the bit-for-bit legacy path).
+    clear: Option<[f32; 3]>,
     /// 4f shadow pass (None = the legacy lit path bit-for-bit).
     shadow: Option<visiaengine_render::ShadowSetup>,
     /// CAPI-23: flight thruster (wall clock lives in the engine -- the layering decision behind zero std::time in the render crate;
@@ -347,6 +350,7 @@ impl Engine {
             clip: None,
             edl: None,
             post: Vec::new(),
+            clear: None,
             shadow: None,
             fly: None,
             map: None,
@@ -846,9 +850,8 @@ impl Engine {
 
     pub fn render(&mut self) -> Result<(), String> {
         self.advance_fly();
-        let mut commands = vec![DrawCommand::ClearColor {
-            rgba: [0.05, 0.07, 0.10, 1.0],
-        }];
+        let [cr, cg, cb] = self.clear.unwrap_or([0.05, 0.07, 0.10]);
+        let mut commands = vec![DrawCommand::ClearColor { rgba: [cr, cg, cb, 1.0] }];
         for it in &self.items {
             if self.is_hidden(it.entity) {
                 continue; // CAPI-13 + CORE-18 tree visibility
@@ -1823,6 +1826,12 @@ impl Engine {
         });
     }
 
+    /// Host-set clear color (srgb domain rgb triple). The default deep slate
+    /// stays until the host sets one; restore = set_clear_color(None).
+    pub fn set_clear_color(&mut self, rgb: Option<[f64; 3]>) {
+        self.clear = rgb.map(|c| [c[0] as f32, c[1] as f32, c[2] as f32]);
+    }
+
     pub fn set_edl(&mut self, strength: Option<f64>) {
         self.edl = strength.map(|v| {
             visiaengine_render::EdlSetup::new(v as f32).expect("edl strength")
@@ -2640,6 +2649,7 @@ impl Engine {
             clip: None,
             edl: None,
             post: Vec::new(),
+            clear: None,
             shadow: None,
             fly: None,
             map: None,

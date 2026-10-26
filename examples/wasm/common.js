@@ -21,11 +21,16 @@ async function veDiag() {
         i = ` (适配器: ${x.vendor||'?'} / ${x.architecture||'?'} / ${x.device||'?'})`; } catch {}
   return '引擎初始化失败' + i;
 }
-async function veBoot(canvas) {
+async function veBoot(canvas, opts = {}) {
   const mod = await import('./pkg/visiaengine_wasm.js');
   await mod.default();
   const eng = await mod.VisiaEngine.fromCanvas(canvas);
   if (!eng) throw new Error(await veDiag());
+  // default wall background: three.js-editor light gray (readable dark
+  // strokes, blends into docs); a page may override via {clear:[r,g,b]}.
+  const c = opts.clear;
+  if (c && c.length === 3) eng.setClearColor(c[0], c[1], c[2]);
+  else eng.setClearColor(0.92, 0.93, 0.94);
   return eng;
 }
 

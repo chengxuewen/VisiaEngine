@@ -73,7 +73,7 @@ const TOWER_LABELS = [['Tower-A', -15, -15], ['Tower-B', 0, 0], ['Tower-C', 13, 
 const putLabels = () => {
   if (!labelsOn) return;
   labelHandles = TOWER_LABELS.map(([t, x, z]) =>
-    eng.addLabel(Float64Array.from([x, 14, z]), Float32Array.from([1, 1, 1, 1]), t, 22));
+    eng.addLabel(Float64Array.from([x, 14, z]), Float32Array.from([0.15, 0.16, 0.18, 1]), t, 22));
 };
 const echo = msg => { st.textContent = `${msg}（knife=${knifeOn ? knifeH.toFixed(1) : 'off'}, labels=${labelsOn ? 3 : 0}）`; };
 
