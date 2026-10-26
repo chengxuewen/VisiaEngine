@@ -57,15 +57,27 @@ const putLabels = () => {
 };
 const echo = msg => { st.textContent = `${msg}（labels=${labelsOn ? shown : 0}, font=${fontName}）`; };
 
-window.addEventListener('keydown', async e => {
+// The font swap awaits a fetch: mashing 1/2 runs several async handlers
+// CONCURRENTLY, each rebuilding the label set -- concurrent rebuilds lose
+// handles (each wipes only the handles IT saw) and the orphans stack up as
+// ghost ink. Serialize: one font-op at a time, newest request wins.
+let fontOp = Promise.resolve();
+let pendingFont = null;
+window.addEventListener('keydown', e => {
   if (e.key === 'l' || e.key === 'L') {
     labelsOn = !labelsOn;
     shown = putLabels();
     echo(labelsOn ? '标注挂载' : '标注摘除');
   } else if (e.key === '1' || e.key === '2') {
-    await loadFont(e.key === '1' ? 'noto' : 'dejavu');
-    shown = putLabels();   // replacement style: re-rasterize from the new face
-    echo(fontName === 'noto' ? 'Noto（CJK 应显示）' : 'DejaVu（CJK 应缺字）');
+    pendingFont = e.key === '1' ? 'noto' : 'dejavu';
+    fontOp = fontOp.then(async () => {
+      const want = pendingFont;
+      pendingFont = null;
+      if (!want) return;
+      await loadFont(want);
+      shown = putLabels();   // replacement style: re-rasterize from the new face
+      echo(fontName === 'noto' ? 'Noto（CJK 应显示）' : 'DejaVu（CJK 应缺字）');
+    });
   }
 });
 veOrbit(canvas, eng);
