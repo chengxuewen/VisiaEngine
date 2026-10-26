@@ -21,14 +21,16 @@ const IDX = Uint32Array.from([
   0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4,
   2,3,7, 2,7,6, 1,2,6, 1,6,5, 3,0,4, 3,4,7]);
 const NRM = new Float32Array(24);
-// 16x16 city, deterministic heights (E901 family, compact spacing)
-for (let i = 0; i < 256; i++) {
-  const gx = i % 16, gz = (i / 16) | 0;
+// 12x12 city (144 towers): 256 towers x 2 passes made drag crawl on the
+// software adapter; the shadow teaching point survives the smaller town.
+const SIDE = 12;
+for (let i = 0; i < SIDE * SIDE; i++) {
+  const gx = i % SIDE, gz = (i / SIDE) | 0;
   const h = 1.6 + ((i * 7919) % 11) * 0.8;
   const v = 0.72 + ((i * 104729) % 7) * 0.03;
   eng.addMesh(P, NRM, IDX,
     Float32Array.from([v, v * 0.97, v * 0.94, 1]),
-    Float64Array.from([-15 + gx * 2, 0, -15 + gz * 2]), 0.5, 0);
+    Float64Array.from([-11 + gx * 2, 0, -11 + gz * 2]), 0.5, 0);
 }
 // mid-gray ground: the PCSS band reads against it (a dark ground swallows
 // the shadow; a light one washes it out)
