@@ -55,6 +55,14 @@ window.addEventListener('keydown', e => {
   }
 });
 veOrbit(canvas, eng);
+// morph's ortho half-width IS rig.zoom (default 1.0m) while the persp eye
+// sits ~10m out -- the scene explodes past the frustum near t=0 (the E301
+// lesson). Seed the framing once: zoom = dist / 2.2 (fov 0.9 bridge).
+{
+  const pose = eng.getCameraPose();
+  eng.flyTo([pose[0], pose[1], pose[2], pose[3], pose[4],
+             pose[5], Math.max(1.0, pose[5] / 2.2), 0.9], 0);
+}
 apply(0.5);
 await veLoop(eng);
 new Image().src = '/ve-gate-ready/E304_projection_morph?t=' + Date.now();
