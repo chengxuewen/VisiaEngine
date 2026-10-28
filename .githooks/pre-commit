@@ -11,5 +11,9 @@ if ! command -v pixi >/dev/null 2>&1; then
   exit 0
 fi
 pixi run agents sync
-git add .opencode/opencode.json AGENTS.md 2>/dev/null || true
+# Stage every tracked generated artefact from the ONE list in agent-targets.json.
+# A hand-written add-list drifted once: .mcp.json / CONSTRAINTS.md were rewritten
+# by the generators but never staged, so the commit carried the stale shape.
+generated=$(python3 -c 'import json; print(" ".join(json.load(open("scripts/agent-targets.json"))["generated_tracked"]))')
+[ -n "$generated" ] && git add $generated 2>/dev/null || true
 pixi run agents check
