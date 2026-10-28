@@ -84,6 +84,23 @@ web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-was
 mcp-codegraph = "node scripts/mcp-serve.mjs --from scripts/mcp-servers.json --name local-codegraph"
 gate-mcp = "python3 scripts/gate-mcp.py"
 
+# Serena MCP -- semantic/LSP server (design + review: .omo/plans/2026-10-28-serena-mcp-integration.md)
+# Independent environment on purpose: it needs Python 3.13 while the default env is 3.12 (D42/D30).
+[feature.serena.dependencies]
+python = "3.13.*"
+rust-analyzer = "*"
+
+[feature.serena.pypi-dependencies]
+serena-agent = "==2.1.0"
+
+# clangd only on the platform actually verified; aarch64/win-64 have no evidence yet (plan §3.1).
+[feature.serena.target.linux-64.dependencies]
+clang-tools = "23.*"
+
+[feature.serena.tasks]
+# PIXI_PROJECT_ROOT is provided inside tasks, so --project does not depend on the host's cwd.
+mcp-serena = "serena start-mcp-server --transport stdio --context ide-assistant --language-backend LSP --project \"$PIXI_PROJECT_ROOT\""
+
 [environments]
 # Single-environment scheme: all lightweight binaries go into default (tools/ide and the base deps share a solve-group; no isolation needed)
 default = { features = ["tools", "ide", "mcp"], solve-group = "base" }
@@ -95,6 +112,8 @@ qt-spike = { features = ["tools", "ide", "qt"], solve-group = "base" }
 # Deliberately NOT in the base solve-group (the Qt5 stack must not bloat every shared lock) and in no ci
 # chain -- it is the local proof environment for the SDK's Qt5 discovery branch.
 qt5-spike = { features = ["tools", "qt5"] }
+# Serena MCP: Python 3.13 + serena-agent; deliberately outside solve-group "base" (own python, like qt5-spike)
+serena = { features = ["serena"] }
 
 [tasks]
 # The cargo-flavored tasks are an interface contract: running them before the Cargo workspace lands (build day) must fail -- that is expected
