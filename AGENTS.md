@@ -2550,6 +2550,8 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
 
 <!-- BEGIN:skills-directory -->
 
@@ -2562,6 +2564,7 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 | `book-to-skill` | Converts books and documents (PDF, EPUB, DOCX, HTML, Markdown, plain text, RTF, MOBI/AZW with Calibre) into structured agent skills, extr... |
 | `browser-testing` | Browser-side verification of this engine's WebGPU demo wall and web builds via Playwright/DevTools: page boot, frame survival, canvas/Web... |
 | `ci-cd-automation` | Generic CI/CD pipeline management: Docker compose services, GitHub Actions gates (fmt/check/lint/test/audit/benchmark), task-runner mirro... |
+| `code-review-and-quality` | Code review and quality for this engine: five-axis review, severity labels (Nit/Optional/FYI/Blocking), ~100-line change discipline, adve... |
 | `code-simplification` | Reduce complexity in Rust/TS code. |
 | `context-engineering` | Route language-specific rules to the right code in a multi-language workspace. |
 | `debugging-and-error-recovery` | Systematic debugging and error recovery for this engine: reproduce, localize, narrow (bisect), minimal fix, add a regression guard, and s... |
@@ -2583,6 +2586,8 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 | `source-driven-development` | Ground every external dependency decision in official docs. |
 | `test-harness` | Multi-language automated test harness. |
 | `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
+<!-- END:skills-directory -->
+<!-- END:skills-directory -->
 <!-- END:skills-directory -->
 <!-- END:skills-directory -->
 <!-- END:skills-directory -->
