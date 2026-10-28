@@ -259,6 +259,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D42: New host onboarding deferred; Cursor needs a flat .mdc layout when adopted (2026-10-28)
 - D42: MCP lifecycle CLI (`pixi run mcp`) — install/index/status consolidated (2026-10-28)
 - D43: Serena MCP integrated as a pixi-env server behind the unified registry (2026-10-28)
+- D44: local-playwright added via the MCP runbook; 0.0.83 publish is broken (2026-10-28)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`

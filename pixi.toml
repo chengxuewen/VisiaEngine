@@ -17,6 +17,11 @@ pkg-config = ">=0.29,<1"
 nodejs = ">=22,<23"
 fonttools = ">=4.66.0,<5"
 
+[pypi-dependencies]
+# Structural search/rewrite CLI used by the `ast-grep-rewrites` skill.
+# Official PyPI distribution by the ast-grep author (MIT); pinned, verified 2026-10-28.
+ast-grep-cli = "==0.51.0"
+
 [feature.tools.dependencies]
 cargo-deny = ">=0.20,<0.21"
 cmake = ">=4.4.3,<5"
