@@ -422,6 +422,7 @@ file. Read the source file before acting on a rule you are unsure about.
 | `adjudication-walkthrough` | one-at-a-time adjudication protocol. |
 | `ai-slop-cleanup` | Remove AI-generated noise from this repo's code and docs: comments that restate the code, generic summaries, hedging, duplicate explanati... |
 | `api-interface-design` | Contract-first interface design for polyglot projects: Rust trait boundaries, the C ABI surface (header + cpp/wasm mirrors), and REST/JSO... |
+| `ast-grep-rewrites` | Structural search and rewrite with the ast-grep CLI (installed in the pixi env): pattern-based bulk edits that respect syntax, metavariab... |
 | `book-to-skill` | Converts books and documents (PDF, EPUB, DOCX, HTML, Markdown, plain text, RTF, MOBI/AZW with Calibre) into structured agent skills, extr... |
 | `browser-testing` | Browser-side verification of this engine's WebGPU demo wall and web builds via Playwright/DevTools: page boot, frame survival, canvas/Web... |
 | `ci-cd-automation` | Generic CI/CD pipeline management: Docker compose services, GitHub Actions gates (fmt/check/lint/test/audit/benchmark), task-runner mirro... |
