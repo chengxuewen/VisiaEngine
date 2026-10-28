@@ -452,7 +452,7 @@ P2 (deferred): 6-section (Rationalizations / Red Flags / Verification) audit of 
 
 Rationale: D28/D37 already specified "concise aggregation into root AGENTS.md, deep records kept as on-demand references", but the aggregator dumped full text, injecting ~314 KB every session. Trade-off accepted: the hub now carries titles, not full rule bodies — the digest header tells the agent to read the source file before acting on a rule it is unsure about.
 
-## D42: New host onboarding deferred; Cursor needs a flat .mdc layout when adopted (2026-10-28)
+## D46: New host onboarding deferred; Cursor needs a flat .mdc layout when adopted (2026-10-28)
 
 Cursor/Qoder/Trae/ZCode are **not installed** on this machine, so no host adapter was enabled — adding one unverified is the D35 dead-file trap. Verified from Cursor's official docs: project rules are `.cursor/rules/**/*.mdc` (flat `.mdc` files; a plain `.md` is ignored), frontmatter is `description`/`globs`/`alwaysApply`, and **`globs` is officially supported**; MCP is `.cursor/mcp.json` with `type: "stdio"` required for stdio servers.
 
@@ -484,7 +484,7 @@ Open: removing `local-github` (no token, no use case while the remote is gitee, 
 
 Removal caveat (S5): the opencode conversion in `mcp-links.py` is **non-destructive** -- it rewrites the servers it knows about and preserves every other `mcp{}` key (that is how `local-playwright`/`local-postgres`/`local-openspace` survive). Consequence: deleting a server from the single source does **not** delete it from `.opencode/opencode.json`; the stale key must be pruned by hand (done for `local-github`). `.mcp.json`, by contrast, is a full generation product, so it follows the source automatically. `@modelcontextprotocol/server-github` may remain in the gitignored `node_modules/` until the next `npm install` prunes it -- harmless, and no longer referenced anywhere.
 
-## D43: Serena MCP integrated as a pixi-env server behind the unified registry (2026-10-28)
+## D45: Serena MCP integrated as a pixi-env server behind the unified registry (2026-10-28)
 
 Plan: `.omo/plans/2026-10-28-serena-mcp-integration.md` (four adjudications + team review with 2 independent reviewers + an executability re-check; Chinese working doc in gitignored `.omo/`).
 
