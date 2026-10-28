@@ -201,3 +201,20 @@ When it feels like things are crystallizing, you might summarize:
 - **Do visualize** — A good diagram is worth many paragraphs
 - **Do explore the codebase** — Ground discussions in the project's actual reality
 - **Do question assumptions** — Including the user's and your own
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "skip exploration, I know the design" | Exploration is cheap; a wrong design is expensive. |
+| "one option is enough" | A decision needs alternatives; present 2-3. |
+
+## Red Flags
+
+- Jumping to implementation during explore.
+- Unverified assumptions presented as facts.
+- No codebase grounding.
+
+## Verification (evidence)
+
+- The options with trade-offs, grounded in real code/docs.

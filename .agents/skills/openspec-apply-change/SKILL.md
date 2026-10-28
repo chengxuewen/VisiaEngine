@@ -157,3 +157,22 @@ This skill supports the "actions on a change" model:
 
 - **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
 - **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "implement everything, update tasks later" | Mark tasks as you go; a stale checklist hides drift. |
+| "skip the artifact update" | Implementation revealing a design flaw is a signal to update the spec, not ignore it. |
+| "run the whole change in one go" | Slice by task; each slice must keep the workspace green. |
+
+## Red Flags
+
+- Tasks marked done without running their verification.
+- Design changed but artifacts not updated.
+- Implementing past an unresolved blocker.
+
+## Verification (evidence)
+
+- Each completed task maps to a passing check.
+- The artifact diff reflects what was learned.

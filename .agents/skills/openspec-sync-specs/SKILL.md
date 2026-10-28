@@ -145,3 +145,21 @@ Main specs are now updated. The change remains active - archive when implementat
 - If something is unclear, ask for clarification
 - Show what you're changing as you go
 - The operation should be idempotent - running twice should give same result
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "not idempotent is fine, run once" | A re-run must not double-apply; idempotency is the contract. |
+| "skip showing the diff" | Unshown changes cannot be reviewed. |
+
+## Red Flags
+
+- A second run changes the output again.
+- The delta is applied without showing what changed.
+- Ambiguity resolved by guessing instead of asking.
+
+## Verification (evidence)
+
+- Running twice yields the same result (second-run diff empty).
+- The applied delta is shown as it goes.

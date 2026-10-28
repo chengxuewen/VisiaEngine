@@ -171,3 +171,21 @@ Source-code paths come from the tree probe in step 2c — never hardcode a layou
 - Do NOT propose changes to version files — versioning is user-managed
 - Do NOT propose changes to external dependencies — separate repositories
 - Verify each artifact file exists after writing before proceeding
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "write the proposal, fill artifacts later" | Missing artifacts make the change unimplementable. |
+| "touch version files" | Versioning is user-managed; do not propose it. |
+
+## Red Flags
+
+- A proposed change to a version file or external dependency.
+- An artifact claimed written but absent.
+- No acceptance/verification section.
+
+## Verification (evidence)
+
+- Every artifact file exists on disk (checked).
+- The proposal has scope + acceptance criteria.

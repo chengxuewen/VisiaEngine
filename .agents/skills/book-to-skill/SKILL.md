@@ -472,6 +472,19 @@ Share this skill (Copilot ecosystem, optional):
 
 See `references/update-fold-in.md` (load only when updating an existing generated skill).
 
+## Red Flags
+
+- Dumping the whole book into context instead of probing it.
+- Claiming a framework exists without grepping the source.
+- Generating chapters before the structure is confirmed.
+- A master SKILL.md body over 4,000 tokens (compaction truncates from the end).
+
+## Verification (evidence)
+
+- The generated skill's SKILL.md + chapter files exist and link correctly.
+- Quotes/frameworks are traceable to the extracted text.
+- `gate-skills` / `gate-agents` green after generation.
+
 ---
 
 ## Quality Rules
