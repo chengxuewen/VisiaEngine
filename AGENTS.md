@@ -2546,6 +2546,8 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
 
 <!-- BEGIN:skills-directory -->
 
@@ -2564,6 +2566,7 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 | `ecosystem-scan` | Audit the .agents/ system and scan the community ecosystem for adoptable skills/rules/MCP. |
 | `incremental-implementation` | Thin vertical slice methodology — implement→test→verify→commit per slice, each leaving the workspace compilable and tests green. |
 | `lesson-review` | Batch session review: systematically extract lessons learned, write them to project memory. |
+| `observability-and-instrumentation` | Observability and instrumentation for this engine: structured logging, RED metrics, tracing, symptom-based alerting, and the existing web... |
 | `openspec-apply-change` | Implement tasks from an OpenSpec change. |
 | `openspec-archive-change` | Archive a completed change in the experimental workflow. |
 | `openspec-explore` | Enter explore mode — a thinking partner for exploring ideas, investigating problems, and clarifying requirements. |
@@ -2577,6 +2580,8 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 | `source-driven-development` | Ground every external dependency decision in official docs. |
 | `test-harness` | Multi-language automated test harness. |
 | `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
+<!-- END:skills-directory -->
+<!-- END:skills-directory -->
 <!-- END:skills-directory -->
 <!-- END:skills-directory -->
 <!-- END:skills-directory -->
