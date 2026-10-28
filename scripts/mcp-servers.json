@@ -1,8 +1,16 @@
 {
   "local-codegraph": {
+    "kind": "npm",
     "pkg": "@colbymchenry/codegraph",
     "version": "1.6.0",
     "bin": "codegraph",
     "args": ["serve", "--mcp"]
+  },
+  "local-serena": {
+    "kind": "pixi",
+    "pixi_env": "serena",
+    "task": "mcp-serena",
+    "version": "2.1.0",
+    "probe": ["serena", "--version"]
   }
 }

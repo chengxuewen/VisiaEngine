@@ -6,7 +6,13 @@ and a timeout; classify the outcome:
   green : clean start then EOF (exit 0)
   yellow: missing credential (server refuses to start without a token) -> skip,
           NOT a failure (review #19: don't let CI's absent token cause a false red)
+  skip-env: a pixi-kind server whose environment is not installed -> counted separately
+          and reported in the summary (never silently folded into "green")
   red   : cannot start at all (bad pin / missing binary / broken install) -> CI fails
+
+`kind` comes from scripts/mcp-servers.json: `npm` servers are started through the pinned
+launcher (as before); `pixi` servers are probed via their env binary, because nesting
+`pixi run` is impossible here (review #18) and starting them would spawn language servers.
 
 Exit: 0 if no red, 1 if any red.
 """
@@ -22,6 +28,7 @@ import agent_common as ac
 
 PREFIX = "GATE-MCP"
 CFG = os.path.join(ac.ROOT, ".agents", "mcp.json")
+REGISTRY = os.path.join(ac.ROOT, "scripts", "mcp-servers.json")
 TOKEN_HINT = re.compile(r"environment variable is not set|unauthorized|401|token|GITHUB_PERSONAL_ACCESS_TOKEN", re.I)
 TIMEOUT = 300
 
@@ -38,20 +45,63 @@ def _host_path():
     return os.pathsep.join(dirs)
 
 
+def _pixi_binary(spec):
+    """Absolute path of a pixi-kind server's probe binary inside its isolated env."""
+    name = spec["probe"][0] + (".exe" if os.name == "nt" else "")
+    return os.path.join(ac.ROOT, ".pixi", "envs", spec["pixi_env"], "bin", name)
+
+
 def main():
     with open(CFG) as handle:
         servers = json.load(handle).get("mcpServers", {})
     if not servers:
         print("%s ✓ no servers declared" % PREFIX)
         return 0
+    with open(REGISTRY) as handle:
+        registry = json.load(handle)
     host_path = _host_path()
     env = dict(os.environ, PATH=host_path)
     red = 0
     yellow = 0
+    skip_env = 0
     if shutil.which("pixi", path=host_path) is None:
         print(" [ RED  ] pixi not on the GUI-inherited PATH (fix: bootstrap / O5 symlink)")
         red += 1
     for name in servers:
+        spec = registry.get(name)
+        if spec is None:
+            print(" [ RED  ] %-14s absent from scripts/mcp-servers.json (registry drift)" % name)
+            red += 1
+            continue
+        if spec.get("kind") == "pixi":
+            # pixi-kind servers are probed via their env binary: nesting `pixi run` is not
+            # possible here (review #18) and starting the server would spawn language servers.
+            binary = _pixi_binary(spec)
+            if not os.path.exists(binary):
+                print(" [SKIPENV] %-13s env '%s' not installed (pixi install -e %s)"
+                      % (name, spec["pixi_env"], spec["pixi_env"]))
+                skip_env += 1
+                continue
+            cmd = [binary] + list(spec["probe"][1:])
+            print(" [PROBE] %-14s %s" % (name, " ".join(cmd)))
+            try:
+                proc = subprocess.run(cmd, cwd=ac.ROOT, stdin=subprocess.DEVNULL,
+                                      capture_output=True, text=True, timeout=TIMEOUT)
+            except subprocess.TimeoutExpired:
+                print(" [ RED  ] %-14s probe timeout after %ds" % (name, TIMEOUT))
+                red += 1
+                continue
+            if proc.returncode == 0:
+                first = (proc.stdout or proc.stderr).strip().splitlines()
+                print(" [ OK   ] %-14s %s" % (name, first[0] if first else "probe ok"))
+                continue
+            print(" [ RED  ] %-14s probe exit=%d" % (name, proc.returncode))
+            tail = (proc.stderr or proc.stdout).strip().splitlines()
+            if tail:
+                print("        %s" % tail[-1])
+            red += 1
+            continue
+        # npm kind: unchanged -- start the server through the pinned launcher.
         # Invoke the launcher directly (node is in the pixi env) instead of nesting
         # `pixi run` -- a nested pixi is not on PATH inside a task (review #18).
         cmd = ["node", "scripts/mcp-serve.mjs", "--from", "scripts/mcp-servers.json", "--name", name]
@@ -78,7 +128,8 @@ def main():
     if red:
         print("%s ✗ %d red" % (PREFIX, red))
         return 1
-    print("%s ✓ (%d green, %d skipped-credential)" % (PREFIX, len(servers) - yellow, yellow))
+    print("%s ✓ (%d green, %d skipped-credential, %d skipped-env)"
+          % (PREFIX, len(servers) - yellow - skip_env, yellow, skip_env))
     return 0
 
 

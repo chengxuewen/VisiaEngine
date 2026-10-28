@@ -36,6 +36,7 @@ echo.
 echo common:
 echo   visiaengine.bat mcp status      MCP: pin/installed versions + index state
 echo   visiaengine.bat mcp index       build ^(first run^) or rebuild .codegraph
+echo   visiaengine.bat agents sync     agent config sync ^(rules/mcp/memory/skills links^)
 echo   visiaengine.bat gate-agents     single-source consistency gate
 echo   visiaengine.bat ci              the whole CI chain
 echo   pixi task list                  every task this workspace defines

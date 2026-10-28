@@ -76,6 +76,17 @@
         "node",
         ".opencode/init-mcp-openspace.mjs"
       ]
+    },
+    "local-serena": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "pixi",
+        "run",
+        "-e",
+        "serena",
+        "mcp-serena"
+      ]
     }
   },
   "lsp": {

@@ -67,12 +67,15 @@ def _host_entry(entry, target):
         return item
     command = item.get("command")
     args = list(item.get("args") or [])
+    # Forward EVERYTHING after `run` verbatim: the canonical form may carry pixi flags
+    # before the task name (`run -e serena mcp-serena`), and the launcher itself already
+    # passes its argv straight through (`exec pixi run --manifest-path … "$@"`).
     if command == "pixi" and args[:1] == ["run"] and len(args) >= 2:
-        task, rest = args[1], args[2:]
+        tail = args[1:]
         if os.name == "nt":
-            item["command"], item["args"] = LAUNCHER_BAT, [task] + rest
+            item["command"], item["args"] = LAUNCHER_BAT, tail
         else:
-            item["command"], item["args"] = "bash", [LAUNCHER_SH, task] + rest
+            item["command"], item["args"] = "bash", [LAUNCHER_SH] + tail
     return item
 
 

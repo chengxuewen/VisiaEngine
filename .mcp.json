@@ -7,6 +7,16 @@
       ],
       "command": "bash",
       "type": "stdio"
+    },
+    "local-serena": {
+      "args": [
+        "scripts/mcp-launch.sh",
+        "-e",
+        "serena",
+        "mcp-serena"
+      ],
+      "command": "bash",
+      "type": "stdio"
     }
   }
 }

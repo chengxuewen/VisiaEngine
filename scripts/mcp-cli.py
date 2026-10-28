@@ -21,6 +21,7 @@ Design notes (see .omo/plans/2026-10-28-mcp-lifecycle-cli.md):
 import argparse
 import json
 import os
+import re
 import shutil
 import tempfile
 import subprocess
@@ -121,15 +122,73 @@ def _unblock(pkg):
     return moved
 
 
+def _is_pixi(spec):
+    return spec.get("kind") == "pixi"
+
+
+def _env_bin(spec):
+    """Absolute path of a pixi-kind probe binary inside its (isolated) environment."""
+    name = spec["probe"][0]
+    if os.name == "nt":
+        name += ".exe"
+    return os.path.join(ac.ROOT, ".pixi", "envs", spec["pixi_env"], "bin", name)
+
+
+def _pixi_version(spec):
+    """Version reported by the probe binary; None when the env or the binary is absent.
+
+    Deliberately does NOT shell out to `pixi`: nested pixi is not on PATH inside a task
+    (review #18), and this helper is also reused by the gate.
+    """
+    binary = _env_bin(spec)
+    if not os.path.exists(binary):
+        return None
+    try:
+        proc = subprocess.run(
+            [binary] + list(spec["probe"][1:]),
+            cwd=ac.ROOT,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    lines = (proc.stdout or proc.stderr).strip().splitlines()
+    first = lines[0].strip() if lines else ""
+    # Serena prints "Serena 2.1.0-<git describe>-dirty": keep only the semver part so the
+    # pin comparison is stable across re-installs (the git suffix moves every build).
+    match = re.search(r"\d+\.\d+\.\d+", first)
+    return match.group(0) if match else first
+
+
 def cmd_setup(args):
     specs = _specs()
     npm = shutil.which("npm")
-    if npm is None:
+    needs_npm = any(not _is_pixi(spec) for spec in specs.values())
+    if needs_npm and npm is None:
         print("%s %s" % (PREFIX, NPM_HINT))
         return 127
     failures = 0
     for name, spec in specs.items():
-        pkg, version = spec["pkg"], spec["version"]
+        version = spec["version"]
+        if _is_pixi(spec):
+            reported = _pixi_version(spec)
+            if reported is None:
+                print(
+                    "%s %-16s ✗ env '%s' not installed -- run: pixi install -e %s"
+                    % (PREFIX, name, spec["pixi_env"], spec["pixi_env"])
+                )
+                failures += 1
+            elif not reported.startswith(version):
+                print("%s %-16s pinch drift: %s vs pin %s -- run: pixi install -e %s" % (PREFIX, name, reported, version, spec["pixi_env"]))
+                failures += 1
+            else:
+                print("%s %-16s ok (pixi %s, %s)" % (PREFIX, name, spec["pixi_env"], reported))
+            continue
+        pkg = spec["pkg"]
         have = _installed_version(pkg)
         if have == version and os.path.exists(_bin_path(spec["bin"])):
             print("%s %-16s ok (%s@%s)" % (PREFIX, name, pkg, version))
@@ -210,16 +269,30 @@ def cmd_status(args):
     node = shutil.which("node")
     print("%s servers declared in %s:" % (PREFIX, SPECS))
     for name, spec in specs.items():
+        version = spec["version"]
+        if _is_pixi(spec):
+            reported = _pixi_version(spec)
+            if reported is None:
+                state = "missing"
+            elif reported.startswith(version):
+                state = "ok"
+            else:
+                state = "DRIFT"
+            print(
+                "  %-16s %-38s pin=%-8s reported=%-24s %s"
+                % (name, "pixi:" + spec["pixi_env"], version, reported or "-", state)
+            )
+            continue
         have = _installed_version(spec["pkg"])
         if have is None:
             state = "missing"
-        elif have != spec["version"]:
+        elif have != version:
             state = "DRIFT"
         else:
             state = "ok"
         print(
             "  %-16s %-38s pin=%-8s installed=%-8s %s"
-            % (name, spec["pkg"], spec["version"], have or "-", state)
+            % (name, spec["pkg"], version, have or "-", state)
         )
     print()
     if node is None:
