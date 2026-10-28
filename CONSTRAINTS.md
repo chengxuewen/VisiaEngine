@@ -38,4 +38,3 @@ Single source of truth for the local quality gate. Two parts:
 15. `pack-check`
 16. `i18n`
 <!-- END:ci-gates -->
-<!-- END:ci-gates -->

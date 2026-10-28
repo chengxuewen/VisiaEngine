@@ -128,8 +128,8 @@ def run(command, targets, cfg, dry_run):
         print(" [ APPEND ] hub %s (skills directory)" % cfg["memory_hub"])
     else:
         before = hub_text.split(BEGIN, 1)[0]
-        after = END + hub_text.split(END, 1)[1] if (END in hub_text) else ""
-        new_text = before + BEGIN + "\n" + block + END + "\n" + after.lstrip("\n")
+        after = hub_text.split(END, 1)[1] if (END in hub_text) else ""
+        new_text = before + BEGIN + "\n" + block + END + after
         print(" [ REWRITE] hub %s (skills directory)" % cfg["memory_hub"])
     if not dry_run:
         with open(hub_path, "w") as handle:

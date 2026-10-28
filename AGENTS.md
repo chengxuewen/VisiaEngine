@@ -2517,43 +2517,6 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 - 17 commits ahead at close; worktree clean; ports returned after every
   verification run.
 <!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
-<!-- END:agents-memory -->
 
 <!-- BEGIN:skills-directory -->
 
@@ -2589,16 +2552,4 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 | `source-driven-development` | Ground every external dependency decision in official docs. |
 | `test-harness` | Multi-language automated test harness. |
 | `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
-<!-- END:skills-directory -->
 <!-- END:skills-directory -->
