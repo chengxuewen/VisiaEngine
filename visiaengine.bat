@@ -35,8 +35,12 @@ echo usage: visiaengine.bat ^<task^> [args...]
 echo.
 echo common:
 echo   visiaengine.bat mcp status      MCP: pin/installed versions + index state
+echo   visiaengine.bat mcp setup       install/repair MCP packages at the pin
+echo   visiaengine.bat mcp sync        incremental MCP sync
 echo   visiaengine.bat mcp index       build ^(first run^) or rebuild .codegraph
 echo   visiaengine.bat agents sync     agent config sync ^(rules/mcp/memory/skills links^)
+echo   visiaengine.bat agents check    verify every generated layer ^(non-zero on drift^)
+echo   visiaengine.bat agents status   read-only freshness report ^(always exit 0^)
 echo   visiaengine.bat gate-agents     single-source consistency gate
 echo   visiaengine.bat ci              the whole CI chain
 echo   pixi task list                  every task this workspace defines

@@ -18,8 +18,12 @@ USAGE='usage: ./visiaengine.sh <task> [args...]
 
 common:
   ./visiaengine.sh mcp status      MCP: pin/installed versions + index state
+  ./visiaengine.sh mcp setup       install/repair MCP packages at the pin
+  ./visiaengine.sh mcp sync        incremental MCP sync
   ./visiaengine.sh mcp index       build (first run) or rebuild .codegraph
   ./visiaengine.sh agents sync     agent config sync (rules/mcp/memory/skills links)
+  ./visiaengine.sh agents check    verify every generated layer (non-zero on drift)
+  ./visiaengine.sh agents status   read-only freshness report (always exit 0)
   ./visiaengine.sh gate-agents     single-source consistency gate
   ./visiaengine.sh ci              the whole CI chain
   pixi task list                   every task this workspace defines
