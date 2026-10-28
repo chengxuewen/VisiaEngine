@@ -6,7 +6,7 @@ Targets: declared in scripts/agent-targets.json (rules_dir per host).
 
 Two modes, driven by each target's `rules_mode` (team-review #11, adjudicated 2026-10-28):
 - `links` (default): transfer canonical `.md` as relative symlinks (or copies on Windows) verbatim — kept for hosts that read raw `.md`.
-- `mdc`: generate CodeBuddy/Cursor-style `.mdc` — one subfolder per rule (`.codebuddy/rules/<lang>-<topic>/RULE.mdc`) with synthesized frontmatter (description/alwaysApply/enabled/updatedAt) and the canonical body verbatim (after stripping any canonical frontmatter). Canonical is filtered by the target's `langs` allowlist. `gate-agents` compares regenerated content byte-for-byte (true-green).
+- `mdc`: generate CodeBuddy/Cursor-style `.mdc` — one subfolder per rule (`.codebuddy/rules/<lang>-<topic>/RULE.mdc`) with synthesized frontmatter (description/alwaysApply/enabled/updatedAt) and the canonical body verbatim (after stripping any canonical frontmatter), with ONE transform: cross-rule links `../<lang>/<topic>.md` are retargeted to the generated layout `../<lang>-<topic>/RULE.mdc` (a verbatim copy would point at a path that does not exist in the generated tree). Canonical is filtered by the target's `langs` allowlist. `gate-agents` compares regenerated content byte-for-byte (true-green).
 
 Exit codes: 0 clean, 1 findings, 2 guard violation (nothing written).
 Reuses scripts/agent_common.py (guard / classify / link / backup).
@@ -63,10 +63,20 @@ def _mdc_folder(rel):
     return "%s-%s" % (lang, topic)
 
 
+# Cross-rule links point at the canonical layout (`../common/testing.md`); the
+# generated tree uses one folder per rule (`common-testing/RULE.mdc`). This is the
+# only non-verbatim transform applied to the canonical body.
+_LINK = re.compile(r"\]\(\.\./([a-z0-9-]+)/([a-z0-9-]+)\.md((?:#[^)]*)?)\)")
+
+
+def _retarget_links(body):
+    return _LINK.sub(lambda m: "](../%s-%s/RULE.mdc%s)" % (m.group(1), m.group(2), m.group(3)), body)
+
+
 def _mdc_content(canonical_path, rel, always_on=None):
     with open(canonical_path, "r", encoding="utf-8") as handle:
         raw = handle.read()
-    body = _strip_frontmatter(raw)
+    body = _retarget_links(_strip_frontmatter(raw))
     h1 = _first_h1(body)
     folder = _mdc_folder(rel)
     if h1 is None:
