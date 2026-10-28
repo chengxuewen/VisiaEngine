@@ -457,6 +457,14 @@ Rationale: D28/D37 already specified "concise aggregation into root AGENTS.md, d
 Cursor/Qoder/Trae/ZCode are **not installed** on this machine, so no host adapter was enabled — adding one unverified is the D35 dead-file trap. Verified from Cursor's official docs: project rules are `.cursor/rules/**/*.mdc` (flat `.mdc` files; a plain `.md` is ignored), frontmatter is `description`/`globs`/`alwaysApply`, and **`globs` is officially supported**; MCP is `.cursor/mcp.json` with `type: "stdio"` required for stdio servers.
 
 Decision (user-adjudicated): **defer**. Do not implement the flat `.mdc` layout or enable the target until Cursor is actually installed/used. When it is, the work is: a flat `<lang>-<topic>.mdc` layout variant, map canonical `paths` to `globs`, and emit `type: "stdio"` in the MCP entry. Qoder/Trae/ZCode remain unverified and are not added.
+
+## D43: ast-grep ported — CLI dependency + ast-grep-rewrites skill (2026-10-28)
+
+`ast-grep-cli ==0.51.0` (official PyPI distribution by the ast-grep author, MIT) added to the default pixi env `[pypi-dependencies]`; verified `ast-grep 0.51.0` runs. New skill `.agents/skills/ast-grep-rewrites/` (six sections): dry-run the pattern first, preview with `-r`, apply with `--update-all`, then run the gates; regex matching is the failure mode it replaces. This **supersedes** the 2026-10-28 deferral.
+
+Verified: read-only probe found 264 `$X.unwrap()` sites; SKILL DIRECTORY 37; `pixi run agents check` green. Skill name per the naming convention (upstream `ast-grep` would collide with oh-my-openagent).
+
+Pre-existing note (unrelated to this pypi change, `Cargo.lock` untouched): `pixi run audit` advisories FAIL on `rustls-webpki 0.103.15` / `webpki-roots 1.0.9` (RUSTSEC-2026-0382, distrusted emSign intermediates); RustSec fix = `cargo update -p rustls-webpki` (>=0.103.16) — tracked as its own dependency-security change.
 ## D42: MCP lifecycle CLI (`pixi run mcp`) — install/index/status consolidated (2026-10-28)
 
 Plan: `.omo/plans/2026-10-28-mcp-lifecycle-cli.md` (four adjudications + three re-adjudications + an executability review; Chinese working doc in gitignored `.omo/` per D38).
