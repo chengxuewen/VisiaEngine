@@ -88,6 +88,8 @@ gate-mcp = "python3 scripts/gate-mcp.py"
 # Independent environment on purpose: it needs Python 3.13 while the default env is 3.12 (D42/D30).
 [feature.serena.dependencies]
 python = "3.13.*"
+rust = ">=1.98,<2"            # rust-analyzer needs rustc; same series as the default env
+rust-src = ">=1.98,<2"        # std sources for rust-analyzer (conda-forge splits it out since 1.99)
 rust-analyzer = "*"
 
 [feature.serena.pypi-dependencies]
@@ -99,7 +101,7 @@ clang-tools = "23.*"
 
 [feature.serena.tasks]
 # PIXI_PROJECT_ROOT is provided inside tasks, so --project does not depend on the host's cwd.
-mcp-serena = "serena start-mcp-server --transport stdio --context ide-assistant --language-backend LSP --project \"$PIXI_PROJECT_ROOT\""
+mcp-serena = "serena start-mcp-server --transport stdio --context claude-code --language-backend LSP --project \"$PIXI_PROJECT_ROOT\""
 
 [environments]
 # Single-environment scheme: all lightweight binaries go into default (tools/ide and the base deps share a solve-group; no isolation needed)

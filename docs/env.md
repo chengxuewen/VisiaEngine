@@ -56,6 +56,20 @@ All local MCP maintenance goes through one task (`scripts/mcp-cli.py`):
 - `.codegraph/` is a machine-local cache (gitignored) and is **not** built in CI -- build it once per machine.
 - The MCP host spawns `scripts/mcp-launch.sh`: a missing binary is installed on the spot, but a **pin drift fails fast** with `run: pixi run mcp setup` instead of silently reinstalling (an install would write to stdout, which is the JSON-RPC channel).
 
+### Serena MCP (semantic/LSP server, complements codegraph)
+
+Runs in the isolated pixi environment `serena` (Python 3.13 + pypi `serena-agent`, pinned in `pixi.lock`; `rust-analyzer` + `clang-tools` provide the language servers). The registry entry is `kind: "pixi"` in `scripts/mcp-servers.json`: install is declarative (`pixi install -e serena`), `gate-mcp` probes it via `<env>/bin/serena --version` and **never starts the server** (it would spawn language servers), and `pixi run mcp status` reports it next to codegraph.
+
+```bash
+./visiaengine.sh mcp status    # codegraph (node_modules) + serena (pixi env), one line each
+pixi run -e serena serena --version   # raw version
+```
+
+- `.serena/`: `project.yml` is **tracked** (reviewed config: language servers, backend, tool trimming); `cache/`, `memories/` and `project.local.yml` are **ignored** — Serena memories must NOT become a second memory store (single source: `.agents/memorys`, D41).
+- Tool surface: the default agent interface exposes **2 MCP tools** (`initial_instructions`, `serena_repl`) — same minimal-surface philosophy as codegraph; trimming is available via `excluded_tools` / `--mode` in `project.yml`.
+- Context: `--context claude-code` (`ide-assistant` is deprecated in Serena 2.1.0).
+- C++ coverage needs `compile_commands.json` (CMake presets export it, but only inside a build tree — configure once and link it at the repo root, see the gitignored `compile_commands.json`); without it clangd falls back to guessed flags.
+
 ## Environment composition
 
 | piece | package (conda-forge) | notes |

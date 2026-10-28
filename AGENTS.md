@@ -258,6 +258,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D41: AGENTS.md memory region became a navigable digest (2026-10-28)
 - D42: New host onboarding deferred; Cursor needs a flat .mdc layout when adopted (2026-10-28)
 - D42: MCP lifecycle CLI (`pixi run mcp`) — install/index/status consolidated (2026-10-28)
+- D43: Serena MCP integrated as a pixi-env server behind the unified registry (2026-10-28)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
