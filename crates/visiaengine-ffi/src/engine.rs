@@ -1071,16 +1071,31 @@ impl Engine {
             }
             None => {
                 let (p, c, ps) = match self.mode {
-                    Proj::Persp => (
-                        persp,
-                        Camera::perspective(
-                            self.rig.fov_y as f32,
-                            self.w as f32 / self.h as f32,
-                            0.1,
-                            1000.0,
-                        ),
-                        1.0,
-                    ),
+                    Proj::Persp => {
+                        // REND-29 (the 4de not-installed-1 debt paid): the
+                        // screen-expansion families (labels/points/strokes)
+                        // scale by px_world_scale -- under perspective it is
+                        // the target-depth value 2*dist*tan(fov/2)/H, not a
+                        // placeholder 1.0 (1.0 made a 10px label 10 world
+                        // meters tall).
+                        let d = [
+                            self.rig.eye()[0] - self.rig.target[0],
+                            self.rig.eye()[1] - self.rig.target[1],
+                            self.rig.eye()[2] - self.rig.target[2],
+                        ];
+                        let dist_t = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+                        let tan_half = (self.rig.fov_y * 0.5).tan().max(1e-3);
+                        (
+                            persp,
+                            Camera::perspective(
+                                self.rig.fov_y as f32,
+                                self.w as f32 / self.h as f32,
+                                0.1,
+                                1000.0,
+                            ),
+                            (2.0 * dist_t * tan_half / f64::from(self.h.max(1))) as f32,
+                        )
+                    }
                     Proj::Ortho => (
                         ortho,
                         Camera::ortho(hw as f32, hh as f32, 0.1, (hw * 2.0).max(1000.0) as f32),
