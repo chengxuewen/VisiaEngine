@@ -6,6 +6,13 @@
     "bin": "codegraph",
     "args": ["serve", "--mcp"]
   },
+  "local-playwright": {
+    "kind": "npm",
+    "pkg": "@playwright/mcp",
+    "version": "0.0.83",
+    "bin": "playwright-mcp",
+    "args": []
+  },
   "local-serena": {
     "kind": "pixi",
     "pixi_env": "serena",

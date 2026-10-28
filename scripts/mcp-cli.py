@@ -228,22 +228,13 @@ def _codegraph(node, *path_args):
     ).returncode
 
 
-def cmd_index(args):
-    """First run initializes .codegraph; later runs rebuild it. Serena's LSP cache is rebuilt too."""
-    node = shutil.which("node")
-    if node is None:
-        print("%s %s" % (PREFIX, NODE_HINT))
-        return 127
-    initialized = os.path.isdir(os.path.join(ac.ROOT, ".codegraph"))
-    step = ["index"] if initialized else ["init", "-y"]
-    print("%s %s .codegraph (codegraph %s)" % (PREFIX, "rebuilding" if initialized else "initializing", " ".join(step)))
-    code = _codegraph(node, *step)
-    if code != 0:
-        print("%s ✗ codegraph %s failed (exit %d)" % (PREFIX, " ".join(step), code))
-        return ac.EXIT_FINDINGS
+def _serena_index_all(specs):
+    """Rebuild the LSP cache for every pixi-kind server; returns the failure count.
 
+    Serena has no incremental mode: this is always a full `serena project index`.
+    """
     failures = 0
-    for name, spec in _specs().items():
+    for name, spec in specs.items():
         if not _is_pixi(spec):
             continue
         binary = _env_bin(spec)
@@ -278,6 +269,25 @@ def cmd_index(args):
         langs = sorted(os.listdir(os.path.join(ac.ROOT, ".serena", "cache"))) \
             if os.path.isdir(os.path.join(ac.ROOT, ".serena", "cache")) else []
         print("%s %-16s ✓ indexed (%s)" % (PREFIX, name, ", ".join(langs) or "empty"))
+    return failures
+
+
+def cmd_index(args):
+    """First run initializes .codegraph; later runs rebuild it. Serena's LSP cache is rebuilt too."""
+    node = shutil.which("node")
+    if node is None:
+        print("%s %s" % (PREFIX, NODE_HINT))
+        return 127
+    initialized = os.path.isdir(os.path.join(ac.ROOT, ".codegraph"))
+    step = ["index"] if initialized else ["init", "-y"]
+    print("%s %s .codegraph (codegraph %s)" % (PREFIX, "rebuilding" if initialized else "initializing", " ".join(step)))
+    code = _codegraph(node, *step)
+    if code != 0:
+        print("%s ✗ codegraph %s failed (exit %d)" % (PREFIX, " ".join(step), code))
+        return ac.EXIT_FINDINGS
+
+    specs = _specs()
+    failures = _serena_index_all(specs)
 
     print()
     print("%s index done -- scale check:" % PREFIX)
@@ -289,7 +299,7 @@ def cmd_index(args):
 
 
 def cmd_sync(args):
-    """Incremental sync of the existing index (watch mode normally covers this)."""
+    """Codegraph gets an incremental sync; pixi-kind servers get a full LSP-cache re-index."""
     node = shutil.which("node")
     if node is None:
         print("%s %s" % (PREFIX, NODE_HINT))
@@ -300,6 +310,11 @@ def cmd_sync(args):
     code = _codegraph(node, "sync")
     if code != 0:
         print("%s ✗ codegraph sync failed (exit %d)" % (PREFIX, code))
+        return ac.EXIT_FINDINGS
+    specs = _specs()
+    failures = _serena_index_all(specs)
+    if failures:
+        print("%s ✗ %d serena re-index failure(s)" % (PREFIX, failures))
         return ac.EXIT_FINDINGS
     print("%s ✓ synced" % PREFIX)
     return ac.EXIT_OK
@@ -351,13 +366,13 @@ def build_parser():
         description="MCP lifecycle management (local stdio servers, pinned via scripts/mcp-servers.json).",
     )
     sub = parser.add_subparsers(dest="command", metavar="<subcommand>")
-    setup = sub.add_parser("setup", help="install every server at the pinned version (idempotent)")
+    setup = sub.add_parser("setup", help="install/verify every server (npm: pinned pkg; pixi: env present + version)")
     setup.set_defaults(func=cmd_setup)
-    index = sub.add_parser("index", help="initialize .codegraph on first run, full rebuild afterwards")
+    index = sub.add_parser("index", help="rebuild every index: .codegraph + Serena LSP cache (.serena/cache)")
     index.set_defaults(func=cmd_index)
-    sync = sub.add_parser("sync", help="incrementally sync an existing index (watch mode covers the normal case)")
+    sync = sub.add_parser("sync", help="codegraph incremental sync + Serena LSP-cache re-index")
     sync.set_defaults(func=cmd_sync)
-    status = sub.add_parser("status", help="show pin vs installed versions and the codegraph index state")
+    status = sub.add_parser("status", help="show pin vs installed versions and each server's index/cache state")
     status.set_defaults(func=cmd_status)
     return parser
 

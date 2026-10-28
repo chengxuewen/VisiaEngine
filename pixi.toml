@@ -82,6 +82,7 @@ web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-was
 #   - @modelcontextprotocol/server-github@0.6.0 works but is deprecated w/ 3 high vulns (review #8, deferred).
 [feature.mcp.tasks]
 mcp-codegraph = "node scripts/mcp-serve.mjs --from scripts/mcp-servers.json --name local-codegraph"
+mcp-playwright = "node scripts/mcp-serve.mjs --from scripts/mcp-servers.json --name local-playwright"
 gate-mcp = "python3 scripts/gate-mcp.py"
 
 # Serena MCP -- semantic/LSP server (design + review: .omo/plans/2026-10-28-serena-mcp-integration.md)

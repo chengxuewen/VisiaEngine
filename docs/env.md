@@ -70,6 +70,20 @@ pixi run -e serena serena --version   # raw version
 - Context: `--context claude-code` (`ide-assistant` is deprecated in Serena 2.1.0).
 - C++ coverage needs `compile_commands.json` (CMake presets export it, but only inside a build tree — configure once and link it at the repo root, see the gitignored `compile_commands.json`); without it clangd falls back to guessed flags.
 
+### Adding an MCP server (runbook)
+
+1. **Pick the kind**: `npm` (pinned package launched via `scripts/mcp-serve.mjs`, like codegraph) or `pixi` (own environment + language servers, like serena).
+2. **Verify the package on the real registry**: `pixi run npm view <pkg> version bin` — never guess names or versions (review #17).
+3. Add an entry to `scripts/mcp-servers.json`: npm → `kind/pkg/version/bin/args`; pixi → `kind/pixi_env/task/version/probe`.
+4. Add the server to `.agents/mcp.json`: `{type: stdio, command: pixi, args: [run, (pixi only: -e <env>), mcp-<name>]}`. **Keep `kind`/`pixi_env`/`probe` out of this file** — it is a generation source; the guard only checks shape, so extra keys slip in silently.
+5. `python3 scripts/agent-links.py sync` regenerates `.mcp.json` + `.opencode/opencode.json`.
+6. `pixi run mcp setup` installs (npm) / verifies (pixi) everything.
+7. `pixi run gate-mcp` probes: start the server (npm) / run the probe binary (pixi). Credential missing → `SKIP` (yellow); pixi env missing → `skipped-env`; anything else → red.
+8. **Manual acceptance (not gateable)**: start the server in the panel and call one real tool — "server starts" does not mean "server is useful" (runtime deps like browsers/tokens only surface at tool-call time).
+9. Document it in this section + a D entry; commit as a single commit (parallel agents sweep staged files).
+
+Retired wrappers stay on disk until the replacement is proven (e.g. `.opencode/init-mcp-playwright.mjs` was superseded by the pinned `@playwright/mcp` package).
+
 ## Environment composition
 
 | piece | package (conda-forge) | notes |

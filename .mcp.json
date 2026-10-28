@@ -8,6 +8,14 @@
       "command": "bash",
       "type": "stdio"
     },
+    "local-playwright": {
+      "args": [
+        "scripts/mcp-launch.sh",
+        "mcp-playwright"
+      ],
+      "command": "bash",
+      "type": "stdio"
+    },
     "local-serena": {
       "args": [
         "scripts/mcp-launch.sh",

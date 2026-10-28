@@ -10,6 +10,7 @@ description: "Turn a spec or a vague ask into ordered, verifiable work slices fo
 - A plan is not a prose summary — it is an **ordered set of slices**, each with a verification and a dependency.
 - The repo's constraint: every slice must leave `pixi run fmt/lint/check/test` green (and the relevant `gate-*`).
 - Use `todo_write` for tracking; use `openspec-propose` when the change needs a spec/proposal artifact.
+- Size the path first (`think-before-act` path sizing: Spike / Bounded / Architectural) — only Bounded and Architectural need this breakdown.
 
 ## When to Use
 

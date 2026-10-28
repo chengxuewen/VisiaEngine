@@ -32,6 +32,21 @@ Trigger especially when failure modes are odd: silent failures, runtime errors t
 | **Standard** | touches interface/build/dependencies/multiple files/irreversible/framework-level issues | Phase 1→2→3 |
 | **Urgent** | the user explicitly declares "urgent / fix first, report later" (production down, data loss) | do it now + file the report afterward |
 
+## Path Sizing (design/creative work — say the class out loud, the user can override)
+
+For creative or design tasks, classify the path **before** listing options:
+
+| Path | Test | Artifact | Route |
+|------|------|----------|-------|
+| **Spike** | a feasibility question ("can we…"); the output is an answer, not kept code | the answer; anything built stays labeled throwaway | investigate cheaply, then report — no spec, no plan file |
+| **Bounded** | the flow being changed **already exists in this repo** (new flag, small endpoint, one-file fix) | a short design in chat (a few sentences) | present it and STOP — implementation starts only on an explicit yes; no spec file |
+| **Architectural** | a new subsystem, or interfaces others depend on | sectioned design + spec | full process → `openspec-propose` → `planning-and-task-breakdown` |
+
+Rules:
+- **One-way ratchet**: hidden complexity discovered mid-task upgrades the path — stop, say so, and step up. Never downgrade.
+- **The artifact scales with simplicity; the approval never does** — even a two-sentence design needs an explicit yes before implementation (this gate is what this skill is).
+- When in doubt between two paths, take the heavier one.
+
 ---
 
 ## Phase 1: Investigation (standard tier must not skip)

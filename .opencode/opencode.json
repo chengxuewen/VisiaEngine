@@ -49,12 +49,11 @@
     },
     "local-playwright": {
       "type": "local",
-      "enabled": false,
+      "enabled": true,
       "command": [
-        "bash",
-        ".opencode/with-node.sh",
-        "node",
-        ".opencode/init-mcp-playwright.mjs"
+        "pixi",
+        "run",
+        "mcp-playwright"
       ]
     },
     "local-postgres": {
