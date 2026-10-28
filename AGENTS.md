@@ -416,7 +416,9 @@ file. Read the source file before acting on a rule you are unsure about.
 | `constraint-driven-development` | Constraint-driven development for this engine: one quality-gate source of truth (CONSTRAINTS.md derived from pixi.toml ci), cost-based ch... |
 | `context-engineering` | Route language-specific rules to the right code in a multi-language workspace. |
 | `debugging-and-error-recovery` | Systematic debugging and error recovery for this engine: reproduce, localize, narrow (bisect), minimal fix, add a regression guard, and s... |
+| `deprecation-and-migration` | Deprecate and migrate safely in this repo: mark the old surface, publish a migration path, keep an alias until consumers move, then remove. |
 | `doc-audit` | Project documentation and architecture audit. |
+| `documentation-and-adrs` | Record architecture decisions and keep docs consistent in this repo: D-series entries in .agents/memorys/decisions.md, architecture doc u... |
 | `ecosystem-scan` | Audit the .agents/ system and scan the community ecosystem for adoptable skills/rules/MCP. |
 | `incremental-implementation` | Thin vertical slice methodology — implement→test→verify→commit per slice, each leaving the workspace compilable and tests green. |
 | `lesson-review` | Batch session review: systematically extract lessons learned, write them to project memory. |
@@ -427,6 +429,7 @@ file. Read the source file before acting on a rule you are unsure about.
 | `openspec-propose` | Propose a new change with structured artifacts (proposal, design, tasks). |
 | `openspec-sync-specs` | Sync delta specs from a change to main specs. |
 | `performance-optimization` | Generic performance profiling and optimization across four dimensions: latency tracing, throughput benchmarking, web UI render profiling,... |
+| `planning-and-task-breakdown` | Turn a spec or a vague ask into ordered, verifiable work slices for this engine: dependency order, <=7 todos, each slice leaving the work... |
 | `repo-triage` | Layer triage for an ambiguous task in this polyglot engine: map the ask to core-engine / FFI / Qt / wasm / CLI-infra / docs, list affecte... |
 | `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
 | `rust-engineering` | Rust engineering workflow for this engine workspace: fmt/clippy/test/deny gates, unsafe and FFI review, MSRV/edition awareness, and prope... |
@@ -434,6 +437,7 @@ file. Read the source file before acting on a rule you are unsure about.
 | `shipping-and-launch` | Release and launch checklist for this engine: full ci green, pack-check, version/tag policy, changelog decision, rollback, and docs. |
 | `skill-router` | Analyze user intent and output a recommended skill list. |
 | `source-driven-development` | Ground every external dependency decision in official docs. |
+| `test-driven-development` | Red-green-refactor for this engine: write the failing test first, make it pass minimally, then refactor, using cargo test plus proptest/i... |
 | `test-harness` | Multi-language automated test harness. |
 | `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
 <!-- END:skills-directory -->
