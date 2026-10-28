@@ -199,3 +199,9 @@ before: 487 lines → after: 312 lines (-36%)
 - `grep` / LSP references show the symbol is truly unused before removal.
 - `cargo clippy` / `cargo test` / `cargo fmt` green after the change.
 - The diff is behavior-preserving (no logic change mixed in).
+
+## Boundary with ai-slop-cleanup
+
+- `code-simplification` (this skill): reduces **structural** complexity — functions, control flow, modules, dead code.
+- `ai-slop-cleanup`: removes **generated text noise** — restating comments, generic summaries, hedging, duplicate explanations.
+- If the fix is "delete half a function", this skill; if it is "delete the comment that repeats it", `ai-slop-cleanup`.

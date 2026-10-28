@@ -417,6 +417,7 @@ file. Read the source file before acting on a rule you are unsure about.
 | Skill | Purpose |
 |-------|---------|
 | `adjudication-walkthrough` | one-at-a-time adjudication protocol. |
+| `ai-slop-cleanup` | Remove AI-generated noise from this repo's code and docs: comments that restate the code, generic summaries, hedging, duplicate explanati... |
 | `api-interface-design` | Contract-first interface design for polyglot projects: Rust trait boundaries, the C ABI surface (header + cpp/wasm mirrors), and REST/JSO... |
 | `book-to-skill` | Converts books and documents (PDF, EPUB, DOCX, HTML, Markdown, plain text, RTF, MOBI/AZW with Calibre) into structured agent skills, extr... |
 | `browser-testing` | Browser-side verification of this engine's WebGPU demo wall and web builds via Playwright/DevTools: page boot, frame survival, canvas/Web... |
@@ -447,6 +448,7 @@ file. Read the source file before acting on a rule you are unsure about.
 | `shipping-and-launch` | Release and launch checklist for this engine: full ci green, pack-check, version/tag policy, changelog decision, rollback, and docs. |
 | `skill-router` | Analyze user intent and output a recommended skill list. |
 | `source-driven-development` | Ground every external dependency decision in official docs. |
+| `subagent-orchestration` | Orchestrate subagents for this repo: decide parallel vs serial, define isolated scopes, merge results, and avoid duplicated exploration. |
 | `test-driven-development` | Red-green-refactor for this engine: write the failing test first, make it pass minimally, then refactor, using cargo test plus proptest/i... |
 | `test-harness` | Multi-language automated test harness. |
 | `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
