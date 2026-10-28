@@ -47,7 +47,7 @@ All local MCP maintenance goes through one task (`scripts/mcp-cli.py`):
 
 ```bash
 ./visiaengine.sh mcp setup    # install/repair every server at the pinned version (idempotent, --save-exact)
-./visiaengine.sh mcp index    # first run: build .codegraph; later runs: full rebuild
+./visiaengine.sh mcp index    # codegraph rebuild + Serena LSP cache rebuild (.serena/cache)
 ./visiaengine.sh mcp sync     # incremental sync (the watcher covers normal editing)
 ./visiaengine.sh mcp status   # pin vs installed versions + index state (read-only)
 ```

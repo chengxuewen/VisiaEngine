@@ -229,7 +229,7 @@ def _codegraph(node, *path_args):
 
 
 def cmd_index(args):
-    """First run initializes .codegraph; later runs rebuild it in full."""
+    """First run initializes .codegraph; later runs rebuild it. Serena's LSP cache is rebuilt too."""
     node = shutil.which("node")
     if node is None:
         print("%s %s" % (PREFIX, NODE_HINT))
@@ -241,9 +241,50 @@ def cmd_index(args):
     if code != 0:
         print("%s ✗ codegraph %s failed (exit %d)" % (PREFIX, " ".join(step), code))
         return ac.EXIT_FINDINGS
+
+    failures = 0
+    for name, spec in _specs().items():
+        if not _is_pixi(spec):
+            continue
+        binary = _env_bin(spec)
+        if not os.path.exists(binary):
+            print(
+                "%s %-16s ✗ env '%s' not installed -- serena index skipped (run: pixi run mcp setup)"
+                % (PREFIX, name, spec["pixi_env"])
+            )
+            failures += 1
+            continue
+        print("%s %-16s rebuilding .serena/cache (serena project index) ..." % (PREFIX, name))
+        try:
+            proc = subprocess.run(
+                [binary, "project", "index", ac.ROOT],
+                cwd=ac.ROOT,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=900,
+            )
+        except subprocess.TimeoutExpired:
+            print("%s %-16s ✗ serena index timeout after 900s" % (PREFIX, name))
+            failures += 1
+            continue
+        if proc.returncode != 0:
+            print("%s %-16s ✗ serena index failed (exit %d)" % (PREFIX, name, proc.returncode))
+            tail = (proc.stderr or proc.stdout).strip().splitlines()
+            if tail:
+                print("        %s" % tail[-1])
+            failures += 1
+            continue
+        langs = sorted(os.listdir(os.path.join(ac.ROOT, ".serena", "cache"))) \
+            if os.path.isdir(os.path.join(ac.ROOT, ".serena", "cache")) else []
+        print("%s %-16s ✓ indexed (%s)" % (PREFIX, name, ", ".join(langs) or "empty"))
+
     print()
     print("%s index done -- scale check:" % PREFIX)
     _run_codegraph_status(node)
+    if failures:
+        print("%s ✗ %d non-codegraph index failure(s)" % (PREFIX, failures))
+        return ac.EXIT_FINDINGS
     return ac.EXIT_OK
 
 
@@ -278,9 +319,11 @@ def cmd_status(args):
                 state = "ok"
             else:
                 state = "DRIFT"
+            cache_dir = os.path.join(ac.ROOT, ".serena", "cache")
+            langs = ",".join(sorted(os.listdir(cache_dir))) if os.path.isdir(cache_dir) else "empty"
             print(
-                "  %-16s %-38s pin=%-8s reported=%-24s %s"
-                % (name, "pixi:" + spec["pixi_env"], version, reported or "-", state)
+                "  %-16s %-38s pin=%-8s reported=%-24s %s  cache=[%s]"
+                % (name, "pixi:" + spec["pixi_env"], version, reported or "-", state, langs)
             )
             continue
         have = _installed_version(spec["pkg"])
