@@ -427,9 +427,11 @@ file. Read the source file before acting on a rule you are unsure about.
 | `openspec-propose` | Propose a new change with structured artifacts (proposal, design, tasks). |
 | `openspec-sync-specs` | Sync delta specs from a change to main specs. |
 | `performance-optimization` | Generic performance profiling and optimization across four dimensions: latency tracing, throughput benchmarking, web UI render profiling,... |
+| `repo-triage` | Layer triage for an ambiguous task in this polyglot engine: map the ask to core-engine / FFI / Qt / wasm / CLI-infra / docs, list affecte... |
 | `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
 | `rust-engineering` | Rust engineering workflow for this engine workspace: fmt/clippy/test/deny gates, unsafe and FFI review, MSRV/edition awareness, and prope... |
 | `security-hardening` | Security audit and hardening: OWASP Top 10 checks, hardcoded secrets/ports/URLs scan (merged review-hardcode), token/auth flow review, FF... |
+| `shipping-and-launch` | Release and launch checklist for this engine: full ci green, pack-check, version/tag policy, changelog decision, rollback, and docs. |
 | `skill-router` | Analyze user intent and output a recommended skill list. |
 | `source-driven-development` | Ground every external dependency decision in official docs. |
 | `test-harness` | Multi-language automated test harness. |
