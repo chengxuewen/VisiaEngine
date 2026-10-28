@@ -2541,3 +2541,39 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+
+<!-- BEGIN:skills-directory -->
+
+## SKILL DIRECTORY (generated -- edit .agents/skills/*, not this block)
+
+| Skill | Purpose |
+|-------|---------|
+| `adjudication-walkthrough` | one-at-a-time adjudication protocol. |
+| `api-interface-design` | Contract-first interface design for polyglot projects: Rust trait boundaries, the C ABI surface (header + cpp/wasm mirrors), and REST/JSO... |
+| `book-to-skill` | Converts books and documents (PDF, EPUB, DOCX, HTML, Markdown, plain text, RTF, MOBI/AZW with Calibre) into structured agent skills, extr... |
+| `browser-testing` | Browser-side verification of this engine's WebGPU demo wall and web builds via Playwright/DevTools: page boot, frame survival, canvas/Web... |
+| `ci-cd-automation` | Generic CI/CD pipeline management: Docker compose services, GitHub Actions gates (fmt/check/lint/test/audit/benchmark), task-runner mirro... |
+| `code-simplification` | Reduce complexity in Rust/TS code. |
+| `context-engineering` | Route language-specific rules to the right code in a multi-language workspace. |
+| `doc-audit` | Project documentation and architecture audit. |
+| `ecosystem-scan` | Audit the .agents/ system and scan the community ecosystem for adoptable skills/rules/MCP. |
+| `incremental-implementation` | Thin vertical slice methodology — implement→test→verify→commit per slice, each leaving the workspace compilable and tests green. |
+| `lesson-review` | Batch session review: systematically extract lessons learned, write them to project memory. |
+| `openspec-apply-change` | Implement tasks from an OpenSpec change. |
+| `openspec-archive-change` | Archive a completed change in the experimental workflow. |
+| `openspec-explore` | Enter explore mode — a thinking partner for exploring ideas, investigating problems, and clarifying requirements. |
+| `openspec-propose` | Propose a new change with structured artifacts (proposal, design, tasks). |
+| `openspec-sync-specs` | Sync delta specs from a change to main specs. |
+| `performance-optimization` | Generic performance profiling and optimization across four dimensions: latency tracing, throughput benchmarking, web UI render profiling,... |
+| `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
+| `security-hardening` | Security audit and hardening: OWASP Top 10 checks, hardcoded secrets/ports/URLs scan (merged review-hardcode), token/auth flow review, FF... |
+| `skill-router` | Analyze user intent and output a recommended skill list. |
+| `source-driven-development` | Ground every external dependency decision in official docs. |
+| `test-harness` | Multi-language automated test harness. |
+| `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
+<!-- END:skills-directory -->
+<!-- END:skills-directory -->
+<!-- END:skills-directory -->

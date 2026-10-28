@@ -4,6 +4,7 @@
   "mcp_source": ".agents/mcp.json",
   "mcp_local": ".agents/mcp.local.json",
   "memory_hub": "AGENTS.md",
+  "skills_root": ".agents/skills",
   "targets": [
     {
       "label": "codebuddy",
