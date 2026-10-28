@@ -188,3 +188,20 @@ Rules:
 | `test-harness` | Generate test skeletons that CI will run |
 | `lesson-memory` | CI failures → write to pitfalls.md |
 | `think-before-act` | Check CI status BEFORE implementing a fix |
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "fix the code first, CI later" | CI is the proof; a fix without a green pipeline is a guess. |
+| "the flaky job is fine" | Flaky gates train people to ignore red; fix or quarantine explicitly. |
+| "skip the audit for speed" | The audit is the cheapest place to catch a supply-chain break. |
+| "pin every version, always" | Pin the toolchain/lock, float low-risk linters; record the policy. |
+
+## Red Flags
+
+- A pipeline stage that never ran (skipped/disabled).
+- Bypassed hooks or `--no-verify` in CI.
+- An unpinned toolchain floating on `latest`.
+- A secret printed in CI logs.
+- A red gate merged with "investigate later".

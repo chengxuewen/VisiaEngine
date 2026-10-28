@@ -128,3 +128,24 @@ This skill routes **language rules to modules** — which `.agents/rules/<lang>/
 - For the actual skill inventory, read the SKILL DIRECTORY in `AGENTS.md`.
 
 Keeping one routing table (in `skill-router`) avoids two drifting tables with stale names.
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "load all rules, be safe" | Wrong-language rules pollute and mislead; route by extension. |
+| "one language, skip routing" | FFI/protocol files are multi-language by nature; check boundaries. |
+| "the rules don't matter for a small change" | Small changes still cross a module boundary. |
+
+## Red Flags
+
+- Applying `.rs` rules to `.ts` files (or vice versa).
+- A single-language task loading every ruleset.
+- Missing the boundary files (FFI shims, schema) in the ruleset map.
+- No per-module check, only a whole-workspace run.
+
+## Verification (evidence)
+
+- The file → language → ruleset map for the task.
+- Per-module check output (e.g. `cargo clippy -p <crate> -- -D warnings`, `tsc --noEmit`).
+- Boundary files explicitly listed with their contract rules.

@@ -402,3 +402,26 @@ When the Phase changes, re-run `generate` → previously skipped tests get fille
 | Python | `pytest` | `pytest --cov` | pytest-mock |
 | C++ | `ctest` | `gcov + lcov` | gmock |
 | C | `ctest` | `gcov + lcov` | CMock |
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "tests pass, we're done" | Passing tests cover the schema, not the edge cases; check the uncovered paths. |
+| "skip the slow integration test" | The gate runs the suite; a skipped test is a silent hole. |
+| "snapshot is enough" | Snapshots prove shape, not behavior; assert the behavior too. |
+| "the property test will be flaky" | A flaky property is a shrinking bug; seed the case and pin it. |
+
+## Red Flags
+
+- A new code path with no test at all.
+- `#[ignore]` / `skip` added to make the suite green.
+- Assertions weakened or deleted.
+- Snapshot updated without reading the diff.
+- Tests that hit the network/clock without a seam.
+
+## Verification (evidence)
+
+- The exact `cargo test` / `npx vitest` / `pytest` output (green, with counts).
+- For a new path: the test name plus the failing-without-fix proof.
+- Coverage delta or the specific edge cases enumerated.

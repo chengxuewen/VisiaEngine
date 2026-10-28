@@ -267,3 +267,12 @@ C) Full build/test on Linux CI
 - `.agents/memorys/pitfalls.md` — dependency/build conflicts accumulate here
 - `.agents/memorys/decisions.md` — record version & API decisions with source links
 - `.agents/rules/common/docker.md` — container & network constraints
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "I remember this API" | Memory drifts across versions; read the pinned docs. |
+| "the examples are enough" | Examples omit edge cases and deprecations; read the changelog. |
+| "it compiles, so it's right" | Compilation proves syntax, not semantics or version fit. |
+| "the docs are outdated" | Then pin the version you read and record it; don't guess from memory. |

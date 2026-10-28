@@ -171,3 +171,24 @@ This project's think-before-act skill aligns naturally with Andrej Karpathy's fo
 | **Goal-Driven Execution** | Phase 3: execution + decision gate | execute the approved option, verify every step, no drift |
 
 > **Community reference**: [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — systematizes Karpathy's engineering philosophy into AI-executable skills, consistent with this skill's design intent.
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "I already know the answer" | Then the investigation is cheap; state the evidence, not the intuition. |
+| "asking wastes time" | A wrong direction wastes more; one round of alignment is cheaper. |
+| "the user said just do it" | "Just do it" still bounds scope; confirm the boundary, not permission. |
+| "I'll present options after implementing" | That is a fait accompli, not a decision. |
+
+## Red Flags
+
+- Acting on an unverified assumption.
+- Presenting one option as "the plan".
+- Editing files before stating the scope/impact.
+- Skipping the forbidden-list check.
+
+## Verification (evidence)
+
+- The stated options (with pros/cons) and the user's chosen option.
+- The investigation evidence (file reads/greps) that grounded the options.
