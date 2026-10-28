@@ -13,12 +13,11 @@ Rules are part of the `.agents/` directory, organized into a **common** layer pl
 │   ├── hooks.md
 │   ├── agents.md
 │   └── security.md
-├── typescript/      # TypeScript/JavaScript specific
+├── cpp/             # C++ specific
 ├── python/          # Python specific
-├── golang/          # Go specific
-├── web/             # Web and frontend specific
-├── swift/           # Swift specific
-└── php/             # PHP specific
+├── rust/            # Rust specific
+├── typescript/      # TypeScript/JavaScript specific
+└── web/             # Web and frontend specific
 ```
 
 - **common/** contains universal principles — no language-specific code examples.
@@ -29,7 +28,7 @@ Rules are project-local and read directly by the AI assistant from `.agents/rule
 ## Rules vs Skills
 
 - **Rules** define standards, conventions, and checklists that apply broadly (e.g., "80% test coverage", "no hardcoded secrets").
-- **Skills** (`skills/` directory) provide deep, actionable reference material for specific tasks (e.g., `python-patterns`, `golang-testing`).
+- **Skills** (`skills/` directory) provide deep, actionable reference material for specific tasks (e.g., `python-patterns`, `rust-testing`).
 
 Language-specific rule files reference relevant skills where appropriate. Rules tell you *what* to do; skills tell you *how* to do it.
 
@@ -57,13 +56,13 @@ For non-language domains like `web/`, follow the same layered pattern when there
 When language-specific rules and common rules conflict, **language-specific rules take precedence** (specific overrides general). This follows the standard layered configuration pattern (similar to CSS specificity or `.gitignore` precedence).
 
 - `.agents/rules/common/` defines universal defaults applicable to all projects.
-- `.agents/rules/golang/`, `.agents/rules/python/`, `.agents/rules/swift/`, `.agents/rules/php/`, `.agents/rules/typescript/`, etc. override those defaults where language idioms differ.
+- `.agents/rules/rust/`, `.agents/rules/cpp/`, `.agents/rules/python/`, `.agents/rules/typescript/`, `.agents/rules/web/`, etc. override those defaults where language idioms differ.
 
 ### Example
 
-`common/coding-style.md` recommends immutability as a default principle. A language-specific `golang/coding-style.md` can override this:
+`common/coding-style.md` recommends immutability as a default principle. A language-specific `rust/coding-style.md` can override this:
 
-> Idiomatic Go uses pointer receivers for struct mutation — see [common/coding-style.md](../common/coding-style.md) for the general principle, but Go-idiomatic mutation is preferred here.
+> Idiomatic Rust uses `&mut` borrows for in-place mutation rather than copying — see [common/coding-style.md](../common/coding-style.md) for the general principle, but Rust-idiomatic mutation is preferred here.
 
 ### Common rules with override notes
 
