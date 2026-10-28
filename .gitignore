@@ -89,6 +89,12 @@ node_modules
 .venv-openspace
 .playwright-mcp
 .codegraph
+# Serena MCP project dir: the generated .serena/.gitignore only hides its own cache and
+# local overrides -- repo-level rules also keep the memories dir out (D42: memory single
+# source is .agents/memorys). .serena/project.yml IS tracked (reviewed config).
+/.serena/cache
+/.serena/memories
+/.serena/project.local.yml
 # Agent single-source: local MCP overrides (secrets). Canonical .agents/mcp.json is committed;
 # this carries real credentials and must never be tracked (review #3 / adjudication 3-B).
 .agents/mcp.local.json
