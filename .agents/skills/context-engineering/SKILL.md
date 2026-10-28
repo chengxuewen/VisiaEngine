@@ -120,45 +120,11 @@ Before submitting work touching multiple languages/modules:
 | `test-harness` | Cross-module testing needs correct per-module context |
 | `lesson-memory` (C9) | New multi-language pitfalls → write to `pitfalls.md` |
 
-## Task → Skill Routing
+## Boundary: skill selection belongs to `skill-router`
 
-After recognizing user intent, proactively suggest loading the matching skill:
+This skill routes **language rules to modules** — which `.agents/rules/<lang>/` files apply to which files. It does **not** recommend skills for a task.
 
-| Keywords/scenario | Suggested skill | Trigger condition |
-|------------|---------|---------|
-| "实现/添加/创建 + 功能" (implement/add/create + feature) | `incremental-implementation` | cross-file changes |
-| "修复/bug/报错/不工作" (fix/bug/error/not working) | `systematic-debugging` | runtime errors |
-| "怎么用/文档/API + 库名" (how-to-use/docs/API + library name) | `source-driven-development` | external dependencies |
-| "写测试/测试失败" (write tests/tests failing) | `test-driven-development` | testing-related |
-| "页面/UI/前端/仪表盘" (page/UI/frontend/dashboard) | `browser-testing` | browser changes |
-| "安全/密钥/认证/漏洞" (security/secret/auth/vulnerability) | `security-hardening` | security-related |
-| "审查/review/检查代码" (review/check code) | code-review rules | after code changes |
-| "性能/慢/卡顿/延迟" (performance/slow/lag/latency) | `performance-optimization` | performance issues |
-| "架构/设计/trait/协议" (architecture/design/trait/protocol) | `api-interface-design` | API design |
-| "切换/上下文/语言" (switch/context/language) | `context-engineering` | multi-language tasks |
-| "CI/CD/Docker/pipeline" | `ci-cd-automation` | CI changes |
-| "简化/重构/清理" (simplify/refactor/cleanup) | `code-simplification` | reduce complexity |
-| "优化 agent/审计/技能" (optimize agents/audit/skills) | `ecosystem-scan` | agent-system work |
-| "总结/记录/教训/经验" (summarize/record/lessons/experience) | `lesson-review` | session end |
-| before any non-trivial operation | `think-before-act` | automatic |
-| "审计/一致性/文档矛盾" (audit/consistency/doc contradictions) | `doc-audit` | documentation audit |
-| "方案/提案/标准化变更" (plan/proposal/spec-driven change) | `openspec-propose` | architecture changes |
-| "实施/按方案/逐步" (implement/per-plan/stepwise) | `openspec-apply-change` | plan execution |
-| "归档/完成变更" (archive/complete change) | `openspec-archive-change` | change archival |
-| "探索/调研/思路" (explore/research/ideas) | `openspec-explore` | option research |
-| "生成测试/测试骨架" (generate tests/test skeletons) | `test-harness` | test framework |
-| "硬编码/密钥/端口扫描" (hardcode/secret/port scan) | `review-hardcode` | security scan |
-| "文档转技能/书籍" (docs-to-skill/book) | `book-to-skill` | document conversion |
-| "同步规格/delta" (sync specs/delta) | `openspec-sync-specs` | spec synchronization |
+- For "what skill should I use / 怎么做 / 帮我选择", use `skill-router` (the single source for task → skill classification).
+- For the actual skill inventory, read the SKILL DIRECTORY in `AGENTS.md`.
 
-## Proactive Suggestion Mechanism
-
-When the agent detects the keywords above but the matching skill is **not** loaded:
-1. Briefly prompt: "This task may need the `X` skill — shall I load it?"
-2. **Never force** — the user may skip
-3. **Never repeat** — suggest a given skill only once per session
-4. Suggestion format:
-
-```
-Suggestion: this task involves [scenario]; `skill(name="X")` can provide [value]. Want it?
-```
+Keeping one routing table (in `skill-router`) avoids two drifting tables with stale names.

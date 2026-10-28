@@ -75,10 +75,10 @@ Confirmed: loading the /think-before-act skill...
 
 ## Relation to context-engineering
 
-- **context-engineering**: passive triggering (auto-recommends when a scenario is detected, via the AGENTS.md directory table)
-- **skill-router**: active invocation (deep-analysis recommendation when the user asks "怎么做" or intent is vague)
+- **context-engineering**: routes **language rules** to modules (which `.agents/rules/<lang>/` files apply to which files); it does NOT pick skills.
+- **skill-router**: the single source for **task → skill** classification (this skill).
 
-The two are complementary: context-engineering's routing table handles keyword matching, skill-router handles ambiguous intent and multi-skill combination recommendations.
+Boundary: if the question is "which rules apply to this file/language", use `context-engineering`; if it is "which skill should I use", use this skill.
 
 ## When NOT to Recommend
 

@@ -52,7 +52,7 @@ With no arguments, pop up:
 5. duplicate-content detection (grep key paragraphs)
 6. orphan-file detection (present but never referenced)
 7. skill-directory-table sync: AGENTS.md SKILL DIRECTORY covers every skill
-8. task-routing-table sync: context-engineering routing table matches the actual skill list
+8. skill-router classification matches the actual skill list
 ```
 
 ### 1B: External fast scan
@@ -93,7 +93,7 @@ Fetch READMEs with `webfetch`; 3-dimension quick scoring: tech-stack fit / alrea
 | 12 | duplicate rules | — | semantic dedup |
 | 13 | community trends | — | market scan with 24h cache |
 | 14 | skill-directory table | counts | AGENTS.md SKILL DIRECTORY vs actual skill consistency |
-| 15 | task-routing table | — | context-engineering routing table vs actual skill consistency |
+| 15 | skill-router classification | — | skill-router classification vs actual skill consistency |
 
 ### 2B: External deep scan
 
@@ -211,3 +211,9 @@ Replace the variables:
 - package manager: pixi → {your package manager}
 - memory path: .agents/memorys/ → {your memory path}
 ```
+
+## Boundary with doc-audit
+
+- **ecosystem-scan** (this skill): audits the **agent system** (`.agents/` skills/rules/MCP) and scans the **external** ecosystem for adoptable content.
+- **doc-audit**: audits **project documentation** consistency (architecture/design/decision records); it already carries the "Division of labor with ecosystem-scan" table.
+- Rule of thumb: adopting/optimizing skills or rules → this skill; docs/architecture consistency → `doc-audit`.
