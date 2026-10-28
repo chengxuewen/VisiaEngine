@@ -729,3 +729,11 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: force the replay whenever lib.rs changed under bindings/wasm: `rm -rf cmake-build/web/pkg-web && cmake --build ... --target visiaengine-wasm-js-build`, then grep the generated js for the new `js_name` BEFORE any page-level verification (expect >=2 hits: export + d.ts shape).
 - **Verification**: `grep -c "<BridgeName>" cmake-build/web/pkg-web/visiaengine_wasm.js` >= 2 after the forced replay; gate-web page beacon green.
 - **Forbidden**: trusting web-check/cargo-check as evidence a new bridge shipped; building pages against a bridge before grepping the generated glue.
+
+## PIT-84: generated hub regions silently duplicate their END marker every sync -- and the gate's "first END" check hid it (2026-10-28, agent-sync)
+
+- **Symptom**: after many `agent-sync` runs, `AGENTS.md` carried 38 `END:agents-memory` markers (and 2 BEGIN); the skills region and `CONSTRAINTS.md` grew the same way, yet every `gate-agents` run stayed green.
+- **Root cause**: the REWRITE path in `memory-aggregate`/`skills-index`/`constraints-index` computed `after = END + hub_text.split(END, 1)[1]` and then ALSO appended `END`, so each rewrite re-added one END. The gate's `_current_region` uses `split(BEGIN, 1)[1].split(END, 1)[0]` (first BEGIN / first END), so the region still compared equal and the stray markers were invisible.
+- **Solution**: one idempotent rewrite: `before = split(BEGIN, 1)[0]`, `after = split(END, 1)[1]`, `new_text = before + BEGIN + "\n" + block + END + after` (single END, no re-prepend). Rebuilt the hubs from their hand-written head (truncate at the first BEGIN, then `agent-sync` re-appends one clean region).
+- **Verification**: two consecutive `agent-sync` runs leave `END:agents-memory` / `END:skills-directory` / `END:ci-gates` at exactly 1 each; `gate-agents` green. (The second `BEGIN:agents-memory` is a literal mention inside the D34 prose, not a marker.)
+- **Forbidden**: a generated-region rewrite that re-adds BEGIN/END; trusting a "gate green" check that only reads the first occurrence of a marker.
