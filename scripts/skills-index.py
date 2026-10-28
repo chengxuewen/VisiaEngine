@@ -100,6 +100,8 @@ def run(command, targets, cfg, dry_run):
 
     block = _build_block(skills_root)
     hub_text = open(hub_path).read()
+    if not ac.single_marker_ok(PREFIX, hub_text, BEGIN, END):
+        return ac.EXIT_GUARD
     region = _current_region(hub_text)
     count = len(_skill_rows(skills_root))
 

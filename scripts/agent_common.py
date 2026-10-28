@@ -13,6 +13,7 @@ Stdlib only, Python 3.8 compatible (CI host system python3 is 3.8).
 import datetime
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -127,6 +128,25 @@ def iter_rel_files(canonical_root, suffix):
             full = os.path.join(dirpath, filename)
             out.append(os.path.relpath(full, canonical_root).replace(os.sep, "/"))
     return sorted(out)
+
+
+def marker_line_count(text, marker):
+    """Count marker lines anchored at both ends (prose mentions do not count)."""
+    return len(re.findall(r"(?m)^" + re.escape(marker) + r"[ \t]*$", text))
+
+
+def single_marker_ok(prefix, text, begin, end):
+    """True when the region is absent (0 markers) or exactly one line each.
+
+    Duplicated or half-present markers mean an earlier rewrite leaked markers;
+    writing again would compound the damage, so callers must return EXIT_GUARD.
+    """
+    nb = marker_line_count(text, begin)
+    ne = marker_line_count(text, end)
+    if (nb, ne) in ((0, 0), (1, 1)):
+        return True
+    print("%s ✗ marker-guard: BEGIN=%d END=%d (each must be one line, or both absent)" % (prefix, nb, ne))
+    return False
 
 
 def gate(prefix, ok, msg):
