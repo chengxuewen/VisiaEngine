@@ -2544,6 +2544,8 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
 <!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
 
 <!-- BEGIN:skills-directory -->
 
@@ -2569,11 +2571,14 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
 | `openspec-sync-specs` | Sync delta specs from a change to main specs. |
 | `performance-optimization` | Generic performance profiling and optimization across four dimensions: latency tracing, throughput benchmarking, web UI render profiling,... |
 | `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
+| `rust-engineering` | Rust engineering workflow for this engine workspace: fmt/clippy/test/deny gates, unsafe and FFI review, MSRV/edition awareness, and prope... |
 | `security-hardening` | Security audit and hardening: OWASP Top 10 checks, hardcoded secrets/ports/URLs scan (merged review-hardcode), token/auth flow review, FF... |
 | `skill-router` | Analyze user intent and output a recommended skill list. |
 | `source-driven-development` | Ground every external dependency decision in official docs. |
 | `test-harness` | Multi-language automated test harness. |
 | `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
+<!-- END:skills-directory -->
+<!-- END:skills-directory -->
 <!-- END:skills-directory -->
 <!-- END:skills-directory -->
 <!-- END:skills-directory -->
