@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Docker & Network Constraints
 
 > Topic file, loaded on demand (not in opencode.json instructions). Docker, network, and container-specific constraints for VisiaEngine development.

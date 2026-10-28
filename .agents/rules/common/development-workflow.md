@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Development Workflow
 
 The Feature Implementation Workflow describes the development pipeline: research, planning, TDD, code review, and then committing to git.

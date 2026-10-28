@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Agent Orchestration
 
 ## Memory Updates (NON-NEGOTIABLE)

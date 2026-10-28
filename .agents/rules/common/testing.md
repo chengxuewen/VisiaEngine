@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Testing Requirements
 
 ## Minimum Test Coverage: 80%

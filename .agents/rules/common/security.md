@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Security Guidelines
 
 ## Mandatory Security Checks

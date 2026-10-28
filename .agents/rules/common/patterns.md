@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Common Patterns
 
 ## Skeleton Projects

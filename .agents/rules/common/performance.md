@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Performance Optimization
 
 ## Model Selection Strategy

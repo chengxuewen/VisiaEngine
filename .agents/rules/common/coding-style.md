@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Coding Style
 
 ## Immutability (CRITICAL)

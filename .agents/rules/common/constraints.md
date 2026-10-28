@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Development Constraints
 
 > This is a stub file. Docker & network constraints split to a topic file for on-demand loading.

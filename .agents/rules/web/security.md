@@ -1,6 +1,14 @@
-> This file extends [common/security.md](../common/security.md) with web-specific security content.
+---
+paths:
+  - "**/*.html"
+  - "**/*.css"
+  - "**/*.js"
+  - "**/*.ts"
+---
 
 # Web Security Rules
+
+> This file extends [common/security.md](../common/security.md) with web-specific security content.
 
 ## Content Security Policy
 

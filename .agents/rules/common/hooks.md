@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Hooks System
 
 ## Hook Types

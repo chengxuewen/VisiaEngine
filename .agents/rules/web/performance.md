@@ -1,6 +1,14 @@
-> This file extends [common/performance.md](../common/performance.md) with web-specific performance content.
+---
+paths:
+  - "**/*.html"
+  - "**/*.css"
+  - "**/*.js"
+  - "**/*.ts"
+---
 
 # Web Performance Rules
+
+> This file extends [common/performance.md](../common/performance.md) with web-specific performance content.
 
 ## Core Web Vitals Targets
 

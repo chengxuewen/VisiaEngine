@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Lesson Memory & Self-Correction Rule
 
 > When AI encounters mistakes, new problems, or new lessons, **proactively** write the lessons into the project memory and rule files.

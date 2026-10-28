@@ -1,6 +1,14 @@
-> This file extends [common/hooks.md](../common/hooks.md) with web-specific hook recommendations.
+---
+paths:
+  - "**/*.html"
+  - "**/*.css"
+  - "**/*.js"
+  - "**/*.ts"
+---
 
 # Web Hooks
+
+> This file extends [common/hooks.md](../common/hooks.md) with web-specific hook recommendations.
 
 ## Recommended PostToolUse Hooks
 

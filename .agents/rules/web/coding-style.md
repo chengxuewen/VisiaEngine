@@ -1,6 +1,14 @@
-> This file extends [common/coding-style.md](../common/coding-style.md) with web-specific frontend content.
+---
+paths:
+  - "**/*.html"
+  - "**/*.css"
+  - "**/*.js"
+  - "**/*.ts"
+---
 
 # Web Coding Style
+
+> This file extends [common/coding-style.md](../common/coding-style.md) with web-specific frontend content.
 
 ## File Organization
 

@@ -1,6 +1,14 @@
-> This file extends [common/testing.md](../common/testing.md) with web-specific testing content.
+---
+paths:
+  - "**/*.html"
+  - "**/*.css"
+  - "**/*.js"
+  - "**/*.ts"
+---
 
 # Web Testing Rules
+
+> This file extends [common/testing.md](../common/testing.md) with web-specific testing content.
 
 ## Priority Order
 

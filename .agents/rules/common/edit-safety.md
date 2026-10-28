@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*"
+---
+
 # Code Edit Safety
 
 > **Target audience**: AI agents editing VisiaEngine source code.

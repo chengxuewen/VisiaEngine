@@ -43,10 +43,20 @@ To add support for a new language (e.g., `rust/`):
    - `patterns.md` — language-specific design patterns
    - `hooks.md` — PostToolUse hooks for formatters, linters, type checkers
    - `security.md` — secret management, security scanning tools
-3. Each file should start with:
+3. Each rule file uses the uniform shape (all 40 whitelisted files follow it):
    ```
+   ---
+   paths:
+     - "**/*.<ext>"
+   ---
+
+   # <Title>
+
    > This file extends [common/xxx.md](../common/xxx.md) with <Language> specific content.
    ```
+   - `paths` is optional glob metadata (the `mdc` generator drops it but keeps it as the future glob-mapping source).
+   - The first body line MUST be an H1 — the generator derives the rule `description` from it.
+   - A `> This file extends ...` note, if present, follows the H1 (never before it).
 4. Reference existing skills if available, or create new ones under `skills/`.
 
 For non-language domains like `web/`, follow the same layered pattern when there is enough reusable domain-specific guidance to justify a standalone ruleset.
