@@ -222,3 +222,19 @@ cargo bench --workspace -- --quick                        # quick bench (under-s
 - micro-benchmarks detached from real usage scenarios
 - ignoring CI performance-regression alerts
 - trading `unsafe` for performance without verification
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "this is obviously slow" | Obvious is not measured; profile first, optimize the proven hotspot. |
+| "I optimized two things at once" | Then you cannot attribute the win (or the regression). One variable at a time. |
+| "the micro-benchmark says 2x" | Micro-benchmarks lie; measure the real workload. |
+| "`unsafe` will make it fast" | Only with verification; unsafe for speed without proof is a bug. |
+| "the CI perf alert is noise" | It is the regression signal; investigate or record why it is acceptable. |
+
+## Verification (evidence)
+
+- Before/after numbers from a **profile** on a representative workload (not a synthetic micro-bench).
+- One variable per change; the diff shows exactly one optimization.
+- No new `unsafe` without a `// SAFETY:` comment and a measured justification.

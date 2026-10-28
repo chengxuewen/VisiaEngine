@@ -183,3 +183,19 @@ before: 487 lines → after: 312 lines (-36%)
 - simplifying an `unsafe` block without understanding its memory semantics
 - removing "looks unused" code without git blame evidence
 - deleting feature-gated code without first confirming the CI variants
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "it looks unused" | Check git blame / references first; delete only with evidence. |
+| "I'll simplify while fixing the bug" | Mixed changes hide both; split the refactor from the fix. |
+| "the tests still pass" | Passing tests do not prove behavior preservation at the edges. |
+| "merge these modules, it's cleaner" | Coupling grows; merge only with a concrete cost reduction. |
+| "delete the feature-gated code" | Confirm every CI variant first; a gate may depend on it. |
+
+## Verification (evidence)
+
+- `grep` / LSP references show the symbol is truly unused before removal.
+- `cargo clippy` / `cargo test` / `cargo fmt` green after the change.
+- The diff is behavior-preserving (no logic change mixed in).

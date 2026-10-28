@@ -336,3 +336,21 @@ Fix recommendations: [sorted by severity]
 - ignoring dependency-audit warnings: every vulnerability alert needs a recorded decision
 - production running debug config: `debug_assert!` doesn't execute in release
 - plaintext-HTTP WebSocket: production must use wss:// or a controlled internal network
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "it's just a dev key" | Dev keys leak into commits/clones; use env vars everywhere. |
+| "gitleaks is slow, skip once" | A leaked key lives in git history forever — rotate and re-scan. |
+| "no rate limit needed internally" | Internal services are the first lateral-movement target; rate-limit auth. |
+| "unsafe is fine, tests pass" | Tests do not prove memory safety; every unsafe needs `// SAFETY:` + review. |
+| "cargo audit warns but it's transitive" | Transitive vulns still ship; record a decision or pin/upgrade. |
+
+## Verification (evidence)
+
+- Paste the Phase 1–6 command output plus the Summary block (counts by severity).
+- `unsafe` scan: `grep -rn 'unsafe' <src>/ | grep -v '// SAFETY:'` returns empty.
+- `cargo audit` / `cargo deny check` exit 0, or a recorded accept-decision per alert.
+- A secret found: the key is **rotated** and history cleaned — not just deleted from the working tree.
+- "Looks secure" is not evidence.

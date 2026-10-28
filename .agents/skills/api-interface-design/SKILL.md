@@ -282,3 +282,22 @@ fn connect(room_id: String, peer_id: String, transport_id: String) { /* ... */ }
 When a project defines its own ID set, keep the branded types centralized in the protocol/contract leaf module; any ID passed across modules must be branded.
 
 > **ponytail**: brand only the IDs that travel across modules. Internal one-shot local variables don't need it.
+
+## Red Flags
+
+- A new exported C symbol without updating the header / hpp / wasm mirrors (signature drift).
+- A trait with 10+ methods, or one responsibility split across two traits.
+- Public API exposing an internal type (`pub fn` returning a private module's type).
+- A protocol message added without a backward-compat check (old clients still in the wild).
+- `#[serde(deny_unknown_fields)]` removed just to "make it work".
+- Editing a generated header/layer instead of the single source.
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "I'll write the header later" | The header *is* the contract; code without it is a guess. |
+| "it's only an internal trait" | Other crates consume it; a signature change is an API break. |
+| "old clients can just upgrade" | Backward compatibility is a shipping constraint, not a preference. |
+| "the wasm mirror is optional" | Three surfaces must agree, or one of them lies. |
+| "adding a field is safe" | Only with `#[non_exhaustive]`/default; otherwise exhaustive matches break. |
