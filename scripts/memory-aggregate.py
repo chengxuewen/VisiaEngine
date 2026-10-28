@@ -24,18 +24,35 @@ BEGIN = "<!-- BEGIN:agents-memory -->"
 END = "<!-- END:agents-memory -->"
 
 
+def _digest(path):
+    """One bullet per `## ` entry (title only), so AGENTS.md stays a navigable
+    index instead of a 300 KB full-text dump. Full text lives in the source file."""
+    out = []
+    with open(path) as handle:
+        for line in handle:
+            if line.startswith("## "):
+                out.append("- " + line[3:].strip())
+    return out
+
+
 def _build_block(memorys_root):
     rels = sorted(
         rel for rel in ac.iter_rel_files(memorys_root, ".md")
     )
-    parts = ["", "## AGENT MEMORY (generated -- edit .agents/memorys/*.md, not this block)", ""]
+    parts = [
+        "",
+        "## AGENT MEMORY (generated digest -- full text in `.agents/memorys/*.md`, read on demand)",
+        "",
+        "This region is a NAVIGABLE DIGEST: one bullet per entry plus a pointer to the full",
+        "file. Read the source file before acting on a rule you are unsure about.",
+        "",
+    ]
     for rel in rels:
         name = os.path.splitext(rel)[0]
-        path = os.path.join(memorys_root, rel)
-        with open(path) as handle:
-            body = handle.read().rstrip("\n")
         parts.append("### %s" % name)
-        parts.append(body)
+        parts.append("- full text: `.agents/memorys/%s`" % rel)
+        for item in _digest(os.path.join(memorys_root, rel)):
+            parts.append(item)
         parts.append("")
     return "\n".join(parts).rstrip("\n") + "\n"
 

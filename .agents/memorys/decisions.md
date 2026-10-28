@@ -445,3 +445,9 @@ Seven adjudications (all A except #7 = B):
 P2 (deferred): 6-section (Rationalizations / Red Flags / Verification) audit of existing skills, version-aware MSRV matrix, `repo-triage` router, ADR/shipping/deprecation skills, prune noise-language rules, trim the ~316 KB `AGENTS.md` aggregation.
 
 **Status (2026-10-28): batch 0 done.** `book-to-skill` SKILL.md trimmed 616→486 lines by moving 3 self-contained sections to `references/` (`repl-access.md`, `update-fold-in.md`, `master-skill-template.md`); the skills link layer is a whole-directory symlink, so the references are reachable; `gate-agents` green. The planned "translate the 4 skills' prose" turned out a **no-op**: after re-inspection their Chinese is entirely trigger keywords / routing tables / protocol labels (functional), so it was kept per the "keep triggers" rule (CJK 22/12/6/3 unchanged).
+
+## D41: AGENTS.md memory region became a navigable digest (2026-10-28)
+
+`memory-aggregate.py` now emits a **digest** — one bullet per `## ` entry in each memory file plus a `- full text: .agents/memorys/<file>.md` pointer — instead of the full text of the four memory files. Result: `AGENTS.md` **334 KB → ~40 KB** (memory region 314 KB → ~22 KB, a 93% cut) while the full text stays in `.agents/memorys/*.md` (read on demand). The digest is deterministic, so `gate-agents` content-compare still passes.
+
+Rationale: D28/D37 already specified "concise aggregation into root AGENTS.md, deep records kept as on-demand references", but the aggregator dumped full text, injecting ~314 KB every session. Trade-off accepted: the hub now carries titles, not full rule bodies — the digest header tells the agent to read the source file before acting on a rule it is unsure about.
