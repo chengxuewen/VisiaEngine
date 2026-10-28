@@ -36,7 +36,8 @@ mcp_links = _load_layer("mcp-links")
 memory_aggregate = _load_layer("memory-aggregate")
 skills_index = _load_layer("skills-index")
 constraints_index = _load_layer("constraints-index")
-LAYERS = [rules_links, mcp_links, memory_aggregate, skills_index, constraints_index]
+mcp_file_guard = _load_layer("mcp-file-guard")
+LAYERS = [rules_links, mcp_links, memory_aggregate, skills_index, constraints_index, mcp_file_guard]
 
 
 def main(argv):
