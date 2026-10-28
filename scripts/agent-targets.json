@@ -14,6 +14,7 @@
       "rules_dir": ".codebuddy/rules",
       "rules_mode": "mdc",
       "langs": ["common","rust","cpp","web","typescript","python"],
+      "always_on_rules": ["common-constraints","common-security"],
       "mcp_file": ".mcp.json",
       "mcp_shape": "mcpServers",
       "mcp_launcher": true

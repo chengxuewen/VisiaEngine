@@ -5,10 +5,29 @@
 ```bash
 bash bootstrap.sh     # 1. first init: auto-installs pixi (pinned 0.78.0) -> solves & installs every dependency -> smoke
 source pixi.sh        # 2. daily activation into the shell (cargo/rustc/cargo-deny/rust-analyzer all in place)
-pixi run verify       # 3. quick self-check anytime (works without activation: pixi run single-command mode)
+./visiaengine.sh verify   # 3. quick self-check anytime (no activation needed: one command per invocation)
 ```
 
 Windows: `bootstrap.bat` -> `pixi.bat` (sub-shell form). **Note: the .bat counterparts are untested on Windows; treat them as best-effort until the first machine runs green**; if conda rust causes too much friction on Windows, the escape hatch = per-machine rustup+MSVC (see D5 clause ①; the repo configuration does not fork).
+
+## Entry points (do not confuse them)
+
+| Script | How to run it | What it is for |
+|---|---|---|
+| `bootstrap.sh` / `.bat` | execute | one-time first init (pixi + dependencies + smoke) |
+| `pixi.sh` / `.bat` / `.ps1` | **`source`** / sub-shell | activate this shell so `cargo`, `rustc`, `node` resolve |
+| `visiaengine.sh` / `.bat` | execute | task front door: `./visiaengine.sh <task> [args...]` |
+
+`./visiaengine.sh <task>` is a **pure passthrough** to `pixi run <task>` — it holds no command table, so it cannot drift from `pixi.toml`. `-h` prints a few common examples (exit 0); no arguments prints usage (exit 2); a missing `pixi` exits 127.
+
+Who uses which form:
+
+| Audience | Form | Why |
+|---|---|---|
+| Humans, daily work | `./visiaengine.sh <task>` | shorter, discoverable via `-h`, and daily use keeps the wrapper exercised |
+| Agents, skills, CI | `pixi run <task>` | no intermediate layer, OS-neutral, does not assume the wrapper exists |
+
+Both forms are always equivalent; `pixi run <task>` is the fallback whenever the wrapper is unavailable (Windows without the `.bat`, a stripped-down container, etc.).
 
 ## GUI apps / MCP hosts need `pixi` on their inherited PATH (O5)
 
@@ -27,10 +46,10 @@ The generated project-scope MCP file (root `.mcp.json`) uses `scripts/mcp-launch
 All local MCP maintenance goes through one task (`scripts/mcp-cli.py`):
 
 ```bash
-pixi run mcp setup    # install/repair every server at the pinned version (idempotent, --save-exact)
-pixi run mcp index    # first run: build .codegraph; later runs: full rebuild
-pixi run mcp sync     # incremental sync (the watcher covers normal editing)
-pixi run mcp status   # pin vs installed versions + index state (read-only)
+./visiaengine.sh mcp setup    # install/repair every server at the pinned version (idempotent, --save-exact)
+./visiaengine.sh mcp index    # first run: build .codegraph; later runs: full rebuild
+./visiaengine.sh mcp sync     # incremental sync (the watcher covers normal editing)
+./visiaengine.sh mcp status   # pin vs installed versions + index state (read-only)
 ```
 
 - Pins live in `scripts/mcp-servers.json` (single source); `package.json`, `package-lock.json` and `node_modules/` are gitignored local echoes.

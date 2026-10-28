@@ -104,45 +104,54 @@ Loaders are leaves: `io-{gltf,points,text,tiles,hdr}` and `geo` depend only on `
 
 ## COMMANDS
 
-Each line is directly runnable from the repo root; `pixi run <task>` works after `source pixi.sh` or via `pixi run`.
+Each line is directly runnable from the repo root.
+
+Entry points, by audience:
+
+| Audience | Form | Why |
+|---|---|---|
+| Humans | `./visiaengine.sh <task>` (Windows: `visiaengine.bat <task>`) | short, `-h` prints examples, and daily use keeps the wrapper exercised |
+| Agents / skills / CI | `pixi run <task>` | no intermediate layer, identical on every OS, does not assume the wrapper exists |
+
+`./visiaengine.sh <task> [args...]` is a **pure passthrough** to `pixi run <task> [args...]` — no command table, so it cannot drift from `pixi.toml`. Either form is always valid; `source pixi.sh` remains the way to activate an interactive shell.
 
 ```bash
 # --- environment ---
 bash bootstrap.sh     # idempotent first start: submodule init + pixi env + cargo mirror + verify
-source pixi.sh        # daily activation; all tasks below assume it (or prefix with `pixi run`)
+source pixi.sh        # daily activation of an interactive shell (cargo/rustc/cargo-deny in PATH)
 
 # --- build / test / lint ---
-pixi run check        # cargo check --workspace
-pixi run build        # cargo build --workspace
-pixi run test         # cargo test --workspace
-pixi run lint         # clippy --all-targets -D warnings
-pixi run fmt          # fmt --check (fix a single file with rustfmt --edition 2024 <file>)
-pixi run ci           # fmt+lint+check+test+audit+gate-* +cmake-smoke+pack-check+i18n (start-of-work gate)
-pixi run verify       # toolchain smoke only
+./visiaengine.sh check        # cargo check --workspace
+./visiaengine.sh build        # cargo build --workspace
+./visiaengine.sh test         # cargo test --workspace
+./visiaengine.sh lint         # clippy --all-targets -D warnings
+./visiaengine.sh fmt          # fmt --check (fix a single file with rustfmt --edition 2024 <file>)
+./visiaengine.sh ci           # fmt+lint+check+test+audit+gate-* +cmake-smoke+pack-check+i18n (start-of-work gate)
+./visiaengine.sh verify       # toolchain smoke only
 
 # --- one target ---
 cargo test -p visiaengine-core <name>        # one Rust test by name
 cargo test -p visiaengine-core --lib         # one crate, lib target
 cargo run  -p examples --example E101_clear  # one Rust example
 ctest --preset default -R example_E101_clear # one registered ctest entry
-pixi run smoke-pick                          # one E-family smoke forwarder (headless)
+./visiaengine.sh smoke-pick                  # one E-family smoke forwarder (headless)
 
 # --- CMake / native surface ---
-pixi run cmake --preset default && pixi run cmake --build --preset default
+./visiaengine.sh cmake --preset default && ./visiaengine.sh cmake --build --preset default
 ctest --preset default          # whole example registry (all languages)
-pixi run f5                     # refresh .vscode debug targets (runs in qt-spike)
+./visiaengine.sh f5             # refresh .vscode debug targets (runs in qt-spike)
 
 # --- non-default environments (these tasks FAIL in the default env) ---
-pixi run -e qt-spike   smoke-qt
-pixi run -e wasm-spike web-check
-pixi run -e host-spike gate-abi
+./visiaengine.sh -e qt-spike   smoke-qt
+./visiaengine.sh -e wasm-spike web-check
+./visiaengine.sh -e host-spike gate-abi
 
 # --- gates ---
 bash scripts/spec-trace.sh              # SDD clause ↔ test bidirectional trace
-pixi run gate-docs                      # four zero-drift document checks
-pixi run pack-check                     # installed-tree hygiene (manifest / NEEDED / build paths)
-pixi run gate-web                       # headless browser wall gate (self-SKIP without chromium)
-pixi run check-promises                 # overclaim lint
+./visiaengine.sh gate-docs              # four zero-drift document checks
+./visiaengine.sh pack-check             # installed-tree hygiene (manifest / NEEDED / build paths)
+./visiaengine.sh gate-web               # headless browser wall gate (self-SKIP without chromium)
+./visiaengine.sh check-promises         # overclaim lint
 
 # --- config hygiene (after touching .agents/.opencode) ---
 grep -rniE 'mediaservo|audemsp|mediasoup|omsp|msrtc|oxmgr' .agents .opencode --include='*.md' --include='*.json'
@@ -156,7 +165,7 @@ Not in the `ci` chain (run deliberately): `gate-web`, `keys-probe`, `serve-https
 
 - Output territories: `build/` = save-frame wall assets · `target/` = cargo-direct only · `cmake-build*/` = CMake preset trees. Do not mix them.
 - `.sisyphus` is gitignored (`.gitignore` L103) and absent on disk; `www/` is **not** reserved — the project is unbuilt, do not assume it exists.
-- MCP: nodejs lives in the pixi default env, every local bridge launches via `bash .opencode/with-node.sh`. `local-github` needs the `GITHUB_TOKEN` environment variable; playwright/postgres/websearch/openspace are disabled by default (enable on demand; openspace also needs a python tree + LLM key).
+- MCP: one local server (`local-codegraph`, pinned in `scripts/mcp-servers.json`); maintain it with `./visiaengine.sh mcp {setup,index,sync,status}`. `.codegraph/` is a per-machine index (gitignored, never built in CI). The GitHub server was removed (deprecated package, no token, no use case while the remote is gitee); re-select the official implementation when the GitHub mirror turns on. playwright/postgres/websearch/openspace stay disabled by default (openspace also needs a python tree + LLM key).
 - `PolyOrch` is a separate repository: its own rules/skills live under `PolyOrch/.agents/`. Change it there, not here.
 - `docs/env.md` is the environment guide; `docs/architecture.md` is the design baseline; `docker.md` in the rules tree stays on-demand reference only.
 
@@ -168,8 +177,8 @@ are GENERATED, never hand-edited. After editing anything under `.agents/`, regen
 verify:
 
 ```bash
-pixi run agent-sync     # regenerate every host layer from .agents/ (idempotent)
-pixi run gate-agents    # assert generated layers == single source (red on drift)
+./visiaengine.sh agent-sync     # regenerate every host layer from .agents/ (idempotent)
+./visiaengine.sh gate-agents    # assert generated layers == single source (red on drift)
 ```
 
 A `pre-commit` hook auto-runs `agent-sync` (and `gate-agents`), so generated layers can

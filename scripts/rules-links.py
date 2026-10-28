@@ -63,7 +63,7 @@ def _mdc_folder(rel):
     return "%s-%s" % (lang, topic)
 
 
-def _mdc_content(canonical_path, rel):
+def _mdc_content(canonical_path, rel, always_on=None):
     with open(canonical_path, "r", encoding="utf-8") as handle:
         raw = handle.read()
     body = _strip_frontmatter(raw)
@@ -73,7 +73,8 @@ def _mdc_content(canonical_path, rel):
         h1 = folder
     desc = '"%s"' % h1.replace("\\", "\\\\").replace('"', '\\"')
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
-    front = "---\ndescription: %s\nalwaysApply: true\nenabled: true\nupdatedAt: %s\n---\n" % (desc, digest)
+    apply = "true" if (always_on and folder in always_on) else "false"
+    front = "---\ndescription: %s\nalwaysApply: %s\nenabled: true\nupdatedAt: %s\n---\n" % (desc, apply, digest)
     return folder, front + body
 
 
@@ -81,13 +82,14 @@ def sync_layer_mdc(target, rules_root, dry_run):
     target_dir = _resolve(target)
     if target_dir is None:
         return 0
+    always_on = set(target.get("always_on_rules") or [])
     rels = _canonical_rels(rules_root, _langs(target))
     ac.ensure_dir(target_dir)
     actions = 0
     expected = set()
     for rel in rels:
         canonical = os.path.join(rules_root, rel)
-        folder, content = _mdc_content(canonical, rel)
+        folder, content = _mdc_content(canonical, rel, always_on)
         expected.add(folder)
         rfile = os.path.join(target_dir, folder, "RULE.mdc")
         current = None
@@ -126,6 +128,7 @@ def check_layer_mdc(target, rules_root):
     target_dir = _resolve(target)
     if target_dir is None:
         return []
+    always_on = set(target.get("always_on_rules") or [])
     findings = []
     if not os.path.isdir(target_dir):
         if os.path.isdir(rules_root):
@@ -135,7 +138,7 @@ def check_layer_mdc(target, rules_root):
     expected = set()
     for rel in rels:
         canonical = os.path.join(rules_root, rel)
-        folder, content = _mdc_content(canonical, rel)
+        folder, content = _mdc_content(canonical, rel, always_on)
         expected.add(folder)
         rfile = os.path.join(target_dir, folder, "RULE.mdc")
         if not os.path.isfile(rfile):
