@@ -1,9 +1,12 @@
 ---
 name: review-hardcode
+status: deprecated
 description: "Hardcoded secrets/ports/URLs scan. MERGED into security-hardening — loads that skill's Phase 1. Use /review-hardcode for quick scan, /security-hardening for full audit."
 ---
 
 # review-hardcode → security-hardening
+
+**DEPRECATED ALIAS** — this skill is merged into `security-hardening` (status: deprecated).
 
 This skill has been merged into the `security-hardening` skill.
 

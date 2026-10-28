@@ -8,14 +8,14 @@ Root of the agent toolchain (149 files, all .md or skill attachments). The assem
 .agents/
 ├── memorys/   # volatile facts: status (state snapshot) conventions (C conventions) decisions (D decisions) pitfalls (PIT stumbles)
 ├── rules/     # standing constraints: common/ (loaded into instructions) + <lang>/ (on demand; hierarchy in rules/README.md)
-└── skills/    # 23 skill directories, each registered via SKILL.md frontmatter; .skill_id is install metadata, do not touch
+└── skills/    # single source of project skills; one dir per skill (count: `ls -d */ | wc -l`), each registered via SKILL.md frontmatter; host layers (.codebuddy/skills, .claude/skills) are GENERATED links -- see `pixi run gate-skills`, never hand-edit
 ```
 
 ## Loading mechanism (determines writing discipline)
 
 | Layer | When it enters context | Implication |
 |----|-------------|------|
-| `memorys/status+conventions` + `rules/common` 12 files | **fully every turn** (opencode.json instructions, 14 entries total) | every line carries a fixed token cost; stay lean, never duplicate skills content |
+| `memorys/status+conventions` + `rules/common` 12 files + `rules/rust/{coding-style,hooks}` | **fully every turn** (`opencode.json` → `instructions`, 16 entries total) | every line carries a fixed token cost; stay lean, never duplicate skills content |
 | `rules/<lang>/` | on demand when file extensions match | language details may live here |
 | `skills/*/SKILL.md` | frontmatter description matches the trigger | the description is the routing lifeline: generic methodology words, no brand residue |
 | `memorys/decisions+pitfalls` | explicit read | may be long, append-only, never rewrite historical entries |

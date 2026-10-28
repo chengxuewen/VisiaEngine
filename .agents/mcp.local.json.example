@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "local-github": {
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_REPLACE_ME_with_a_fine_grained_token" }
+    }
+  }
+}

@@ -72,9 +72,23 @@ libgl-devel = "*"   # Qt5GuiConfigExtras hard-probes GL/gl.h in the prefix; cond
 web-probe = "bash scripts/web-probe.sh"   # J0 acceptance (version equality + rlib presence + a full-tree check run by hand)
 web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-wasm -- --ignored'"   # J2': build -> the CAPI-09 mirror (the explicit T2 chain)
 
+[feature.mcp]
+# Agent single-source MCP servers (2026-10-28, plan §MCP). nodejs is already in base deps.
+# npm MCP packages are installed at PINNED versions by scripts/mcp-serve.mjs (review #16),
+# not via `npx -y` (floating). codegraph = npm `@colbymchenry/codegraph` (verified, review #17).
+# Version pins below are CONFIRMED via live `pixi run` (acceptance #8, 2026-10-28):
+#   - @colbymchenry/codegraph@0.9.0 is a BROKEN install (npm warn: "use 0.9.1+"); pinned to 1.6.0
+#     (the version the legacy .opencode wrapper installed as latest — proven installable here).
+#   - @modelcontextprotocol/server-github@0.6.0 works but is deprecated w/ 3 high vulns (review #8, deferred).
+[feature.mcp.tasks]
+mcp-codegraph = "node scripts/mcp-serve.mjs --from scripts/mcp-servers.json --name local-codegraph"
+mcp-github = "node scripts/mcp-serve.mjs --from scripts/mcp-servers.json --name local-github"
+mcp-setup = "python3 scripts/mcp-bootstrap.py"
+gate-mcp = "python3 scripts/gate-mcp.py"
+
 [environments]
 # Single-environment scheme: all lightweight binaries go into default (tools/ide and the base deps share a solve-group; no isolation needed)
-default = { features = ["tools", "ide"], solve-group = "base" }
+default = { features = ["tools", "ide", "mcp"], solve-group = "base" }
 # Batch 2 I0 / batch 7 J0 (approval round 2026-09-11): the two spike environments share the base solve-group = a single toolchain [FFI-R:env-W2]
 host-spike = { features = ["tools", "ide", "host"], solve-group = "base" }
 wasm-spike = { features = ["tools", "ide", "wasm"], solve-group = "base" }
@@ -98,6 +112,9 @@ gate-abi = "bash scripts/gate-abi.sh"   # batch 2 I2: symbol whitelist + demo co
 gate-trace = "bash scripts/spec-trace.sh"   # batch 2 v1.4: traceability nativized into the ci chain (sealing the [FFI-R:FC-6] false-green window)
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # the GEO-18 parsing-boundary gate (code shape; comments exempt)
 gate-docs = "bash scripts/gate-docs.sh"   # batch 5 T3: the four zero-drift document checks
+gate-skills = "python3 scripts/skills-links.py check"   # single-source skills: the .codebuddy link layer must match .agents/skills (guard exits 2, never 1)
+gate-agents = "python3 scripts/agent-links.py check"   # single-source rules/mcp/memory: generated host layers (.mcp.json, opencode mcp{}, AGENTS.md region) must match .agents/ (guard exits 2)
+agent-sync = "python3 scripts/agent-links.py sync"     # repair generated host layers from .agents/ single source (rules symlinks, mcp files, AGENTS.md memory region)
 gate-web = "bash scripts/gate-web.sh"   # headless page gate: wall count + boot fail-marks + anchor-beacon heartbeat (self-SKIP without chromium; gate server :8018, staging replay rides :8017)
 serve-https-gen = "bash scripts/wasm-serve-https-gen.sh"   # local CA + leaf with LAN-IP SANs -> .certs/ (gitignored; mkcert via pixi global 1.4.4)
 serve-https = "python3 scripts/wasm-serve-https.py cmake-build-debug/web-demo 8443 .certs/server.pem .certs/server-key.pem"   # TLS sibling of the serve button: LAN clients get secure-context WebGPU over https (untrusted cert still counts, measured on chrome 131); run serve-https-gen once first
@@ -125,7 +142,7 @@ gen-hdr = "python3 scripts/gen_hdr.py"   # regenerate the demo_sky.hdr fixture (
 # output; needs node (default env) and a prior `pixi run web-check`. Nothing is
 # published; the tarball stays on this machine.
 npm-pack = "bash scripts/gen-npm-package.sh"
-ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "check-promises", "cmake-smoke", "pack-check", "i18n"] }
+ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "gate-skills", "gate-agents", "gate-mcp", "check-promises", "cmake-smoke", "pack-check", "i18n"] }
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # a ctest forwarding shell (argv single source = the R9 table; CI calls it under xvfb-run)
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2: the glTF assembly chain (G3)
 smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2: the GeoJSON chain (H4)

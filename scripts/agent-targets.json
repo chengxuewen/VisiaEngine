@@ -1,0 +1,39 @@
+{
+  "rules_root": ".agents/rules",
+  "memorys_root": ".agents/memorys",
+  "mcp_source": ".agents/mcp.json",
+  "mcp_local": ".agents/mcp.local.json",
+  "memory_hub": "AGENTS.md",
+  "targets": [
+    {
+      "label": "codebuddy",
+      "enabled": true,
+      "rules_dir": ".codebuddy/rules",
+      "mcp_notes": "codebuddy MCP is hand-maintained in root .mcp.json; generation disabled until CodeBuddy project-level path/shape is verified (A)",
+      "rules_mode": "mdc",
+      "langs": ["common","rust","cpp","web","typescript","python"]
+    },
+    {
+      "label": "claude",
+      "enabled": false,
+      "notes": "not used yet",
+      "rules_dir": ".claude/rules",
+      "mcp_file": ".claude/mcp.json",
+      "mcp_shape": "mcpServers"
+    },
+    {
+      "label": "cursor",
+      "enabled": false,
+      "notes": "not used yet",
+      "rules_dir": ".cursor/rules",
+      "mcp_file": ".cursor/mcp.json",
+      "mcp_shape": "mcpServers"
+    },
+    {
+      "label": "opencode",
+      "enabled": true,
+      "opencode_file": ".opencode/opencode.json",
+      "mcp_shape": "named"
+    }
+  ]
+}

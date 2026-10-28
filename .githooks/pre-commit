@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-commit: keep generated host-config layers in sync with the .agents/ single source.
+# Regenerates .codebuddy/* (gitignored), .opencode/opencode.json and the AGENTS.md memory
+# region (both tracked); re-stages the tracked generated files so the commit carries the
+# regenerated version; then verifies with gate-agents (blocks the commit on drift/guard).
+set -e
+cd "$(git rev-parse --show-toplevel)"
+export PATH="$HOME/.pixi/bin:$PATH"
+if ! command -v pixi >/dev/null 2>&1; then
+  echo "pre-commit: pixi not found on PATH; skipping agent-sync (commit proceeds un-synced)"
+  exit 0
+fi
+pixi run agent-sync
+git add .opencode/opencode.json AGENTS.md 2>/dev/null || true
+pixi run gate-agents

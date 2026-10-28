@@ -1,0 +1,14 @@
+{
+  "local-codegraph": {
+    "pkg": "@colbymchenry/codegraph",
+    "version": "1.6.0",
+    "bin": "codegraph",
+    "args": ["serve", "--mcp"]
+  },
+  "local-github": {
+    "pkg": "@modelcontextprotocol/server-github",
+    "version": "0.6.0",
+    "bin": "mcp-server-github",
+    "args": []
+  }
+}

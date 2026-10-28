@@ -1,0 +1,7 @@
+{
+  "skills_root": ".agents/skills",
+  "targets": [
+    { "label": "codebuddy", "skills_dir": ".codebuddy/skills", "enabled": true },
+    { "label": "claude", "skills_dir": ".claude/skills", "enabled": false, "notes": "not used yet" }
+  ]
+}

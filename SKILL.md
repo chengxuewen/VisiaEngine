@@ -6,9 +6,11 @@ This repo's skills come in two layers: **global plugin skills** (not distributed
 
 Loaded by the `superpowers`, `ponytail`, `oh-my-openagent`, and `context-mode` plugins (assembly point: `.opencode/opencode.json` → `plugin`). Generic methodology, applicable to all projects; not duplicated here.
 
-## Project Skills (23, under `.agents/skills/`)
+## Project Skills (under `.agents/skills/`)
 
 The routing trigger surface = each SKILL.md frontmatter's `description`; agents activate them automatically by task context, no manual invocation needed.
+
+The directory count is deliberately not written here: run `ls -d .agents/skills/*/ | wc -l`. Single source is `.agents/skills/`; host activation layers (e.g. `.codebuddy/skills/`) are generated links checked by `pixi run gate-skills`.
 
 | Skill | Type | Purpose |
 |-------|------|---------|
@@ -38,7 +40,7 @@ The routing trigger surface = each SKILL.md frontmatter's `description`; agents 
 
 ## Division of Labor vs Rules/Memory
 
-- **Rules** (`.agents/rules/`) = constant constraints, some loaded every turn (list in `.opencode/opencode.json` → `instructions`, 14 entries)
+- **Rules** (`.agents/rules/`) = constant constraints, some loaded every turn (list in `.opencode/opencode.json` → `instructions`, 16 entries)
 - **Memory** (`.agents/memorys/`) = volatile facts (the C/D/PIT numbering system)
 - **Skills** (this table) = on-demand deep workflows
 - Layer details: root `AGENTS.md` + `.agents/AGENTS.md`

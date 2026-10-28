@@ -12,10 +12,12 @@ metadata:
 
 # OpenSpec Propose
 
+> `disable-model-invocation: false` is what lets hosts auto-trigger this skill. If set to `true`, only Claude Code and CodeBuddy interpret the field; other hosts ignore it and keep auto-triggering.
+
 Create a structured change proposal. Produce three artifacts that together answer
 "what are we building, how does it fit, and what's the plan?"
 
-When ready to implement, follow with `/openspec-apply`.
+When ready to implement, follow with `/openspec-apply-change`.
 
 ---
 

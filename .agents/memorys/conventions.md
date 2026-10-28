@@ -70,7 +70,7 @@ argv parsing). The code by which an example teaches its one lesson (present-path
 `render_view_rects` is ⑤b's course text; drag in E402/E403 is picking/box-selection, not orbiting. Criterion: if deleting some code leaves the example's tutorials.md
 claim undemonstrated, that code is course text, not duplication.
 
-**Check command**: `grep -n '非目标\|留本地' .omo/plans/viewer-shared-band-2026-10-08.md | head`;
+**Check command**: `grep -n 'Non-goal\|keep local' .omo/plans/viewer-shared-band-2026-10-08.md | head`;
 the migration batch's gates (determinism pre-check → sha/timeline → interaction tri-state) live in `rules/common/testing.md`, section "Batch-migration gates".
 
 ## C19: Self-check/prune/gate-step predicates must be token-level, and a breakage probe must run before commissioning (2026-10-08 band V, hard evidence)
@@ -242,3 +242,20 @@ b=$(git log -1 --format=%b)
 if [ -n "$b" ] && ! printf '%s\n' "$b" | grep -q '^- '; then echo "C24 FAIL: body without '-' bullets"; exit 1; fi
 echo "C24 PASS"
 ```
+
+## C25: Regenerate host config layers after editing `.agents/` (2026-10-28)
+
+**Constraint**: `.agents/` is the single source for agent config (rules / MCP / memory).
+Host layers (`.codebuddy/`, `.opencode/opencode.json`, the `AGENTS.md` memory region) are
+GENERATED and must never be hand-edited. After editing anything under `.agents/`
+(`rules/**`, `mcp.json`, `mcp.local.json`, `memorys/*.md`), run:
+
+```bash
+pixi run agent-sync     # regenerate all host layers from .agents/ (idempotent)
+pixi run gate-agents    # assert generated layers == single source (red on drift)
+```
+
+A `pre-commit` hook auto-runs `agent-sync` + `gate-agents` so stale generated layers can
+never be committed. `gate-agents` is also in the `ci` chain. New host adapters are added as
+entries in `scripts/agent-targets.json` — but first verify that host's discovery
+paths/shape from its docs (a wrong path is a dead, unread file; see D35).

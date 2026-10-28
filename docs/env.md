@@ -10,6 +10,18 @@ pixi run verify       # 3. quick self-check anytime (works without activation: p
 
 Windows: `bootstrap.bat` -> `pixi.bat` (sub-shell form). **Note: the .bat counterparts are untested on Windows; treat them as best-effort until the first machine runs green**; if conda rust causes too much friction on Windows, the escape hatch = per-machine rustup+MSVC (see D5 clause ①; the repo configuration does not fork).
 
+## GUI apps / MCP hosts need `pixi` on their inherited PATH (O5)
+
+`bootstrap.sh` / `bootstrap.bat` only fix the *terminal* environment. Desktop apps (CodeBuddy, opencode, ...) are launched from the desktop and **do not source shell rc files**, so a `pixi` that lives only in `~/.pixi/bin` (Linux) is invisible to them — MCP servers then fail with `Executable not found in $PATH: "pixi"`.
+
+Fix once per machine, on the PATH the GUI inherits:
+- **Linux/macOS**: `ln -s "$HOME/.pixi/bin/pixi" "$HOME/.local/bin/pixi"` (user-level, no sudo; `~/.local/bin` is on the ambient PATH). If the desktop session does not include `~/.local/bin`, use `/usr/local/bin/pixi` (needs sudo) or the desktop session env.
+- **Windows**: the pixi installer adds `%USERPROFILE%\.pixi\bin` to the *user* PATH env var, which GUI apps inherit — verify with `where pixi` in a fresh shell.
+
+Verify: `command -v pixi` in a shell that did **not** `source pixi.sh` must resolve. `pixi run gate-mcp` probes under this sanitized PATH, so the regression is caught in CI.
+
+Gitignored host layers (`.codebuddy/mcp.json`) instead use `scripts/mcp-launch.sh` / `mcp-launch.bat`, which resolve pixi themselves and are immune to the spawn PATH / cwd.
+
 ## Environment composition
 
 | piece | package (conda-forge) | notes |

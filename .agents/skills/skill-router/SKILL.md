@@ -21,15 +21,15 @@ Read the user message and classify it:
 
 | Class | Keywords | Default recommendation |
 |------|--------|---------|
-| **Implement** | "添加"/"实现"/"创建"/"修改" | `/think-before-act` + `/test-driven-development` |
-| **Fix** | "修复"/"bug"/"错误"/"不工作" | `/systematic-debugging` |
-| **Refactor** | "重构"/"优化"/"简化"/"清理" | `/think-before-act` + `/remove-ai-slops` |
-| **Design** | "设计"/"架构"/"方案"/"怎么做" | `/brainstorming` + `/openspec-propose` |
+| **Implement** | "添加"/"实现"/"创建"/"修改" | `/think-before-act` + `/incremental-implementation` |
+| **Fix** | "修复"/"bug"/"错误"/"不工作" | `/test-harness` + `/think-before-act` |
+| **Refactor** | "重构"/"优化"/"简化"/"清理" | `/think-before-act` + `/code-simplification` |
+| **Design** | "设计"/"架构"/"方案"/"怎么做" | `/think-before-act` + `/openspec-propose` |
 | **Adjudication** | "裁决逐项过"/"一个个来"/"不要一起列出"/"walk the options one by one" | `/adjudication-walkthrough` |
-| **Test** | "测试"/"E2E"/"覆盖率" | `/test-driven-development` + `/playwright` |
+| **Test** | "测试"/"E2E"/"覆盖率" | `/test-harness`（Web 面再加 `/browser-testing`） |
 | **Docs** | "文档"/"README"/"说明" | `/doc-audit` |
-| **Security** | "安全"/"权限"/"认证" | `/security-review` |
-| **Explore** | "调研"/"对比"/"有什么方案" | `/ecosystem-scan` + librarian agent |
+| **Security** | "安全"/"权限"/"认证" | `/security-hardening` |
+| **Explore** | "调研"/"对比"/"有什么方案" | `/ecosystem-scan` + the host's own subagent mechanism |
 | **Ambiguous** | no clear keyword | propose 2-3 possible directions and let the user choose |
 
 ### Step 2: Context Check
@@ -45,24 +45,24 @@ Before recommending, check the current state:
 
 **Single-skill case** (intent clear):
 ```
-Recommendation: /systematic-debugging
-Reason: two consecutive fix commits — systematic root-cause diagnosis is needed first
+Recommendation: /test-harness
+Reason: two consecutive fix commits — reproduce the failure in a test before changing code
 ```
 
 **Multi-skill case** (a combination is needed):
 ```
 Recommended combination:
 1. /think-before-act — investigate options first, avoid blind edits
-2. /test-driven-development — write tests before implementing
+2. /incremental-implementation — one thin slice at a time, tests with each slice
 Reason: non-trivial multi-module change that needs test cover
 ```
 
 **Ambiguous case** (needs clarifying):
 ```
 Intent unclear; possible directions:
-1. Implementing a new feature → /think-before-act + /test-driven-development
-2. Fixing a bug → /systematic-debugging
-3. Refactoring → /think-before-act
+1. Implementing a new feature → /think-before-act + /incremental-implementation
+2. Fixing a bug → /test-harness + /think-before-act
+3. Refactoring → /code-simplification
 What specifically do you want to do?
 ```
 

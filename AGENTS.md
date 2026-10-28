@@ -1,85 +1,2542 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-09-03 (batch 5 correction 2026-09-14) | **Branch:** main | commit / worktree state per live `git log` / `git status`
+**Updated:** 2026-10-28 | **Branch:** main | Live state = `git log` / `git status`. Project scale numbers (clauses, tests, ABI entries) are deliberately not restated here: ask the gate that prints them (`spec-trace.sh`, `ctest -N`, `gate-docs.sh`) instead of trusting a literal.
 
 ## OVERVIEW
 
-VisiaEngine — a multi-dimensional spatial visualization engine: a unified 2D/2.5D/3D rendering pipeline for GIS / digital twin / autonomous-driving simulation / BIM display, embedded as an SDK (C API FFI) into Qt/Flutter/C#/Web, Open Core model. Stack settled 2026-09-03 in whitepaper v0.1.0: **Rust core + wgpu rendering** (D4 final ruling: use wgpu directly with the from-scratch pipeline `visiaengine-render-wgpu`, not Bevy). **Batches 0-5 wrapped (2026-09-14)**: nine-crate workspace, **152** SDD clauses (spec-trace bidirectional lock), ctest unified example registry (31 entries) + four gates (style/trace/abi/docs) + cmake-smoke three states three anchors; golden runs on real hardware with no SKIP; agent configuration was ported from the predecessor project MediaServo (Rust WebRTC, different stack — do not confuse) and neutralized.
+VisiaEngine — a multi-dimensional spatial visualization engine: one 2D / 2.5D / 3D rendering pipeline for GIS / digital twin / autonomous-driving simulation / BIM, embedded as an SDK (C ABI FFI, mirrored to hpp and wasm) into Qt / Flutter / C# / Web. Open Core, MIT OR Apache-2.0.
+
+Stack (whitepaper v0.1.0, D4 ruling): **Rust kernel + wgpu**, with the from-scratch pipeline in `visiaengine-render-wgpu` (not Bevy). Positioning and stack are settled elsewhere — `docs/whitepaper.md` + `.agents/memorys/decisions.md` D2/D4; do not re-litigate from this file.
+
+Status prose lives in `README.md` §Development Status (MVP closed, then rendering hardening, host embedding, install tree, packaging band). Agent configuration was ported from the predecessor project MediaServo (Rust WebRTC — a different stack, do not confuse) and neutralized.
 
 ## STRUCTURE
 
 ```
 ./
-├── Cargo.toml/lock   # workspace (members=crates/*+examples/rs+the two FFI crates in bindings, per S1/S2); deny.toml licenses/bans
-├── crates/           # 7 pure-core crates: core→render (trait+IR/camera/rebase)→render-wgpu (wgpu backend/pipeline/offscreen) + io-gltf + io-points (PLY point cloud, IO-* family) + io-text (fontdue raster annotation, IO-07..09) + geo (GeoJSON→3857→tessellation→style/GPU expansion-slice output GEO-24)
-├── examples/         # examples by language: rs=cargo example tutorial series ×12 ([[example]]-registered shell package); c=C examples (E701/702; E8xx+template from S4 on); cpp/qt open with S4; single run surface = ctest/pixi smoke
-├── bindings/         # implementation surface in one nest: c/include (handwritten header; the ffi crate lives in crates/) · c/probe · cpp/include (S4 hpp) · qt/widget.hpp · wasm/visiaengine-wasm (CAPI-09 mirror) + wasm/demo
-├── docs/sdd/         # behavioral contract clauses (CORE/REND/WGPU-NN, bidirectionally traced to tests via // spec: — scripts/spec-trace.sh)
-├── docs/tutorials.md # E-numbered tutorial index (filename = header comment = index three-way lock = scripts/gate-docs.sh)
-├── .github/workflows # ci.yml on standby (activates on GitHub mirror day; local equivalent = pixi run ci + same greps)
-├── .agents/          # project memory + rules + skills (see its AGENTS.md)
-├── .opencode/        # opencode.json (instructions/MCP/LSP assembly points) + init-mcp-*.mjs / init-lsp-wrap.mjs bridge scripts
-├── .omo/omo.jsonc    # agent model tiering / team config; .gitignore excludes .omo/*, only omo.jsonc is tracked
-├── .refinfo/         # ⚠ full MediaServo archive (21M, gitignored, local-only) — read-only, never edit
-├── docs/             # whitepaper.md (primary fact source for positioning) + architecture.md (v0.1 design baseline, D4-aligned) + reference/ (reference library + evidence/ snapshots)
-├── pixi.toml/lock    # D5 environment single source (conda-forge fully locked incl. rust toolchain); bootstrap.{sh,bat} first start / pixi.{sh,bat} activation
-├── LICENSE-MIT / LICENSE-APACHE   # dual-license originals (irrevocability promise in README)
-├── SKILL.md          # project skill registry (23 items)
-└── README.md         # whitepaper digest edition
+├── Cargo.toml / Cargo.lock  # workspace = crates/* + examples/rs (package `examples`) + bindings/wasm/visiaengine-wasm; deny.toml licenses/bans
+├── PolyOrch/                # ⚠ git submodule (gitee) — the CMake helper surface (pixi/rust/node/python faces)
+│                            #   consumed by the root build; cold clones need `git submodule update --init --recursive`
+├── cmake/                   # assembly modules only: SDK / PolyOrch / FFI / Crates / Wasm / Install / Packaging / Bindings
+├── crates/
+│   ├── visiaengine-core          # Scene/EntityId slab + generation + dirty flags, AttrSet typed columns, pick ids, color
+│   ├── visiaengine-render        # backend-agnostic IR: contract / camera / rebase / morph / anim / curve / picking
+│   ├── visiaengine-render-wgpu   # wgpu backend: mesh_core / surface / headless / offscreen + *.wgsl shaders
+│   ├── visiaengine-io-gltf       # GLB loader (from_slice, no filesystem assumption)
+│   ├── visiaengine-io-points     # PLY point clouds (ascii/bin_le)
+│   ├── visiaengine-io-text       # fontdue raster labels, latin + host-injected CJK fonts
+│   ├── visiaengine-io-tiles      # MVT decode + viewport scheduling
+│   ├── visiaengine-io-hdr        # RGBE .hdr environment maps
+│   ├── visiaengine-geo           # GeoJSON → 3857 → tessellation → style / GPU expansion slice
+│   └── visiaengine-ffi           # the only aggregator: C ABI over all pure-core crates (cdylib/staticlib)
+├── bindings/                # outward surface: c/include (handwritten visiaengine.h) · c/probe · cpp/include · qt/widget.hpp · wasm/visiaengine-wasm (feature "web")
+├── examples/                # rs = E-numbered cargo examples (shell package `examples`, ctest forwards through it) · c · cpp · qt · wasm (browser wall + wall.json)
+├── resources/data           # fixtures: glb / png / mvt / geojson (plus resources/bench)
+├── docs/sdd/                # behavior clauses (CORE / REND / WGPU / GLTF / GEO / IO / CAPI), `// spec:` two-way trace
+├── docs/tutorials.md        # E-number index: filename = header comment = index row (machine-locked by gate-docs)
+├── docs/                    # whitepaper.md (positioning) · architecture.md (design baseline) · env.md · reference/
+├── scripts/                 # the gate surface: gate-* · smoke-* · spec-trace.sh · web-* · bench.sh
+├── .github/workflows        # ci.yml on standby (activates on the GitHub mirror day); local equivalent = `pixi run ci`
+├── .agents/ .opencode/ .omo/ # memory+rules+skills / assembly points / model tiering
+├── .refinfo/                # ⚠ ~11G gitignored local archive (MediaServo + external reference projects) — read-only, never edit, always exclude from searches
+├── pixi.toml / pixi.lock    # D5 environment single source; bootstrap.{sh,bat} first start, pixi.{sh,bat} daily activation
+├── CMakePresets.json        # default / release / prebuilt / debug / ci-strict
+├── llms.txt                 # agent-facing doc index (generated by `pixi run docs-gen`)
+└── SKILL.md / README.md
 ```
 
-Engineering layer: Cargo workspace (7 crates; scale per live `cargo test --workspace`) + pixi environment (D5) + SDD clauses + CI on standby + dual license. Phase 1 MVP closed (batch 2 host embedding / batch 7 Web / batch 4 rendering hardening / batch 5 documentation rehoming); batch 4g/4h and the Alpha tier (Qt widget, npm/pip packaging, true PBR) await the go order.
+The root `CMakeLists.txt` is an **assembly** file (version single-sourced from the workspace `Cargo.toml`, then include → `visiaengine_*` helpers). Build rules live in `cmake/`, not in the root. `PolyOrch` is a submodule, so `git status` showing `PolyOrch` means a submodule pointer change, not a file edit.
 
 ## WHERE TO LOOK
 
 | Task | Location | Notes |
 |------|----------|-------|
-| What context each turn loads | `.opencode/opencode.json` → `instructions` (exactly 14 entries) | a new entry = fixed per-turn token cost; prove "needed every turn" before adding |
-| Project status/conventions/decisions/pitfalls | `.agents/memorys/` | template state, accumulated from zero; numbering system in its AGENTS.md |
-| Language rules | `.agents/rules/<lang>/` | rust/{coding-style,hooks} already in instructions (16 entries) |
-| Skills | `.agents/skills/*/SKILL.md` | 23 total; frontmatter description = routing trigger surface |
-| Any history of the predecessor MediaServo | `.refinfo/MediaServo/` | decision history / pitfall history / full rules — for verification only; never cite its numbering into this repo |
+| What context each turn loads | `.opencode/opencode.json` → `instructions` | 16 entries today; a new entry = permanent per-turn token cost, prove "needed every turn" first |
+| Project status / conventions / decisions / pitfalls | `.agents/memorys/` | volatile facts; numbering system documented in `.agents/AGENTS.md` |
+| Language rules | `.agents/rules/<lang>/` | `rust/{coding-style,hooks}` are already in `instructions`; add others only on demand |
+| Skills | `.agents/skills/*/SKILL.md` | frontmatter `description` is the routing trigger surface; `review-hardcode` is deprecated (merged into `security-hardening`) |
+| CMake / C++ / Qt consumption surface | `CMakeLists.txt` + `cmake/` | presets in `CMakePresets.json`; `install` tree via `VisiaEngineInstall.cmake` |
+| Submodule-provided build helpers | `PolyOrch/cmake/` + `PolyOrch/AGENTS.md` | read its own AGENTS.md before editing; it is a separate repo |
+| Predecessor history | `.refinfo/MediaServo/` | verification only; never cite its D/PIT/C numbering into this repo |
+
+## HOST INTEGRATION (CodeBuddy)
+
+CodeBuddy discovers project skills only under `.codebuddy/skills/`; `.agents/skills/` alone is invisible to it. The activation surface is a **generated** link layer pointing back to the single source — never build it by hand, and never copy the trees:
+
+```bash
+python3 scripts/skills-links.py sync    # create or repair the link layer (idempotent)
+python3 scripts/skills-links.py check   # the same check `pixi run gate-skills` runs in ci
+```
+
+- Re-run `sync` after a fresh clone, a new skill, or a rename. `.codebuddy/` is gitignored: symlinks do not survive Windows checkouts (`core.symlinks=false`), so on `winerror 1314` (no symlink privilege) use `sync --copy`, which writes a hashed `skills-link-map.json` instead.
+- `check` is red on `missing` / `dangling` / `wrong-target` (absolute or cross-name) / a real directory squatting the name / a link whose skill is gone. It exits **2** — never 1 — when `.codebuddy/skills` is itself a symlink or resolves inside `.agents/skills`: in that state `sync` could rename or delete the single source.
+- The routing surface is unchanged — each skill's frontmatter `description` drives both hosts (opencode reads `.agents/skills/` directly; CodeBuddy goes through the links).
+- Do not create a second copy under `.codebuddy/skills/`: edits there would fork the descriptions and the two hosts would route differently.
+- CodeBuddy always loads every skill's metadata (~100 words each); if the always-on cost becomes a problem, point `skillOverrides` at the high-frequency subset instead of shipping fewer skills.
 
 ## CODE MAP
 
-`Scene/EntityId`(core/src/scene.rs: slab + generation + dirty flags, 100k entities ~12ms spike measured) → `RenderBackend/MeshDesc/CameraRig`(render/src/{contract,camera}.rs: object-safe, depth variant locked [0,1] see PIT-5) → `MeshCore/headless/offscreen`(render-wgpu/src/: real mesh pipeline + cube golden) + `load_gltf`(io-gltf/src/lib.rs: gltf from_slice+util::Iter, GLB-only). Example domain (since v1.3): examples/rs ×12 cargo examples ([[example]]-registered shell package, ctest forwards through the shell) + examples/{c,cpp,qt} native bodies (E70x/E80x). Dependencies flow one way: core←{render, io-gltf}←render-wgpu (dev merged).
+`Scene/EntityId` (`core/src/scene.rs`: slab + generation + dirty flags) → `RenderBackend` / `MeshDesc` / `CameraRig` (`render/src/{contract,camera}.rs`: object-safe, depth range locked to [0,1] per PIT-5) → concrete pipelines (`render-wgpu/src/{mesh_core,surface,headless,offscreen}.rs` + `*.wgsl`) → C ABI (`visiaengine-ffi`) → bindings (`c` / `cpp` / `qt` / `wasm`).
+
+Loaders are leaves: `io-{gltf,points,text,tiles,hdr}` and `geo` depend only on `core`. `ffi` is the sole crate depending on all of them; `visiaengine-wasm` depends on `ffi` with `features = ["web"]`. Dependency direction is strictly one-way — no core→io/render edge; `glam` appears only in `render` and `render-wgpu` (K6 gate). On the run side, `examples/rs` is the cargo entry while ctest/smoke forward through it, so a new example must be registered in `[[example]]` **and** the CMake table **and** `docs/tutorials.md` **and** `examples/wasm/wall.json` (the quad-consumer rule).
 
 ## CONVENTIONS
 
-- C1 (comparison-table format) / C9 (deposit lessons immediately) / C14 (subagent artifacts must be verified) live in `.agents/memorys/conventions.md`, loaded every turn via instructions — not restated here.
-- `Cargo.lock` must be committed and other build constraints sit in `rules/common/constraints.md` (inherited from the predecessor; re-audit if a non-Rust stack is ever chosen).
-- remote is gitee VisiaEngine — the initial commit push was authorized (2026-09-03); pushes and further commits still wait for explicit user instruction each time.
+- C1 (comparison-table format) / C9 (deposit lessons immediately) / C14 (subagent artifacts must be verified) live in `.agents/memorys/conventions.md`, loaded every turn — not restated here.
+- `Cargo.lock` is committed; build constraints sit in `rules/common/constraints.md`.
+- Remote is gitee VisiaEngine. Pushes and commits wait for explicit user instruction each time.
+- Files under `docs/sdd/` are contracts, not prose: every clause needs a `// spec: PREFIX-NN` test tag, and the prefix whitelist lives in exactly one line of `scripts/spec-trace.sh`.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
-- **NEVER** edit `.refinfo/` (read-only archive) or `git add` it.
-- **NEVER** cite MediaServo's D-nnn/PIT-nn/C-nn numbering in new documents — the new repo has no corresponding entries; a dangling reference is a hallucination source. After config changes run the grep gates below.
-- **NEVER** scaffold / create a Cargo workspace before an explicit user ruling — stack and backend settled ≠ authorization to build (commit/landing actions always wait for user instruction). Primary facts on positioning and stack: `.agents/memorys/decisions.md` D2/D4 + the whitepaper.
-- **Subagent dispatch limits** (proven this session): fast-tier model aliases fail at the gateway (`Model not exist`) → explore/librarian/quick classes die. Available: `deep`/`unspecified-high`/`visual-engineering`/`writing` (premium).
-- **NEVER** run `cargo fmt` indiscriminately (workspace format-drift history) — single files via `rustfmt --edition <ed> <file>`.
+- **NEVER** edit `.refinfo/` or `git add` it.
+- **NEVER** grep the repo root blind: `.refinfo/` (~11G), `.pixi/envs/`, `target/`, `cmake-build*/` produce massive false hits. Scope by path or exclude them.
+- **NEVER** cite MediaServo's D-nnn/PIT-nn/C-nn numbering in new documents — there are no matching entries here; dangling references are hallucination sources. Run the gates in COMMANDS after config changes.
+- **NEVER** copy scale numbers (clause counts, test counts, ABI entry counts) into documents — they drift within days. Quote the gate output or link the report.
+- **NEVER** scaffold / restructure the workspace before an explicit user ruling; stack settled ≠ authorization to land changes.
+- **NEVER** run `cargo fmt` indiscriminately (workspace format-drift history) — single files via `rustfmt --edition 2024 <file>`. `cargo fmt -- <path>` does **not** filter paths.
+- **NEVER** `git add -A` when `PolyOrch` shows up in `git status` — that is a submodule pointer.
+- Subagent tiers are gateway-dependent: if a fast-tier alias fails with `Model not exist`, fall back to an available premium alias instead of retrying.
 
 ## UNIQUE STYLES
 
-- Configuration-as-product: the `.agents` three layers (memorys = volatile facts / rules = constant constraints / skills = on-demand depth) and the layering discipline of the opencode.json assembly points are this repo's core invariant.
+- Configuration-as-product: the `.agents` three layers (memorys = volatile facts / rules = constant constraints / skills = on-demand depth) and the assembly-point discipline of `opencode.json` are the core invariant.
 
 ## COMMANDS
 
+Each line is directly runnable from the repo root; `pixi run <task>` works after `source pixi.sh` or via `pixi run`.
+
 ```bash
-# config hygiene gate (run after touching .agents/.opencode; expectation: only memorys archive pointers / historical entries hit)
-grep -rniE 'mediaservo|audemsp|mediasoup|omsp|msrtc|oxmgr' .agents .opencode --include='*.md' --include='*.json' | grep -v '.refinfo'
+# --- environment ---
+bash bootstrap.sh     # idempotent first start: submodule init + pixi env + cargo mirror + verify
+source pixi.sh        # daily activation; all tasks below assume it (or prefix with `pixi run`)
+
+# --- build / test / lint ---
+pixi run check        # cargo check --workspace
+pixi run build        # cargo build --workspace
+pixi run test         # cargo test --workspace
+pixi run lint         # clippy --all-targets -D warnings
+pixi run fmt          # fmt --check (fix a single file with rustfmt --edition 2024 <file>)
+pixi run ci           # fmt+lint+check+test+audit+gate-* +cmake-smoke+pack-check+i18n (start-of-work gate)
+pixi run verify       # toolchain smoke only
+
+# --- one target ---
+cargo test -p visiaengine-core <name>        # one Rust test by name
+cargo test -p visiaengine-core --lib         # one crate, lib target
+cargo run  -p examples --example E101_clear  # one Rust example
+ctest --preset default -R example_E101_clear # one registered ctest entry
+pixi run smoke-pick                          # one E-family smoke forwarder (headless)
+
+# --- CMake / native surface ---
+pixi run cmake --preset default && pixi run cmake --build --preset default
+ctest --preset default          # whole example registry (all languages)
+pixi run f5                     # refresh .vscode debug targets (runs in qt-spike)
+
+# --- non-default environments (these tasks FAIL in the default env) ---
+pixi run -e qt-spike   smoke-qt
+pixi run -e wasm-spike web-check
+pixi run -e host-spike gate-abi
+
+# --- gates ---
+bash scripts/spec-trace.sh              # SDD clause ↔ test bidirectional trace
+pixi run gate-docs                      # four zero-drift document checks
+pixi run pack-check                     # installed-tree hygiene (manifest / NEEDED / build paths)
+pixi run gate-web                       # headless browser wall gate (self-SKIP without chromium)
+pixi run check-promises                 # overclaim lint
+
+# --- config hygiene (after touching .agents/.opencode) ---
+grep -rniE 'mediaservo|audemsp|mediasoup|omsp|msrtc|oxmgr' .agents .opencode --include='*.md' --include='*.json'
 grep -rnE 'PIT-[0-9]+|D1[0-9][0-9]|D2[0-9][0-9]' .agents/rules .agents/skills
 python3 -m json.tool .opencode/opencode.json >/dev/null && echo json-OK
 ```
-bash bootstrap.sh    # first-time environment init (idempotent; measured 0.24s on second run; pixi pinned 0.78.0)
-source pixi.sh       # daily activation (or one-shot pixi run <task>)
-pixi run ci          # fmt+lint+check+test+audit aggregate (start-of-work gate)
-pixi run <check|build|test|lint|fmt|audit|verify>   # single task
-source pixi.sh && pixi run pack-check   # installed-tree hygiene (manifest / NEEDED self-sufficiency / no build paths; RUNPATH reported only, cleaning belongs to the publish band)
-pixi run keys-probe     # XTEST input probe (private Xvfb display; real key/wheel/drag injection, red if the picture does not move; not in the ci chain)
-bash scripts/spec-trace.sh    # SDD↔test bidirectional tracing
+
+Not in the `ci` chain (run deliberately): `gate-web`, `keys-probe`, `serve-https*`, `npm-pack`, `bench`, `docs-gen`, `f5`.
 
 ## NOTES
 
-- `.sisyphus` is reserved at `.gitignore` L92 (plans stay out of the repo); `www/` is NOT reserved — the project is unbuilt, do not assume the directory exists.
-- MCP (after the 2026-09-03 fix round): nodejs lives in the pixi default env, all local bridges launch via `bash .opencode/with-node.sh`; local-github still needs the `GITHUB_TOKEN` environment variable (environment key, not env); local-playwright/postgres/websearch/openspace disabled by default, enable on demand (openspace additionally needs a python tree + LLM key).
-- Rust-stack backfill points (unblock when due): instructions += `rules/rust/{coding-style,hooks}.md`; `rules/rust/testing.md` L38 placeholder calibration; docker.md kept as on-demand reference.
+- Output territories: `build/` = save-frame wall assets · `target/` = cargo-direct only · `cmake-build*/` = CMake preset trees. Do not mix them.
+- `.sisyphus` is gitignored (`.gitignore` L103) and absent on disk; `www/` is **not** reserved — the project is unbuilt, do not assume it exists.
+- MCP: nodejs lives in the pixi default env, every local bridge launches via `bash .opencode/with-node.sh`. `local-github` needs the `GITHUB_TOKEN` environment variable; playwright/postgres/websearch/openspace are disabled by default (enable on demand; openspace also needs a python tree + LLM key).
+- `PolyOrch` is a separate repository: its own rules/skills live under `PolyOrch/.agents/`. Change it there, not here.
+- `docs/env.md` is the environment guide; `docs/architecture.md` is the design baseline; `docker.md` in the rules tree stays on-demand reference only.
+
+## AGENT CONFIG (single source)
+
+Agent configuration — rules, MCP servers, and the memory hub — has ONE source: `.agents/`.
+Host layers (`.codebuddy/`, `.opencode/opencode.json`, and the `AGENTS.md` memory region)
+are GENERATED, never hand-edited. After editing anything under `.agents/`, regenerate and
+verify:
+
+```bash
+pixi run agent-sync     # regenerate every host layer from .agents/ (idempotent)
+pixi run gate-agents    # assert generated layers == single source (red on drift)
+```
+
+A `pre-commit` hook auto-runs `agent-sync` (and `gate-agents`), so generated layers can
+never be committed stale. `gate-agents` is also in the `ci` chain. To add a new host
+adapter (e.g. qoder/trae), add an entry to `scripts/agent-targets.json` — but first verify
+that host's discovery paths/shape from its docs (a wrong path is a dead, unread file). See
+`.omo/plans/2026-10-28-agent-config-unification.md` and decisions D27–D35.
+
+<!-- BEGIN:agents-memory -->
+
+## AGENT MEMORY (generated -- edit .agents/memorys/*.md, not this block)
+
+### conventions
+# VisiaEngine Conventions & Constraints
+
+> This file is VisiaEngine-only. C2-C8 and C10-C14 are reserved slots (C1/C9 inherited from the predecessor project's general methodology, kept to avoid dangling cross-references; C15/C16/C17 active). New conventions take the smallest free slot. Full predecessor archive: `.refinfo` (read-only).
+
+## C1: Architecture-decision comparison format
+
+**Constraint**: any architecture discussion involving option choice must enumerate, per option:
+- **Pros/cons**: the advantages and disadvantages of each option
+- **Sources/references**: the existing systems / open-source projects / industry practices borrowed from
+- **Impact**: what choosing that option implies for subsequent development
+- **Recommendation**: an explicit recommendation with reasons
+
+Listing options for the user to choose without the above analysis is forbidden.
+
+## C9: Automatic lesson consolidation
+
+**Constraint**: problems, lessons, and experience discovered during development must be proactively written into the corresponding memory documents within the same session turn.
+
+| Situation | → File to update |
+|------|-----------|
+| bug found / pitfall hit | `pitfalls.md` (symptom + root cause + solution + verification — all required) |
+| user corrects AI behavior | `conventions.md` (new constraint, C{n} numbering) |
+| architecture/config decision | `decisions.md` (D{n} numbering + rationale + impact) |
+| project state change | `status.md` (date, Phase, test counts) |
+| coding pattern / anti-pattern | `rules/common/coding-style.md` |
+| security-related lesson | `rules/common/security.md` |
+| edit-tool usage lesson | `rules/common/edit-safety.md` |
+
+**Principle**: don't wait for the user to ask. Once a consolidatable experience is recognized, update proactively. Better over-record than omit.
+
+## C14: Subagent artifacts must be verified (orchestrator iron law)
+
+**Constraint**: completion claims returned by a subagent are not trustworthy. The orchestrator must verify the actual artifacts before marking a task complete.
+
+**Verification checklist**:
+- files claimed created → `cat`/`ls` to confirm existence + content completeness
+- config claimed modified → `grep` the key fields
+- commands claimed runnable → actually execute them
+- tests claimed passing → re-run them
+
+**Failure handling**: verification fails → resume the SAME subagent session carrying the concrete defects for repair (continue via task_id); do not take over the editing yourself.
+
+## C15: Interface sentinels and parameter semantics must first be checked against the existing clause-ownership table
+
+**Constraint**: (1) before a new interface sets a "failure/invalid sentinel", grep the clause library for existing value ownership (this case: `add_mesh` used 0 as the failure sentinel and collided with CAPI-01's black-and-white text — "entity pose slot0gen0=0 is legal = deliberate ownership" — only re-owning the return code + out-parameter catalog put it right); the same value domain meaning the opposite in two places = a guaranteed landmine. (2) one parameter surface serves no two masters: CI semantics (fast in-and-out `--frames`) and interactive semantics (resident window) must hang on two separate consumers (the run step's zero args vs the registry argv — ctest's sole judge); "one parameter set with two claimants" is a design alarm. (3) check method: before a new interface goes RED, write a "value-ownership cross-reference" passage into the clause draft (who owns the interpretation of 0/-1/MAX).
+**Check command**: `grep -n 'sentinel\|MAX\| 0=' docs/sdd/capi.md | head` (no position collision in the value-ownership table before a new clause enters the library).
+
+## C16: Decision-presentation format = plain words + diagram + directory + one-at-a-time
+
+**Constraint**: any option/defect/impact analysis that needs user adjudication is presented as a four-piece set: (1) plain-language root cause (lead with the "one-line version"); (2) a schematic (data/flow/timeline ASCII — draw it whenever drawable); (3) the affected **directory structure / file manifest** itemized (including landing line positions); (4) with multiple topics, walk them one at a time (one card per adjudication); one-shot big lists are forbidden. The jargon-stacked version gets bounced back (this session's "speak plainly" corrections ×6, hard evidence). Recommendation reasons are restated using C1's four columns (pros-cons / source / impact / recommendation).
+
+## C17: English-only for all persisted artifacts (2026-09-20 user ruling)
+
+**Constraint**: Every artifact written to the repository MUST be in English — code comments (`//`, `///`, `/* */`, `#`), SDD contract clauses, `docs/`, `.agents/memorys/`, `.agents/rules/`, `.agents/skills/`, AGENTS.md, README, commit messages, example/demo source, config comments. The ONLY exception: live AI↔user chat replies (Chinese allowed when the user writes Chinese).
+
+**Scope**: Prospective only (user chose A). The ~7,300 pre-existing Chinese lines (measured 2026-09-20) stay as-is; translate opportunistically when touching a file, no dedicated migration wave.
+
+**Why**: repo is public-facing SDK distribution; mixed-language corpus is a liability for external contributors and for grep/CI gates that anchor on comment text.
+
+**Check command**:
+```bash
+# new/changed .rs comments must be ASCII (run on staged diff; 0 matches expected)
+git diff --cached -U0 -- '*.rs' | grep -P '^\+.*[\x{4e00}-\x{9fff}]' || echo OK
+```
+
+## C18: Shared-code boundary = the example's teaching claim (2026-10-08 band V, user rulings C2=A/C3=B)
+
+**Constraint**: when pulling code duplicated across examples into shared components, pull only the parts that are **verbatim identical and carry no claim** (the device/surface/context boot sequences,
+argv parsing). The code by which an example teaches its one lesson (present-path selection, mouse/keyboard semantics, pixel predicates) **must not be eaten by sharing** —
+`render_view_rects` is ⑤b's course text; drag in E402/E403 is picking/box-selection, not orbiting. Criterion: if deleting some code leaves the example's tutorials.md
+claim undemonstrated, that code is course text, not duplication.
+
+**Check command**: `grep -n 'Non-goal\|keep local' .omo/plans/viewer-shared-band-2026-10-08.md | head`;
+the migration batch's gates (determinism pre-check → sha/timeline → interaction tri-state) live in `rules/common/testing.md`, section "Batch-migration gates".
+
+## C19: Self-check/prune/gate-step predicates must be token-level, and a breakage probe must run before commissioning (2026-10-08 band V, hard evidence)
+
+**Constraint**: predicates like "is this symbol still used" or "is this string still there", judged by **text line**, get polluted by comments and string literals.
+Hard evidence: batch 12's import pruning only stripped `use` lines, so `Window` survived on a comment mention — what caught it was this repo's
+`lint` (`cargo clippy --workspace --all-targets -- -D warnings`), **not the script**; and at the time my commit described the script as stronger than its implementation
+(claiming "comment mentions don't count as usage"). Two failures of the same family: (1) predicate too coarse (2) self-description exceeding the implementation.
+
+Correct predicate order: strip `//` comments → strip string literals → strip `use` lines → then query on word boundaries.
+Before any new self-check/gate goes live, run a **breakage probe** (rename/delete the object under test; the gate must go red and the report must point at it alone).
+
+**Check command**:
+```bash
+# (1) predicate self-proof: plant a breakage probe in the check itself (a hit >=1 makes a real gate; in-repo it must be 0)
+printf 's = re.sub(r"use [^\\n]+", "", s)\n' > /tmp/c19-probe.py
+grep -c 're\\.sub(r\"use ' /tmp/c19-probe.py                       # expect 1: the predicate can hit the crude form
+grep -rn 're\\.sub(r\"use ' scripts examples/rs/src crates bindings 2>/dev/null | wc -l   # expect 0
+rm -f /tmp/c19-probe.py
+# (2) fallback advantage (this repo's real judge): the lint segment is -D warnings; a prune escapee is always caught by it
+grep -n '^lint = ' pixi.toml
+```
+**Note (honest, 2026-10-08)**: the band's codemod (`/tmp/migrate_viewer.py`, session-scoped
+and NOT in the repo -- plans and one-off scripts are deliberately not tracked) still carries
+the crude form at lines 207/211: it strips `use` lines only, no comment/string stripping.
+The token-level fix was implemented in the batch 13/14 one-off invocations, whose corrected
+predicates are likewise untracked. Therefore the durable guarantee is ② -- `lint` with
+`-D warnings` -- which is what actually caught `Window` in batch 12. ① exists so the next
+person who writes a prune step can prove their predicate bites before trusting it.
+
+
+### C19 addendum (2026-10-08, adopted after lesson-review)
+
+Adopted ruling: **`lint` is the durable gate for prune-type steps; no new CI segment.**
+The discipline that was missing is "do not claim the script checks more than it does".
+
+- Durable gate (verified in-repo): `pixi.toml` L76
+  `lint = "cargo clippy --workspace --all-targets -- -D warnings"` — an unused import that
+  survives a crude prune becomes an error here. This is what caught `Window` (batch 12).
+- Self-test for any new prune/gate predicate (no /tmp dependency, run it in one line):
+  `printf 's = re.sub(r"use x","",s)\n' > /tmp/p; grep -c 're\.sub(r"use ' /tmp/p; rm /tmp/p`
+  — must print **1**; if it prints 0 the predicate is decorative and must be rewritten
+  before it is written into any rule or script.
+- Pointers added where they will be seen: `rules/common/testing.md` (Batch-migration
+  gates) and `rules/rust/coding-style.md` (Runnable Check section) both now name `lint -D
+  warnings` as the true judge of import-pruning steps.
+
+## C20: All tracked artifacts are English; Chinese lives in AI chat and the .omo plan zone (2026-10-12, user adjudication A)
+
+The whole repo migrated to English artifacts (E1-E5, PolyOrch-C4-shaped but V-written:
+skills/ is a directory-level whitelist -- trigger phrases and keyword tables are activation
+surface, and PolyOrch's quoted-phrase heuristic would flag 1k+ lines of V skill bodies;
+.opencode node_modules and book-to-skill parser regexes are vendored/functional). The
+brand record line in decisions.md D6 and the `.omo`-anchoring conventions check literal are
+the named residuals. Test fixtures that ARE the feature under test (E505 CJK glyphs,
+E814 UTF-8 path, io_spec Chinese test-function identifiers) are functional data, not prose.
+
+```bash
+bash scripts/gate-i18n.sh   # red/green proof duty per C0 was performed 2026-10-12
+```
+
+New commits: subject+body in English from E1 onward (the pre-E1 Chinese commit history is
+history, not policy; searchable via the whitepaper-zh-v0.1.0 tag and parent commits).
+
+## C21: Semicolon is the CMake list separator -- multi-value table entries need their own delimiter (2026-10-12, caught live as CMP0002 target collision)
+
+A `set(T "a=b;c;d")` entry is ONE string at `set()` but a 3-element LIST the moment
+`foreach(x ${T})` iterates it -- each `;` splits. Table entries that bundle a value plus
+its dependency list must use a non-list separator (`@` here) inside the entry and
+`string(REPLACE "@" ";" ...)` after extraction. Symptom when violated: `add_custom_target`
+dies with "another target with the same name already exists" on the SECOND entry, naming a
+fragment (e.g. `visiaengine-render-build`) as the collision -- the fragment was a dependency
+name iterated as a crate.
+
+```bash
+# any table file: entries must not carry raw ';' inside quoted values
+grep -nE '"[^"]*;[^"]*=' cmake/VisiaEngineCrates.cmake && echo FAIL || echo PASS
+```
+
+## C22: "Directory taxonomy is single-axis; names follow their axis, never a cross-axis copy" (2026-10-12, js->wasm + capi->ffi rounds)
+
+`crates/` = the rust set (implementation axis); `bindings/` = the consumer face
+(consumer-language/artifact axis); `examples/` = teaching examples. A directory
+must not embed the other axis (`bindings/js/rust/` and `bindings/c/visiaengine-capi`
+were both the implementation axis living under the consumer axis -- both gone).
+Target names likewise: rust crates carry rust-ecosystem suffixes (`-ffi`,
+`-wasm`), CMake real names carry the consumer word (`visiaengine-c/-cpp/-qt`),
+aliases carry the stable contract (`::c/::cpp/::qt`), IDE viewers carry the
+content word (`-sources`); buttons use PLAIN verbs (`-build`/`-test`/
+`-clean` -- the rusttest coinage retired 2026-10-13: name-avoidance of a
+collision that does not exist is over-design; if a semantic clash ever
+materializes, fix the OTHER side's naming, not the button's word).
+Aggregate/merged buttons carry the DELIVERABLE word, not the collection
+abstraction: `visiaengine-wasm-js-build` (2026-10-13) = one button for the
+lane's js deliverable (all glue flavors ride it; single-flavor needs
+degrade by passing one FLAVOR); `-all` retires from the lane and stays
+unique to the rlibs aggregate. An aggregate over a single crate's verbs
+with no deliverable word is a convenience bundle, not a collection
+(wasm-all deleted 2026-10-12; the rlibs aggregates stand on 9 buttons).
+
+The KNOB namespace order (T-H7, 2026-10-14, user-adjudicated): debug-surface knobs
+are `PolyOrch_VSCODE_DEBUG_<FACE>` (FEATURE first, FACE second) with a BOOLEAN
+composite `PolyOrch_VSCODE_DEBUG_ALL` (ON forces every face through the OR_CONDITION
+cache FORCE; display = effect). Face words are the lane words, no abbreviations,
+no old-axis coins: NATIVE for c/cpp/qt (CPP/CXX rejected: they lie about the C
+lane and CXX re-spells cpp). The full octk_option semantics live in PolyOrch
+(six keywords ported, user-ruled; extraction-roadmap note retired -- the port IS
+the surface).
+```bash
+# no old-order knob names outside the compat reads:
+grep -rn "PolyOrch_RUST_VSCODE_DEBUG\|PolyOrch_NODE_VSCODE_DEBUG\|PolyOrch_PYTHON_VSCODE_DEBUG" cmake/ 2>/dev/null | grep -v _gate.cmake | grep -v "legacy" && echo FAIL || echo PASS
+```
+
+The EXAMPLE head word (T-H6, 2026-10-13): all four example lanes
+(rs/c/cpp/qt) share `visiaengine-example-<name>` for targets and
+`-run`/`-build` suffix verbs for buttons; source FILES keep bare E
+names (R10 amended: the family word lives on the target, not the file);
+ctest stays `example_<name>` (one spelling, two namespaces). Mechanism
+prefixes (cargo-, rs-, run_) never return to button names.
+
+```bash
+# no mechanism-prefix buttons anywhere (cargo-run_, rs-E, run_E):
+cmake --build cmake-build --target help 2>/dev/null | grep -E "cargo-run_|rs-E[0-9]|^run_E" && echo FAIL || echo PASS
+```
+Corpus: iceoryx2
+(iceoryx2-ffi crate <-> iceoryx2-c package) and zenoh (ffi crate <-> zenoh-c repo)
+both keep the two axes lexically distinct; bevy keeps crates flat.
+
+```bash
+# no implementation-language layer under the consumer tree; no rust crates under bindings/
+# the banned shapes: an implementation-language LAYER (rust/) or the old
+# crate homes (visiaengine-capi dir, bindings/js) -- NOT a crate whose home
+# is legitimately bindings/wasm/visiaengine-wasm (that IS the wasm lane)
+test -z "$(find bindings -maxdepth 2 -type d \( -name rust -o -name visiaengine-capi \) 2>/dev/null)" \
+  && test ! -d bindings/js && echo PASS || echo FAIL
+# crates/ is exactly the rust set (no consumer-face dirs)
+ls crates/ | grep -vE '^(visiaengine-[a-z0-9-]+|\.gitignore)$' | grep -qE 'probe|demo|include' && echo FAIL || echo PASS
+# an aggregate target may only exist where its family has >1 sibling buttons
+# (wasm-all precedent: bundling one crate's verbs is not aggregation)
+grep -rn "add_custom_target(visiaengine-wasm-all" cmake/ && echo FAIL || echo PASS
+```
+
+## C23: "PolyOrch submodule work runs on dev-visiaengine; main is merged-into and tested, never committed-on directly"
+
+All supplier-side edits land on the `dev-visiaengine` branch of the ./PolyOrch submodule. Before starting: `git fetch origin` and merge `origin/main` into the branch (stay current). When the branch's suite is green: fast-forward `main` from the branch, RE-RUN the suite ON MAIN (the switch-to-main-and-test step is a step, not a vibe), push both branches, return HEAD to dev-visiaengine. Never commit directly on main; never leave the submodule on a detached HEAD (unreachable-commit hazard). FREEZE clause: while a supplier push is unconfirmed by `ls-remote` (slow or failing channel counts as unconfirmed), create NO new supplier commits -- docs-only included; work pauses on the host side instead of queueing ahead on the branch (each queued commit re-matures the outer `M PolyOrch` drift by construction). The gate-docs leg 11) pins the alignment rule (pin == HEAD == published).
+
+```bash
+cd PolyOrch
+git symbolic-ref --quiet HEAD | grep -q 'refs/heads/dev-visiaengine' || exit 1
+git fetch origin -q 2>/dev/null
+git merge-base --is-ancestor origin/main dev-visiaengine && echo PASS || { echo FAIL; exit 1; }
+```
+
+## C24: "Commit message = short single-concern subject + bulleted body"
+
+Subject <= 72 chars, exactly one concern, conventional prefix (`type(scope): ...`), no ';'
+double-heads, no long parenthetical chains -- the detail belongs to the body. Body: blank line,
+then one '-' bullet per line (what / why / evidence), each <= 80 chars. One commit = one concern;
+a commit never spans the host and the supplier repo. Mainstream basis: Conventional Commits
+specification + git's own submit guidelines (50/72 rule). Pre-adoption subjects (leg-11 era,
+200+ chars, double-concern) are GRANDFATHERED -- never rewrite pushed history for style; from
+adoption, every new HEAD must read green before the next commit stacks on it.
+
+```bash
+s=$(git log -1 --format=%s)
+[ "${#s}" -le 72 ] || { echo "C24 FAIL: subject ${#s} chars (>72)"; exit 1; }
+if printf '%s' "$s" | grep -q ';'; then echo "C24 FAIL: ';' double-head subject"; exit 1; fi
+b=$(git log -1 --format=%b)
+if [ -n "$b" ] && ! printf '%s\n' "$b" | grep -q '^- '; then echo "C24 FAIL: body without '-' bullets"; exit 1; fi
+echo "C24 PASS"
+```
+
+## C25: Regenerate host config layers after editing `.agents/` (2026-10-28)
+
+**Constraint**: `.agents/` is the single source for agent config (rules / MCP / memory).
+Host layers (`.codebuddy/`, `.opencode/opencode.json`, the `AGENTS.md` memory region) are
+GENERATED and must never be hand-edited. After editing anything under `.agents/`
+(`rules/**`, `mcp.json`, `mcp.local.json`, `memorys/*.md`), run:
+
+```bash
+pixi run agent-sync     # regenerate all host layers from .agents/ (idempotent)
+pixi run gate-agents    # assert generated layers == single source (red on drift)
+```
+
+A `pre-commit` hook auto-runs `agent-sync` + `gate-agents` so stale generated layers can
+never be committed. `gate-agents` is also in the `ci` chain. New host adapters are added as
+entries in `scripts/agent-targets.json` — but first verify that host's discovery
+paths/shape from its docs (a wrong path is a dead, unread file; see D35).
+
+### decisions
+# VisiaEngine Architecture Decision Record
+
+> Records decisions that affect interfaces, data flow, dependency direction, or build shape. Each entry carries a number, date, decision content, rationale, and impact. Option-comparison presentation follows C1 (pros-cons / source / impact / recommendation, four elements). Overturned decisions are marked SUPERSEDED with the new number; entries are never deleted.
+
+## Format example
+
+## D<N>: <decision title> (YYYY-MM-DD)
+- **Background**: <why this decision was needed>
+- **Decision**: <what was chosen, what was dropped>
+- **Rationale**: <key reasoning, including sources/referenced practices>
+- **Impact**: <modules, conventions, and follow-on development affected>
+
+<!-- Real entries append below. The predecessor MediaServo decision history is in the .refinfo archive. -->
+
+## D1: Ported-config neutralization (MediaServo → VisiaEngine, fresh start) (2026-09-03)
+- **Background**: the repo's .agents/.opencode/.omo were ported wholesale from the completed project MediaServo (Rust WebRTC); 3437 lines of old-project memory + 14 hard-referencing skills would mislead the new project.
+- **Decision**: position as a brand-new project → memory zeroed to templates (keeping only the three general methodology entries C1/C9/C14, original numbering retained to avoid dangling references); the 14 skills neutralized in place, not deleted; rules spot-generalized + platform.md deleted; instructions dropped docker/platform/rust (stack undecided → no preload of language rules).
+- **Rationale**: the old project's history is fully archived at .refinfo/MediaServo (gitignored, on this machine); overwrite/delete loses nothing.
+- **Impact**: the config loaded each turn no longer contains MediaServo architecture; once the stack is chosen, backfill at the placeholders (see status.md next steps). Verification: dual grep gates passed.
+
+## D2: Tech stack and product form settled (whitepaper v0.1.0 first draft) (2026-09-03)
+
+> **Update**: this entry's impact ④ — the render-backend final ruling — has been superseded by **D4** (wgpu direct use, self-built pipeline adopted).
+- **Background**: the user submitted the《VisiaEngine whitepaper》first draft, positioning a multi-dimensional spatial visualization engine (unified 2D/2.5D/3D viewport, for GIS / digital twin / AV simulation / BIM), explicitly not a game engine.
+- **Decision**: Rust core (`visia-core` scene graph / coordinate systems / spatial index + `visia-render` abstraction); rendering on wgpu (Vulkan/Metal/DX12/WebGPU), whitepaper tentatively Bevy as default backend (`visia-render-bevy`); the C API is the sole stable FFI boundary, shipping SDK form without hijacking the host main loop; Open Core: the core stays MIT/Apache-2.0 forever, commercial product = Visia Studio editor + enterprise plugins/support; startup size target ≤10MB.
+- **Rationale**: fills the gap between game engines (heavy, weak GIS) and GIS/web libraries (hard to embed in native desktop, 2D/3D on different cores); benchmark precedents: Cesium (unified viewport but JS-first), MapLibre (map-only), Three.js (no spatial-data layer).
+- **Impact**: ① stack = settled, rules/rust backfill into instructions unlocks, pending execution; ② crate naming visia-* settled, wholly unrelated to the predecessor MediaServo (only the toolchain config was ported); ③ whitepaper §3.2 "native ODR/OSC parsing" contradicts §6.2 "Beta plugin" in commitment level — must be unified before release; ④ **the Bevy binding approach is a load-bearing undecided decision** (bevy_render is deeply ECS-coupled; "decouple ECS, use its renderer" is practically near-infeasible); ⑤ the whitepaper's full text currently exists only in the session — its landing location awaits adjudication.
+
+## D3: Whitepaper v0.1.0 committed with wording revisions (2026-09-03)
+- **Decision**: the user's whitepaper first draft, after review and edits, was committed to docs/whitepaper.md + a condensed README.md. Revision scope (user-approved): ① §4 dropped the "Bevy default backend" promise, replaced with "wgpu base + two backend candidates pending final ruling", architecture-diagram backend box renamed visia-render-<backend>; ② §3.2/§5 ODR/OSC downgraded from "native parsing" to "official plugin (Beta)", aligned with the roadmap; ⑤ §1.1's critique of Cesium rewritten precisely (cross-dimensional scene semantics differ, native-embedding cost), avoiding factual errors; ⑥ date changed to 2026-09, license gained the "released versions are irrevocable, no retroactive closing" promise, Visia etymology revised to the honest "vision-family coinage". Not revised: §3.3's 10MB figure and projection-range wording (not in the approval list; to be re-checked together with the D4 backend ruling).
+- **Rationale**: the whitepaper carries externally stable promises; anything conflicting with engineering reality/facts gets fixed before commit; the backend ruling is undecided and must not be pre-locked by the docs.
+- **Impact**: the whitepaper becomes the project's first-hand positioning source (AGENTS.md already points to it); after D4 (backend ruling), §4 needs a second backfill.
+
+## D4: Render-backend final ruling = wgpu direct use, self-built pipeline (Option B) (2026-09-03)
+- **Background**: whitepaper §4 had tentatively "default backend Bevy"; D2 impact ④ held the final ruling. Four research lanes delivered (evidence/2026-09-03-wgpu-direct / -bevy-embed / -angle-integration / legacy-platforms.md, all live-cited 2026-09-03).
+- **Decision**: **Option B adopted** — self-built render pipeline directly on wgpu; default-backend crate renamed **`visia-render-wgpu`**; `visia-render-bevy` not started. Option A (reuse the Bevy stack) rejected; Option C (A first, then B) rejected (the costliest layer written twice + C ABI leakage).
+- **Rationale** (each Option-A rejection point has evidence): bevy_render is inseparable from App/ECS and 0.19 deepened it (RenderGraph removal measured); rendering inside a host window has zero precedent (godot-bevy abandoning the renderer is circumstantial evidence); no 1.0 promise + 120 breaking changes per release + ecosystem lockstep cases — conflicts with "stable C API SDK"; wgpu direct keeps main loop / size / compat tier fully self-held. Known B costs: frame graph / pipeline cache / GPU culling / 3D Tiles streaming — none has a mature piece (permanently self-held); MVP 15-27 person-month composite estimate.
+- **legacy ruled together**: XP withdrawn from all external text (ANGLE D3D9 already removed + Rust MSVC = Win10 floor); Win7 = unofficial best-effort (not in promises); Android floor API 24 (system GLES/Vulkan dual path, ANGLE irrelevant); RK3588 (Valhall G610) = Panvk or vendor libmali blob, **released binaries lock one driver stack**. §3.3 wording upgraded: first-class = Vulkan/Metal/DX12/WebGPU, degraded tiers = GL 3.3+/GLES 3.0+/WebGL2 ("what is consistent is the API surface and tier semantics, not identical image quality").
+- **Impact**: whitepaper §3.3/§4.1/§4.2/§6.2 backfilled (same day); README architecture row updated; AGENTS.md CODE MAP planned crate changes; MVP-period self-risk items: 100k-entity frame budget, wgpu quarterly breaking-change pin strategy, cosmic-text CJK atlas quality.
+- **SUPERSEDED statement**: this decision supersedes D2's "whitepaper tentatively Bevy default backend (pending final ruling)" wording; D2's remaining content (stack = Rust / SDK form / Open Core) stays valid.
+
+## D5: Development environment fully managed by pixi, rust toolchain included (2026-09-03)
+- **Decision**: the development environment is managed uniformly by pixi (conda-forge single source); **the rust toolchain is also provided by conda-forge**; the rustup main path is not adopted. The only prerequisite on a new machine = `source bootstrap.sh` (auto-installs pixi → everything comes from the lock).
+- **Rationale**: measured conda-forge Rust family is complete (rust 1.98 tracks monthly + rustfmt/clippy/rust-src/rust-analyzer + `rust-std-wasm32-unknown-unknown`/android + cargo-deny/wasm-bindgen-cli/cargo-binstall); single lockfile, mature domestic conda mirrors, one mental model. The predecessor project's daily main development ran entirely on conda rust; its pitfalls concentrated in cross/vendor-stack scenarios (not things conda rust couldn't install). The "pixi shell + rustup toolchain" hybrid (C) was evaluated and demoted after its wasm/cross-std arguments were overturned by probing.
+- **Clauses (boundaries)**:
+  1. Windows escape hatch: win-64 enters platforms; if win conda rust friction exceeds the bar, per-machine rustup+MSVC overrides without polluting the mainline.
+  2. Embedded cross (vendor devices of the RK3588/Jetson class) always goes Docker/vendor toolchains; conda rust does host builds only — the boundary-handling of predecessor PIT-85 (conda rust injects `CARGO_TARGET_*_LINKER` priority above `.cargo/config.toml`).
+  3. cargo tools with no conda package (tarpaulin/cbindgen etc.) are obtained as prebuilt binaries via cargo-binstall (conda has the package).
+  4. CI pins pixi-version; lock drift is gated with `--frozen`.
+  5. `pixi.lock` must be committed with the same discipline as `Cargo.lock`.
+- **Impact**: on the work-start day, generate pixi.toml / bootstrap.{sh,bat} / pixi.{sh,bat} / docs/env.md; `rules/common/constraints.md` gains the environment discipline addendum; rustup never appears on the machine (except clause ①'s escape scenario).
+
+## D6: Technical namespace unified to visiaengine-* (2026-09-03, user ruling)
+- **Decision**: brand name = **VisiaEngine** (PascalCase, docs/UI/formal address); technical prefix = **`visiaengine-`** (lowercase full brand name: crate package names / lib underscore names / workspace paths / CI and gate references, full chain). C ABI layer: symbols `visiaengine_*`, header `visiaengine.h`, library `libvisiaengine.{so,dylib,dll}` (capi slice delivers it). Environment-variable prefix reserved: `VISIAENGINE_`. Layering exception: **product names keep their own form** (the editor "Visia Studio" is not a technical namespace).
+- **Revision surface**: crate-name wording in D4's historical entry stays as historical fact, not rewritten; from this entry forward, all present-tense docs use the new names. SDD clause numbers (CORE/REND/WGPU-*) are independent of crate naming — zero change.
+- **Rationale**: ① "visia" is not the official product address; the full name is trinity (repo name = brand = prefix) with search monopoly and zero ambiguity; ② measured obstacle-free — both candidate namespaces free on crates.io, GitHub shows zero C-symbol use of `visia_`; ③ the end-state lesson of the predecessor's D209→D221 double full-rename tax: get it right once = brand lowercase full name; ④ the original counter-proposal "C ABI short-prefix dual track" was overturned on user challenge (the C prefix can be changed in sync; long prefixes like gdk_pixbuf_* have C-idiom precedent).
+- **Impact**: one atomic rename commit (3 crate dirs + package names + references + CI + present docs, committed only after `pixi run ci` and the three golden tests all green); the historical surface (old entries in decisions/pitfalls, docs/reference snapshots, commit history) is not rewritten. If the brand ever evolves again, the rename-tax cost of relapse is backstopped by the "settle it before release" discipline.
+
+## D7: P1 adjudication — RTC adopts the layered origin scheme (viewer-origin rebase, 2026-09-03 user ruling)
+- **Decision**: the coordinate-precision mechanism is fixed as a three-layer union: ① core world = **f64 global** (ECEF/projected-domain numbers, semantic ownership on the io data-source side, orthogonal to this issue); ② vertex storage = **local f32** (relative to model/tile-level origin; at local ≤64km f32 keeps mm); ③ draw-uniform translation = **f64 `origin−eye` then drop to f32** (per frame / on camera motion threshold, v0 every frame). CesiumJS global-absolute vertices + high/low split are not adopted (that compensates its legacy baggage); shader f64 not adopted (banned on WebGPU); per-frame vertex rewrite not adopted (big-model VBO churn = death).
+- **Rationale**: four independent convergences (3D Tiles tile transform / MapLibre tile-local+u_matrix / deck.gl layer origin / UE5 LWC — whose per-component specialization was deprecated and reverted in 5.0, the cautionary tale against "over-layered origin"); Cesium `czm_translateRelativeToEye.glsl` source-proves viewer-origin rebase semantics; this scheme's pure-f32 upload surface → **the Web SDK route needs zero extra work**; incidentally makes explicit the G2 leftover `model f64→f32` large-coordinate step-size debt (1e7 m level step ≈ 1 m).
+- **Impact**: implementation timing = **GeoJSON slice** (glTF demo coordinates are small, current path compatible, zero change); core SDD will add CORE-11/12 rebase-behavior assertions at that time; tile-split granularity (when map-level sub-mm needs arise) = io-geo decides, engine mechanism unchanged; for extreme remote-precision needs, a Cesium-style high/low path is reserved as the upgrade route (not implemented by default). architecture.md ④/open-points table synchronized and closed.
+- **Evidence**: `docs/reference/evidence/2026-09-03-rtc-hierarchy.md`
+- **Erratum added (2026-09-03 planning round)**: "core SDD adds CORE-11/12" was mis-attributed — the rebase combination math lives in render (core has no matrices/wgpu semantics); actual numbers = REND-19/20; the CORE namespace gains nothing on this chain.
+
+## D8: Host embedding surface spec (approved 2026-09-11 as final; pre-registered 2026-09-03)
+- **Source**: Easy3D embedding-domain research [E3D:C1/C2/C5] (docs/reference/easy3d.md); its Qt integration relies on a QApplication::notify private hack, the ImGui version loses mouse coordinates, GLFW pointers leaked into the public ABI, bindings were auto-scanned wholesale — all four pits are counter-evidence for us.
+- **Pre-registered content**: ① engine zero-event API: hosts inject uniformly via `visiaengine_on_input(ev)`, outbound only `frame_requested`/`redraw_needed` callbacks; never require host subclassing or event polling; ② the rendering contract surface (render trait + IR) must carry no window/surface backend types; the rwh handle appears only at the capi boundary (Easy3D's renderer module with zero glfw references proves this purity attainable); ③ C ABI first version = a 6-line demo proving the minimal set (create → ready to render, zero multi-stage init), unbound items go through the graveyard process; GLOB-style full-set binding scans forbidden.
+- **Finalization addendum (batch 2, I0-I4 all cleared, 2026-09-11)**: ① handle = u64 (slot<<32|gen), slot base 1, C header exposes zero bit-layout; ② thread exception set = {abi_version,last_error}, destroy rejects cross-thread destruction, re-entering a released handle returns -1 (double destroy not swallowed); ③ **frame_requested/set_callbacks rejected** (pull model ve_render + host rAF/paint decides for itself; the SDL3 two-tier precedent on record; re-evaluation trigger = Qt animation round); ④ attach atomicity (on failure the headless current target is preserved) + x11 display mandatory / win32 hinstance 0 = automatic; ⑤ **the whole wasm-side C ABI is cfg'd out** (no_mangle and the bindgen export table are mutually exclusive under wasm-ld, measured) — JS = the separate crate visiaengine-wasm, zero erosion of the C symbol graph.
+- **Verification anchors**: gate-abi (14-symbol whitelist + demo compile-run) · SMOKE-X11 'OK capi x11' real window three frames · 'OK capi headless input+pick' · CAPI-01..09 all fifteen clauses carry tests.
+
+## D9: P2 adjudication — style spec adopts the MapLibre v8 paint-alias subset (2026-09-03, user ruling, Option B)
+- **Decision**: on top of the existing six simplestyle keys, accept **static paint-layout key aliases** of the MapLibre v8 style spec: `fill-color`→fill, `line-color`→stroke, `line-width`→stroke-width, `circle-color`→marker-color, `circle-radius`→marker-radius (`fill-opacity` keeps its name). v8's expressions / zoom stops / source-layer / data-driven are **not adopted** (that belongs to the Visia Studio commercial surface + full-spec round). simplestyle primary keys take precedence, aliases as fallback.
+- **Rationale**: off-the-shelf GIS style assets are mostly v8 format (MapTiler/OSM thisdir ecosystems); the alias mapping is ~30 LoC and takes the whole compatibility surface, lowering the SDK-embedding barrier; the full v8 expression engine costs 3-4 weeks and erodes the commercial layer (Open Core boundary), so we take the minimal-compatibility cross-section that is the "static alias subset".
+- **Reference**: C1 four-option comparison (A keep / B alias subset / C full / D custom), Option B = docs/reference/maplibre.md live-benchmark ecosystem compatibility + three-js.md library-form precedent; D rejected (home-grown = zero ecosystem + hidden lock-in).
+- **Impact**: geo::style gains an alias table (GEO-19); value formats reuse GEO-12 color parsing (#hex/rgb()); the style system's commercial surface (Visia Studio expressions/layer orchestration) is clearly lifted toward the undecided P4 neighborhood. The later 3b scalar→LUT builds on this style surface.
+
+## D10: Web/wasm binding = route A (dual-surface single-source) (2026-09-11 J1-J3 landed, final)
+- **Pre-registered content**: ① browser surface = the capi crate's `wasm` feature; js.rs and ffi.rs are two leaves sharing engine.rs (single crate, dual surfaces — not per-repo: lazier under full single-vendor control and immune to MapLibre-style "same name, different core"); ② thin-surface discipline: js.rs limited to marshaling/lifecycle/constant re-export/error translation; semantics reside uniquely in engine.rs; constants flow from Rust pub const single source into .d.ts and the C header (mirrors the CAPI-09 machine guard); ③ the no-free-functions discipline is kept (borrowed + caller-alloc two forms, SQLite/[MS] two schools both evidenced); ④ the emscripten route rejected (language-match law: C/C++ core→emscripten, Rust core→wasm-bindgen; three cases all conform); ⑤ u64≡BigInt, async factories (web GPU interaction has no synchronous path, wgpu's 30 Futures evidenced).
+- **Finalization addendum (J1-J3)**: ① js-surface frozen list = class VisiaEngine (fromCanvas async factory / flat input / pick→bigint) + 11 constant getters + abiVersion static; the .d.ts is the lock file (guarded by web-mirror.mjs compile-surface assertions); ② **revision surface (rejected routes recorded)**: wasm-pack not dead but D5 uses its CLI directly without a package; the `visiaengine_input_struct_size()` export rejected (the 14-symbol surface); playwright CI automation belongs to M2 (timebox abandonment on this machine, logged); ③ size record **raw 733KB/gz 294KB** (the whole wgpu web family; the web half of the ≤10MB target hits the bar early); ④ final isolation shape: capi (native C ABI) + visiaengine-wasm (bindgen), two crates, **single source = Engine**, CAPI-09 machine reconciliation. Evidence chain docs/reference/ffi-patterns.md [FFI-R:BS-5/6/7, v13-FEAS-2/7].
+
+
+**D8 trigger-① re-evaluation (2026-09-14, Qt round Q3 real-window evidence)**: the frame_requested frame-skip negotiation port — the QTimer 60Hz pull model hit a no-frame-rate pain over 6 frames on V1's real window; **maintain suspension**; next trigger = video/decoded-frame-aligned hosts (revisit only when the pull model can't follow an external clock).
+
+## D11: Qt-round demo build integration = thin self-managed CMake (Option B) (2026-09-14)
+
+**Decision**: the host consumption surface of the Qt widget round uses the iceoryx2-shaped thin self-managed CMake (~60 lines): `add_custom_target` cargo step + `RUST_BUILD_ARTIFACT_PATH` escape hatch + INTERFACE umbrella `visiaengine::capi` (BUILD/INSTALL dual genex) + in-tree fake-Config trick (find_package consumption code identical in-tree/post-install); the `visiaengineConfig.cmake.in` template is written but install tree/.pc/SOVERSION are not done. Option A (g++ script) and Option C (straight corrosion) dropped.
+**Rationale**: the demo must be consumed by a real host via cmake — write once now vs rewrite+revalidate twice at the packaging round; the find_package smoke is naturally carried by the demo (the predecessor's headline lesson: the cmake package was never compiled). Basis = team research, four-option comparison (docs/reference/cmake-integration-patterns.md, iceoryx2 :153-205/:38-78/install.cmake:17-21, slint :16-26 and its corrosion pitfalls :427-466, evidenced).
+**Impact**: Qt round +1 file-level increment; capi Cargo.toml gains `links = "visiaengine_c"` in passing (duplicate static-link foolproof).
+**Landing continuation (same day)**: Option B's landing surface = the CMake engineering layer (.omo/plans/visiaengine-cmake-project.md C1-C3 landed; the Qt round v1.3 onward is a pure consumer); the links account is not opened (cargo hard-validates build-script absence) and is still covered by the gate-abi nm set.
+**Re-evaluation trigger (packaging-round agenda)**: convert to corrosion or keep thin self-managed — trigger = a second C++ consumer / Windows matrix / real install-tree need; corrosion's promotion requires first opening the D5 exception account "conda has no package → cargo-binstall/GitHub-mirror vendor" (FetchContent network at configure time conflicts with the offline discipline). The umbrella interface `visiaengine::capi` is the stable contract (T-H2 2026-10-12: renamed `visiaengine::c` per the iceoryx2-c/zenoh-c consumer-language corpus; the contract class is unchanged) — swapping the kernel under it changes the consumption surface zero.
+
+## D12: CMake example-entry engineering = stub launcher + contract table + ctest single-source (2026-09-15 landed, final)
+- **Background**: the 11 E-series examples are opaque to CMake; IDEs have no run entry; two contracts are badly broken — CWD data paths (7 items) and DISPLAY (5 items).
+- **Decision**: A = launcher stub (~40 lines of single C++ source) carrying the real IDE Run body: chdir to repo root + display-family DISPLAY precheck exit 77 + argv passthrough; registration = contract table (glob⇄table dual validation, missing item = hard configure error); ctest example_* and the targets share one source. B (custom targets + ctest only) dropped — CLion has no Run button.
+- **Rationale**: CLion Run only recognizes regular executable targets (imported/custom produce no run config); Easy3D evidence "name = directory = title" needs zero maintenance (probe A file:line); 77 = the ctest SKIP native convention (SKIP_RETURN_CODE needs ≥3.24). G8 revision: the manual-cc route in gate-abi/smoke-x11 = a pure-C-consumer compilability gate property, not a redundant parallel — kept.
+- **Impact**: new-example duty in three places (source file on disk / contract-table registration / tutorials.md index); the examples family needs CMake ≥3.24; the third lock surface extends to the cmake entry (configure is the gate; no separate gate-docs⑥).
+
+## D13: ABI attribute-read trio 14→17 (adjudication chain closed, 2026-09-15)
+- **Background**: the host-facing attribute query was missing (capi had 14 entry points, zero read ports, probe-proven); the gap table recommended an "AttrSet attribute example".
+- **Decision**: user direction approved (the issue was presented with "the 15th port" wording) → the plan explicitly laid out the capacity delta → C-1 final = **3 typed ports 14→17**; C-2 str has no probe-length (cap insufficient = -5, zero partial write, 256B doc convention); C-3 the E701 appended section does not open a new E number; the standalone point-cloud example is **skipped** (overlaps E202 with no dedicated data source).
+- **Rationale**: the three-type mirror closes CORE-12; the host learns it all at once; a single variant-type port is ugly on the C side (type double-entendre); key = enc_entity pose pass-through (zero decode, ABA-immune = generation inside the key).
+- **Impact**: D6's "14 entry points" lock formally rewritten (CAPI-01/02 clause revision sentences + the twelve-item dependent-surface checklist already cleared); the precedent for future port expansion = **lay the capacity delta out before asking for approval**; the wasm surface keeps mirroring constants (functions are not mirrored, status quo); the `attr_of` kept-surface reserves an isomorphic shape for batch 7's js attribute port.
+
+## D14: Root examples directory law + unified c+ example surface + stub system retired (supersedes D12, 2026-09-16 v1.3 landed)
+- **Background**: the user judged the CMake engineering messy (three complaints: directories/targets/examples); two red-team rounds with 27+10 evidenced items: the stub launcher = the root of "the examples are fake", and corrosion's IDE import of examples has zero mainstream precedent (slint/iceoryx2 keep examples in the cargo world) while carrying its own eight taxes (cargo-build_* fake names / always-dirty #624 / dual caches / conda first-crab / no CTest #13 open since 2018).
+- **Decision**: ① launcher + 189-line contract table + old ctest example_* all abolished; ② root `examples/{rs,c,cpp,qt}/` layered by language; Rust examples keep **cargo example semantics** (explicit [[example]] blocks, not bin-ified — the v1.1 deadlock that bins can't eat dev-deps dissolves with it); ③ Rust examples enter the IDE via **c+**: self-written `cargo-build_*/cargo-run_*` steps (R10 adopted corrosion's naming grammar, zero dependency) + the unified ctest `example_<stem>` list; the nine pixi smoke entries demoted to forwarding shells (argv single source = R9 registry); ④ the corrosion question is parked at the packaging round (its adoption day = the bulk retirement day of the self-written steps, same-name tripwire).
+- **Rationale**: mainstream shapes + a measured tax bill; the c+ experience is 90% at a cost of 19 lines, while the b-route's signboard self-discounts by its price list. The item-by-item adjudication ran entirely under user eyes (including four "speak plainly" rounds).
+- **Impact**: cmake-smoke tri-state tri-anchor (bare-PATH configure probe + dual build anchors — B1 "don't let the guard get pruned away too"); D11's re-evaluation refreshed in sync (conda has a corrosion package = the original "no package" criterion was wrong; this round still drops it for the tax table); RA Run demoted to an auxiliary track.
+
+## D15: bindings as one nest + SDL3 window host + E8xx/twin numbering law (2026-09-16 v1.3 landed)
+- **Background**: the MediaServo shape was adopted with the ruling "everything in one nest"; window examples need a cross-platform host piece; the new E8xx band needed a numbering law.
+- **Decision**: ① `crates/` = the pure core, 5 libraries; capi → `bindings/c/visiaengine-capi` (src + handwritten header + tests cohabiting, probe at the same level), wasm → `bindings/js/rust/` (measured path references = 0; members + one path line); `bindings/cpp` (hpp) / `bindings/qt` (widget.hpp) / `bindings/js/demo`; the directory law in one sentence: examples/ = teaching examples, bindings/ = implementation + headers + acceptance + packaging shell. ② Host trinity: headless main force (readback assertions) + **SDL3** (conda 3.4.16, xid property = the attach contract's isomorph, S0 dual-state evidenced) + a dedicated Qt demo band; no FetchContent fallback (D5 single source). ③ C/C++ SDK examples = **the E8xx band**; twin shared-number `.c/.cpp` separated (target names suffixed `_c/_cpp`); asset escape hatch = directory name = file stem. ④ hpp opens no SDD account (widget.hpp precedent; the three shells' semantics live in header comments, the living anchor is CAPI-nn; trigger = when shell growth carries new behavior, open cpp.md + extend spec-trace's dual regex, 30 minutes, no interest). ⑤ install tree = S-c β: this round only a fail-loud guard; tree + out-of-tree rehearsal = hard debt of the packaging round (template nailed at §7).
+- **Rationale**: six mainstream repos measured (iceoryx2/slint/SDL3/Vulkan-Hpp/Sascha/filament) + the red-team G-group gaps all absorbed; examples centralization = 6/6 mainstream agreement; the dichotomy "tests co-locate with bindings, examples centralize".
+- **Impact**: example gate = a ctest-enumerable single source; the toolchain batch (compile_commands/.clang-format/.vscode presets always + .gitignore L56 negation deadlock fixed); PIT-19 (pixi clobber → conda Xvfb XKB death) booked.
+
+## D16: Point-cloud band scope ruling (2026-09-17, hyperplan three adversarial rounds + user "follow the recommendation")
+- **Scope**: M0 ramp exposure + M1 add_points pass-through + M2 io-points(PLY ascii/bin_le) in one band; **LAS = second band** (criteria: AV/surveying clients' lead demo list, no evidence on this machine; the las crate 0.11.1 MIT verified, may enter); the whole picking family deferred (trigger = interaction demand ∧ bench >16ms); normals/simplification/EDL/per-point queries all non-goals.
+- **Naming**: new prefix `IO-*` (io-* family law = naming follows the crate), spec-trace's **third-check machine lock** in the same commit (a prefix outside the whitelist = red; positive/negative self-proofs on record) — reducing "missed prefix, both regex sides silently blind" to a gating problem.
+- **Data model**: cloud = single entity, single DrawPoints; origin = f64 bbox center + local f32 (isomorphic to mount_geo, D7 adds zero new math); cloud-level meta via attr_* prefixed queries (zero new query ports); per-point attributes/query ports defer with the picking family.
+- **Capacity**: cap = 4M (declaration rejects first, no half-acceptance); release measured 1M = upload 127ms / frame 914ms (lavapipe, bench_pcl json on record); the number-change window = one (constant + clause + test, three places in one commit).
+- **Process ledger**: value wrung out by the red team — "S-tier pure-CPU preshading = not deliverable" merged into M; "ray_aabb reuse of cloud-level pick" was beaten down by four lanes and deferred; bench.sh's always-true green (PIT-25) was incidentally root-fixed by G3.
+
+## D17: Cross-section clipping band, eight adjudication points (2026-09-17, B2 planning-round probe adversarials + user "full band per recommendation")
+- **a route**: fs discard single path — wgpu 30's hardware CLIP_DISTANCES verified to exist (docs.rs) but
+  the DX12 backend is not in the list + feature-gate needs dual-path branching; re-evaluation trigger = discard edge quality genuinely hurts (customer jaggedness complaints).
+- **b face count**: ≤4 AND (single-face / corner-cut / three-axis box tiers); six-face box / OR-union (three.js's two-group shape) = non-goal;
+  raising to 6 touches only MAX_PLANES in one place (fixed-layout Pod lock).
+- **c caps**: not done (hollow interiors after cutting are honestly documented); stencil cap trigger = BIM interior demo list.
+- **d precision**: world coefficients f64 (n points to the kept side + on-plane = kept closed interval), shader uses the model-space identity
+  `n_m=Mᵀn, d_m=d+n·(o+t_M)` (multiply in f64, then drop to f32) — two self-caught root fixes during implementation (Mᵀ / translation column);
+  lesson: under column-major order the "normal times matrix" direction must be derived via the identity, never by intuition.
+- **e clipped family**: every drawing family (mesh/inst/stroke/point, per-pixel) — "clip the world, not the types".
+- **f shadows**: casters discard identically (a cut-away building leaves no whole shadow; three.js's clipShadows defaulting false
+  is a legacy habit, not a reason).
+- **g picking**: hit points on the negative side of keeps → excluded, retry loop (what is visible after cutting must be pickable); capi pick = positions ×
+  IDENTITY is existing fact, noted as "two frames merged"; not incidentally widened into the origin domain (independent gap, separate entry).
+- **h surfaces**: E813 C single example, headless living gate; interactive clip sliders booked (E901 key control = triggered by demo demand).
+- **Bonus record**: the View-block extension scheme (origin + transform already in the view_block signature) made this band
+  **cost zero new bindings/bindings-groups/buffers** — a full construction layer cheaper than the probe's independent binding9 estimate;
+  the "check the data path before choosing the mount point" discipline (think-before-act), evidenced.
+
+## D18: S2 text surface band, eight adjudication points (2026-09-18, probes A/B adversarial + user "tier ① engine self-managed · full band")
+- **a tier/scheme**: tier ① minimum-usable + scheme I (engine self-managed fontdue rasterization) — the user chose explicitly among three;
+  not host-self-managed (SDK value halved), not the standard tier (swash touches R2). The MSDF route was rejected (Rust ecosystem ≈ 0, msdf-font 1★).
+- **b dependency lock shape**: fontdue `default-features=false, features=["hashbrown"]` —
+  disables SIMD (wasm traps #25/#72) but keeps hashbrown (under no_std, std/hashbrown is either-or [docs measured;
+  the probe report missed it; N0 smoke corrected it]); ttf-parser RUSTSEC-2026-0192 deny-ignore
+  (unmaintained, not a vulnerability; attack surface = host-injected own assets + panic fence; ab_glyph depends identically = switching is a no-op;
+  three re-evaluation triggers written into the deny comments).
+- **c new crate location**: `crates/visiaengine-io-text` (the 9th crate, pure CPU: face/cache/layout);
+  GPU state lives in render-wgpu; interface isolation keeps a swash upgrade non-breaking.
+- **d namespace**: reuse the IO prefix (IO-07..09, already in the whitelist = the third check unchanged), not a new TEXT-.
+- **e label coordinates**: world-anchored + constant screen size (the ortho exact path's assert_eq locks pixel-equal across zoom);
+  color = linear-domain pass-through (sRGB chokepoint label table = core::srgb_to_linear, chokepoint six); center alignment lands in the dx domain
+  (PIT-28: pen is px and cannot enter the anchor's world coordinates). Always-on-top: depth write=false/Always + command order last.
+- **f atlas**: R8 single slot 512² + shelf packing + 1px gutter (sampling-bleed defense); when full, full-clear rebake with transparency degradation
+  ([ponytail] per-glyph LRU pending profile); set_glyph_atlas is a wholesale replace (io-text dirty-driven).
+- **g clipping**: labels go through WGPU-21's clipped() same predicate (anchor in model-space, REND-33 table domain);
+  casters don't project (no projected surface → don't mount ②).
+- **h dual-port mirror**: CAPI-21 load_font + CAPI-22 add_label (26→28, abi minor = 7 not 8);
+  the three-surface mirror covers the full band (header POD direct use / hpp thin forwarding / wasm loadFont+addLabel→bigint+MISS);
+  the management domain is outside items (same catalog as add_points, out of entity_count/remove).
+- **R2 size war result**: wasm gz 429401→490967 = **+14.3% (passes inside the 15% threshold, zero margin, honestly recorded)**;
+  the probe's +6% estimate was optimistic (reality = font stack + shader + label chain). Re-evaluation triggers: real wasm production, or
+  re-judge if CJK embedding is ever needed (fallback = feature-gate the font rasterizer to native only, same shape as R2's texture fallback).
+
+## D19: ⑤a camera-flight band ruling (2026-09-18, dual-probe adversarial + Momus OKAY 0B/3A + user "full band")
+- **Scope knife**: this band = flyTo pure flight; **multi-viewport split-screen = its own band** (four-pit list into non-goals: the depth_cache singleton upgraded to Map /
+  scissor unproved / input px routing / dual px_world_scale — both probes agreed; mixing bands = drags the verification cadence down). WGPU-26 reserved.
+- **Layering settled (forced = the right answer)**: the render crate sees zero std::time — the pure function fly_sample(from,to,t,easing) lives in render;
+  the wall-clock advancer lives in engine. **The wasm runtime landmine is actively defused**: std::time::Instant is unavailable on wasm32-unknown-unknown
+  (flyTo would trip the capi_guard -4 fake-death) → a now_ms() shim in two forms (native = Instant process anchor / wasm = js_sys::Date::now)
+  — the web is the main stage; compiling ≠ running; written before stepping on it.
+- **Easing**: Easing{Linear,CubicInOut(smoothstep),CubicOut}; the capi surface fixes CubicInOut (adding a parameter = YAGNI).
+- **Interruption = MapLibre A-school**: pointer/wheel (kind 1/2/4) cancel on the first line; keys (5) do not interrupt (test counter-evidence on record).
+- **done/idle merged single source**: fly_state returning 1 = not flying (after cancel = 1, can fly again); out_t01 is written only while flying,
+  done writes zero (B1 zero-partial-write catalog); wasm splits flyState+flyProgress(done=1.0) to spare JS double-value encoding.
+- **near/far do not fly** (pose carries no depth domain = always current values, PIT-5/REND-14 dependent [Momus-A1]);
+  **rerouted from = current sample** to preserve continuity [A3]; the yaw shortest arc lives in the fly_sample construction piece — **mix_rig untouched**
+  = REND-15/16's existing assertions zero-regress (wrap comparison disproven via the linear midpoint, doubly locked).
+- dur_ms = 0 = teleport form (not an error value domain); altitude arcs / Van Wijk = triggered by an AV fly-through ticket.
+
+## D20: ⑤b multi-viewport band ruling (2026-09-18, dual probes + Momus OKAY 0B/2A → fixed in + user "full band")
+- **Scope knife**: this band = split-screen pipeline + living example (pure rs); capi multi-viewport ports / click-to-fly = wave two (CAPI-25 reserved);
+  the shared viewer library = its own entry (four examples E501/E901/E302/E303 isomorphic, the ≥3 threshold has broken, the account transfers to D21 candidates).
+- **clear semantics settled on this machine** (current lock at the adjudication gate): wgpu30 LoadOp::Clear covers **the whole attachment**
+  (the AllClear form's later region swallows the earlier region, redA=0; consistent with the Vulkan render-area conclusion) ⇒ **first pass Clear
+  (full-extent base color = gutter color, zero new mechanism) + subsequent passes Load** is the only safe shape; the AllClear enum slot = probes/teaching.
+- **Depth must clear every pass** (the live landmine E303 currently caught, overwriting the probe's expectation): Loading depth between passes takes the main view's
+  opaque ground depth and swallows the small window's whole-area occlusion (nonsky_map=0, live); re-clearing inside the scissor fence has
+  zero side effects and no depth consumer between passes ⇒ Clear+Discard every pass (saving Store bandwidth).
+- **rect mount point = does not touch Frame** (ViewportRect is a standalone type passed as a render-call parameter; the 44th fallback wave is exempt);
+  full-rect emits no set_* = the old path's bit-for-bit canary lock; FOV/px are both per-Frame independent (two projections compose autonomously).
+- **casters do one shared-map trip** (light-space is independent of the main camera); small window = top-right square (a long strip = a composition mistake, measured).
+- **fov unit landmine eradicated** (a real bug in the stock): perspective consumes radians (look_at defaults π/3); E501/E302
+  once passed 46/55/60 as degrees = projection distortion (E302's window bright 96→1987 proves it was once broken); the orbit doc nails the unit;
+  lesson = a window surface the pixel gate never looked at is an unverified surface (this band's volume of the T3 human-check + headless-assertion double insurance).
+
+## D21: ④ translucency band ruling (2026-09-18, dual probes + Momus OKAY 0B/3A fixed in + user "full band")
+- **Three-zero discipline**: zero new ports (alpha already rides the add_mesh four-tuple path; the hot-change port set_material_alpha is booked with triggers) /
+  zero dependencies / zero IR fields (transparency decision = material alpha<1, sorted on the backend side table, WGPU-28 orchestration).
+- **V0 blend domain settled**: this machine's wgpu30 = linear domain (checkerboard gate 151 vs encode-domain prediction 83, decided on a single value,
+  consistent with the Vulkan spec; the prediction's arithmetic first version missed the Lambert shade coefficient — PIT-8 "predictions carry all chain factors" extended note).
+- **Translucent pipeline = Variant value-extension trio** (FlatT/TexturedT/InstancedT; bgl/layout identical, only the pipeline state differs;
+  lazily created, never prebuilt); blend = the SRC_ALPHA standard form (same equation as Labels), depthWrite=false, compare stays Less.
+- **Two-pass orchestration**: no translucency and no labels = the old single path untouched (golden fidelity preserved by construction); pass2 = painter's on view depth descending
+  (key origin + M translation column, f64 per D7 law; same-key submission order stable) + Labels always-on-top at the end; **pass2 depth Load**
+  inherits the opaque occlusion (distinct from ⑤b's across-viewport clear-depth shape — the two Load/Clear semantics each in their rightful domain).
+- **E504 bidirectional semantic lock**: the water film "attenuates contrast" rather than "destroys contrast" (a=1.0 control 52 / a=0.5 measured 15,
+  assertion band (10,30)) — a decidable form for translucency correctness.
+- **v0 residual declarations into clauses**: single-mesh self-overlap cannot be ordered (RTT/OIT in a later band) · translucent pieces cast fully solid shadows (three.js chose the same)
+  · material a==1 ∧ texel a<1 goes the old road (no dark semantics) · per-instance alpha needs its own layout ruling.
+
+## D22: ⑤b wave-two minimap navigation band ruling (2026-09-18, dual probes + Momus OKAY 0B/2A → fixed in + user approval)
+- **Option C: main + fixed secondary viewport + engine-internal hit-test routing** (A = host dispatch / B = VeInput field additions, both judged out).
+  Probe B nailed `struct_size`'s strict `<` forward-compat gate = adding a field to VeInput breaks every old host —
+  hosts report only screen px; inside/outside determination and dual-projection routing live in the engine (VeInput untouched).
+- **MapView = proportional-rect form** (fx/fy/fw/fh∈[0,1]+zoom); resize auto-follows, zero host duty;
+  the minimap rig = a top-view follower derived from the main target (zero sync port; two-rig drift radius = construct 0).
+- **[ruling e] navigate_click swaps only the target, preserving dist/fov/yaw/pitch**: a minimap click = a pan intent,
+  not a re-composition (E816 f64 bit-exact assertion lock). Two-stage hit = entities first (pick_geo top view) →
+  ground z=0 fallback (REND-37 ray_ground); outside the region / no map = reject (no silent rerouting, C15 value-domain table first).
+- **Routing order: minimap region first** (visual top = input top, same reasoning as ImGui focus); kind1..4
+  pointer/wheel inside the minimap region = consumed no-ops (v0 has no map-drag semantics; navigation goes through the explicit CAPI-26 port).
+- **canary construction guarantee**: map=None ⇒ the old single-frame path byte-for-byte (E816 leg 1 + leg 5 dual-form evidence; leg 5's lesson
+  = baselines must be re-captured after flight; post-write self-check, one root fix).
+- Ledger: 152 clauses · 33 entry points minor=9 · ctest 31 (E816 five-segment living gate measured 1596g/756r/target
+  (3.579,3.714,0)) · wasm bridge 4 names (setMap/clearMap/navigateClick/getCameraPose;
+  clear=NULL of the three C ports splits into two web laws) · R2 zero new dependencies.
+
+## D23: Install-tree band (packaging-round v1.3) — user-adjudicated one by one (2026-10-08)
+
+**Context**: `.omo/plans/packaging-round.md` v1.2 (2026-09-20, Momus x2) planned
+install+npm+pip+corrosion as one band. User cut it to install-tree-only, then
+walked the open points with the adjudication-walkthrough protocol (one card per
+message). Momus re-reviewed the resulting v1.3 section and returned OKAY.
+
+**Decisions (all user-adopted, letter = the card's recommended option unless noted)**
+
+| Card | Question | Result |
+|------|----------|--------|
+| 1 | what the tree contains | **A+**: cdylib + three public headers + licenses + package config. **No static archive** (release `.a` measures 67 MB vs the 7.25 MB cdylib, zero in-repo consumers, and shipping it implies owning the system-library list). Upgrade cost when a consumer appears: ~10 lines + a list derivable by linking once. |
+| 2 | static-lib refusal challenged by user | measured rather than argued: linking a C consumer against the `.a` with only the cdylib's own `NEEDED` set (`-ldl -lpthread -lm -lgcc_s`) **works on Linux** -- so "no hidden autolink table" was withdrawn; the decision survived on the two remaining legs (size + zero consumers). |
+| 3 | SONAME | **A**: emit it from `bindings/c/visiaengine-capi/build.rs` (`cargo:rustc-cdylib-link-arg`), the wasmer shape. Voids v1.2's `IMPORTED_NO_SONAME TRUE`. First `build.rs` in this repo; wasm32 emits nothing; mac/win are declared gaps, no silent `else`. |
+| 4 | package config form | **A**: `configure_package_config_file` template, imported targets created consumer-side from `PACKAGE_PREFIX_DIR`. `install(EXPORT)` is unusable here (measured CMake errors), and `_IMPORT_PREFIX` does not exist in a hand-written config (measured: expands empty -> `/lib/...`). |
+| 5 | Qt widget header | **A**: ship it, declare nothing. Probed: with only our include dirs it fails at `visiaengine_widget.hpp:7` on `QtGlobal`, and the default env has no Qt headers -- so the tree ships the file and the consumer brings Qt/X11 (what `examples/qt` already does). |
+| 6 | README drift (40 vs measured 43) | **C**: fix the numbers **and** lock both halves -- gallery card count in `gate-docs` check 7, ctest registry count in `cmake-smoke` (each lives in the tool that already holds the true value). Both locks seen red by probe before shipping. |
+| 7 | P3 execution order | **A**: commit the finished small thing (skill port) separately, then review, then code. |
+| 8 | where the record lives | **B**: one `D23` entry written at the approval point (the plan file itself is gitignored, so the decision must be in the committed ledger to survive a fresh clone). |
+| 9 | P3 scope after new measurement | **A** (user chose against my written recommendation of patchelf-in-band): RUNPATH cleaning moved to the publish band's assembly step. Root cause traced: `.pixi/.../pkgconfig/tinfo.pc` in this env still names a *sibling* checkout prefix (env is a relocated copy), and a `-sys` build script feeds its `Libs:` line to the linker; any machine bakes its own env path, and install(CODE) cleaning would push patchelf onto every installer. |
+
+**Consequences**
+* Promised now: `find_package(visiaengine)` / `pkg-config` consume an installed
+  tree; consumers record the bare `libvisiaengine.so`; the tree survives a move
+  (probed by reinstall-and-rebuild).
+* Gates added: `gate-abi` SONAME assertion (expected name derived live from
+  `[lib] name`), `cmake-smoke` positive state 4 (install rc=0 + 9-item manifest +
+  `.pc` text checks -- the old "install must fail" assertion inverted),
+  `gate-pack.sh`/`pack-check` (manifest, `NEEDED` subset of system libs, no
+  build-machine paths). `ci` stays eleven segments: `pack-check` is independent.
+* Declared gaps (not silent): staticlib, npm/pip, win/mac install forms,
+  publish-time RUNPATH cleaning, relocatable `.pc` beyond pcfiledir form.
+* Incidental root-cause found by this band's wasm channel run: the V2.2 bridge
+  `get_node_transform(&mut Vec<f64>)` never compiled for wasm32; `ci` carries no
+  web segment and `web-mirror.mjs` had no freshness check, hence PIT-44 and the
+  staleness guard.
+
+## D24: Shared-code value counts in **sites**, not in lines; triggers get archived by measured coverage (2026-10-08, band V4)
+- **Ruling**: after V4 landed `orbit_drag`/`zoom_dist`, the net line change was **zero** (example side 4×(−9), viewer.rs +36).
+  Its value is the feel constants (0.006 sensitivity / 0.0012 wheel coefficient / LineDelta×40) and the "seed on first motion only" sentinel protocol
+  converging from 4 sites to 1 — while previously **no mechanism at all** kept those 4 copies in sync.
+- **Ruled together**: whether a trigger holds is decided by measurement, **overriding the archived step list in the plan**. The plan originally said "step 1 wires in
+  E510/E511/E206-type representatives"; the field fingerprint + verbatim comparison proved those are exactly the semantically **different** family (E510 wheel = phase;
+  E508/E509/E510/E511/E206 carry their own spherical solving; E402/E403's drag arm includes hover-pick/box-select course text; E306 pan + right-click tilt;
+  E303 per-viewport follow). What is truly byte-identical is E201/E501/E504/E901 (E201's `.take()` and the copy are behavior-equivalent on a
+  `Copy` Option). Hence in the end only two free functions were shared; no `Orbit` type was built.
+- **Reusable criterion**: if a constant's "differs per scenario" comes from **scene scale** (clamp bounds) → parameterize; if it comes from
+  **feel/protocol** (sensitivity, sentinel protocol) → the constant belongs in the shared piece; keeping it a parameter is forbidden (a parameter nobody varies = decoration).
+- **Impact**: later shared-code proposals are evaluated as "site count × presence of a sync mechanism"; the line-count yardstick means something only at genuine
+  convergence (V3's −1,376). This entry pairs with C18: C18 governs **what must not be shared**, D24 governs **whether sharing pays**.
+
+## D25: The queue trinity — guardrails / capability / publish (2026-10-09)
+
+- **Background**: the next-band-queue's six cards were adjudicated one by one (adjudication-walkthrough protocol, C1 four columns per card).
+  The trinity = **guardrails** (automated checks over existing surfaces) / **capability** (new language or new channel surfaces) / **publish** (distribution and artifacts).
+  Their questions differ: guardrails ask "can the predicate go red", capability asks "is there a real consumer", publish asks "can it be evidenced on this machine".
+- **Rulings (six cards, one sentence each)**:
+  1. keys-probe permanence = **A** (into the harness keeping `--all`/`--strict`, but **not into** `pixi run ci`;
+     ci.yml already calls it separately with `--strict`).
+  2. npm = **A**; pip is **not packaging but a new capability surface** — the measured `bindings/` holds only the c / cpp / js / qt four forms,
+     no py, nothing to package.
+  3. site = **A, don't do**: the whitepaper measurement contains no site promise (grep zero hits); mdbook keeps its batch-5 rejection verdict.
+  4. census first + predicate first = **A**: predicates go into the document **before** any count. The root cause of this session's six counting-drifts was each time
+     "count first, define later".
+  5. publish band = **C**: only artifacts evidenceable on this machine (CPack tarball); the cross-platform matrix is parked per
+     `.agents/rules/common/constraints.md` (cross-compilation belongs to Docker/vendor toolchains, not this band).
+  6. C-surface shared bootstrap = **A, close**: measured, the `visiaengine_create_headless` bootstrap shape is **15 lines / 13 files**
+     (predicate `grep -rn 'visiaengine_create[a-z_]*\('`; two rounds each wrong once — 14 was a C-only line count, 15 initially an occurrence count that happened to match;
+     E817 re-mounted creates twice more, so 3 lines sit in one file); the drift is in **wording, not behavior**; `template.c`/`template.cpp`
+     are already in the repo; those three host-call lines are exactly the **course text** of these examples (C18: shared pieces must not eat claims).
+- **Reusable criterion (extending D24)**: the value of shared-code and guardrail work = **site count × absence of a sync mechanism**, never counted in lines.
+  Card 6 is the positive case: sites are plenty (15 lines), but the sync mechanism **is present** (handwritten header + template skeletons + the example surface itself),
+  so net value is zero — close it. Card 2's pip is the mirror case: site count **zero**, so it isn't even packaging debt.
+- **Ledger frozen**: 199 clauses / 49 C ports / 44 examples (= ctest 44 = gallery 44 cards) / 12 packages / 12 ci segments.
+  Everything **unchanged** except the last. The only count this band moved is **ci segments 11→12** (pack-check joined the chain, deliberately);
+  both prose counters (`docs/gap-closure-roadmap.md`'s Gates row and `.agents/memorys/status.md`'s
+  ledger row) were updated in `10c7dc7` **in the same commit** — this is the repo's only count with no machine lock guarding it, so the discipline = whoever moves it
+  updates the wording in that very commit.
+
+## D26: gate-web browser channel = chromium CLI + anchor-beacon; five alternatives rejected on measurement (2026-10-16)
+
+The headless page gate observes the wall through the bare chromium CLI (no driver layer).
+Rejected, each with its evidence: **Lightpanda** (no rendering surface: no canvas/WebGPU/compositor -- the gate's load-bearing legs are exactly what it omits); **playwright as driver** (extra npm remote + self-managed cache outside the lock; kept ONLY as a download channel after conda-forge proved to have no chromium package -- the binary was fetched from the npmmirror playwright CDN and invoked as a CLI); **CDP observer** (python/node stdlib have no websocket client: ~80-line hand-rolled frame protocol or a new dependency -- against the no-new-gadgets ruling); **newer-chromium bet** (unproven); **scope-reduction v1** (legs 1+2 only would stay GREEN while the engine hangs silently -- a never-reds-when-broken shape is decoration per C0). Adopted: WebGPU combo `--no-sandbox --enable-unsafe-webgpu --use-angle=swiftshader --enable-unsafe-swiftshader --enable-features=Vulkan --use-vulkan=swiftshader` (measured 2/2 on Chromium 131; the Vulkan pair is required on Linux, sandbox starves the GPU process in this container); heartbeat observation = parse-time anchor `<img src="/ve-gate-ready">` whose response the gate's own stdlib server holds until the post-8-frame beacon arrives, so the load event (and the dump) lands after boot. Binary at ~/.cache/ms-playwright/chromium-1148/chrome-linux/chrome (cache layout reused). Sources: this repository's spike + gate rounds 2026-10-16 (plan .omo/plans/2026-10-16-headless-page-gate.md).
+
+Revision (same day): the lock-side half-fix CLOSED as an in-gate pin -- conda-forge carries no chromium (api.anaconda.org/package/conda-forge/chromium returns empty JSON; pixi solve no-candidates; both measured), so no feature+lock path can exist. The gate holds VE_CHROME_VERSION/URL/SHA256 as the single-source pin with an exact-match --version drift check (hard FAIL; the live `--version` trailing-space catch is od-verified in-file) and opt-in VE_GATE_PROVISION=1 sha256-verified provisioning (never auto-download; absent => the honest SKIP stands). Commits 59df128 (pin) + aec496d (heartbeat rolled out to all 6 live pages, per-page anchor/beacon namespaces; per-page fault isolation proven: E401 beacon cut reddens ONLY E401's leg).
+
+Addendum (2026-10-16, serve-https lane, c7fdeb4): LAN remote WebGPU is a secure-context lock, not a GPU lock (WebGPU requires secure contexts; navigator.gpu absent on http non-loopback origins). Host-side TLS lane added beside the gate: scripts/wasm-serve-https{,-gen} (stdlib ssl; mkcert 1.4.4 via pixi global; leaf SANs = localhost/127.0.0.1/both measured LAN IPs). Measured ruling data: https with an UNtrusted cert counts as a secure context on chrome 131 (wall 43/43 + E101 beacon green over https) -- so remote browsers work with zero client setup past the cert warning, and rootCA install is the no-warning nicety. flag-lane stays Chromium-only, tunnel-lane per-machine: TLS is the cross-browser root cure.
+
+## D27: project skills have one source; host activation layers are generated links, enforced by `gate-skills` (2026-10-28)
+
+`.agents/skills/` is the only copy. Host layers (`.codebuddy/skills/`, with `.claude/skills/` pre-declared as disabled) are **generated** by `scripts/skills-links.py sync` and checked by `scripts/skills-links.py check`, which runs in the ci chain as `gate-skills`. Reasons, in the order they were measured: hand-built links had silently disappeared while the docs still claimed them (the plan's first draft asserted a link layer that `ls` proved absent) -- a hand-made artifact with no gate is indistinguishable from a working one; and CodeBuddy's discovery of `.codebuddy/skills/` is undocumented, so the layer must be cheap to rebuild and cheap to verify. Shape: `check` separates `missing` / `dangling` / `wrong-target` (absolute, cross-name) / `exists` (real dir squatting the name) / `extra-link` / `extra-dir` -- a coarser set would let a stale or misdirected link pass as green. Guard: if the target directory is itself a symlink or resolves inside `.agents/skills`, the harness exits **2** and writes nothing, because in that state the backup/prune steps would rename or delete the single source (reachable via one `ln -s ../../.agents/skills .codebuddy/skills`). Windows: `os.symlink(..., target_is_directory=True)` and only `winerror 1314` triggers the `--copy` fallback (hashed link-map); junction was rejected because `mklink /J` stores an absolute target, which the same classifier calls `wrong-target`. Plan: `.omo/plans/2026-10-28-agent-skills-single-source.md`.
+
+## D28: Agent config unification = "single source `.agents/` + read-through-first + one rules translation + CodeBuddy/WorkBuddy first then Qoder/Trae/ZCode + memory aggregation into AGENTS.md + subagent slot reserved" (2026-10-28)
+
+Cross-host adaptation architecture adjudication, adjudicated one by one via the adjudication-walkthrough protocol: (1) mapping strategy = read-through-first (hosts that can read `.agents/` do so directly; only those that cannot get a generated layer); (2) rules = single-source md + frontmatter, with the generator translating the dialect; (3) rollout order = CodeBuddy/WorkBuddy first (to harden the generation pattern, reusing this round's `.codebuddy/skills`), then Qoder/Trae/ZCode (cheap read-through); (4) memory = concise aggregation into root `AGENTS.md`, with deep records kept as on-demand references; (5) the subagent layer is left as a reserved slot this round (no project agents in this repo; opencode only recognizes global plugins). Full plan: `.omo/plans/2026-10-28-agent-config-unification.md`. Discipline reuses the skills layer: write the single source once, host directories are generated artifacts, `gate-agents` prevents drift, and the guard exits 2 when the target resolves back into `.agents/`.
+
+## D29: Serena deferred from single-source MCP — this environment lacks clangd and an installer (2026-10-28)
+
+Feasibility probe of running Serena under opencode: the environment probe shows `clangd` is missing (apt candidate 1:10.0, needs system-level install + approval), `rust-analyzer` is present, and `uv`/`uvx`/`npx`/`pip3` are all absent from PATH (the pixi default env also has no pip/uv — only `~/.pixi/bin/pixi` and system `python3`). Conclusion: Serena's **C++ side (this engine's primary language) cannot work**, and even with an installer added, Serena still needs a resident clangd + rust-analyzer dual daemon, at non-trivial cost. Contrast with `local-codegraph`, already configured, tree-sitter based, no LSP daemon, read-only, lightweight — confirming "codegraph first, Serena on demand". Serena is deferred until clangd is formally managed (clangd is worth installing for the repo anyway, but that is a separate infrastructure decision needing approval). Serena was not written into `.agents/mcp.json`.
+
+## D30: All MCP local stdio, commands unified as `pixi run mcp-<name>`, needs a bootstrap mechanism (2026-10-28)
+
+MCP-layer resolution (discussion + environment probe): (1) all MCP servers move to local stdio; in canonical `.agents/mcp.json` every command is `["pixi","run","mcp-<name>"]` — local probe confirmed `uvx`/`npx`/`pip3` are all absent from PATH, pixi is the only installer; and the command string is identical across hosts, so even opencode need not translate the command body — the translator only moves the `mcpServers` shape. (2) `websearch` (opencode's only remote entry, disabled) is not brought into the single source; remote types are not force-localized. (3) credential-bearing servers (local-postgres etc.) go through env, not committed files; keyless local servers (local-codegraph/local-github/local-playwright) enter `.agents/mcp.json`. (4) clangd/rust-analyzer are brought under pixi (conda-forge), resolving D29's clangd gap; Serena still deferred pending clangd in the pixi env. (5) a bootstrap is needed: `.agents/mcp.json` only describes launch and cannot express the three runtime facts "install package / pre-index graph.db / LSP probe" — adopt a hybrid: pixi `[dependencies]`+`[pypi-dependencies]` declare clean packages, `[tasks.mcp-<name>]` is a thin launch layer, and `scripts/mcp-bootstrap.py` (invoked by `pixi run mcp-setup`) does pre-indexing + LSP probe + repo-local wrapper handling; `scripts/gate-mcp.py` enters ci to verify each server can start. Design: `.omo/plans/2026-10-28-agent-config-unification.md` "MCP layer special design".
+
+## D31: MCP single-source second-round adjudication (2026-10-28, user-adjudicated one by one) — scope / abstraction / credentials
+
+Continuing the D28/D29/D30 MCP single-source discussion, the three P0 team-review items adjudicated one by one:
+1. **MCP single-source scope = minimal set (A)**: `.agents/mcp.json` first batch contains only `local-codegraph` + `local-github` (currently enabled and keyless); `local-playwright`/`local-postgres`/`local-openspace` stay disabled, out of the first batch, appended drop-in on demand later. Reason: a disabled server is usually disabled for a reason; pulling it into the single source unverified = freezing an assumption into a spec (same discipline as D29/D30 deferring Serena).
+2. **harness abstraction = per-layer small generators + shared base (B)**: extract `scripts/agent_common.py` (guard/classify/dry-run shared), with `rules-links.py`/`mcp-links.py` reusing it — not over-generalizing into a single `agent-links.py`. Reason: the four layers' actions are essentially different (symlink/copy/translate/aggregate); forcing them into a generic loop would be over-abstraction (team review #13).
+3. **credential shape = two-file merge (B)**: commit `.agents/mcp.json` (keyless) + gitignored `.agents/mcp.local.json` (real env for postgres etc.) + `.agents/mcp.local.json.example` template, merged at runtime/generation time, keys never enter git. Reason: structure visible to all, keys not leaked, uniform across hosts, the common MCP-ecosystem practice (team review #14). Even with no keys in the first batch, the shape is established first; adding postgres later is a config-level operation.
+All three written into the corresponding sections of `.omo/plans/2026-10-28-agent-config-unification.md`.
+
+## D32: Stage 0 start — codegraph confirmed an npm package (review #17 verified + implemented) (2026-10-28)
+MCP single-source stage 0 underway. Step one was review #17's "verify package source": reading `.opencode/init-mcp-codegraph.mjs` confirmed **`codegraph` is the npm package `@colbymchenry/codegraph` (not pypi)**, launched via `npm install -D` then `codegraph serve --mcp`. Implemented: (1) `.agents/mcp.json` (minimal set local-codegraph+local-github, all commands `pixi run mcp-<name>`, adjudication 1 A); (2) `.agents/mcp.local.json.example` + `.gitignore` gains `.agents/mcp.local.json` (adjudication 3 B); (3) `scripts/mcp-serve.mjs` generic version-pinned npm launcher (not `npx -y`, implementing review #16); (4) `pixi.toml` gains `[feature.mcp]` + tasks (mcp-codegraph/mcp-github/mcp-setup/gate-mcp), default env mounts the `mcp` feature. ⚠️ the codegraph/github version pins in `mcp.toml` (0.9.0 / 0.6.0) are starting values, to be locked after `npm view` confirmation (acceptance #8). serena still deferred (pending clangd).
+
+## D33: MCP real-launch acceptance (acceptance #8, 2026-10-28) — version pins and env name corrected by live probe
+
+Stage 0 ran `pixi run mcp-codegraph` / `mcp-github` for real acceptance, catching and fixing two genuine bugs:
+- **codegraph version pin**: the original `0.9.0` pin was flagged by npm as **Broken install (requires 0.9.1+)**; changed to **1.6.0** (the version opencode's wrapper installed as latest, proven installable and startable). The launcher `scripts/mcp-serve.mjs` previously used `existsSync` to skip reinstall, which would bypass the version pin (#4 hole) — changed to verify installed version == pinned version, reinstall if mismatch.
+- **github server env name**: the live probe reads **`GITHUB_PERSONAL_ACCESS_TOKEN`**, not `GITHUB_TOKEN`; canonical `mcp.json` and `mcp.local.json.example` are corrected (canonical uses `"GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"` to rename-inject the user-side GITHUB_TOKEN). With the correct env name, `GitHub MCP Server running on stdio`, exit 0.
+- ⚠ **`@modelcontextprotocol/server-github@0.6.0` is deprecated (npm: no longer supported) and `npm audit` reports 3 high vulnerabilities** — this repo only uses it for a local MCP demo, not blocking for now; security / least-privilege (team review #8) to be patched before stage 1 enables credential-bearing servers.
+- during the codegraph upgrade, npm hit `ENOTEMPTY` (leftover platform dir from the previous broken 0.9.0) — clearing `node_modules/@colbymchenry` then a clean install of 1.6.0 from scratch (exit 0). A clean clone has no such issue.
+
+## D34: Stage 1 implemented and verified (2026-10-28) — per-layer small generators + shared base + gate in ci
+
+Stage 1 landed per adjudication 2-B (per-layer small generators + shared base) and fully passes:
+- `scripts/agent_common.py`: extracts skills-links' guard/classify/link/backup/exit codes (0/1/2) for reuse across layers.
+- `scripts/rules-links.py` (rules layer symlink/copy transport, 81 md files, hierarchy preserved), `scripts/mcp-links.py` (mcpServers written directly for codebuddy/cursor; opencode converted to named keys with **non-destructive merge** preserving websearch/playwright/postgres), `scripts/memory-aggregate.py` (4 memory md files aggregated into root `AGENTS.md` marker block `<!-- BEGIN:agents-memory -->…END -->`, hand-written content isolated) — all dispatched by the thin `scripts/agent-links.py` scheduler (importlib loads hyphenated filenames by path, preserving plan-doc naming).
+- `scripts/mcp-servers.json`: **single source** for launcher params (pkg/version/bin/args); `mcp-serve.mjs` gains `--from/--name` support; pixi `mcp-*` tasks and `gate-mcp.py`/`mcp-bootstrap.py` share it → removes version-pin duplication.
+- `scripts/gate-mcp.py`: invokes each server's launcher directly (node is in the env), **bypassing the nested `pixi run`** (review #18's PATH hazard empirically triggered: pixi absent from PATH inside the env); missing credentials degrade to SKIP (yellow) not red.
+- `scripts/mcp-bootstrap.py`: idempotently ensures codegraph is installed; index strategy deferred (#6).
+- `pixi.toml`: `gate-agents`+`agent-sync` tasks; the `ci` chain now includes `gate-agents`+`gate-mcp`.
+Verification: `pixi run agent-sync` writes → `gate-agents` all green (rules 81 / mcp 2×2 / memory 4); `gate-mcp` green (codegraph OK, github SKIP on missing credential); `opencode.json` valid after merge and has a `.bak` backup.
+Deferred (non-blocking): rules frontmatter dialect normalization needs the #11 mapping table first (this script only transports, does not translate); codegraph index increment (#6); `@modelcontextprotocol/server-github@0.6.0` deprecated + 3 high vulns (D33).
+
+## D35: Host discovery behavior empirically verified (review #15/#18, 2026-10-28) — verification caught two dead files
+
+Following "verify before claim", a minimal verification of CodeBuddy's discovery behavior (web_fetch official docs + local `~/.codebuddy/mcp.json` evidence) yielded:
+- **skills**: `.codebuddy/skills/` is read — already landed and ci-verified, ✅.
+- **mcp filename**: `~/.codebuddy/mcp.json` = `{"mcpServers":{}}` was the **wrong evidence base** — that is the *deprecated* user-level file, and it says nothing about the project level. Official docs (`docs/cli/mcp`) give the real layout: USER `~/.codebuddy/.mcp.json` (recommended) > `~/.codebuddy/mcp.json` (deprecated) > `~/.codebuddy.json`; **PROJECT `<repo>/.mcp.json` (recommended) > `<repo>/mcp.json` (deprecated)**; prefixes from the same file do not merge — only the first existing one is read. Nothing is read from `.codebuddy/mcp.json`, so the D35 target was a **dead file even though `gate-agents` was green** (the gate compared generator output against generator output — green but meaningless). **Correction, same day**: `agent-targets.json` now points at `.mcp.json` (repo root, commit-tracked, launcher path repo-relative so the file is machine-independent); the fix was forced by direct evidence — once the file existed the IDE panel parsed it and rejected the entries with `Server type must be one of: 'stdio','sse','streamableHttp'`. Two shape facts from that error: the IDE **requires** `type` (CLI docs claim it can be inferred from `command` — panel is stricter), and env references use `${VAR}` (opencode's `{env:VAR}` is not expanded by CodeBuddy; `mcp-links.py` translates on the opencode side). Third shape fact, same class of bug: `command` must be a **STRING** with the rest in `args` — the canonical file previously carried opencode's array form (`command: ["pixi","run",...]`), which crashed the panel with a JS `ir.replace is not a function`; `_host_entry()` now rewrites launcher hosts to `command`/`args` and `_expected_opencode_mcp()` reassembles the array. Same failure mode is reported upstream (`Tencent/teamai-cli#1185`: project servers written to `.codebuddy/mcp.json` never load, no error). Consequence of the tracked file: `.agents/mcp.local.json` must **not** carry secrets any more (its values are merged into the tracked `.mcp.json`); the token comes from the environment the host inherits.
+- **rules shape**: docs are conclusive — CodeBuddy rules are **not** arbitrary `.md` under `.codebuddy/rules/`, but **one subfolder per rule + a `RULE.mdc` file inside it** (frontmatter with `description/alwaysApply/enabled/updatedAt/provider`). The 81 flat `.md` symlinks currently produced by `rules-links.py` are **not read at all** → this confirms the #11 frontmatter/shape translation work is **necessary, not speculative**. And `.agents/rules/` is an org-wide language-generic set (includes php/swift/perl etc. absent from this repo), pushing it to a Rust-engine IDE is noise → the translation must filter by project language (rust/c/cpp/web/typescript/python).
+- **CODEBUDDY.md**: docs say a project-root `CODEBUDDY.md` is loaded in full (independent of the rules system). This repo has no such file; memory aggregation currently only writes root `AGENTS.md` (read by opencode/claude/cursor). Whether CodeBuddy reads `AGENTS.md` remains to be verified — a potential third discovery item.
+Conclusion: before verification, `gate-agents` all-green was "green but false" (rules/mcp were once dead files); the discovery verification was well worth it. Follow-up: mcp fixed; rules need the #11 translation (RULE.mdc + language filtering); CODEBUDDY.md TBD.
+
+## D36: Rules layer #11 translation designed & adjudicated (2026-10-28)
+
+The rules dialect-translation (#11) is now designed and user-adjudicated one by one (7 points), resolving the D35 finding that CodeBuddy cannot read the 81 flat `.md` symlinks `rules-links.py` produces — it needs `.codebuddy/rules/<name>/RULE.mdc` with frontmatter (`description/alwaysApply/enabled/updatedAt`).
+
+All seven adjudications chose option A:
+1. **Language whitelist** = `["common","rust","cpp","web","typescript","python"]` → 40 effective rules; the 8 noise langs (csharp/dart/golang/java/kotlin/perl/php/swift, 40 rules) excluded (this repo is a Rust engine; org-wide set is noise per D35). Note: no `c` dir exists (only `cpp`).
+2. **`alwaysApply: true`** — force-load all 40; `globs` field undocumented, not used.
+3. **`provider` field omitted** — CodeBuddy docs list it but give no value; do not fabricate.
+4. **`updatedAt`** = stable hash of canonical content (not wall-clock now) so `gate-agents` content-compare stays stable across runs.
+5. **RULE.mdc body = canonical content verbatim after stripping any existing frontmatter block** — self-review found 20/40 whitelist files (rust/cpp/typescript/python) carry their own `paths:` frontmatter; naive prepend would produce double frontmatter (broken file). Their `paths` globs are dropped (`alwaysApply: true`; CodeBuddy `globs` undocumented — canonical `paths` remains the future mapping source). `description` = first H1 found anywhere in the file (web files carry it on line 3, after an extends-note), fallback `<lang>-<topic>` slug.
+6. **Folder naming** = flat `<lang>-<topic>/RULE.mdc` (e.g. `rust-coding-style/RULE.mdc`), matching D35's verified one-level shape; nested `<lang>/<topic>/` not proven to be recursed.
+7. **Cursor left `enabled: false`** — its discovery behavior unverified; the `mdc` generator is host-agnostic, so Cursor can adopt later after its own discovery check.
+
+Implementation (not yet coded): add `rules_mode: "mdc"` + `langs` whitelist to the codebuddy target in `scripts/agent-targets.json`; extend `scripts/rules-links.py` with an `mdc` branch (copy+normalize, prune stale `.md` symlinks/old folders, content-compare check); keep `links` mode for other hosts. `gate-agents` rules check becomes content-compare for mdc targets (true-green). Generated `.codebuddy/rules/**/RULE.mdc` is gitignored (`.codebuddy` L110); edits to generated files are overwritten on sync — single source stays `.agents/rules/`. Design recorded in `.omo/plans/2026-10-28-agent-config-unification.md` (§Rules layer #11 translation).
+
+**Status (2026-10-28): implemented & verified.** `scripts/agent-targets.json` codebuddy gains `rules_mode: "mdc"` + `langs: ["common","rust","cpp","web","typescript","python"]`; `scripts/rules-links.py` adds the `mdc` branch (strip canonical frontmatter, filter by `langs`, synthesize `RULE.mdc`, prune stale). `pixi run agent-sync` yields 40 `RULE.mdc` folders; the old 81 `.md` symlinks pruned to zero; `pixi run gate-agents` green with content-compare (true-green, not the D35 false-green). Review-finding fixes applied: canonical `paths:` frontmatter stripped (not duplicated), `description` = first H1 anywhere (web H1 on line 3), `updatedAt` = sha256 first 12 hex.
+
+## D37: Memory layer confirmed consumed by CodeBuddy — root AGENTS.md IS read (no CODEBUDDY.md needed) (2026-10-28)
+
+Resolves the D35 open item ("CODEBUDDY.md / does CodeBuddy read AGENTS.md — TBD") via official-doc evidence (CodeBuddy Rules doc, translated): "For backward compatibility, when the project root has AGENTS.md but not CODEBUDDY.md, CodeBuddy automatically loads the full content of AGENTS.md into the conversation context."
+
+Conclusion:
+- CodeBuddy loads root `AGENTS.md` in full **iff** `CODEBUDDY.md` is absent. This repo has no `CODEBUDDY.md`, so the memory region in `AGENTS.md` (produced by `memory-aggregate.py`) IS consumed by CodeBuddy — the memory layer is real, not a dead layer. No `CODEBUDDY.md` generator is needed.
+- **Do NOT add `CODEBUDDY.md`**: it takes precedence and suppresses `AGENTS.md`, which opencode/claude/cursor also read. Adding it would fork the memory source per host and break the single-source model. Keep one `AGENTS.md`.
+- Observed side-effect: root `AGENTS.md` is ~320 KB (the memory region aggregates conventions/decisions/pitfalls/status in full). Full-context injection every session is a large token cost and contradicts the plan's "concise aggregation, deep records on-demand" intent — a separate token-budget optimisation is deferred (not fixed in this pass).
+- `.agents/` direct support: docs do not mention it; not relied upon (per-host layers are generated instead).
+
+## D38: C17 English scope clarified — git-tracked prose only; functional CJK exempt (2026-10-28)
+
+User clarification: the English mandate (C17) applies to **git-tracked files only**; gitignored working docs (e.g. `.omo/plans/*`, ignored at `.gitignore` L107 — `git ls-files .omo/plans/` = 0) are out of scope and may remain in the working language.
+
+Within tracked files, the mandate covers **prose/artifacts we author and maintain** — `.agents/memorys/*.md`, root `AGENTS.md`, and our `scripts/*.py` — all now 0 CJK. It does NOT mean stripping **functional CJK data**:
+- `.agents/skills/*/SKILL.md` — Chinese trigger phrases / protocol text (the skills must respond to Chinese commands; translating the triggers disables them).
+- `examples/**` — CJK-label demos (E505_cjk_labels etc. exist to demonstrate CJK rendering).
+- `crates/**` — pre-existing Chinese comments / test strings (fixture-class).
+These are functional data (same class as C20's fixture exception) and are intentionally kept.
+
+Rationale: C17's purpose (grep / CI anchoring / external readability) targets the memory hub and tooling, not trigger keywords or demo fixtures; translating them breaks functionality for zero benefit.
+
+Side note: `.omo/plans/2026-10-28-agent-config-unification.md` was translated to English before this clarification; it is gitignored so the translation was not required, but it is kept (harmless).
+
+**Refinement (2026-10-28, user-ruled):** skill prose → English, Chinese trigger keywords kept. Scope: `context-engineering`, `skill-router`, `adjudication-walkthrough`, `lesson-review` (the four with Chinese prose); the four single-trigger skills (`security-hardening`/`performance-optimization`/`ecosystem-scan`/`code-simplification`) keep their one Chinese trigger word as functional data. So the earlier "entire-skill Chinese exempt" is narrowed to "triggers kept, prose translated". See `.omo/plans/2026-10-28-agent-skills-rules-optimization.md` §7.
+
+## D39: MCP cross-platform launch fix — adjudicated (2026-10-28, user-adjudicated one by one)
+
+Fixes the verified failure where opencode (and CodeBuddy) MCP servers using `["pixi","run","mcp-<name>"]` die with "Executable not found in $PATH: pixi" (pixi lives in `~/.pixi/bin`, not on the GUI host's inherited PATH). Plan: `.omo/plans/2026-10-28-mcp-crossplatform-launch.md`. Three adjudications, all A:
+1. **Fix combination** = O2 immediate hotfix (route opencode's two entries through the existing tracked `.opencode/with-node.sh`, which injects `~/.pixi/bin`) + O3 target (add a cross-platform launcher pair `scripts/mcp-launch.{sh,bat}` generated per host/OS) + O5 fallback (bootstrap/docs ensure pixi is on the GUI-inherited PATH: Linux `/usr/local/bin` symlink or session env; Windows via the pixi installer's user PATH) + harden `gate-mcp` to probe the real generated command under a sanitized PATH (kills the false-green).
+2. **Tracked `.opencode/opencode.json` stays OS-neutral** (`["pixi","run",...]`), relying on O5; O2 is interim only. OS-specific launcher commands go only into gitignored host layers (`.codebuddy/mcp.json`).
+3. **Windows = best-effort, deferred** (plan #7): ship `scripts/mcp-launch.bat` marked "authored on Linux, not yet exercised on real Windows", per the project's existing convention (`pixi.bat`/`pixi.ps1`/`bootstrap.bat` carry the same note). No Windows machine available for real verification.
+
+Root cause class is the same as D35/D37: a "green but host-broken" false-green caused by the gate not reproducing the host's real spawn environment.
+
+**Status (2026-10-28): implemented & verified.** O5: a user-level `~/.local/bin/pixi -> ~/.pixi/bin/pixi` symlink (no sudo) makes `pixi` resolve on the GUI-inherited PATH; opencode.json stays `["pixi","run",...]`. O3: added `scripts/mcp-launch.{sh,bat}`; `mcp-links.py` wraps commands for `mcp_launcher` targets (`.codebuddy/mcp.json` now uses the absolute launcher) while opencode stays OS-neutral. Gate: `gate-mcp.py` probes under a sanitized PATH (drops `~/.pixi/bin`) and goes red if pixi is not resolvable there. Verified: `agent-sync` + `gate-mcp` + `gate-agents` green; launcher direct run exits 0. Windows `.bat` remains best-effort (#7).
+
+## D40: Agent skills/rules optimization — ecosystem-scan adjudicated (2026-10-28, user-adjudicated one by one)
+
+Ran `ecosystem-scan` Full mode (local deep audit + two external indexes: VoltAgent/awesome-agent-skills, addyosmani/agent-skills). Report + plan: `.omo/plans/2026-10-28-agent-skills-rules-optimization.md`.
+
+Local: 23 skills (all carry name+description frontmatter), 14 language rule dirs / 81 md, memory C25/D39 contiguous, single-source generation + gates in place. Issues: `review-hardcode` is a merged alias still in the directory; `AGENTS.md` has no SKILL DIRECTORY; 8 noise language rule dirs; rules frontmatter in three shapes; `AGENTS.md` ~316 KB full aggregation.
+
+Seven adjudications (all A except #7 = B):
+1. Rust engineering gap → new `rust-engineering` skill (reuse `rules/rust/*` as references).
+2. Observability gap → new `observability-and-instrumentation` skill.
+3. Debugging gap → new `debugging-and-error-recovery` skill.
+4. General review gap → new `code-review-and-quality` skill.
+5. Quality-gate single source + anti-gaming → new `constraint-driven-development` skill + root `CONSTRAINTS.md`.
+6. Skill inventory → generate a compact SKILL DIRECTORY into the `AGENTS.md` memory region (marker section, gate-asserted).
+7. `review-hardcode` → keep as an explicit deprecated alias (description marks it deprecated → `security-hardening`), not removed.
+
+P2 (deferred): 6-section (Rationalizations / Red Flags / Verification) audit of existing skills, version-aware MSRV matrix, `repo-triage` router, ADR/shipping/deprecation skills, prune noise-language rules, trim the ~316 KB `AGENTS.md` aggregation.
+
+**Status (2026-10-28): batch 0 done.** `book-to-skill` SKILL.md trimmed 616→486 lines by moving 3 self-contained sections to `references/` (`repl-access.md`, `update-fold-in.md`, `master-skill-template.md`); the skills link layer is a whole-directory symlink, so the references are reachable; `gate-agents` green. The planned "translate the 4 skills' prose" turned out a **no-op**: after re-inspection their Chinese is entirely trigger keywords / routing tables / protocol labels (functional), so it was kept per the "keep triggers" rule (CJK 22/12/6/3 unchanged).
+
+### pitfalls
+# VisiaEngine Pitfalls & Gotchas
+
+> Every PIT is the five-part form; symptom / root cause / solution / verification are all mandatory (consolidation duty per C9). Lessons repeated ≥2 times or costing >3 rounds of localization are promoted in sync into an executable rule in `rules/common/edit-safety.md`.
+
+## Format example
+
+## PIT-{n}: <one-line title> (YYYY-MM-DD)
+- **Symptom**: <the observable, including raw error text / observable evidence>
+- **Root cause**: <why it happened, not a restatement of the surface>
+- **Solution**: <the correct approach, minimal executable steps>
+- **Verification**: <a check command that nails the fix>
+
+<!-- Real entries append below. Generic toolchain lessons (edit duplicate insertion, pkill self-kill, set -e traps) are already consolidated in rules/common/edit-safety.md — do not repeat them here. The predecessor MediaServo pitfall history is in the .refinfo archive. -->
+
+## PIT-1: "Pre-set facts" in research prompts pollute deliverables — must be labeled as unverified assumptions (2026-09-03)
+- **Symptom**: the ANGLE research prompt stated "wgpu has no native GL backend (verify)" — had an agent inherited it unchecked, the whole legacy plan would misjudge as "must self-build a GLES renderer" (a cost off by one backend's workload). In fact the wgpu v30 README: native GL/GLES backends + built-in ANGLE via `cfg(windows_angle)`. In the same period two self-written docs propagated "Qt6 uses ANGLE" as fact (later falsified: Qt6 RHI is native D3D11).
+- **Root cause**: "my speculation" and "the point to verify" were mixed into one sentence; and industry assertions already committed to docs did not all carry same-day citations.
+- **Solution**: in research briefs, every preset gets its own "⚠ assumption pending proof" line; forbidden as embedded fact clauses; in-document industry assertions must carry "snapshot date + source" or an *UNCERTAIN* marker (this repo's docs/reference template already contains this discipline; this time it was executed — all three errors were caught by the review line).
+- **Verification**: before delivery, grep the docs for "Qt6.*ANGLE|no native GL"-style sentences against the falsification entries in `evidence/2026-09-03-angle-integration`; compare memo conclusions verbatim against the primary READMEs.
+
+## PIT-2: .gitignore negation-order bug + check-ignore -q exit-code misleading (2026-09-03)
+- **Symptom**: `!.omo/omo.jsonc` sat before `.omo/*`, so `git add .omo/omo.jsonc` reported "ignored"; and before the fix `git check-ignore -q` returned 0 for paths hitting a negation rule, easily misread as "still ignored / already ignored". The comment docs (AGENTS.md "only omo.jsonc is committed") were a long-standing unfunded promise, unnoticed.
+- **Root cause**: gitignore semantics = later matching rules override earlier ones; the directory exclusion `dir/*` must be written **before** the negation `!dir/file`; `check-ignore` default mode's exit-code semantics for paths "matched by an excluding rule but contradicting the final ignore state" do not match intuition (the final matched line shown by -v is the source of truth).
+- **Solution**: reorder to `.omo/*` → `!.omo/omo.jsonc`; validate with `git check-ignore -v` (shows the final hit line) and **whether the actual `git add` succeeds** — don't trust the `-q` exit code.
+- **Verification**: the hit line of `git check-ignore -v .omo/omo.jsonc` must be the negation rule; `git ls-files .omo/` has output. Any newly added `!` negation rule gets a real add rehearsal before commit.
+
+## PIT-3: wgpu v30 upgrade breakage trio — flags default / Color semantics / draw migration (2026-09-03, S3/S4 measured)
+- **Symptom**: ① under the debug profile `cargo test` panics on lavapipe with `Unable to load cmd_begin_debug_utils_label_ext` (ash, panic-in-cannot-unwind); ② clear color passed as `0.05*255` expected dark blue, got pure white (255,255,255); ③ `RenderPassColorAttachment` compile errors for missing `depth_slice`, `InstanceDescriptor` has no `Default`, `enumerate_adapters` became async, `encoder.set_pipeline/draw` gone, `multiview`→`multiview_mask`, `create_slice`→`slice`, `map_async` changed to (mode, bounds, cb) callback style, `Maintain`→`PollType::wait_indefinitely()`. Also: pruning winit `default-features=false` accidentally removed `rwh_06` → `Window: HasWindowHandle` unmet, create_surface type error.
+- **Root cause**: ① `InstanceFlags::default()=from_build_config()` — debug builds automatically include VALIDATION → force-load VK_EXT_debug_utils, which soft renderers / old loaders lack the symbol for; ② v30 `Color` component semantics 0-255→0-1 (out-of-range clamped to white); ③ v30's major-breakage alignment with the WebGPU spec (the anticipated cost of the quarterly-pin discipline).
+- **Solution**: explicit `flags = InstanceFlags::empty()` in `create_instance` (diagnostic validation stays in a dedicated slice); pass clear colors in 0-1; winit features explicitly include `rwh_06`; API differences judged against **local registry sources** (`~/.cargo/registry/src/.../wgpu-30.0.1`, faster and truer than docs.rs).
+- **Verification**: `pixi run ci` green + the three offscreen golden tests green on real hardware; **any wgpu version-upgrade day = first grep this entry + re-run the breakage checklist**; experimental calibration beats doc acceptance (the Color semantics was confirmed by experiment).
+
+## PIT-4: cargo integration-test CWD = crate dir + Iter construction probing trips library debug_assert (2026-09-03, G1)
+- **Symptom**: ① tests referencing repo-root `testdata/x.glb` by relative path all NotFound (running `pixi run cargo test` by hand the CWD = workspace root, and filtered unit runs likewise — but **cargo launches integration-test binaries with the crate root as CWD**, the two run modes differ in path semantics and produced false-green/false-red combinations); ② probing types in sequence with `Iter::<T>::new` (thought returning Option made it safe) panics outright in debug builds (library-internal `debug_assert_eq!(size_of::<T>(), accessor.size())` fires first).
+- **Root cause**: ① cargo's run directory for tests/ is the package directory, not the executing shell's; ② beyond the Option-returning surface the library also carries a debug_assert — "can return an Option" ≠ "can be probed safely".
+- **Solution**: ① fixture paths always joined from `env!("CARGO_MANIFEST_DIR")`; ② before reading an accessor, pre-check `data_type()/dimensions()` and dispatch exactly — mismatched types never enter the constructor.
+- **Verification**: `grep -rn '"testdata/' crates/*/tests/` must return 0 hits (only via the fixture() helper); degradation chains may only be match-dispatched.
+- **Also**: `mkdir -p` the tests/ directory redirect target first (third same-family omission this round — mechanical precondition, not after-the-fact repair).
+
+## PIT-5: wgpu projection depth must be [0,1] — a GL-convention matrix silently culls the whole frame (2026-09-03, G2 golden)
+- **Symptom**: HeadlessBackend drew a cube; the vp matrix verified within ±1 point by point, **zero verification errors**, the triangle old path stayed green — but the cube simply never appeared (golden asserted center = clear color). Only the binary diagnostic (hand-fed identity projection nearby) pinned the issue to the depth domain.
+- **Root cause**: the wgpu clip-space depth is **[0,1]** (WebGPU's native convention), not GL's [-1,1]. Ortho/persp built by the GL formula produce negative z_ndc up close → hardware culls everything. A wrong depth range raises **no error anywhere in the pipeline** — geometry dies silently.
+- **Solution**: build/verify all projection matrices against the [0,1] variant (glam's old `*_rh_gl` are [-1,1]; `perspective_rh`/hand-written ortho are the wgpu way); camera.rs's header comment now locks the variant declaration, and REND-11/12 use **behavioral assertions** (near→0/far→1) instead of copying formulas.
+- **Verification**: the offscreen golden family's existence is itself prevention — after any matrix/pipeline change, `pixi run cargo test -p visiaengine-render-wgpu` cube tests must be truly green (not the SKIP path; verification location recorded honestly). Same family: `x+(y-x)*t` at t=1 is not exactly y (lerp endpoint fast path, REND-16); clippy's partial-order-negation ban resolved with the correct `partial_cmp`.
+
+## PIT-6: MCP bridge's bare-PATH dependency + opencode config-key silent ignore (2026-09-03, MCP repair round)
+- **Symptom**: three MCPs reported `Executable not found in $PATH: node/npx`; the local-github token was never injected (no error, purely silent).
+- **Root cause**: ① the bridge config assumed node on PATH while this machine follows the D5 discipline and installs no system node — nodejs simply wasn't registered in the environment; ② the config key was written as `env` while the opencode schema (McpLocalConfig) names it `environment`; unknown keys raise no error, just ignored; ③ the bridge's child processes further need `npm`/`pixi` — launching node by absolute path doesn't save that layer.
+- **Solution**: nodejs joined into the pixi default environment (single source unbroken); the `with-node.sh` wrapper uniformly injects the node directory + ~/.pixi/bin then exec-passes through; config key corrected.
+- **Verification**: `bash .opencode/with-node.sh node --version` prints a version + bridge child survives the timeout; **any opencode config field change is validated against the https://opencode.ai/config.json schema, never from memory**; config changes need an opencode restart to hot-load (running sessions use the old config).
+
+## PIT-7: cargo-deny audit fetches live over network = false-failure source of local network jitter (2026-09-11)
+- **Symptom**: `pixi run ci` green then red intermittently; when red, all tests/lint/clippy were green — only the audit segment exited 1.
+- **Root cause**: `cargo deny check` (advisories part) **git-fetches the RustSec advisory-db live, every run**; this machine's TLS egress to github.com (gnutls_handshake) fails intermittently → fetch failure = red, wholly unrelated to code/dependency changes.
+- **Solution**: before treating "audit red" as real, `grep 'failed to fetch advisory'` in the log; network-shaped failures clear on re-run; only a real advisory prints RUSTSEC-ids. GitHub CI runners fetch reliably; on this machine the symptom wobbles with network conditions.
+- **Verification**: `pixi run cargo deny check` must give consistent results across two consecutive runs before any dependency-surface conclusion; inconsistency = network layer.
+
+## PIT-8: first-version T2 pixel assertions must fail — geometric coverage/channel-multiply chains unmeasured (2026-09-12, batch 4ab M2/M3 two rounds)
+- **Symptom**: M2 texture_render first version: the sample window (8,8) all black (off the quad) + single-pixel checkerboard assertions ground to orange-gray by linear-filtering blend bands; M3 capi first version: the `B<20` predicate was a tautology-false (baseColorFactor's B=0.5 multiplied by the red texel → magenta) and with ±1 quad coverage at 21px, the red family's core had only 20 px.
+- **Root cause**: at RED time the assertions were written by uv/projection intuition instead of first measuring "the quad's screen bbox" and "texel×base×shade channel products". A pixel test's predicate is the **intersection of three multiply chains** — any chain guessed wrong = false red.
+- **Solution**: first run a throwaway dump probe (stepwise-print R/G values or bbox stats per region), derive predicate thresholds and windows from measured values; delete the probe, rewrite assertions as **region-family statistics** (count≥N, two families coexisting) rather than single pixels; size fixtures so texels ≥16px screen-wide (filter blend bands swallow purity cores <8px).
+- **Verification**: before a new pixel assertion's first run, inspect the numeric band via `-- --nocapture`; the planning stage's [four-not-installed / honest surface] forbids masking broken chains by threshold tuning — predicates must keep discriminative power (the broken-uv chain → some family identically 0 invariant; M3's red=20/purple=304 is exactly the evidence shape of an unconnected chain).
+
+## PIT-9: L2 smoke lanes not in the local ci chain = false-green window for window-format regressions (2026-09-14, 4c seven-lane first blowup)
+- **Symptom**: three window examples, even after I3 surface-format alignment, still handed `render_view` directly (internally hardwired to Rgba8Unorm) while x11's actual config was Bgra8UnormSrgb → wgpu validation panic; the bug survived three T1 rounds of all-green (the ci chain excludes smoke).
+- **Root cause**: the local gate = `pixi run ci` (fmt/lint/test/audit/gates); the smoke-* seven lanes = a manual segment — nobody ran them before their mirror-day activation; the "six smoke ✓" baseline claim = a snapshot of the last manual run date, not a standing assertion.
+- **Solution**: ① any round touching render paths must run all seven lanes pre-merge (DISPLAY=:0 directly — don't wrap in timeout; timeout doesn't resolve the shell-function/alias version of pixi; use absolute paths or run bare); ② example/attach consumption formats pass `config.format` straight through to render_view_format — never route through hardwired convenience ports.
+- **Verification**: `for t in smoke-*; do pixi run $t; done` (true execution ≠ compilation, the E3D:D2 discipline); after mirror-day ci.yml L2 wiring, clause ① becomes a machine gate.
+
+**Source**: first blowup found by the full re-run at 4c K3's smoke-bench-tune hookup.
+
+## PIT-10: scene human-check "the foreground should be lit ground" = geometric assumption (2026-09-14, batch 5 E901)
+- **Symptom**: E901 twin_city's first version had the entire foreground in half-penumbra (obs 0.58-0.63 vs expected 0.86), diagnosed as a shadow-math bug → three probe rounds (dir/slope/None controls) all said "the parameters aren't wrong".
+- **Root cause**: the scene is legal — 13m buildings × low sun (ld horizontal component 0.5/0.79≈0.63) → shadow length ≈10m; the shadows of a dense 16×16 grid meet head-to-tail, so **the foreground simply is the shadowed zone**. "Lit ground belongs here" was screen intuition, not a light-geometry derivation.
+- **Solution**: when pixel assertions mismatch, do the light-source geometry computation first (shadow length = Σh·|l.xy|/l.z against occupancy) before parameter bisection; scene-demo shadows use **family counts** (here dark = shadow-ground + building-dark-face families), no positional point assertions.
+- **Verification**: every new render example's human-check image gets a `look_at`-style visual re-review (this time it surfaced the real defect = the base map suppressed by the city → fixed with a right offset); passing pure numeric assertions ≠ the picture is right.
+
+## PIT-11: judging an API ledger by name without reading the implementation = a whole plan premise collapses (2026-09-14, Qt round v1.0 REJECT)
+- **Symptom**: the plan asserted "14 entry points, zero resize channel, need a 15th symbol CAPI-10"; the Momus review read the implementation and overturned it — `visiaengine_viewport(w,h)` (the 14th entry) IS the full resize channel (ffi.rs:441 rejects zero dims → engine.rs:405 w/h + backend.resize + Window sw.resize). Working from the false premise = one redundant symbol + three-lock rework.
+- **Root cause**: evidence-gathering grepped only the **entry-point name set**; `viewport` was read literally as "viewport query" — name ≠ meaning; building a capability ledger correctly = reading the implementation's call chain, not function names.
+- **Solution**: any "capability missing / new entry needed" assertion must first grep the capability's **verb implementations** (resize/reconfigure/set_size words) + read one call chain from entry to effect before concluding.
+- **Verification**: plan §0 anchors must carry file:line down to implementation bodies (not just symbol tables); Momus's accountable review being called out for "citations measured" is exactly this entry's machine surface.
+
+## PIT-12: conda-forge Qt6 twin pits — package-name orthography and QX11Application absence (2026-09-14, Qt round Q2)
+- **Symptom**: ① installing `qt-main` yields **Qt5** (5.15.15, lib/cmake only has Qt5*); ② after switching to `qt6-main`, Qt6Config/xcb plugins are all present, but the `<QNativeInterface/QX11Application>` header **does not exist** (x11extras not packaged) — the public-API route for widgets to obtain Display* is beheaded.
+- **Root cause**: conda-forge Qt package names split historically (qt-main = the Qt5 legacy name; Qt6 = the qt6-main prefix form); second case of the "pixi search fuzzy hit" package-name pit family (first case xorg-xvfb-server). QX11Application belongs to the qtx11extras module, which qt6-main's pruning excludes.
+- **Solution**: the host self-holds its Xlib `Display*` (the XOpenDisplay/XSync/CloseDisplay three-call surface) + the winId() xid **shared across X connections** (the attach contract, demo_x11 proved it same-machine); pin QT_QPA_PLATFORM_PLUGIN_PATH explicitly to `$CONDA_PREFIX/lib/qt6/plugins`.
+- **Verification**: `ls $CONDA_PREFIX/lib/cmake/Qt6/Qt6Config.cmake && find $CONDA_PREFIX/include -name QX11Application` (the latter should be empty → triggers the Xlib route); `pixi list -e qt-spike | grep qt6-main` confirms it is not qt-main.
+
+## PIT-13: handwritten C ABI header missing extern "C" guard — all-green C tests mask certain C++ breakage (2026-09-14, CMake layer C2)
+- **Symptom**: `visiaengine.h` had zero `extern "C"` wrapping; the C demos (E701/702) and the 14-entry nm gate were green for three rounds; the C++ consumer (ctest probe consume_capi.cpp) failed its first link with `undefined reference to 'visiaengine_abi_version()'` (C++ mangling).
+- **Root cause**: structural bias between the consumer test surface and the ABI declaration language — a C header tested only by C = self-proving circle; C++/Rust FFI is the real host-language distribution (Qt/Flutter/C# all compile through C++ TUs).
+- **Solution**: add the `#ifdef __cplusplus extern "C" {` guard at the top of handwritten headers; the consumer probe matrix must include **≥1 C++ TU** (here = the cmake/probe ctest resident); the acceptance anchor for new C ABI surfaces upgrades from "the C demo runs" to "C+C++ both run".
+- **Verification**: `grep -c 'extern "C"' crates/visiaengine-capi/include/visiaengine.h` ≥2; `pixi run ctest --test-dir target/cmake-bare` 1/1.
+
+## PIT-14: environment-state pollutes gate assertions — the activated-shell PATH makes "forced modes" pass falsely + wrapped report lines defeat whole-sentence greps (2026-09-14, C1 review/C3)
+- **Symptom**: ① `-DRUST_SDK=SYSTEM` inside a pixi-activated shell let find_program hit the conda tree's cargo, judging [system] and passing — the "force system" semantics cannot be true in that environment, yet raised no error; ② the escape-hatch FATAL assertion grep of the whole sentence "no capi artifact" missed — cmake wrapped the message across two lines "no capi\nartifact".
+- **Root cause**: ① the resolver's lookup domain = the current environment, and the environment's PATH/PREFIX is polluted by activation state — "force X" without explicitly excluding non-X sources is nominal only; ② terminal/log line-wrapping is destructive for whole-string matching.
+- **Solution**: ① forced modes get **dual anti-pollution filters** (prefix comparison of find_program results against CONDA_PREFIX/.pixi, same check for Qt6_DIR; a hit = reject with the message naming it); ② gate assertions use **wrap-stable short phrases** ("no capi" class), and negative-path assertions accept both rc and message conditions.
+- **Verification**: `pixi run bash scripts/cmake-smoke.sh` (both negative-path messages on the assertion column); the SYSTEM rejection message must appear in the local activated state.
+
+## PIT-15: enable_testing() after add_subdirectory = that directory's add_test silently dropped (2026-09-15, S4 real-machine proof)
+- **Symptom**: platform/qt's example_E703 add_test, once registered, never appeared in `ctest -N`, and platform/qt/CTestTestfile.cmake was never produced; zero errors, zero hints.
+- **Root cause**: the root's enable_testing() sat after add_subdirectory(platform/qt) (the C2 probe happened to be after it so the issue stayed hidden); CMake warns nothing about this ordering problem.
+- **Solution**: enable_testing() must precede **all** add_subdirectory calls (moved up + nailed with a comment).
+- **Verification**: `ctest --test-dir target/qt-build -N | grep -c "Test #"` == registration count (13); `ls target/qt-build/platform/qt/CTestTestfile.cmake` exists.
+
+## PIT-16: two "scope/shape" pits — enable_language inside function() doesn't propagate; preset fields defer to the shipped schema (2026-09-15)
+- **Symptom**: ① after enable_language(C) inside function(), the function's add_executable(.c) reported "can not determine linker language"; ② four consecutive guesses of the CMakePresets testPreset label-filter field were all rejected (excludeLabels/labelExclude/exclude.label array/filter.exclude.labels).
+- **Root cause**: ① enable_language's compiler variables land in the function scope — lost on return — **language enablement must happen at file/directory scope**; ② presets v6 has no label filtering; the v7 correct shape = `filter.exclude.label` (a **string regex**); memory and search are both unreliable.
+- **Solution**: ① hoist enable_language(C) to the .cmake file top level under the if(VISIAENGINE_EXAMPLES) block; ② read the offline canonical source `$CMAKE_HOME/share/cmake-*/Help/manual/presets/schema.yaml` (or exclude-properties.rst beside it); with egress down (context7/webfetch both failed) this path costs 0.
+- **Verification**: configure passes + `ctest --preset qt-pixi` count = 7 after excluding display; grep schema.yaml for "``label``".
+
+## PIT-17: cargo harness threads share the pid — tmp-path uniqueness needs pid+nanoseconds (2026-09-15, S1 flicker)
+- **Symptom**: attr_three_types FAILED on first run, passed when run alone/re-run (flaky appearance); 3 tests with the same tmp prefix ran in parallel.
+- **Root cause**: `format!("ve-attr-{tag}-{}", process::id())` is identical across all threads **within one test binary** → multithreaded parallel `fs::write` (truncate-then-write is not atomic) trample each other and readers see half-empty files.
+- **Solution**: uniqueness = pid + SystemTime nanoseconds dual-suffixed (same form in both the engine inline and attr_ffi_spec); or a per-test dedicated tag.
+- **Verification**: `for i in $(seq 6); do cargo test -p visiaengine-capi | grep -c 'test result: ok'; done` all equal (6×6 measured green).
+
+## PIT-18: validating through `pixi run` wrapping ≠ validating the user surface — the IDE's direct build call blew up on rustc-missing (2026-09-15, user-proven)
+- **Symptom**: everything verified green "13/13" via `pixi run cmake --build` + ctest; then the user's VS Code (CMake Tools calling /usr/bin/cmake directly, no pixi PATH) built E301 → `error: could not execute process rustc -vV (never executed)`.
+- **Root cause**: conda cargo finds its sibling rustc via PATH; `pixi run` activation happens to put rustc into PATH = every step green. The runtime environment of build-time COMMANDs and the configure-time resolution are two different things — **when the verification channel coincides with the proven channel, all environment-difference blind spots are masked** (the build-surface projection of verification-honesty; the inverse twin of the old "un-activated shell directly calling conda cargo, false rustc-missing" case).
+- **Solution**: prefix every cargo call site with `${CMAKE_COMMAND} -E env "PATH=<cargo's directory>:$ENV{PATH}"` (the cargo-step + examples-step; SYSTEM's true-system pieces are harmless); the IDE user surface = the bare environment, so every build gate must be retested on bare PATH.
+- **Verification**: `env PATH=/usr/bin:/bin cmake --build target/cmake-bare --target visiaengine-examples-step` passes; now hardened as cmake-smoke's fourth-state dual target (guard regression lock).
+
+## PIT-19: pixi file clobber makes the conda-built Xvfb always die on XKB (2026-09-16, S0 spike proof)
+- **Symptom**: after `pixi add`, starting `.pixi/envs/default/bin/Xvfb :77 …` in the default environment immediately fails with
+  `XKB: Failed to compile keymap` → `Failed to activate virtual core keyboard: 2`;
+  the `share/X11/xkb/` directory keeps only `compiled/`; rules/keycodes/symbols all vanished.
+- **Root cause**: the `xorg-xvfb-server` package ships `share/X11/xkb/compiled/.keep` conflicting with `xkeyboard-config`'s tree paths → pixi 0.78's clobber handling **redirects the whole xkeyboard-config tree** to
+  `share/xkeyboard-config-2/` (conda-meta shows the `__clobbers__/xkeyboard-config/share/X11/xkb` marker), and Xvfb looks for its keymaps at the compile-time canonical location. Same in the host-spike environment; historically undetected = local smoke-x11 always used the :0 branch.
+- **Solution**: the environment is this machine's state; after rebuild, replay the merge once:
+  `cp -a .pixi/envs/<env>/share/xkeyboard-config-2/. .pixi/envs/<env>/share/X11/xkb/`.
+  Display-test sub-state priority = system `command -v Xvfb` (apt CI immune) → conda fallback (must carry the tree-replay fix) → neither = SKIP note.
+- **Verification**: `Xvfb :77 -screen 0 1024x768x24` alive after 2s checked by `kill -0`; the SDL3×attach spike green under `DISPLAY=:77`.
+  Anti-recurrence check: `ls .pixi/envs/default/share/X11/xkb | grep -q rules || cp -a …xkeyboard-config-2/. …X11/xkb/`.
+
+## PIT-20: the "ghost API" family — interface/parameter names written from memory, ≥3 cases (established 2026-09-16)
+- **Symptom**: plans/code cited nonexistent external interfaces: `corrosion_add_test_crate` (upstream #13, never implemented since 2018), the `CORROSION_CARGO` user cache (removed since 0.3), `crates_only` (real name CRATES), "conda has no corrosion package" (it has 0.6.1) — each time the execution hit the wall or silently detoured.
+- **Root cause**: treating "I remember it exists" as "I verified the name".
+- **Solution**: every external API handle (function/parameter/package name/file path) gets its canonical source captured at writing time (docs/source grep/API actual test), cited with a verbatim fragment; no anchor = marked [UNCERTAIN] and not allowed into the plan body.
+- **Verification**: this lesson's source automates itself: context7/source/`pixi search` triple-checks before planning already rescued 4 errors across two Momus rounds; residual errors = sentences that went unchecked.
+
+## PIT-21: edit-tool insert-style rewrites leave "old-new coexisting" residue + grep assertions' BRE false greens (2026-09-16, quadruple proof)
+- **Symptom**: a batch replace in one file consumed only the first anchor line, so the replaced block's "second old line" survived → zombie lines ×4 (IDE terminal-state double line / gate double line / swallowed if-line leaving a dangling || / double example anchors); same family: `grep 'a|b'` without -E kills the alternation = always-zero matches = a "zero-out assertion" permanently true.
+- **Root cause**: insert-style rewrites without a declared end range; assertion predicates using bare | in BRE.
+- **Solution**: ① insert-style rewrites must consume the whole old range via `pos+end`, then `sort|uniq -d` for duplicates + old-name grep=0; ② alternation assertions always `grep -E`/`grep -c`, first prove "can hit a positive", then assert zero; ③ the guard's "fix it if it errors later" phrasing = conditional-branch suspense — switch to "pre-set at birth" to kill the branch.
+- **Verification**: `bash -n` + rerun with identical parameters in the same band; S3/S4 each hit once, all closed in-band (nothing overnight = passing; the lesson is pattern-hardened in edit-safety #18).
+
+## PIT-22: "verification channel ≠ user channel" environment blind spot, second sighting — the DISPLAY family (2026-09-16, user-proven)
+- **Symptom**: all real-window verifications (S0 spike / smoke-qt / cargo-run spot checks) ran green in the agent's tool shell with `export DISPLAY=:0`; when the user clicked cargo-run_* inside VS Code (the vscode-server process tree), winit reported `neither WAYLAND_DISPLAY nor DISPLAY is set`, rc=1.
+- **Root cause**: the generalization of PIT-18 — the tool shell and the user's IDE shell are two environments; a manual export = secretly adding to the verification channel supplies the user doesn't have (the PATH family back then was conda activation; this time a display variable). Window-class assertions' green counts only when taken in the **user's environment form**.
+- **Solution**: ① environment-sensitive steps (GUI/clipboard/audio/network-proxy surfaces) always go through "launcher wrapper + probe fallback + stderr announcement of which path was taken" (the run-gui.sh form); ② before delivering window features, re-run once in the **un-spiked** shell (`env -u DISPLAY` / `env PATH=/usr/bin:/bin`); ③ the IDE-side promise surface (test panel/Run buttons) is T3 — if machine-unreachable, say so plainly and wait for human verification.
+- **Verification**: `env -u DISPLAY -u WAYLAND_DISPLAY cmake --build target/cmake-bare --target cargo-run_E501_shadow_demo` survives to timeout(124) = the fallback chain works; bare cargo run (unwrapped) must still error clearly = the sentinel surface not broken.
+
+## PIT-23: three "tautology/swallow" shapes in CMake/ctest parameters and assertions (2026-09-16, the E801 hang case)
+- **Symptom**: ① a `cmake_parse_arguments` oneValue keyword receiving `"--frames;3"` took only `--frames` (the list flattened to two elements in ${ARGN}; the single-value port ate the first and dropped the rest) → the ctest example fell into interactive mode and cmake-smoke hung 15 minutes; ② `ctest -R <no-match>` prints "No tests were found" and **exits 0**, keeping forwarding shells always green; ③ (PIT-21 already recorded the bare `|` BRE always-false form; mutual same-family reference).
+- **Root cause**: the common pattern of the three shapes = "looks like it's passing/asserting, actually silently dropping/always passing" — CMake list semantics and ctest's empty-set philosophy both run counter to intuition.
+- **Solution**: ① all list parameters go through the multivalue port (`cmake_parse_arguments(prefix options oneValue multiValue)`, the fourth slot); generated files are reviewed against what `CTestTestfile.cmake` actually does; ② ctest wrappers must carry a "≥1 selected" assertion (`--show-only` pre-count or grepping the output `out of [1-9]`, the smoke-rs.sh precedent) + `--timeout` always mounted (hang = red, not a black hole); ③ any "=0 means green" gate first self-proves with one positive hit / one negative trigger.
+- **Verification**: `grep -o 'E801_sdl_window" "[^)]*' target/*/examples/c/CTestTestfile.cmake` shows both `"--frames" "3"` positions; injecting a nonexistent -R forwarded once must go red.
+
+## PIT-24: winding dumb-mine in shared geometry — cull-off makes winding a dark observation read only by picking (2026-09-17, the E402 band)
+- **Symptom**: `unit_box_mesh`'s three consumers (instances/bench/twin_city) rendered perfectly, goldens all green;
+  the moment the E402 pick chain first consumed it, the center ray always missed — a straight-down ray missing the box top, a bottom-up ray hitting falsely.
+- **Root cause**: the birth winding was **globally reversed** against the declared normal (geometry cross = −nrm). The GPU path left PrimitiveState cull unset (wgpu default None) → both faces drawn → zero render symptoms; `pick_meshes`' front-face rule (REND-23) reads exactly the winding — the same geometry means opposite things on the two consumption paths. Anything that "reuses a render piece into picking / gpu-skinning / a cull-enabled pipeline" is this mine's fuse.
+- **Solution**: index-mirror correction `[b,b+1,b+2][b,b+2,b+3]`→`[b,b+2,b+1][b,b+3,b+2]` (one edit, every consumer benefits; pixel-identical under cull-off = constructive proof, 162 passed zero-regression, hard evidence). Shared geometry definitions must state the **winding = outward-normal CCW** contract (now written into the golden training notes).
+- **Verification**: any new shared geometry, at birth, runs a "front ray must hit / back ray must not" bidirectional assertion (E402's gate in the corner-canary form); `grep -n 'CCW' crates/visiaengine-render-wgpu/src/offscreen.rs` keeps the contract line present.
+
+## PIT-25: toolchain silent disconnection — package-name drift + absent-continue tautology (2026-09-17, dug out in the point-cloud band G3)
+- **Symptom**: `bash scripts/bench.sh` perpetually printed `BENCH ✓/exit 0`, but resources/bench/*.json had not updated since the S1 migration across two rounds (timestamps stuck at 9-14).
+- **Root cause**: double silence — ① the spec's `-p visiaengine-render-wgpu --example E601…` errored in cargo after the examples moved to `examples/rs` (package name examples); ② the script only `continue`d on "no RESULT line" without setting an error; the pipeline + `|| true` swallowed rc (same family as edit-safety #19) → the dead chain was masked by an always-true green.
+- **Solution**: package name fixed to `-p examples`; absent-counting `MISSING>0 → exit 1` (toolchain faults separated from performance regressions: the latter prints red text but keeps exit 0 as the observation tier); the new bench_pcl joined the same chain.
+- **Verification**: `bash scripts/bench.sh` with all three json timestamps same-day + deliberately `sed` the package name wrong once, must exit 1 (positive/negative self-proof, the PIT-21 discipline).
+
+## PIT-26: from_raw_parts(_mut)(NULL, 0) is UB — the debug precheck nails it (2026-09-17)
+- **Symptom**: capi get_clips' `buf=NULL` pure-count path panicked in debug tests with "unsafe precondition(s) violated: slice::from_raw_parts_mut requires … non-null" (silent in release).
+- **Root cause**: recent Rust core versions added debug prechecks to from_raw_parts (null/alignment/isize::MAX); `m=0` still counts as an illegal pointer source for constructing an empty slice. The existing add_points/add_mesh didn't trip it because the NULL check returns early **before** slice construction.
+- **Solution**: guard `if m > 0 {}` before construction (sidesteps both NULL∧any length and any∧0 length); or is_null early-return, then construct.
+- **Verification**: the NULL-buf segment of the ffi_spec `set_get_clips_full_domain_roundtrip_truncation` + `cargo test -p visiaengine-capi` (debug tier blows on regression).
+- **Forbidden**: any FFI port unconditionally calling from_raw_parts on a possibly-NULL buf (even with length 0).
+
+## PIT-28: label centering's px offset may only enter the dx domain — the anchor is world coordinates (2026-09-18)
+- **Symptom**: in E205 the three labels' gold sub-line never rendered (hist had no yellow tones); white/cyan present but offset abnormally.
+- **Root cause**: `anchor_x = cx - pen/2` subtracted the **pixel** pen from the **world** anchor (-4−50 world meters = off-screen). The canonical capi `add_label` form puts all center alignment in the dx(px) component: `dx = top_left_px - pen/2`, anchor keeps its world position untouched.
+- **Solution**: the anchor takes world coordinates only; all px semantics (including alignment offsets) live in the metrics/dx domain (vs uniformly multiplied by px_scale).
+- **Verification**: triple cross-check (capi engine.rs / hpp forwarding / the E205 example) — grep `pen / 2.0` must appear only inside the LabelMark's 4th parameter group; appearing in the 1st group = red.
+
+## PIT-29: orbit constructed with degrees = perspective eating radians — three examples shipped with the bug (2026-09-18)
+- **Symptom**: E303 top view OK but the main view's ground occupied only 51%/composition odd; E302 headless bright=96 (barely clearing the 40 threshold); E501's window surface carried the same mine (nobody looked closely).
+- **Root cause**: `CameraRig::perspective`/look_at default `FRAC_PI_3` = **radian** convention; `orbit(...)` call sites once passed 46/55/60 (as degrees) → tan(23 rad) negative values flip/crush the projection. lavapipe reports no error = silently broken picture.
+- **Solution**: all radians (0.802_851=46°, FRAC_PI_3=60°, 0.959_931=55°); the `orbit` doc nails the unit and records the priors. Post-fix: E302 bright 96→1987, E501 dark=19642 exact, E303 composition valid.
+- **Verification**: grep the example surface for `orbit\(.*[0-9]\.[0-9], [0-9]{2}\.0` — degree-magnitude values (fov slots >7) = red; window-example pixel gates (the E302/E303 headless assertion family) run green.
+- **Lesson**: a window surface the pixel gate never looked at is an unverified surface — when T3 human verification is unreachable, headless structural assertions must cover the window example's same frame shape (this band's double-insurance precedent).
+
+## PIT-29: an ortho camera's only zoom definition = half-width; the dist field is decoration (2026-09-24, E206 third fix, second sighting)
+- **Symptom**: wheel zoom "does nothing" — both rig.zoom and rig.dist updated while the picture didn't budge.
+- **Root cause**: dual stacking. ① `look_at()` constructs with default zoom=1.0 while the rendered ortho half-width consumed a hardcoded tile_w constant (rig.zoom was never read); ② under orthographic projection dist does not affect picture size (only perspective gets "farther = smaller") — changing dist = no-op.
+- **Solution**: wheel → rig.zoom (the only ortho zoom semantics); the rendered half-width consumes rig.zoom; the clamp domain recomputed to the scene's scale (a 3857-meter world = 8km..500km, not E204's meter-scale 2..60).
+- **Verification**: `grep -n 'rig.zoom' examples/rs/E206_tile_viewer.rs` (consumption point present); the wheel actually changes the picture.
+- **Forbidden**: ortho examples applying zoom/zoom_scale onto dist; assuming zoom is a usable view width after look_at construction.
+
+## PIT-30: cutting the window/interaction surface of window examples because "interaction = later Phase" = the C15 dual-mode breach trio (2026-09-24, E206, three measured cases)
+- **Symptom**: user ran cargo-run_E206: ① exited immediately with no args (the window was a println stub) → ② drag/wheel did nothing (Redraw rebuilt the camera from hardcoded constants each frame; the fields events mutate aren't in the struct / aren't consumed) → ③ single-tile content too sparse ("minimally runnable" ≠ "demoable").
+- **Root cause**: the delivery band treated "static/minimal" as the closing standard, while the dual-mode discipline (C15)'s zero-arg window = **resident + interactive** is an independent acceptance surface — smoke/ctest green cannot save red human verification; and "connect in Phase 1" was used as license to cut implementations instead of a phasing plan.
+- **Solution**: window examples born with a real window + real interaction (copy the E204 skeleton, ~150 lines); the interactive camera = a persistent TileApp rig field (Redraw consumes self.rig; per-frame rebuilding forbidden); demo content to the "demoable" standard (3×3 neighborhood + tile-seam outlines), not the "runnable" standard (single tile).
+- **Verification**: an Xvfb liveness probe (killed by timeout 22s = resident) + human check that drag/wheel actually take effect.
+- **Forbidden**: a window example's no-arg path printing println then Ok(()); constructing a hardcoded rig inside the Redraw path overwriting interaction state; writing interaction promises into comments as delivered.
+
+## PIT-31: ffi_spec integration tests' cwd = the crate directory (2026-09-24)
+- **Symptom**: the capi's new port load_mvt_dir integration test returned -1 (VE_ERR_ARG) where 9 was expected; the same test was also red locally via `cargo test -p visiaengine-capi --test ffi_spec`.
+- **Root cause**: when cargo runs integration tests (the tests/ directory), CWD = `bindings/c/visiaengine-capi/` (crate root), so the relative path `resources/data/tiles` resolves to `bindings/c/visiaengine-capi/resources/data/tiles` (nonexistent). FileSource path parameters are runtime strings, not compile-time macros.
+- **Solution**: inside tests, climb from `env!("CARGO_MANIFEST_DIR")` to the repo root uniformly: `let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR")); while !p.join("Cargo.lock").exists() { p.pop(); }` (this pattern already exists in ffi_spec.rs — copy it).
+- **Verification**: `cargo test -p visiaengine-capi --test ffi_spec` 19/19 passed.
+- **Forbidden**: relative paths `resources/...` in tests pointing at repo-root fixtures (cwd is indeterminate).
+
+## PIT-32: ureq's full dependency tree drags getrandom onto the wasm32 target (2026-09-24)
+- **Symptom**: after adding `ureq` (a native-only HTTP source) to io-tiles, compilation for wasm32-unknown-unknown failed: `the wasm*-unknown-unknown targets are not supported by getrandom, you may need to enable the "js" feature` — the wasm surface shouldn't have ureq at all, but an unconditional Cargo.toml dependency = wasm compiles it too.
+- **Root cause**: ureq → rustls → ring → getrandom. getrandom 0.2/0.3 on wasm32-unknown-unknown needs an explicit `js` feature; the rustls tree doesn't enable it, io-tiles' wasm consumers neither → the compile_error! macro fires at compile time.
+- **Solution**: `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]` quarantines ureq to the native section; wasm gets a typed stub for `HttpSource` (`load()` returns `Err(Unsupported)`). Real wasm HTTP needs host JS fetch + a bytes-injection port (Phase 2 wasm demo band).
+- **Verification**: `pixi run web-check rc=0` (MIRROR 3/3).
+- **Forbidden**: adding ungated dependencies containing getrandom/ring/rustls to any crate visible to wasm.
+
+## PIT-33: depth lifecycle after a full-screen pass and wgpu30's use-domain rules (2026-09-28, the EDL band)
+- **Symptom**: EDL post-processing needed to sample the main pass's color+depth inside the same encoder; using the swapchain view directly as a sample source (no TEXTURE_BINDING) or "writing color while sampling color" within one pass blew up.
+- **Root cause**: wgpu 30's use-domain rules: ① an attachment and RESOURCE in the same pass are mutually exclusive (color as both write target and sample source is illegal); ② swapchain views lack TEXTURE_BINDING; ③ depth defaults to StoreOp::Discard so later passes can't read it.
+- **Solution**: an intermediate-texture cache (key = (w,h,format), rebuilt on resize) takes the main pass's output + depth switched to Store; the EDL pass stands alone (samples color+depth, writes the final view); the OFF path skips the whole segment = bit-for-bit zero regression. The multi-viewport path was exempted this band (recorded under clause WGPU-33).
+- **Verification**: `cargo test -p visiaengine-render-wgpu --test edl` (OFF re-render byte-identical + ON pixel delta + OFF-after-ON equal again).
+
+## PIT-34: LRU/state double ledgers desync — state() lies "Done" while the bytes were already evicted (2026-09-28, revision #3)
+- **Symptom**: pump() marked Done after cache.insert; after LRU evicted the bytes, state() still reported Done → decoded() None → the batch-rebuild path silently continued = a permanent rendering hole, and begin() skips Done and never re-arms.
+- **Root cause**: two ledgers (the pump_state map + the LRU bytes) with no consistency maintenance; Done is a stable state and nobody re-checks whether the bytes still exist.
+- **Solution**: an explicit `evict_done(ids)` (clears all three ledgers: state + bytes + decoded) + a read-only probe `decoded_cached(id)`; the consumption loop (the engine render loop) reconciles every frame on `state()==Done && !decoded_cached()` → evict_done, re-arm. Single-source-of-truth principle: when you find a double ledger, pair it with a reconciliation function.
+- **Verification**: `cargo test -p visiaengine-io-tiles --test tile_pump lru_eviction`; the engine side is consumed by the batch-rebuild path (decoded==None must not render).
+
+## PIT-35: env proxies also eat loopback at the library layer — ureq honors http_proxy and 502s 127.0.0.1 (2026-09-28)
+- **Symptom**: E206 --source pumped 0/9 Done; the same URL got 200 direct with curl, 502 through the env proxy (10.144.0.1:7897).
+- **Root cause**: the existing lesson only covered curl (edit-safety's "curl must use --noproxy"); HTTP client libraries (ureq 3.x) default Proxy::try_from_env and suffer the same — fixing the caller's curl can't save the library.
+- **Solution**: **fix at the source**: inside HttpSource::load, `uri_host_is_loopback(root)` → proxy=None, else try_from_env; the 5s global timeout set at the same point. Library-layer network code always ships loopback-no-proxy + timeout; host environments carry no blame.
+- **Verification**: `cargo run --example E206_tile_viewer -p examples -- --source http://127.0.0.1:8932/data/tiles` (against a python http.server) → 9/9 Done.
+
+## PIT-36: python module-level definition order — TEMPLATE not yet defined when main() runs (2026-09-28, the gallery band)
+- **Symptom**: in gen_gallery.py the DETAIL_PAGE template appended at the bottom sits after `if __name__ == "__main__":`, and pixi run gallery throws NameError.
+- **Root cause**: append-style editing put the constant behind the entry guard; modules execute top-down, so TEMPLATE was unbound when main() called it.
+- **Solution**: constants/templates always above the entry guard; after append edits, first run `python3 -c "import ast; ast.parse(open(f).read())"`, then run.
+- **Verification**: `python3 -c "import ast; ast.parse(open('scripts/gen_gallery.py').read())" && pixi run gallery`
+
+## PIT-37: example refactor dropped origin — static-table refactors silently zero per-marker data (2026-09-28, the E305 window surface)
+- **Symptom**: after the E305 window-surface refactor (build table + group separation), the cyan pixel gate read 2 vs threshold 20 — all 24 trajectory markers drew at the origin.
+- **Root cause**: in build(), `let _o = anim_origin(...)` computed the origin but the table stored only the (mesh,material) pair; group() uniformly set origin:[0;3] — the data chain broke between "computed" and "used".
+- **Solution**: tables carry data (`Vec<((id,id), origin)>`); group() consumes per item; **the pixel gate caught it on the spot** (exactly why gates exist — the Nth cashing-in).
+- **Verification**: `cargo run --example E305_entity_anim -p examples -- --frames 24` (the cyan>20 assertion).
+
+## PIT-38: an if inside a winit match arm = the collapsible_match clippy rejection — use a match guard (2026-09-28)
+- **Symptom**: the window example's Esc handling `WindowEvent::KeyboardInput{..} => { if pressed && key==Esc {exit} }` triggered clippy collapsible_match — three reds in a row.
+- **Root cause**: an if as the first statement of a match arm has the merge form = match guard (`arm if cond =>`); clippy 1.98 suggests it for readability and rejects outright.
+- **Solution**: copy the guard form (`KeyboardInput{..} if state==Pressed && key==Escape => exit`) + keep the `_ => {}` catch-all arm. Attached: winit examples **must always ship the full imports list when created fresh** (ApplicationHandler/WindowEvent/EventLoop/Window/WindowId — E304/E305 each missed one once, two rounds wasted).
+- **Verification**: `cargo clippy --example <name> -p examples --all-targets -- -D warnings`.
+
+## PIT-39: window examples' "first frame" had no machine guard — three black screens, all caught by hand (2026-09-29, the E305/E508/E505 family)
+- **Symptom**: three window examples successively black/empty (E305 no loop, E508 window with no keys, E505 no redraw) while cargo test/ctest/ci all stayed green — every one was caught only by user human verification.
+- **Root cause**: the machine surface (the assert path) and the human surface (the window path) have completely different lifecycles — nothing in CI asserts "does the swapchain have a first frame" for window examples; Wait mode + not requesting redraw on resumed = permanently black.
+- **Solution**: scripts/window-probe.sh (run the example with zero args → Xvfb screenshot → brightness-ratio assertion) + window-probe-all.sh batch (the 20 resident window examples) + **screenshot before killing the app** (the root screenshot depends on the window being alive — the first version's inverted order captured full black). Self-exiting examples skip (the goldens guard those).
+- **Verification**: `bash scripts/window-probe-all.sh` (all 20 ✓); breakage probe executed (commenting out the first-frame request → red rc=1).
+
+## PIT-40: registry disp/args must come in pairs — two half-missing cases (2026-09-28/29)
+- **Symptom**: E403 missed _args (a display example staying resident with zero args → ctest hung 10 minutes); E508 missed _args (a headless example mis-registered → died on DISPLAY); both only surfaced under ci/ctest.
+- **Root cause**: in the cmake registry, _disp_X ON and _args_X "--frames;N" are one semantic pair (disp = window form, args = automation form); registering half = form mismatch on the example surface.
+- **Solution**: new-example registration writes both lines in the same commit; verification = `ctest -LE display -N | grep <name>` selected, and `--frames` present in argv (a smoke run passing proves it). Gate-ification candidate: extend R9's bidirectional check to args.
+- **Verification**: `grep -A2 "_disp_${NAME}" cmake/VisiaEngineBindings.cmake | grep _args` (the pair is present).
+
+## PIT-41: multi-block patch scripts = a truncation minefield — four hits this round (2026-09-30, the io-gltf wipeout)
+- **Symptom**: when a multi-patch python script died mid-way on assert/NameError, the already-written content varied (some blocks landed, some didn't); worst case io-gltf lib.rs emptied to 0 bytes (the open(p,'w') truncation moment hit exactly).
+- **Root cause**: "read→replace→write" mixed with "write at the end"; multiple patches in one script sharing an outer `s` variable die half-new-half-old with the state indeterminate; `open(p,'w')` truncates an instant before write but when the variable chain breaks the outcome is unpredictable.
+- **Solution**: ① each patch function body does its own independent read→write (no shared outer s); ② replace results stored in `ns` before the write; ③ changes spanning more than 2 blocks are **split into multiple tool calls** (1-2 patches each); ④ grep immediately after any patch to verify the key field is present.
+- **Verification**: `wc -l` before/after comparison + `grep -c` key anchors present + cargo check.
+- **Blocking condition**: >2 patches in one script without splitting; continuing after a patch without grep verification.
+
+## PIT-42: WGSL uniform layout triple mine — closures/let-if/array stride (2026-09-30, the I band triple)
+- **Symptom**: adding the env_sh section to mesh.wgsl collapsed three times: ① the `|i: u32| -> ...` closure syntax was rejected by naga (WGSL has no closures); ② the `let x = if cond {...}` expression form was rejected (WGSL has no let-if; needs var + statements); ③ the `array<f32,27>` uniform validation was rejected (uniform address-space array strides must be 16-aligned).
+- **Root cause**: Rust intuitions translated directly into WGSL — all three are forms Rust has and WGSL doesn't; the stride rule is a hard constraint of GPU uniform layout (vec3 = 16B, array<f32,N> also needs 16 alignment).
+- **Solution**: closures → module-level functions; let-if → `var x = ...; if cond { x = ...; }`; data arrays → `array<vec4<f32>,N>` (RGB+pad) or hand-arranged 16B alignment. After extending the View block tail, the total size must be a multiple of 16.
+- **Verification**: after changes, first `cargo run --example <nearest>` to watch shader parsing/validation errors (lavapipe messages report exact lines) before discussing pixel assertions.
+- **Blocking condition**: new WGSL uniform sections bound to binding sizes without the 16-alignment check.
+
+## PIT-43: flag-offset mines = a probe's duty, not review's (2026-09-30, I band second hit)
+- **Symptom**: the env_on flag was written at float 92 (a remnant of the old 27-float layout) while after the vec4 layout its true position = float 100 — sh-diff=0 pretended it worked; none of the three reviewers found it; a probe caught it in one pass.
+- **Root cause**: after CPU/GPU sides evolved separately, the offset table drifted; review reading code can't spot "92 vs 100" numerical misalignment.
+- **Solution**: CPU/GPU shared layout sections write **the same byte-offset table into both comments** ("flag=float 100=byte 400", dual-sided anchors); validation predicates for layout changes must include **end-to-end value deltas** (sh-diff > threshold); testing "doesn't crash" alone is forbidden.
+- **Verification**: an end-to-end pixel-delta assertion present (the E507 env probe form).
+- **Blocking condition**: delivering a new CPU→GPU section without an end-to-end value-delta assertion.
+
+## PIT-44: the web channel is an independent surface outside ci + roster scripts read artifacts without freshness (2026-10-08, the V2.2 mine surfaced only two bands later)
+- **Symptom**: `pixi run web-check` reported `the trait bound Vec<f64>: RefMutFromWasmAbi is not satisfied`, rooted in
+  the wasm bridge `get_node_transform(&mut self, entity, out: &mut Vec<f64>)` written in the V2.2 band.
+  That band had recorded "WEB MIRROR 3/3" in the baseline, and the mine lived on until the next band detonated it.
+- **Root cause**: three stacked. ① `pixi.toml`'s `ci` = 11 segments, **not including web-check** (`web-check` is a standalone task) —
+  no "WEB ✓" wording is backed by ci. ② the host channel (`cargo test -p visiaengine-wasm`, target=host) **does not compile
+  the wasm32 codegen path**: wasm-bindgen only demands `RefMutFromWasmAbi` on wasm32 targets,
+  so the signature is green on host and red on the real target (the compile-surface variant of PIT-22 "verification channel ≠ user channel").
+  ③ `scripts/web-mirror.mjs` asserts against **build artifacts** under `target/web/` (d.ts rosters/value pairs),
+  with no freshness check — with yesterday's artifacts and uncompilable sources, it still printed MIRROR 3/3.
+- **Solution**: ① fix the signature per repo precedent (same shape as `getCameraPose -> Vec<f64>`): wasm has no out-parameter channel,
+  so the C surface's "negative code + out untouched" maps to **empty-array returns** on the wasm side; ② add a **staleness guard** to the roster script (source-directory max-mtime
+  newer than the d.ts → red, the report naming the directory and the remedy command), directly walling off the "report green off stale artifacts" class;
+  ③ claim discipline: **"WEB ✓" may only come from same-terminal `pixi run web-check` output** (the web-surface projection of #17).
+- **Verification**: breakage probe executed — after `touch bindings/wasm/visiaengine-wasm/src/lib.rs`, running the roster script alone
+  must go red (report = "artifact stale: … run pixi run web-check first", rc=1); after re-running web-check it re-greens at MIRROR 3/3.
+  `grep -c "stale artifact" scripts/web-mirror.mjs` ≥1.
+- **Forbidden**: using host `cargo test -p visiaengine-wasm` results to stand in for wasm32 usability;
+  writing WEB wording in baselines/commit messages without running `pixi run web-check`.
+
+## PIT-45: "window looks lit" is not "window looks right" — two false-evidence channels (2026-10-08)
+- **Symptoms**: E510's and E511's resident windows passed every automated gate (first-frame
+  lit-ratio 82.3%, pixel-delta assertions, ctest, Xvfb display group) yet both rendered the
+  wrong thing: E510 showed yellow discs ~1/4 frame height swallowing the road ribbon; E511
+  showed a flat plate that "swung" about the wrong axis (it was built in the x-y plane in a
+  Z-up world and rotated about Y — a floor panel, not a gate).
+- **Root causes** (three, all independent):
+  1. `px_world_scale: 1.0` in a window/assertion lane means "1 pixel = 1 world unit". Point
+     radii and stroke widths are declared in **pixels** (`PointMark.radius_px`, GEO-24), so a
+     6 px marker became a 6-world-unit disc. The geo pipeline computes the scale from the
+     camera; hand-written frames must too.
+  2. A hardcoded clear-colour triple in a pixel assertion (`[16,21,29]`) missed every pixel
+     (actual `[15,20,28]`), so "geometry px" counted 153600/153600 = the assertion was
+     constant-true and had been for a whole band.
+  3. Lit-ratio and pixel-delta are *differential* measures: neither has any notion of whether
+     the subject resembles what the example claims to show.
+- **Fixes**:
+  1. derive `px_world_scale = 2·dist·tan(fov_y/2)/height` from the rig (helper in both examples);
+  2. self-calibrate the clear reference from the render's own corner pixel instead of a literal;
+  3. added a determinism canary (same pose renders byte-identically) so a pixel-delta claim
+     cannot be propped up by nondeterministic background;
+  4. review the actual picture: `xwd -> PNG` and look (or measure per-band delta). Machine
+     harness used: XTEST key/wheel/drag injection + screenshot diff (drives the "only a human
+     can press this" cases; angle/title echo read back through the window manager).
+- **Verification**: after fixes — E511 diff 1222 -> 5848 (measured, threshold 3500) and the
+  picture reads as two hinged leaves between posts on a ground plane; E510 geometry count
+  dropped from the vacuous 153600 to 16457 and the ribbon/markers are legible; harness reports
+  E506/E507/E510/E511 all OK with Esc exiting each through the real X input path.
+- **Prohibited**: hand-writing `px_world_scale: 1.0` in a frame that draws px-sized points or
+  strokes; hardcoding a clear-colour literal in a pixel assertion; treating lit-ratio as
+  content verification for an example whose claim is about *what* is drawn.
+
+**Pointer (band K, 2026-10-08)**: the hand-built harness this entry describes is now
+a repo tool -- `pixi run keys-probe` (scripts/keys-probe.py + scripts/xinject.c).
+Rebuild it by hand only if the tool is skipped for a missing dependency.
+
+## PIT-46: a stale ledger line generated a wrong plan (2026-10-08)
+- **Symptoms**: the recommended next-step order handed to the user led with "integrate the tile
+  scheduler into the render loop" as the highest-value item. That work had already shipped
+  (N1.4 / CAPI-35): the engine pumps the layer every frame.
+- **Root cause**: the item was copied from a residual-ledger line in `status.md` without re-deriving it
+  from code. Ledger lines are cheap to write and never announce when they become false; the
+  install-tree band's own residual list had inherited one from the P1 band verbatim.
+- **Fix**: before a ledger item becomes a plan item, open its anchor. Here that took one grep and
+  produced the *real* gap instead: the capi engine keeps a **single** layer slot
+  (`engine.rs:1196/1991/2021` all assign `self.tiles = Some(..)`, no `None`), so a raster
+  basemap and vector tiles are mutually exclusive. Band T of the new plan is that, not scheduling.
+- **Verification**: `grep -n "self.tiles" bindings/c/visiaengine-capi/src/engine.rs` before
+  claiming anything about tile-layer capability; `sed -n '765,805p'` before claiming the pump is
+  missing. Cross-check any residual/todo line the same way when promoting it.
+- **Prohibited**: turning a ledger line into a plan item without re-measuring it; "we should
+  integrate X" where X exists.
+
+## PIT-47: wiring a gate into CI without asking "who provides its tooling" — a permanently silent SKIP green (2026-10-08)
+- **Symptom**: band K wrote `keys-probe` / `window-probe-all.sh` into `.github/workflows/ci.yml`;
+  all green locally — but on the image runner these two lines **never execute any assertion**:
+  they `SKIP exit 0` when `xwd` is missing, and CI just prints green. A step existing ≠ a step running.
+- **Root cause**: two layers. ① wrong dependency provenance: `xwd` belongs to the **system package x11-apps**
+  (`dpkg -S /usr/bin/xwd`, measured), not the pixi environment, while the workflow's apt only installed `mesa-vulkan-drivers xvfb`;
+  `xorg-libxtst`/XTest.h, conversely, is in pixi.lock (so that part carried no risk — judging correctly required checking provenance item by item).
+  ② the gate convention itself is "missing tool = SKIP exit 0" (so clones don't false-red); inside CI that convention becomes
+  "missing tool = never runs, still passes" — i.e., the CI-wiring variant of PIT-25 (absent-true).
+- **Solution**: ① add `x11-apps` to apt with a comment marking it non-optional (protecting it from future "dependency tidying" deletions);
+  ② give the probe a `--strict`: the SKIP flips to exit 1 and **names the missing piece** — CI uses `--strict`, local defaults may still skip;
+  ③ look tools up on PATH (the old code hardcoded `/usr/bin/xwd`; other container layouts would neither find it nor say why);
+  ④ before wiring, **actually run that step once locally** (`window-probe-all.sh` had landed for an entire session without being run;
+  this entry's re-run: rc=0 / 20 resident windows / E509 lit=7500/7500 100.0% vs the 5.0% threshold).
+- **Verification**:
+  ```bash
+  # branch reachability (--strict's meaning is precisely that it can be triggered)
+  python3 - <<'PY'   # make only xwd missing; inject the missing-tool branch of main()
+  #   --strict --all -> rc=1 and the report "missing toolchain: xwd"
+  #   default        -> SKIP rc=0
+  PY
+  dpkg -S "$(command -v xwd)"                    # expect it names the system package; don't assume pixi
+  grep -n "x11-apps\|--strict" .github/workflows/ci.yml
+  bash scripts/window-probe-all.sh; echo rc=$?   # newly wired gates must run locally for real first
+  ```
+- **Forbidden**: wiring a SKIP-semantics gate into CI without giving it a "missing tool = red" calling form;
+  skipping the local real run before committing a CI change.
+
+## PIT-48: the probe/injector's own invocation errors swallowed by `>/dev/null 2>&1`, misjudged as "the object under test doesn't respond" (2026-10-08, band V4)
+- **Symptom**: the interaction tri-state gate reported `idle==drag==wheel` for two examples in a row, printing "✗ input eaten";
+  meanwhile `pixi run keys-probe` itself was green 4/4. The second hand-built `gcc scripts/xinject.c -lX11 -lXtst`
+  then reported `-lXtst: not found` — because `keys-probe.py:build_injector()` had long added
+  `-L$ENV/lib -Wl,-rpath,$ENV/lib`, and the artifact `target/keys-probe/xinject` already existed.
+- **Root cause**: two layers. ① xinject's contract is **positional arguments** `xinject <display> <title-substr> <action> [args]`;
+  out of habit I wrote `xinject -display :69 -drag ...`, so parameter parsing failed and exited; ② I sent all stdout/stderr
+  to `/dev/null`, so "the gate never ran" and "it ran but the picture didn't change" were **identical in output**. The assertion only looked at the latter.
+- **Solution**: ① reuse the tool's own constructor/artifact instead of re-handbuilding the compile command (what was missing was `-L`, not knowledge I should learn);
+  ② harness calls uniformly go to `> /tmp/x.log 2>&1` keeping the report, and **assert harness rc==0 first**, only then inspect picture hashes;
+  ③ the gate's self-proof: before judging red, run `xinject <disp> <needle> name` to prove it actually found the window.
+- **Verification**:
+  ```bash
+  target/keys-probe/xinject :70 NOPE_NO_SUCH_WINDOW name >/tmp/h.log 2>&1; echo "rc=$?"  # expect non-zero
+  target/keys-probe/xinject :70 E501 name            # expect NAME=... echo, proving the needle hit
+  grep -n "2>/dev/null" scripts/keys-probe.py        # expect: no report-swallowing forms on the harness side
+  ```
+- **Forbidden**: asserting "input had no effect / picture unchanged" while harness output was discarded or its rc unchecked.
+
+## PIT-49: Translation batches can silently delete code lines; line-count diff is not a semantic check (2026-10-12)
+- **Symptom**: E1 (facade i18n batch) removed three code lines from `scripts/window-probe.sh`:
+  the app launch (`DISPLAY=... "$BIN" & APPID=$! sleep 6`) and the final `exit $rc`.
+  The probe then exited 0 unconditionally (the `&&/||` echo tail swallows the verdict) =
+  the black-screen machine gate was vacuous for two rounds before the T-D era caught it.
+  bash -n passes, gate-docs passes -- nothing in the E1 closure loop ran the script's semantics.
+- **Root cause**: whole-file manual translation with no structural diff between old and new
+  content; comment-line churn hides a deleted code line at the same position.
+- **Solution**: restore launch block + `exit $rc`; audit every E1/E2/E3-touched script for
+  exit-line count vs the pre-translation parent commit (`git show <parent>:<f>` signature
+  diff). E5 added `gate-i18n.sh` (CJK scan) -- structural loss is its blind spot; the
+  exit-line audit is the completing check.
+- **Verification**: `bash scripts/window-probe.sh E101_clear` SKIPs or asserts per contract;
+  `diff <(git show <E1^>:f | grep -E '^\s*(exit|return)\b') <(grep -E '^\s*(exit|return)\b' f)` empty.
+- **Forbidden**: committing a translation batch without a code-line delta audit
+  (non-comment line count before vs after, per file).
+
+## PIT-50: `git add -A` while a parallel agent works in the same tree sweeps the agent's staged work (2026-10-12)
+- **Symptom**: the E2 commit (`git add docs/`) landed 96 files belonging to the concurrently
+  running E3 agent -- E3 had self-staged part of its work; the E2 message under-described the content.
+- **Root cause**: the index is shared state; any agent staging + any actor committing = cross-commit bleed.
+- **Solution**: soft-reset + re-add by exact path spec before E3 finished; E3 residuals were intact
+  (per-file whole writes, no partial corruption). Standing rule: the orchestrator commits only
+  exact path specs it owns; parallel translation agents are told not to stage at all (E3 was, E4 wasn't).
+- **Verification**: `git show --name-only <commit>` count matches the message's claim, or fix before push.
+- **Forbidden**: `-A`/`.` as path spec while any background task edits the tree; agent-instruction
+  omission of the "no git add" clause.
+
+## PIT-51: The "T-C contract" reading kept stale handle names after the crate homecoming (2026-10-12, user-caught)
+- **Symptom**: after T-H3.5 moved the crate to crates/visiaengine-ffi, the IDE tree showed FOLDER "crates/visiaengine-ffi" containing buttons still named visiaengine-capi-shared/-static/-rusttest -- FOLDER and target names disagreed.
+- **Root cause**: the T-H2 plan's rename table was row-granular; the handle name hiding in polyorch_rust_build's TARGET kwarg was never named as a row, and the "T-C contract" justification was accepted without asking what the contract actually was. The real contract is the visiaengine::c ALIAS layer (zero external consumers of the handle name; scripts use -p visiaengine-ffi since step 3) -- an internal name has no contract standing.
+- **Solution**: internal names follow their home. Rename the handle + derived verbs (visiaengine-ffi, -ffi-shared/-static/-shared-build/-static-build, -ffi-rusttest) and repoint the VISIAENGINE_ARTIFACT probe; keep only genuinely-consumed names (the alias, the lib name, clause IDs).
+- **Verification**: `git grep -n "visiaengine-capi" cmake/ scripts/` empty (frozen memory docs excepted); `git grep -nE 'visiaengine-(c|cpp|qt)(-sources)?$|visiaengine::(c|cpp|qt)\b' cmake/` shows the four-lane family only.
+- **Forbidden**: keeping any internal target name whose prefix disagrees with its FOLDER/disk home on the grounds of an unnamed "contract" -- name the consumer, or the name follows the home.
+
+## PIT-52: Planned-rename inventories are stale on arrival; only a fresh git grep plus real execution catches the whole class (2026-10-12, three live catches in one round)
+- **Symptom**: three classes the plan's static inventory missed, each caught by a different mechanism: (a) CARGO_MANIFEST_DIR/../../../ fixture depth -- invisible to string greps for the crate name, broke rusttest compile at execution; (b) the umbrella rename left 3 body lines (include/link/rpath) using the old real name -- configure red immediately; (c) the wasm path-dep example literal in the plan was arithmetically wrong (../visiaengine-ffi vs the correct ../../../crates/visiaengine-ffi).
+- **Root cause**: an inventory taken at planning time is a photograph; the tree moves between plan and execution (T-H3 landed between inventory and execution, shifting counts 31->55 and depths). Also: grep for a NAME cannot see RELATIVE-DEPTH references, and plan-table literals are hand-arithmetic.
+- **Solution**: command-driven sweeps (run `git grep` fresh at execution time, classify hits machine-bound/auto-follow/docs/frozen) + every rename step carries its own REAL verification legs (configure, cargo metadata, rusttest, install-tree) -- each of the three catches came from a leg actually running, not from review. Fix relative-depth references by re-deriving depth from the new home, not by editing the old literal.
+- **Verification**: `cargo check -p <moved-crate>` + the moved crate's rusttest button green; `git grep -c "<old-literal>"` = 0 on machine-bound files; install-tree leg path-independent (assert by installed-relative names).
+- **Forbidden**: executing a planned rename by table lookup without re-running the sweep commands; treating "verified inventory" in a plan as a substitute for execution-time re-derivation.
+
+## PIT-53: the INTERNAL metadata-source cache outlives its keys (2026-10-13)
+- **Symptom**: a supplier fix to source-mount logic showed zero effect after
+  reconfigure; File API showed 0/29 example nodes mounted despite the data
+  provably present in cargo metadata (isolated CMake repro: hits=1).
+- **Root cause**: `_polyorch_rust_metadata_sources` caches per
+  (manifest, crate) as `CACHE INTERNAL` inside the build tree --
+  entries persist across configures keyed by OLD paths (pre-rename
+  manifests, even the retired bindings/js tree). An EMPTY cached value
+  short-circuits before the new code ever runs.
+- **Solution**: wipe the build tree's stale entries (delete
+  `polyorch_meta_srcs` lines from CMakeCache.txt or nuke the build dir)
+  after any change to the mount/metadata logic; reconfigure.
+- **Verification**:
+  `grep -c polyorch_meta_srcs cmake-build/CMakeCache.txt` before/after;
+  the File API query (codemodel -> target -> sources) must list the
+  expected .rs files.
+- **Forbidden**: concluding "the fix does not work" from one reconfigure
+  while a keyed INTERNAL cache survives from earlier runs.
+
+## PIT-54: a MID-argument quote in execute_process lands in the child cache as a literal (2026-10-13, three debug rounds)
+- **Symptom**: `-DPOLYORCH_CMAKE_DIR="${dir}"` inside execute_process(COMMAND ...) --
+  the child configure's include() failed on a path whose first segment was wrapped in
+  literal quote characters; three rounds misdiagnosed (trailing slash, then heredoc
+  escaping) before the raw argv was trusted.
+- **Root cause**: CMake-language quoting keeps quotes appearing MID-argument in the
+  resulting token; the child cmake takes everything after `=` verbatim, quotes included.
+  A direct SHELL invocation does not reproduce it (the shell strips quotes) -- so a
+  shell repro is NOT a repro of an execute_process argv path.
+- **Solution**: quote the WHOLE -D argument: `"-DPOLYORCH_CMAKE_DIR=${dir}"`.
+- **Verification**: the include() line of the generated child CMakeLists prints the
+  expanded value; a `"` inside it = this pitfall.
+- **Forbidden**: diagnosing this from a shell repro; editing the child file's $-escaping
+  while the parent's -D value is the broken side.
+
+## PIT-55: test-scaffold CMakeLists trio -- CASE reset, bracket-arg escaping, python-chain quote-eating (2026-10-13/14, six recurrences)
+- **Symptom**: (a) a generated child CMakeLists containing `set(CASE "")` reported
+  zero branch hits despite -DCASE passed (three cases: t-wasm-serve, t-option, and the
+  matrix design round); (b) `$\{POLYORCH_CMAKE_DIR\}` written "to escape" for the child
+  became a LITERAL in the file and broke include() (bracket arguments expand NOTHING --
+  write ${VAR} plainly inside [=[ ]=]); (c) python-patch chains ate the `\"` escaping
+  of CMake string content ("Syntax Warning ... Argument not separated" from a
+  de-escaped regex literal).
+- **Root cause**: three independent quoting layers (cmake -P script / file(WRITE
+  bracket-arg) / python string replace) each have DIFFERENT escape semantics; the
+  intuition of one layer applied to another produces silent literals, not errors.
+- **Solution**: inside bracket-arg templates write variables plainly (no expansion
+  happens anyway); NEVER seed a -D-influenced variable with set() in the template;
+  for CMake strings containing JSON quotes prefer the write tool over multi-layer
+  python replace.
+- **Verification**: `sed -n '3p' <generated child CMakeLists> | cat -A` -- visible
+  backslashes/quotes where none belong; zero-hit branch = grep the template for a
+  `set(CASE` line.
+- **Forbidden**: re-escaping the same content a second time because round one "didn't
+  take" -- confirm which layer mangled it first.
+
+## PIT-56: renaming one creation point INTO the name of another arms a latent CMP0002 (2026-10-13, exploded in the debug preset a full round later)
+- **Symptom**: T-H5.5 renamed rs/cargo-run buttons to visiaengine-example-<E#>-run;
+  configure green under default. The DEBUG preset (gate ON) then died on CMP0002:
+  V's manual button and polyorch_rust_run's internal `<TARGET>-run` had become the
+  SAME name. One month of three-way distinct names had hidden the two creation points.
+- **Root cause**: a rename sweep checks the renamed strings; it does not ask "does the
+  NEW name already have a creator somewhere (a supplier face that also emits one)".
+  The AFTER snapshot ran one preset -- the second creator lived behind a gate the
+  snapshot never opened.
+- **Solution**: rename target names must enumerate ALL creators of the destination
+  name (grep the supplier face for add_custom_target/${T}- patterns), and the AFTER
+  verification must run EVERY gate polarity the lane supports.
+- **Verification**: configure under BOTH presets green; `--target help` diff before/
+  after under each polarity, not just the default one.
+- **Forbidden**: closing a rename round after one preset's snapshot.
+
+## PIT-57: a gated generator hook short-circuits the WHOLE surface -- switching presets FREEZES stale rows, it does not empty them (2026-10-14, measured)
+- **Symptom**: expectation (from the launch.json empty-block report): a default-preset
+  (gate OFF) reconfigure empties the debug region. Reality after the dual-state fix:
+  the DEFER hook registers only when a face gate is ON -- gate OFF runs no generator
+  at all, the launch.json keeps its previous debug-era rows UNCHANGED (usable F5 by
+  accident, or silently pointing at renamed artifacts).
+- **Root cause**: "writes empty region" and "does not write at all" are two different
+  failure shapes; the hook architecture gives the second. The Momus one-line STATUS
+  (empty-over-nonempty) is UNREACHABLE in pure single-polarity worlds -- retained
+  only for the mixed-face case (one face ON, another switched OFF).
+- **Solution**: document "preset switch does not clear" as the architecture fact;
+  stale rows on renames die at the next gate-ON configure (rows are regenerated from
+  current targets, never from the file).
+- **Verification**: gate-off configure leaves .vscode mtime unchanged; gate-on
+  configure regenerates rows fully (rename round proof: 29 rows reappeared with the
+  new names).
+- **Forbidden**: reasoning "empty block overwrote the file" from the first
+  observation -- check the file content before attributing the mechanism.
+
+## PIT-58: a test leg that re-types the shipped string tests the copy, not the product (2026-10-14, live user failure)
+- **Symptom**: E306 run button died in winit ("neither WAYLAND_DISPLAY nor
+  WAYLAND_SOCKET nor DISPLAY is set") and then in sh syntax errors, while
+  t-rust-run-gui/t-example-run were all GREEN: the probe string shipped to
+  build.ninja carried literal `$${DISPLAY:-}`, leaked `]==]` bracket-close
+  garbage, and had its newlines flattened (`&&[ -z`).
+- **Root cause**: three stacked blind spots -- (1) the `$$`+REGEX collapse
+  inherited from the quoted era NEVER matched (CMake regex `\$\$` semantics);
+  (2) the MULTI-LINE command string is newline-flattened by the NINJA
+  generator, invisible under the Makefile generator the unit legs run on;
+  (3) the live leg hand-copied the script text into execute_process instead
+  of executing the shipped function's output -- so it proved the copy.
+- **Solution**: bracket argument expands nothing (single $ verbatim) + ONE
+  line, semicolon-separated (portable across generators) + the test consumes
+  `_<...>_probe_script` OUTPUT directly (absence-pin on `$$` added).
+- **Verification**:
+  `grep -n "_polyorch_gui_probe_script" tests/cases/t-rust-run-gui.cmake`
+  (the live leg must call the shipped helper, not re-type the text); the
+  double-dollar absence pin fires on any regression.
+- **Forbidden**: proving a shipped string by re-typing it in the leg;
+  Makefile-only shape pins for command text meant to run under Ninja.
+
+## PIT-59: a ';' inside an embedded -c script silently splits into argv (2026-10-14, serve button never bound)
+- **Symptom**: the serve button "completed 0" without a listener: python ran only the first segment `import http.server,sys` of the -c one-liner and exited clean -- no FAILED line, no traceback.
+- **Root cause**: the code string passed through an unquoted COMMAND list expansion: CMake splits on ';' FIRST, so each segment became its own argv entry. The C21 corruption class wearing the "shell one-liner" hat.
+- **Solution**: shipped shell bodies live in a generated file (file(WRITE script)) invoked by path -- zero quoting ladders; where a string must survive, '@'-join and collapse.
+- **Verification**: `grep -m1 "COMMAND" build.ninja | grep ";"` on the command text -- a ';' outside CMake's own separators = split happened; live proof = port actually listens.
+- **Forbidden**: trusting a "completed 0" for a daemon-shaped command; one-liners with semicolons through list expansion.
+
+## PIT-60: post-hoc set_property(DEPENDS) never reaches the Ninja graph -- constructor only (2026-10-14)
+- **Symptom**: polyorch_rust_wasm_serve's header promised "stale glue cannot be served", but a fresh tree served an empty pkg/: build.ninja showed only the module mediator edge.
+- **Root cause**: the promise was written as a COMMENT, never wired; the first repair attempt used set_property(APPEND PROPERTY DEPENDS) after target creation -- silently invisible to the generator (measured: the edge line never changed).
+- **Solution**: file-level deps of custom targets go through the add_custom_target(DEPENDS ...) constructor, full stop. Read the generated build.ninja as the acceptance evidence, not the source comment.
+- **Verification**: `grep "wasm-serve: CUSTOM" build.ninja` shows the flavor .js outputs among the edge's deps.
+- **Forbidden**: accepting "the property was set" as proof a dependency edge exists.
+
+## PIT-61: curl-200 is not a browser -- page surfaces need execution checks (2026-10-14, hub DOM suicide)
+- **Symptom**: every wall probe answered 200 (files, MIME, wasm) yet the user saw an empty sidebar + black iframe: render() wiped side.innerHTML and then re-appended #q -- already removed from the DOM -> appendChild(null) threw before anything rendered.
+- **Root cause**: static-asset verification (curl) proves delivery, never JS execution; all pages were authored in the same session that never opened one.
+- **Solution**: page-class work ships with (a) node --check on every inline module (write the script to a .mjs -- --input-type+--check is not a thing) and (b) ONE browser pass on the checklist before declaring done; honest escalation: a headless (playwright) leg is the real net, filed as a proposal, not built.
+- **Verification**: `grep -c '"id"' wall.json` vs user-visible entry count; the syntax sweep command lives in the T-H11 commit history.
+- **Forbidden**: reporting "wall verified live" off curl probes alone.
+
+## PIT-62: shared-target attributes rewritten per registration drift by call ORDER; an opt-in with a default name is opt-out (2026-10-14)
+- **Symptom**: the tree-wide polyorch-rust-all aggregate materialized inside the host's examples/rs FOLDER, and existed in trees that never asked for it (user catch: “is this abnormal?”).
+- **Root cause**: every polyorch_rust_build call re-stamped the aggregate's FOLDER (last-writer-wins: the button "moved" to whoever registered last) and the "opt-in" knob carried a default name, so the opt was never required.
+- **Solution**: first-writer pins (create-and-fold once; later calls only add_dependencies); opt-in knobs have NO default -- unnamed means unbuilt. Applies to any shared aggregate/generator hook attribute.
+- **Verification**: t-rust-agg-optin (no-knob absence pin + folder-pin probe); `--target help` under a host that never set the knob shows zero aggregate.
+- **Forbidden**: stamping shared-target properties outside the creation branch; "optional" features that appear anyway.
+
+## PIT-64: a head-truncated wiring grep created a phantom gap -- the call already existed (2026-10-15, stale-fixes round)
+- **Symptom**: audit concluded "E703 example is missing its native-debug wiring"; the walk-through adjudicated "add the call"; the plan-review pass found `examples/qt/CMakeLists.txt:32-36` ALREADY contains the guard+call (landed cd2ea51). Executing the adjudication as written would have duplicated a registration.
+- **Root cause**: the original evidence was a `grep ... | head -12` whose 12 lines were all consumed by earlier matches; the wiring lines sat below the cut. Both the auditor and the orchestrator trusted the truncated view.
+- **Solution**: wiring-presence greps must run UNTRUNCATED over the file (or with `-c` first), and any "missing X" adjudication gets one full-file `grep -n X <file>` re-check before dispatch. The plan-review caught it because the reviewer read the real file instead of the digest.
+- **Verification**: before writing "missing/absent" findings into any plan: `grep -n '<exact callee>' <file>` full output in hand.
+- **Forbidden**: concluding absence from a truncated grep; treating an adjudication premise as immune to a later full-file read.
+
+## PIT-65: a trailing comment on a .gitignore line voids the rule -- tasks.json never landed since T-E (2026-10-15)
+- **Symptom**: `!.vscode/tasks.json   # T-E: commit the managed region` looked like an un-ignore rule; git treats the whole string after `tasks.json` as part of the pattern (gitignore `#` is a comment ONLY at line start) -- the negation matched nothing, and tasks.json stayed ignored for its entire lifetime.
+- **Root cause**: no gate checked the TRACKED state of the trio; the IDE audit read the DISK file (the generator writes it regardless of git status) and reported "all three committed" from disk evidence.
+- **Solution**: comments go on their own line; contracts about committed files are proved with `git ls-files`, not by reading the file off disk. Fixed by `27cbbfc` (first tasks.json commit followed in b6e0e7f).
+- **Verification**: `git ls-files .vscode/` lists exactly launch.json settings.json tasks.json.
+- **Forbidden**: `pattern   # comment` shapes in .gitignore; asserting tracked-ness from disk presence.
+
+## PIT-66: two configure presets must not share one binaryDir; a refresh tree must see EVERY lane (2026-10-15)
+- **Symptom**: `debug` preset (Qt ON + debug knob) inherited `cmake-build` from `default`; one `pixi run f5` stamped `VISIAENGINE_QT=ON` into the everyday cache, and since default carries no Qt key, every later `--preset default` configure FATALed. Separately: giving the everyday preset the refresh knob made the committed .vscode ping-pong -- default sees 43 lanes, debug sees 44; last configurator wins, rows flip.
+- **Root cause**: preset cacheVariables apply only to ABSENT keys -- a stamp from a sibling preset survives as a booby trap; and the .vscode generator REWRITES its whole managed region from what the current configure registered -- a refresh tree that cannot see a lane actively deletes that lane's row.
+- **Solution**: one binaryDir per preset (`cmake-build-<name>`, repo convention); only the FULL-FEATURE tree (Qt + knob, run in the env that carries Qt) owns the refresh duty -- `pixi run f5` (debug preset, own `cmake-build-debug`); knob-less everyday configures provably leave `.vscode` untouched (cmp-verified).
+- **Verification**: `python3 -m json.tool CMakePresets.json` + each preset's binaryDir distinct; `pixi run cmake --preset default` after `f5` → `cmp` byte-identical.
+- **Forbidden**: sharing a cache across presets with asymmetric feature gates; handing region-rewrite duty to a tree that cannot see every lane.
+
+## PIT-67: audit dispatch pinned the WRONG repo's layout -- the auditor self-attested its drift via HEAD (2026-10-15, team audit round)
+- **Symptom**: the docs-and-generated team member reported on the ./PolyOrch submodule (its "HEAD 3cbc155", greet-cargo/rust-basic surface) instead of the host VisiaEngine docs the assignment needed.
+- **Root cause**: the dispatch prompt's SCOPE file list was copied from the supplier's AGENTS layout (whitepaper/tutorials/modules tree) while cwd was the host; contradictory anchors resolved silently -- the worker obeyed the file list, not the intent.
+- **Solution**: first line of any cross-repo dispatch = the absolute path of the target repo; on report arrival, check the self-attested scope (HEAD hash / path prefixes) BEFORE folding findings in. Rescoping by continuation message (same session, context kept) cost one round-trip and still produced the supplier findings as a bonus.
+- **Verification**: `grep -m1 'HEAD' <report>` names the repo the worker actually read.
+- **Forbidden**: relative-only scope lists in multi-repo workspaces; trusting dispatch intent over dispatch anchors.
+
+## PIT-68: synthesis-lead member was dead weight in a read-only audit fanout (2026-10-15, one-line capture)
+- All member reports arrive at the orchestrator INLINE as peer messages; a "dedup+rank+summarize" lead only sees what the orchestrator already holds -- plain parallel task() fanout saves the slot and the unread-message traffic. Use teams when members must message EACH OTHER; audits don't.
+
+## PIT-69: closing reports from memory fabricate facts -- hashes, backlogs, phantom fixes (2026-10-15, self-caught same session)
+- **Symptom**: the reuse-round closing message asserted (a) a fix commit `c3c5355` that does not exist (no T-H12-line error existed to fix), (b) "V backlog 39" (truth: 2), (c) remote tips quoted from a garbled remembered string instead of a live read. Caught only when the user's follow-up question forced fresh `cat-file`/`rev-list`/`ls-remote` runs.
+- **Root cause**: composition-from-recollection after long serial-worker rounds: real events + plausible details get blended into claims; pushes whose output was swallowed by shell timeouts got "concluded" both ways (earlier "blocked by network stall" was also WRONG -- refs had landed).
+- **Solution**: every hash/count/tip in a report must come from a command executed IN THE SAME MESSAGE's preceding tool call; swallowed push output => re-derive from `ls-remote` before declaring blocked or done.
+- **Verification**: the report's numbers traceable to pasted outputs; `git cat-file -t <every quoted hash>` resolves.
+- **Forbidden**: quoting SHAs/backlogs from session memory; declaring push state without ls-remote; the recapitulating close-out without a fresh evidence block.
+
+## PIT-70: D-Bus system-proxy config poisons every chromium loopback fetch (2026-10-16, gate-web round)
+- **Symptom**: chromium headless hung on ALL http pages (dump returned placeholders, screenshots black, "Page load timed out"); file:// pages were fine. A raw socket listener proved chrome opened the TCP connection and sent ZERO bytes.
+- **Root cause**: chromium reads the desktop system-proxy over the session D-Bus. Scrubbing http_proxy env, --no-proxy-server and --proxy-bypass-list all failed -- the proxy came from the bus, not the env.
+- **Solution**: launch chromium with the session bus removed: `env -u DBUS_SESSION_BUS_ADDRESS` (baked into gate-web.sh as CHROME_ENV).
+- **Verification**: one small served page dumps instantly after the scrub; the whole gate runs in ~4 s.
+- **Prevention**: when a browser-ish tool dies ONLY on loopback but file:// works, suspect the desktop services bus before blaming the server -- and re-test this class with the smallest possible page.
+
+## PIT-71: --dump-dom fires AT the load event; CLI snapshots cannot see post-load GPU boot (2026-10-16, gate-web round)
+- **Symptom**: the data-frame heartbeat never appeared in ANY dump (measured 20+ attempts, both headless forms, ~0.56-0.63 s exits); boot completes 1-3 s after load under swiftshader.
+- **Root cause**: Chrome 131 headless does NOT hold the load event for pending top-level await (spec-correct page semantics, unimplemented in the CLI lifecycle); --timeout is only a cap, virtual-time dumps before promises resolve.
+- **Solution**: make the page's OWN loader hold the line: a parse-time `<img src="/ve-gate-ready">` subresource whose response the gate server holds until the post-8-frame beacon arrives -> load (and dump) lands after boot; server-side READY log is the race-free proof channel. Harmless 404 outside the gate server.
+- **Verification**: green line carries `beacon <ms>, frames=8+`; negative proof (e) -- deleting the beacon line alone -- turns the leg RED while all other legs stay clean (load-bearing proven).
+- **Prevention**: to observe post-load async state from a CLI with no driver layer, hold load with a subresource, do not add a remote-control dependency.
+
+## PIT-72: restore-cp from a stale snapshot silently reverted an accepted mutation (2026-10-16, gate-web round)
+- **Symptom**: right after a "restore" in the negative-proof chain, the gate went RED impossibly (no beacon, empty server-side READY log, implausibly fast legs) -- the page had been reverted to its pre-anchor shape.
+- **Root cause**: the restore snapshot was taken BEFORE a later accepted page mutation; every accepted mutation invalidates all earlier restore snapshots -- the cp restored a legitimate-looking stale state.
+- **Solution**: retake the snapshot immediately after every accepted mutation; verify canonical state by grep + cmp BEFORE trusting any subsequent green/red.
+- **Verification**: this round re-snapshotted the anchor state, re-ran the full ledger, and only then recorded the final green; post-state cmp clean.
+- **Prevention**: in mutate/restore loops a snapshot is only valid until the next accepted edit -- stale-snapshot restores are the dangerous kind of "byte-identical".
+
+## PIT-73: with setsid, $! is NOT the server -- the port holder is (2026-10-16, serve-https round)
+- **Symptom**: `setsid python3 server & echo $!` recorded PID N; group-kill of N left the listener alive on :8443 (real holder N+4 -- setsid double-forks when the caller is not already a leader).
+- **Root cause**: trusting $! as the daemon PID under setsid; the recorded id is the intermediate parent.
+- **Solution**: after start, resolve the actual holder via `ss -tlnp` (pid=...) and kill by THAT; keep both ids recorded.
+- **Verification**: post-run `ss -tln | grep <port>` empty -- was re-proven live in the task-wiring test (holder killed, port clean).
+- **Prevention**: any lane that backgrounds a server under setsid must include a port-holder check in its cleanup path, not just a PID echo.
+
+## PIT-74: orchestrator "corrected" a working diagnostic with a spec-confabulated diagnosis; user evidence won (2026-10-16)
+- **Symptom**: remote LAN machine showed the wall's ✗ insecure-context line ("not localhost/HTTPS, WebGPU locked by the browser" — the page's own copy, translated here); the orchestrator declared the diagnostic itself buggy ("WebGPU is NOT gated on http; only mediaDevices is") and queued a fix to common.js.
+- **Root cause**: model-memory overrode both the W3C spec (WebGPU requires a secure context; navigator.gpu is simply absent on insecure origins) and the user's direct measurement; the "fix" would have corrupted a correct product string.
+- **Solution**: the queued fix was cancelled before any edit; the observed ✗ was the true behavior; the serve-https lane (c7fdeb4) is the spec-correct remedy, and the host-side beacon-over-https-untrusted-cert test empirically confirmed the secure-context boundary.
+- **Verification**: the page message matches spec; gate/web lane tests green.
+- **Prevention**: before declaring an observed diagnostic "wrong", cite the primary spec sentence or design a measurement -- chat-memory is not evidence (same family as the repo's "Do not invent facts").
+
+## PIT-75: Ninja DESC of a custom target is baked at add_custom_target time; post-hoc COMMENT writes never reach it (2026-10-19, dual-serve round)
+- **Symptom**: after the host-side overlay called set_target_properties(COMMENT ...) on visiaengine-wasm-serve, the build log STILL printed the supplier's old `[2/3] ... http://127.0.0.1:8017` description; the new dual-URL text appeared nowhere in build.ninja.
+- **Root cause**: the Ninja generator emits `DESC = <COMMENT>` into build.ninja during add_custom_target() registration; COMMENT is read once at target creation and never re-read. Verified by two minimal probes (with/without COMMAND): set_target_properties(... COMMENT "new desc") after creation leaves `DESC = old desc` in build.ninja in both.
+- **Solution**: to change a visible build-step description, the COMMENT must be correct AT add_custom_target time. When the text lives in a frozen supplier function (C23), the host registers the target itself (mirroring the recipe) instead of trying to patch a registered target.
+- **Verification**: `grep "DESC = " cmake-build/build.ninja | grep serve` shows the intended text; or run the /tmp probe pair (add_custom_target + post-hoc set_target_properties, grep "new desc" build.ninja = 0).
+- **Forbidden**: assuming CMake target properties are live/views that regenerate ninja output; describing a "fixed" DESC without grepping build.ninja.
+
+## PIT-76: file(WRITE) with a multi-line quoted argument is a CMake parse error, and my edit-tool writes kept smuggling in a stray `]` (2026-10-19, dual-serve round)
+- **Symptom**: `Parse error. Function missing ending ")"` at the file(WRITE) call; after switching to string(JOIN), the generated python failed with `unmatched ']'` (`];    pass` on one line) -- twice across two write attempts.
+- **Root cause**: (1) CMake quoted arguments do not span lines inside a command invocation the way I wrote them -- the parser dies before any code runs; (2) the edit tool wrote the line list with a `]` on the `"except KeyboardInterrupt:"` line (list-close glued to a content line), and since string(JOIN) receives the list via ${_py_lines}, the bracket rode into the generated script as literal text.
+- **Solution**: generate multi-line text via set(list of single-line strings) + string(JOIN "\n" ...) + file(WRITE "${f}" "${body}\n"); after ANY such edit, grep the cmake file for `\]` outside real list closes AND py_compile the generated artifact before declaring success.
+- **Verification**: `python3 -m py_compile <generated.py>` (the artifact, not the generator); `grep -n '\]' cmake/VisiaEngineWasm.cmake` eyeball for glued brackets.
+- **Forbidden**: multi-line quoted args in file(WRITE); trusting generator-side syntax while skipping artifact-side compile.
+
+## PIT-77: smoke-testing a foreground serve target from the orchestrator shell kills the IDE's own run -- one port, one owner (2026-10-19, dual-serve round)
+- **Symptom**: my background verification of visiaengine-wasm-serve bound :8017; the user's IDE run of the same target then failed with `OSError: [Errno 98] Address already in use` -- twice (once from a leftover serve, once from my own detached probe).
+- **Root cause**: the serve target is a FOREGROUND dev server by design; any orchestrator-side verification run occupies the same port the IDE button wants. setsid/nohup kept the python child alive after the parent cmake was killed (PIT-73 family: kill the port holder by PID, not the launcher).
+- **Solution**: when verifying a serve/port-bound target from the agent shell, ALWAYS clean up by port holder PID (`ss -tlnp 'sport = :PORT'` -> kill pid) before ending the turn, and never leave a detached instance running. State it in the delivery message so the user knows the port is theirs.
+- **Verification**: `ss -tln 'sport = :8017'` empty at hand-off; user IDE run binds successfully.
+- **Forbidden**: leaving detached serve processes running after verification; killing the launcher PID only and assuming the child died.
+
+## PIT-78: "pick dead on wasm" was an ENGINE bug -- a surface the pixel gate never probes can hide a total defect (2026-10-19, review-fix round)
+- **Symptom**: E811 on wasm picked 0/307200 px while the same fixture picked 462 hits native; the 5-lane review's QA read it as "wasm32-specific glTF node-transform breakage".
+- **Root cause**: mount_gltf never fit a camera (only geo/tiles paths did) -- node-transformed fixtures sat off-frustum of the initial rig on EVERY backend. The wasm framing was wrong twice over (no fit + no page-level pick probe), so the wasm surface hid an engine-level defect and mis-attributed it to the platform.
+- **Solution**: fix the engine (mount_gltf framing fit, oblique depression per the E201 pitch law) and give every interactive page a machine-readable probe (?selftest rides the gate beacon; gate-web asserts RED+GREEN).
+- **Verification**: gltf_node_transform_pick_preserved (RED-proven) + gate-web E401 pick assertion.
+- **Forbidden**: reading a backend-specific diagnosis off a surface that shares one engine; calling a lane "verified" when its pick/interaction surface has no probe.
+
+## PIT-79: transposing a matrix to "fix" a mystery -- verify the producer's contract from its SOURCE before touching conventions (2026-10-19, same round)
+- **Symptom**: hierarchy.glb picked 0 hits; a transpose of mat4_f64 was tried, GLTF-02/08 spec gates went red, and the "fix" fight consumed several rounds before being reverted.
+- **Root cause**: the transposed form fixed a symptom (translation landing in the wrong slot) that actually belonged to the missing mount fit; the gltf crate's Transform::matrix() is COLUMN-major per glTF spec -- verified only later by reading the crate source ("4x4 transformation matrix in column-major order").
+- **Solution**: read the producing crate's source/doc FIRST (grep the vendored registry source), re-derive, then edit; when a spec gate contradicts your change, treat that as evidence AGAINST the change, not a stale gate.
+- **Verification**: git log 34931f9 (revert documented in the commit message); gltf_spec 9/9 green at the verbatim widening.
+- **Forbidden**: "the gate must be stale" reasoning; convention-level rewrites to rescue a hypothesis.
+
+## PIT-80: fit-changed framing breaks every "pick the center pixel" assumption downstream (2026-10-19, same round)
+- **Symptom**: after mount_gltf's fit landed, hide_filters/render_spec/E701/E811_c/E811cpp failed on "center must hit" -- and E701's lit-scan also mistook the clear color [13,18,25] (sums to 56 > 40) for content.
+- **Root cause**: a framing change is an invisible API break for consumers that hard-coded screen coordinates; the clear color sits above common luminance floors.
+- **Solution**: sweep for the first pick hit (or walk lit pixels until pick agrees, skipping the clear color explicitly); gates assert existence ("some pixel lit", "some hit"), not a specific pixel.
+- **Verification**: cargo test -p visiaengine-ffi (10 files green); ctest headless lane green; ctest -R example_E811_entity_hide_c/cpp green.
+- **Forbidden**: new consumers asserting a fixed screen point after any camera/framing change; luminance thresholds without a background-color exclusion.
+
+## PIT-81: veLoop's onFrame callback receives NO arguments; ad-hoc harness chrome runs need the D-Bus scrub (2026-10-23, E305 band)
+- **Symptom 1**: E305's drone never moved and the page threw `Uncaught TypeError: Cannot read properties of undefined (reading '0')` at the Catmull-Rom call site -- `moveDrone(now)` received `now === undefined` because `common.js` veLoop invokes `onFrame()` bare.
+- **Root cause 1**: the callback contract is "page takes its own clock" (deliberate: the rAF timestamp belongs to the closure that owns the loop); assuming an rAF-timestamp parameter is writing against an unverified signature (ghost-API family).
+- **Solution 1**: `const moveDrone = () => { const now = performance.now(); ... }`. Rule: every new page reads common.js's actual signatures before consuming shared scaffolding.
+- **Symptom 2**: an ad-hoc `chrome --dump-dom http://127.0.0.1:...` run returned an EMPTY dom (40 bytes) with zero console lines, mimicking a dead page.
+- **Root cause 2**: the shell's proxy/D-Bus environment; gate-web.sh already documents the measured fix (`env -u DBUS_SESSION_BUS_ADDRESS`, "every http page hangs, file:// unaffected") -- the probe bypassed the gate's own environment.
+- **Solution 2**: any manual chrome probe copies gate-web's environment (`env -u DBUS_SESSION_BUS_ADDRESS`) or just runs the gate; empty-dom + no-console = probe-side, not page-side.
+- **Verification**: gate-web E305 beacon 947ms; grep CONSOLE lines in the gated dom shows only the WebGPU-experimental INFO.
+- **Forbidden**: consuming shared scaffolding without reading its signatures; hand-rolled chrome probes without the gate's env scrub.
+
+## PIT-82: an unclosed <script type="module"> tag silently disables the whole page -- and my own degenerate write caused it (2026-10-23, E901 band)
+- **Symptom**: E901 failed gate with "no beacon" while showing ZERO console output; the status line never left its initial text. Every manual probe (node --check, ESM check, screenshots on a bare server) looked healthy or inconclusive.
+- **Root cause**: two stacked defects. (1) The degenerate write that authored the page ate the closing `</script></body></html>` tail -- an unclosed module block swallows the rest of the document and is NEVER evaluated, silently (no SyntaxError reaches the console). (2) node --check on the sed-extracted body cannot catch this: the sed range `/<script type="module">/,/<\/script>/p` falls through to EOF when no close exists, so the "JS-OK" check validated JS that the browser never ran.
+- **Solution**: structural self-check before any page gate: `grep -c "<script" ` must equal `grep -c "</script>"` (and `</html>` must be the last line). In-page stage probes (`st.textContent = 'stage...'` after each await) localize a hang on the next gate run.
+- **Verification**: after the close landed, the SAME file immediately progressed from "no beacon" to "engine reported a fail mark" (evaluation began) and then to beacon green once the normals-tiling bug (addMesh rejects normals shorter than positions -- tile the zero block per merged tower) was fixed.
+- **Forbidden**: trusting node --check as page-level proof (it checks text, not the document); diagnosing "page dead" without a tag-balance grep first.
+
+## PIT-83: wasm-bindgen glue does not track lib.rs -- a stale pkg passes host checks and ships without the new bridge (2026-10-23, bytes-bridge band)
+- **Symptom**: after adding a wasm-bindgen leaf (e.g. loadTileBytes), `cargo check --target wasm32` passed, web-check passed, but the served `pkg/visiaengine_wasm.js` did not contain the new export -- the page died calling an undefined function.
+- **Root cause**: the js-build target's ninja graph judged the bindgen step up-to-date (the wasm artifact was rebuilt, but the glue generation was not re-run; "Re-running CMake" consumed the build round). Stale glue is invisible to every host-side check because only the page actually calls the export.
+- **Solution**: force the replay whenever lib.rs changed under bindings/wasm: `rm -rf cmake-build/web/pkg-web && cmake --build ... --target visiaengine-wasm-js-build`, then grep the generated js for the new `js_name` BEFORE any page-level verification (expect >=2 hits: export + d.ts shape).
+- **Verification**: `grep -c "<BridgeName>" cmake-build/web/pkg-web/visiaengine_wasm.js` >= 2 after the forced replay; gate-web page beacon green.
+- **Forbidden**: trusting web-check/cargo-check as evidence a new bridge shipped; building pages against a bridge before grepping the generated glue.
+
+### status
+# VisiaEngine Status
+
+**Generated**: 2026-09-03 | Phase: project init | Branch: main (first 6 commits in git log; a clean worktree is the normal state)
+
+> The full history of the predecessor MediaServo (the D/PIT/C numbering system, the crate matrix, Phase records) lives in the local archive `.refinfo/MediaServo/.agents/memorys/` (gitignored, not distributed with clones). This directory accumulates VisiaEngine history from scratch starting 2026-09-03.
+
+## Overview
+
+| Item | State |
+|----|------|
+| Tech stack | ✅ Rust core + wgpu rendering (whitepaper v0.1.0, settled 2026-09-03); **backend = D4 final ruling: wgpu direct use, self-built pipeline `visiaengine-render-wgpu` (Bevy not adopted)**; SDK form (C API FFI); Open Core business model |
+| License | ✅ landed: MIT OR Apache-2.0 dual-license canonical files (LICENSE-MIT/LICENSE-APACHE); the irrevocability promise is in the README |
+| Source | crates/ **5** crates (core/render/render-wgpu/io-gltf/geo), ~4.7k lines, **68 cargo tests all green** + 4×L2 smoke wired; offscreen golden 9/9 on this machine's lavapipe with no SKIP; fixtures migrated to `resources/data/` (1b) |
+| Positioning | ✅ multi-dimensional spatial visualization engine (unified 2D/2.5D/3D; GIS / digital twin / AV simulation / BIM), not a game engine |
+| Agent toolchain | ✅ neutralized + registry + two-tier AGENTS; Rust rules loaded into instructions (16 entries); MCP repair round: nodejs into the pixi env + the with-node wrapper, codegraph/github paths green, openspace moved to the on-demand family (PIT-6) |
+
+## Phase status
+
+| Phase | State |
+|-------|:----:|
+| 0 project init (config neutralization / whitepaper / architecture baseline / reference library / licenses) | ✅ |
+| 1 MVP | 🔨 content round + GeoJSON slice done (G1-G4 ✓; H1-H4 ✓: geo parsing / tessellation styles / D7 landed / geo_viewer); host embedding / capi = later slices |
+| 2 Alpha / 3 Beta / 4 1.0 | — whitepaper roadmap |
+
+## Next steps
+
+1. **push gitee** (remote sync advanced on the user's side; the local-ahead count varies per round) + the GitHub mirror decision (the five L2 smoke+gate lanes in ci.yml go live that day) — **user side still needs GITHUB_TOKEN + restart to verify MCP**
+2. ~~P1 adjudication~~ ✅ D7 ruled + **H3 implemented** (compose_mvp landed, WGPU-10 far-origin pixel-equality proven)
+3. ~~host-embedding slice standing by~~ ✅ **approval round (2026-09-11)**: batch 2 v1.4 + batch 7 v1.4 approved together; I0/J0 environment round started; the Qt demo stays its own entry (qt-main expansion rides that round)
+4. capi slice (ABI surface locked by D6: visiaengine_*/visiaengine.h); texture/material PBR, screen-space line width, MVT/tile streaming (⑦) = Alpha tier
+5. P2 style-spec compatibility adjudication (above the six simplestyle keys: a MapLibre v8 subset?) — style-system design round
+4. CI activation: the GitHub mirror repo decision day (ci.yml already has three chained smokes); Gitee push awaiting instruction
+5. wgpu upgrade window (quarterly): re-run the PIT-3/PIT-5 breakage checklist
+6. env/license clauses unchanged (D5/D6); during the mirror-CI standby, this machine's `pixi run ci` is the only gate (proven in the G round)
+
+## MVP content-round baseline (2026-09-03, G1-G4)
+
+`pixi run ci` all green · spec-trace **66↔66** (five namespaces CORE/REND/WGPU/GLTF/GEO) · cube golden 7/7 on this machine's lavapipe real runs · L2 three smokes wired (where they run green = CI standby) · 11 commits on the surface (planned 9 + S2/G1 supplemental + G4 split-b, K5 elastic accounting) · PIT-5 filed (wgpu [0,1] silent clipping)
+
+## GeoJSON slice baseline (2026-09-03, H1-H4)
+
+geo crate 16 tests (GEO-01..14) · D7 full chain: `tessellate` takes local input (the `GeoKind::shifted` primitive) + `rebase::compose_mvp` f64 subtraction + far-origin cube/geo pixel-level end-to-end verification · Web Mercator spherical formulas (the EPSG:3857 definitional semantics into the SDD) · geo_viewer example + 4th smoke lane · 12 commits (planned 8 + RED supplemental / H1 close-out one each, covered by the elastic clause) · three incidents recorded honestly in messages (parallel edit of two view_rotation / a contract not written within its batch / the 51 claimed count)
+
+## Plan v1.1 batches 0/1 baseline (2026-09-03, Easy3D-borrowing port, work-start round)
+
+- batch 0: three-tier testing (T1/T2/T3) + example gate + D8 pre-registration into rules/decisions (`0464fd2`)
+- batch 1a: LoadReport+RepairPolicy five error classes (GEO-15/16) + GLTF-09 mode filter (**incidentally fixing the POINTS fake-triangle legacy bug**) (RED `6892b81` + GREEN `07999cd`)
+- batch 1b: testdata→resources/data migration, 14 synced sites, grep zeroed (`229f77f`)
+- baseline: 66↔66 · 68 tests · ci exit=0 · golden no SKIP; boundary facts: JSON numeric out-of-domain rejected at the document layer = dual-strategy Err (clause note); non-finite coordinates unreachable at the parse entrance (the field keeps the web_mercator direct-call path)
+- plan doc `.omo/plans/easy3d-adoption-plan.md` (v1.1 approved); next = batch 2 planning round (host embedding, incl. D8 finalization) or batch 3 (∥3c→3b) + batch 3.5 interaction slice
+
+## Batch 3a baseline (2026-09-03, AttrSet attribute-column round)
+
+- core::AttrSet (CORE-11/12/13): three-type closed column store, row-alignment invariant, missing ≠ zero, first-write sets the type
+- geo (GEO-17/18): props no longer dropped after parsing (the host query port opens); styles read via typed columns, style.rs zero JSON dependency (the gate-style task enters the ci chain)
+- baseline: **71↔71 · 74 passed · ci exit=0 · golden 9/9 no SKIP**; RED `070ce59` GREEN `28c250f`
+- two lessons recorded honestly: the GREEN regression net caught the feed's plain-item branch bypassing the accept classifier; the first grep-gate predicate was tripped by its own comment text (predicate narrowed to code shapes)
+- 3c ruled: **D9=B** (v8 paint alias subset, primary keys first / expression boundary frozen) → GEO-19 implemented (the `str_first/f64_first` fallback mapping)
+- baseline refresh: **72↔72 · 76 passed · ci exit=0 (incl. the gate-style segment) · golden 9/9 no SKIP**
+- 3b implemented (revised downgrade to CPU lerp, GEO-20 + the three-color render family golden): **73↔73 · 80 passed · ci exit=0 · SKIP 0**; batch 3 fully cleared
+- lesson appended: grep -c zero-match = exit 1 breaks && chains (the 3b commit chain broke once; confirmed on re-run)
+- 3.5a/b implemented (CORE-14/15 + REND-21/22 ray family, MT intersection + screen port): **77↔77 · 84 passed**; RED `929b3b6` GREEN `0db9d87`
+- GREEN wins: a real bug of slab tmax variable misuse + two test-side ones (zoom default / f32 aspect noise); PIT-7 filed (deny network-flakiness false reds)
+- 3.5d implemented (GEO-21/22 plane measurement, lint folded in via amend); 3.5c/e implemented (REND-23/24 pick_meshes + WGPU-12/13 highlight + **depth surface filled in** + E401/E403 + dual smoke lanes)
+- baseline refresh: **83↔83 · 90 passed · ci exit=0 · golden no SKIP · smoke-pick/measure real local runs green**
+- WGPU-13 legacy fix: the mesh pipeline previously had no depth buffer (single-object goldens masked it) — multi-entity occlusion is correct from here on
+- interaction slice (all five 3.5 items) closed
+- **batch 2 approval round in execution (2026-09-11)**: I0+J0 environment round `a163d0d` (host/wasm dual spike environments, wasm full-tree green with zero cfg fixes, PROBE-OK) → I1 `c68e57c` (handle/fence/thread/error-string/input-port — six-clause tests) → I2 `6bdd7e7` (the real out-frame chain + **headless readback row-alignment legacy bug fixed** + gate-abi 14/14 + demo 'OK capi headless'); baseline **88↔88 · 98 passed · ci=0**
+- discipline #17 fourth-and-corrected×4 (two amends this round: mixed-scope commit / claiming green while clippy red / the 87 typo) — commit-message numbers must be pasted from same-terminal measured output
+- next: I3 attach spike (x11 SurfaceTarget) ∥ I4 input/pick demo → batch 7 J1; push awaiting instruction
+
+## Qt widget round baseline (2026-09-14, v1.3 Q1-Q3 all landed)
+
+- Q1 (the `render_spec` lock): viewport switched to dims with three-surface assertions going green directly — "behavior existed, lock absent" recorded honestly
+- Q2/Q3 (this commit): widget.hpp (header-only, zero moc / the PaintOnScreen trio) + qt_app real window (texquad+park) + smoke-qt tri-state; the QTimer 60Hz pull pump running through = **D8 trigger ① re-evaluation: maintain suspension** (no frame-skip negotiation demand; next trigger = video/decoded-frame-aligned hosts)
+- conda Qt double-pit filed: qt-main is actually Qt5, the proper name is qt6-main; QX11Application not packaged → Xlib self-held Display* (the cross-connection xid contract fulfilled)
+- baseline refresh: **143 passed · ci ten segments ✓ · SMOKE-QT ✓ (real window @:0) · 108↔108 · 14/14**
+- Alpha remaining balance: npm/pip packaging (incl. the cmake install tree / corrosion re-evaluation D-11), real PBR, site, E402, wayland/Win/mac matrix
+
+## CMake engineering-layer baseline (2026-09-14, C1-C3; Qt round v1.3 consumption surface pending)
+
+- plan `.omo/plans/visiaengine-cmake-project.md` v1.0 (Momus OKAY 0B; the six→ten segment wording fixed) + Qt round v1.3 (build surface made public)
+- C1: root facade (version single-source from Cargo.toml, hard-error lock) + SDK three-tier resolution (AUTO/PIXI/SYSTEM/path × Rust/Qt dual channels) + presets; **measured semantics hole during review**: the pixi-activated PATH made SYSTEM falsely pass → anti-pollution dual filters (rejection messages name the culprit); tools + cmake, ninja, gxx_linux-64 (R1 measured: add 2.6s / first install ~3min)
+- C2: cargo-step (repo-level shared target-dir, rerun 0.16s) + umbrella `visiaengine::capi` (rpath injection, no LD_LIBRARY_PATH) + in-tree fake Config + ctest probe — **first run caught a real gap: the handwritten header had zero extern "C" guards (pure-C demos' three green rounds masked it); after the fix the Qt-side pre-embedded debt cleared**; the links account not opened, evidence-based write-off (cargo requires a build script)
+- C3: cmake-smoke tri-state into ci (segment 10; machines without cmake SKIP) + gate-docs ⑤ facade purity (≤60 lines / no compile-rule wording) + README dual entry
+- baseline: **142 passed · 108↔108 untouched · ci ten segments ✓ · GATE-ABI 14/14 · ctest 1/1 · dual negative-path messages ✓**
+- interlude honestly: cmake message wrapping made a full-sentence grep assertion miss it (fixed to short-phrase assertions); the preset-schema field `output.outputOnFailure` wrong twice; calling conda cargo directly from a non-activated shell gave a fake rustc-missing (PATH semantics — the same lesson exists in the pytest family)
+
+## Batch 5 docs/tutorials landing baseline (2026-09-14 close-out)
+
+- plan `.omo/plans/visiaengine-docs-tutorials.md` v1.0 (Momus OKAY → approval → T1-T4 all landed; correction notes: cbindgen → handwritten header + signature gate, mdbook not done = site round)
+- T1 (`1031eef`): E-number renames, 11 items (E402 kept as a reserved gap; measure E403→E203 returns to its band) + E301 header-comment paste residue fixed + tutorials.md
+- T2 (`bfd2f57`): **E901_twin_city** vertical-slice seed (park real-scale 93×31m × 256 towers × PCSS × PNG human check; the nine smoke lanes +1); caster slope_bias → 0 hardened (the theoretical self-shadow plane removed; measured no difference in this scene)
+- T3: gate-docs four checks into ci (coming online it immediately caught README 83≠108 — the gate's value proven) + README/architecture v0.2/AGENTS zero drift
+- baseline: **142 passed · spec-trace 108↔108 · ci exit=0 (four gates) · smoke nine lanes ✓ · SKIP 0 · drift wording grep=0**
+- lesson: PIT-10 filed (scene human-check three-probe lesson: the pixel predicate was right but the lit-area position assumption wrong — low sun angle × building height → a legitimately long shadow band in the foreground)
+- **queue after batches 4/5**: 4g/4h SSAO/DDP/big-image striping/hot-reload = backlog (the sorter promises nothing); Alpha tier = Qt widget round / npm-pip packaging / real PBR (GGX) / site infrastructure / E402 interaction — all await user adjudication; R2 ruled = A accept status quo (user order 2026-09-15; package-size increment = the reasonable cost of the texture surface; the exit path stays closed); push awaiting
+
+## Batch 4f Shadow/PCSS baseline + batch 4 close (2026-09-14)
+
+- plan `.omo/plans/visiaengine-shadow-pcss.md` v1.0 (Momus OKAY 0B, 13 citations measured to hit → approval → P1-P4 all landed)
+- P1 (`73c9c39..`→`7845601`): REND-31 ShadowSetup / Frame.shadow Option (33 construction points, 21 real insertions as fallback) + the PIT-5 depth-domain lesson promoted to contract (the rig-triple dedicated path)
+- P2 (`f7e8..`→`3361392`): caster pre-pass (no-color-target dual pipelines ShadowMesh/ShadowInst, bias{-1,-1.5}, 1024² map lazily built); View block 176B (light_view_proj per-draw compose_mvp reuse [adjudication point a]); the three receiving bgls always bind params/map/cmp-sampler (resident dummies = dynamic branching, not layout branching); params-off loads the old LIGHT at the same position type = the sp.a.rgb retirement path bit-unchanged (R4 guardrail, the golden suite self-proves all green)
+- P3 (`f91f759`): PCSS three stages [E3D:B3 single-pass port] (8-ring blocker textureLoad → penumbra clamp[texel,0.06] → 16-tap Poisson compare); monotonicity double-sided lock soft>2×hard ∧ hard<400 ∧ soft<6000
+- P4 (this commit): shadow_demo example (the 16×16 city, dark=22647 assertion) + GL-degrade guard (wgpu-30 reality: GLES = a Gl sub-version single variant) + smoke's eighth lane
+- **batch 4 fully closed**: 4ab✓ 4c✓ 4de✓ 4f✓ → batch 5 (docs landing) force-trigger condition met; SSAO/DDP/big-image striping/hot-reload = 4g/4h backlog (the sorter promises nothing)
+- incidents honestly: two naga hard evidences noted into the archive (`0u32` literal suffix rejected → i32 inference + u32() indexing; duplicate match-arm masking = the triple silently unpropagated, located via the binding-missing error); the splice cut point ate a regex lookahead leaving an orphan function (cut out); PIT-7 third sighting (audit retried, 2 green); clippy double-clean (needless_borrow/collapsible_if/chunks_exact — third time same pattern)
+- baseline: **142 passed · spec-trace 108↔108 · ci exit=0 · GATE-ABI ✓ · smoke eight lanes ✓ · SKIP 0 · web-check ✓ (1069627B/429401B same magnitude)**
+
+## Batch 4de VS-expansion family baseline (2026-09-14 close-out)
+
+- plan `.omo/plans/visiaengine-vs-expansion.md` v1.0 (Momus OKAY 0B → approval → N1-N4 all landed)
+- N1 IR (`73c9c39..`→`213edbc`): REND-29 Frame.px_world_scale (26+ construction points compiler-backstopped) / REND-30 StrokeSeg 48B + PointMark 32B Pod layout locks + dual commands + default rejection
+- N2/N3 (`6d8559c→8ac0ffb`, `aee0bc4→20edd3c`): View block 128B (mat+right+up+px_scale+eye_local; the triangle families read only the first 64B = a constructional zero-regression proof: goldens zero re-record); vs_stroke perp expansion [E3D:B4] + degenerate fallback right + bias{−1,−1} coverage [E3D:B7③]; vs_point/fs_point screen-basis splat + discard disk = real round points
+- N4 (`40115b3`): geo GeoPart output switch (GEO-24: tess_stroke/quad retired, px-unit correction stroke_width_px=1.5 / radius_px=4, key names / D9 aliases untouched); capi extra_cmds + ortho px_scale=2·hw/W exact path; same for geo_viewer
+- visual wins: strokes no longer swallowed by same-depth fills; points go square→round; line width scales constantly with no rebuild (a single Frame field)
+- incidents honestly: #17 fifth offense intercepted (the N3 first version committed unformatted + a null-value false claim → folded in via a second amend, noted in the message); PIT-8 third stumble (strokes position window by intuition → corrected via probe; points' 76° pitch got it right once)
+- baseline: **136 passed · spec-trace 105↔105 · ci exit=0 · GATE-ABI ✓ · smoke seven lanes ✓ · SKIP 0 · web-check ✓ (1053859B/424099B same magnitude)**
+- batch 4 queue: **4de ✓ → 4f Shadow/PCSS ([E3D:B3], the PIT-5 depth-domain conversion written as a clause) awaiting its planning round**; batch 5's trigger was met long ago (examples=7 + the 4de gate examples)
+- extraction-position note: LineStrip→StrokeSeg same shape in three places (engine/geo_viewer/geo_pipeline) — extract the helper when a fourth consumer appears (comment anchor inside tess.rs)
+
+## Batch 4c instancing+bench baseline (2026-09-14 close-out)
+
+- plan `.omo/plans/visiaengine-instancing-bench.md` v1.0 (Momus 0B → approval → K1-K3 all landed)
+- K1 IR (`73c9c39`→`3fe7ccf`): Instance 32B Pod (offset/height/color + pad, triple layout locks) / DrawInstances same shape as D7 / create_instances default rejection
+- K2 pipeline (`3f08d2d`→`d5062a5`): Variant{Flat,Textured,Instanced} three layout families (WGPU-14 numbered, zero breakage); storage binding5; vs_inst bottom-aligned extrusion (the axis-aligned-normal zero-error argument); silent-skip sealed
+- K3 products (`4d34bd7`+`aeb5a37`): bench_twin headless 100k (release on this machine's lavapipe: upload 3.8ms / frame 217ms / single draw); pick_demo --bench settles the 3.5b debt; scripts/bench.sh → resources/bench/*.json (degradation >20% prints red, non-gating); unit_box_mesh made public
+- legacy win: the root fix of the Bgra/Rgba mismatch in three window examples (I3 missed the sync, surviving 3 rounds — PIT-9 filed: the seven smoke lanes must run before any merge)
+- baseline: **124 passed · spec-trace 100↔100 · ci ✓ (audit = PIT-7 retry once then green) · GATE-ABI ✓ · seven smoke lanes real runs ✓ · golden SKIP 0**
+- batch 4 queue state: 4ab ✓ 4c ✓ → **4de (VS-expansion family: line width + point splat + polygon-offset + real points) awaiting its planning round**; 4f Shadow/PCSS follows; batch 5 docs-landing trigger met (examples≥6: now 7) — landing is forced at latest when batch 4 completes
+
+## Batch 4ab material/texture slice baseline (2026-09-12 close-out)
+
+- M1 io-gltf (`2f293fe`) · M2 RED→GREEN (`4449fb3`→`c9d80f3`) · M3 (`434e56e`+`7b92676` clause bodies synced)
+- pipeline: 32B material block dual layout (Flat per-pixel, zero regression = constructional guarantee) + upload_texture (256 row-stride zero-padded) + textured dual pipelines keyed (format,textured); REND-25/26 + WGPU-14/15 clause bodies registered (specular = mock-up Lambert coefficient, not GGX)
+- capi/example texture chain implemented; texquad.glb = the io-gltf builder #[ignore] emit, regenerable from the true source; gate-abi dual demo paths
+- baseline: **117 passed · ci exit=0 · spec-trace 97↔97 · golden SKIP 0 · GATE-ABI 14/14 · web-check ✓**
+- **R2 threshold breach awaiting adjudication**: WEB-SIZE raw=1062807B gz=431472B (baseline 733KB/294KB; gz **+47% > 15%**); the escape route "texture decode native-only, wasm takes raw RGBA bytes" was **not enabled unilaterally**; numbers recorded. **2026-09-15 user ruling = A accept** (the "texture decode native-only" exit stays closed)
+- lesson: PIT-8 filed (the first-version predicate of pixel assertions = the intersection of geometry coverage × filtering × channel multiplication chains; probe-measure first, then write assertions; one stumble in each of two rounds)
+
+## Batch 2 + batch 7 landing baseline (2026-09-11 close-out)
+
+- batch 2 I0-I4 all cleared: capi 14 entry points (handle/fence/thread/error protocol/input/attach) + dual C demos real-ran + gate-abi/gate-trace into ci
+- batch 7 J0-J3 all cleared: visiaengine-wasm standalone crate (isolation ruling: the no_mangle × bindgen wasm-ld mutual exclusion nailed) · WEB-BUILD dual glue · CAPI-09 mirror · demo page + T3 · **733KB raw / 294KB gz**
+- baseline: **90↔90 · 100 passed · ci exit=0 · SMOKE-X11 ✓ web-check ✓**
+- D8/D10 finalized (revision surfaces fully recorded); the README MVP four-piece account closed
+- remaining balance: push awaiting (local-ahead keeps growing) · batch 4 render strengthening / batch 5 docs / batch 6 infrastructure standing by · the CI liveness of smoke-x11/web-check = the mirror-repo day
+
+## CMake example-entry round baseline (2026-09-15, S1-S5 all landed)
+
+- team mode: probe A (Easy3D anatomy, 6 adopted 5 rejected) + probe B (gap matrix G1-G8) → plan v1.0 → Momus OKAY (0B/3A fixed into v1.1) → user approval (C-1 stub / C-2 E703 / C-3 archive)
+- S2 `be4f970`: VisiaEngineExamples.cmake contract table + glob⇄table dual validation (negative paths measured both directions) + ve_example_launcher.cpp (chdir / DISPLAY-77 / argv passthrough); the S1 spike proved cargo unix has no hash hardlinks, same inode
+- S3 `59f5b61`: E701/702 natively cmake-ized (ve_real_ + OUTPUT_NAME canonical names + umbrella rpath); qt_app → **E703_qt_viewer** joins the 7x band; tools +xorg-libx11/xproto; the G8 revision recorded honestly (the cc path = a gate attribute, kept)
+- S4 `ac60a07`: cmake-smoke `-LE display` (ci pops no real window); presets v7 + the qt-pixi testPreset (filter.exclude.label = a string regex); **the real gap = the enable_testing order** fixed (PIT-15); the tutorials.md IDE-run section
+- baseline: **143 passed · 108↔108 · ci ten segments ✓ (PIT-7 5th sighting: audit TLS flapped, 3 reds, backoff, green) · ctest bare 12 registered (@:0 11+probe all Passed 2.4s; without X 6P/5S) · qt-build 13 registered, preset runs 7 · E703 ctest real window ✓ · SMOKE-QT ✓**
+- new pits filed: PIT-15 (enable_testing order silently drops), PIT-16 (enable_language inside function doesn't propagate; presets authority = the shipped-with-package schema.yaml offline canon); D-12 finalized
+- gap table archived at docs/reference/easy3d-tutorial-gap.md (7-band mapping + a 5-item entry-order proposal)
+
+## capi attribute-read round baseline (2026-09-15, D13)
+
+- team mode: readiness probe (point cloud = PURE-DEMO but overlaps E202 → user ruled skip; attributes = split verdict → the capi version approved) → plan v1.0 → Momus OKAY (0B/5A fixed into v1.1) → final C-1=3 ports / C-2=256B / C-3=E701 appended section
+- S1+S2 `a5a830e`: Engine geo_docs + attr_of (the **u64 pose pass-through key**, zero decode) + FFI attr_f64/str/bool (1/0/-5 zero-partial-write parameter tables) + twelve dependent places (header / version 0x00010001 / gate-abi 17 / CAPI-01·02 revision sentences / README / AGENTS / wasm mirror) + clause 10/11/12 dual-target tests
+- S3 `17e4e35`: E701 attribute closed-loop section with park real keys + deliberately reading a missing key = the missing-intact living billboard; dual paths (manual cc / cmake stub) measured to identical output
+- new pit: PIT-17 (harness shared-pid tmp race; pid+nanosecond dual suffix); PIT-7 6th sighting (audit TLS try3 green)
+- baseline: **151 passed (143+4 inline+4 FFI; the total actually computed from the ci log's 44 targets; the S2 commit message wrote 147 = a local count — #17 sixth offense, honestly corrected in this commit) · spec-trace 111↔111 · GATE-ABI 17/17 ✓ · ci ten segments ✓ · web_capi_pair_mirror ✓ · no regression in the ctest example family**
+
+## CMake structure round baseline (2026-09-16, v1.3 S0–S5 all landed)
+
+- two team-mode review rounds (red team 27 items + finalization review 10 items, each item user-adjudicated) → plan `.omo/plans/bindings-restructure-cpp-examples.md` v1.3 (corrosion rejected: the eight-tax list + conda first-crab + CTest #13 spinning; the c+ self-written steps adopt its naming grammar)
+- final directory shape: `examples/{rs,c,cpp,qt}` (Rust examples = cargo example [[example]] ×9, not bin-ified; C/C++/Qt = cmake real bodies) + `bindings/{c,cpp,qt,js}` (capi/wasm one nest, crates/ = pure core 5) + `cmake/VisiaEngineBindings.cmake` (the R9 registry = argv's only residence; the anti-glob bidirectional hard error)
+- run-surface convergence: the unified ctest list (bare 14 items: 9 rs forwards + native + probe); the 9 pixi smokes = forwarding shells (`smoke-rs.sh` carries the "≥1 selected" assertion plugging ctest's empty-match false green); cmake-smoke = tri-state tri-anchor (bare PATH {configure probe + cargo-build_capi + cargo-build_examples}) + three negative paths (SYSTEM / prebuilt missing / install lying) + Xvfb:78 display sub-state (the window family's first automated track; conda lacks xvfb-run = direct-launch form, the PIT-19 machine = PIT-19 clobber note, no false green)
+- the C++ surface opens: `visiaengine.hpp` (76-line RAII; the three shells' semantics live in header comments; B9 opens no SDD account) + `visiaengine::cpp`; E801 (SDL3 x11 three frames) / E802 (hpp→readback→PPM) locked at birth; template.c/.cpp skeletons (B8 builds no library, keeping full gate-abi visibility)
+- toolchain: presets dual-config EXPORT_COMPILE + the bare testPreset -LE display + `.clang-format` (LLVM+4 follows the mainstream) + `.vscode/settings.json` (presets always) + the `.gitignore` L56 negation deadlock fix (B4) + the install fail-loud guard (S-c β; the tree = a packaging-round hard debt with an acceptance template)
+- three new pits filed: PIT-19 (pixi clobber → conda Xvfb XKB death) / PIT-20 (the ghost-API family founded) / PIT-21 (edit residue + grep -E assertions, promoted into edit-safety ###18)
+- baseline: **151 passed · spec-trace 111↔111 · GATE-ABI ✓ · GATE-DOCS ✓ (E 14 items three-way) · CMAKE-SMOKE ✓ · web ✓ · smoke 11/11 · the prebuilt retirement verified · worktree clean**
+- to-do: push awaiting (local-ahead += this round) · Phase B first band (the E8xx data-band API-gap list → capi port expansion) awaiting · the RA example Run lens human check (T3, risk ④ already demoted to the auxiliary track) · the packaging-round three items (install tree / corrosion re-evaluation / npm-pip)
+
+## B1 data band baseline (2026-09-16, Phase B first band: CAPI-13..16 four ports + the four E8xx examples)
+
+- port surface: visibility (strict 0/1, enum-domain invariance, render/pick filtering) / query / add_mesh (the VeMeshDesc struct_size forward gate, return code + out-parameter catalog, degenerate = zero commit) / remove (same catalog as double destroy, ABA isolation); abi minor = 2 (0x00010002), 17→21 entry points, dual-surface mirror (4 wasm bridges + the d.ts presence assertion) + 4 hpp thin forwards
+- examples: E810 attr survey (the zero-new-port acceptance example) / E811 visibility twins (c/cpp — first use of language-suffixed target names) / E812 programmatic add/remove; ctest 14→18 items (17 numbered)
+- design reversal logged: add_mesh's first version used 0 as the failure sentinel, colliding with the CAPI-01 clause "entity pose 0 is legal = deliberate ownership" — the return code + out catalog rewritten; two test sentinel assertions corrected per the clause (the interface-design volume of the ghost-API lesson)
+- baseline: **160 passed (+7) · 115↔115 · GATE-ABI 21/21 · GATE-DOCS ✓ 17 items · CMAKE-SMOKE ✓ · web MIRROR ✓ · ci ten segments all green**
+
+## lesson-review record (2026-09-16, structure-round + B1-band session batch review)
+
+- new: PIT-22 (verification channel ≠ user channel, the DISPLAY family — the generalization of PIT-18), PIT-23 (the three always-true/swallowing CMake/ctest shapes — the E801 dead-hang case), edit-safety ###19 (pipeline tails eating rc · shipping-broken proven), testing.md "visual-example double insurance" (pixel gate + three self-proofs + the T3 checklist + forwarding-shell assertions), conventions C15 (sentinels check the clause-ownership table first / one parameter serves no two masters), C16 (decision presentation = plain words + diagram + directory + one-at-a-time)
+- session mainline: the v1.3 structure round (S0-S5, seven commits) + the FOLDER position rule + E201/E301 interaction root fixes + the B1 data band (RED→GREEN, four ports, 21 entry points, ctest 18 items); baseline 160 passed · 115↔115 · GATE-ABI 21 · ci ten segments
+- next queue (unchanged): push awaiting (7 ahead + this commit) → five T3 human checks (E201/E301/E801/test panel/RA lens) → the B2 cross-section planning round awaiting
+
+## E202 gray-screen root fix (2026-09-17, the second sighting of the D7 camera-pose contract)
+
+- root cause: the fitted camera missing in resumed() — DrawMesh world pose = origin+local (D7), the camera target stayed [0,0,0] against a 3857-world-meters park = millions of meters off → full-frame clear color; after an offscreen probe replicated the offending parameters (all four variants empty), the fix: target = layer bbox center + dist/zoom fit at load
+- permanent gate: geo_pipeline::golden_geo_window_fit (spec WGPU-11 multi-example same clause, spec-trace 115↔115 unmoved) — the predicate's three self-proofs complete: canary at the offending camera = always 0 px; the fixed path measured 23222px, threshold 12000 (the −48% conservative position)
+- same-family sweep: E901/E401/E201/E301 camera positions checked case by case, no collision (the E201/301 data lives in a local system, origin=0 self-consistent); the PIT-22 / double-insurance discipline caught a real case the second time (the gray-screen family's third sighting: E201/E301/E202)
+- baseline: 161 passed · ten segments all green · ctest 18 items no regression
+
+## E402 interactive-pick window band (2026-09-17, reserved number promoted + the unit_box winding legacy mine root-fixed)
+
+- E402_pick_interactive: hover orange preview / left-click yellow toggle multi-select / drag orbit / wheel zoom / R clear / Esc quit;
+  the placed() pose single source (pick world = render transform, the same matrix = the constructive root removal of the E401 double-bake 64px-shift lesson)
+- **legacy mine**: unit_box_mesh born with reversed winding (geometry normal = − declared normal) — with GPU cull default-off all three consumers render zero
+  visible complaints; the pick front-face rule (REND-23) misses entirely on first consumption; root fix = index mirroring flipped + the golden-lesson note, 162 passed
+  constructional proof of zero pixel regression (with cull off, winding is not an observable)
+- gate: golden_pick_window_mirror (spec WGPU-12 multi-example same clause) 512×320 window-shape mirror + central hit-chain reuse
+  + outer-corner canary; measured (35,132,62)→(177,147,51) yellow-family flip locked
+- registration surface: Cargo.toml / contract table / tutorials / pixi, four pieces + the gate-docs E402 reservation exemption revoked (the real item in place)
+- baseline: **162 passed · 115↔115 · GATE-DOCS E 18 items three-way · ctest 19 items · ci ten segments ✓ · SMOKE E402 ✓ (real window)**
+
+## Color + events band (2026-09-17, CORE-16/CAPI-17, plan color-events-band.md K1-K6)
+
+- CORE-16 sRGB↔linear dual ports (f64 intermediate precision, endpoints bit-exact); the full-chain contract = host surface sRGB / IR linear / both GPU ends
+  Srgb hardware-encoded; five chokepoints (material block / clear / strokes / points / instances table) + the io-gltf factor
+  inverse transforms returned to their right place; the GL-degrade tier = fallback linear pass-through manifests
+- domain re-pinned in seven places (all measured first): clear [13,18,25] hardware-rounding self-calibrated canary, shadow light/dark bimodal 95/140,
+  texture checkerboard b bimodal 135 (the uv-broken semantics preserved), E501 boundary 128 dark threshold 4000 (measured 19642),
+  io-gltf color pins ×2, the geo fit-gate tolerance shape
+- **dug out and root-fixed**: lavapipe semantic hard evidence — clear load values interpreted in the linear domain (0.05→63 probe); the render-test band
+  domain-fragility lesson (encoding lifts midtones)
+- CAPI-17 event port (21→22 entry points, abi 0x00010003): the EvtSink cfg dual forms (native C anchor unsafe-Send /
+  wasm Box<dyn FnMut>), monotonic-terminal progress lock / same-instant errors / NULL detaching, three-surface mirror (header / hpp / wasm + d.ts)
+- example E 21 items three-way: E704_host_callback.c (event tri-state) / E502_color_tuning (**WYSIWYG four color boards byte-for-byte
+  mutual-inverse living proof**, one sampling-column formula error fixed) / E503_stroke_points (constant-width showcase) + the permanent gate golden_zoom_width_invariant
+  (two zoom tiers 10px/φ24 cross-tier lock; column sampling = the phase discipline independent of zoom)
+- baseline: **167 passed · 117↔117 · GATE-ABI 22/22 · GATE-DOCS E 21 items · ctest 22 items · ci ten segments ✓ ·
+  WEB MIRROR ✓**; structural incident self-caught: the four zombie _disp lines left by the E402 band cleared (another sighting of the edit-safety #18 family)
+
+## Dual-mode human acceptance round (2026-09-17, user order "check every example + complete cmake run targets")
+
+- native run steps cover every example: the INTERACTIVE keyword macro abolished, run_<name> emitted unconditionally (the DISPLAY family goes through the run-gui
+  wrapper / :0 fallback; the headless family direct-run = the terminal-OK human-check face) — the E702 window example gets its first run target; the matrix =
+  rs cargo-run_* ×12 + native run_* ×9 (+ the out-of-macro self-registered E703)
+- E502 dual-mode-ized: the color-calibration example upgraded from "headless quick-exit" to a no-arg resident human-check window (four color boards 960×600, Esc/close to quit)
+  + the --frames self-assertion path kept as-is (ctest); both paths build data from one source, config.format explicit Srgb preferred
+- audit conclusion (every example run for real): window examples with no args = resident ✓ ×10; self-exiting examples = by design identity ✓ (terminal output / PNG landing is
+  the human-check face; pick stand-in = E402, color = the E502 window, constant width = E503) — no hidden forks except E502
+- tutorials.md "human-check forms" section: the dual-mode convention written down (IDE zero-args = human check / ctest argv = automated, C15 single source)
+- baseline: 167 passed · 117↔117 · GATE-DOCS ✓ · CMAKE-SMOKE ✓ · qt-configure ✓ · ci ten segments all green
+
+## Point-cloud data family band (2026-09-17, D16/hyperplan plan pcl-data-band.md, M0→G all collected)
+
+- port surface: CAPI-18 add_points (23 entry points, minor=4) + CAPI-19 load_pcl (24 entry points, minor=5,
+  the VePclReport four-class export / meta attr prefix query); three-surface mirror across the band (header / hpp / wasm loadPclBytes + d.ts /
+  web-mirror pins ×2); the C15 value-ownership table written first (attr found=1/none=0, corrected by tests, registered)
+- the io-points new crate (authorized by ruling C): PLY ascii/bin_le self-written ~420 lines, zero new dependencies; the four-class typing
+  "point level triggers FastFail, column/element level counts only" landing clarified into the clause; truncation dual semantics bidirectional assertions;
+  the spec-trace IO prefix + **the third-check machine lock** (the negative FOO-01→red measured, on record)
+- examples/gates: E204 dual mode (the spiral self-assertion threshold scales with point count + the --file load path + the resident window);
+  G1 100k batch integrity / G2 far-origin mutual-inverse point edition (byte-for-byte equal); the G3 --points branch, 1M measured, registered
+- **toolchain root fix**: bench.sh dead links since the S1 package rename + the missing-item continue always-true (PIT-25 filed, MISSING→exit1);
+  the rustfmt-fed-Cargo.toml accident (edit-safety #20 filed); the lesson of three test anchors reflowed by rustfmt = anchors must be read fresh
+- baseline: **181 passed · spec-trace 125↔125 · GATE-ABI 24/24 · GATE-DOCS E 22 items three-way ·
+  ctest 23 items · CMAKE-SMOKE ✓ · WEB ✓ · audit try1 ✓ (PIT-7 7th sighting) · 8 crates**
+- remaining balance: the LAS second band (criterion = customer demo list) · the picking family trigger-gated · cap change window once · push awaiting
+
+## B2 cross-section band baseline (2026-09-17, plan capi-cross-section-band v1.1 · Momus OKAY 0B/2A fixed in)
+
+- port surface: CAPI-20 set_clips/get_clips (26 entry points, minor=6; n=0 is the only clear / bounds-check precedes dereference /
+  the engine side reads back normalized unit shapes / cap truncation returns the true count [Momus-A2 cases into the RED catalog]); three-surface mirror across the band
+  (header 32B Pod coefficient form / hpp two thin forwards / wasm setClips·getClips + d.ts + mirror abi pin 6)
+- pipeline: the View block tail extension 192→256B (**zero new binding/bind-group/buffer** = the design dividend of origin+transform already being in the
+  view_block signature); clipped() fs discard across all five pipelines + casters clipped alike (the fs_shadow empty-function body filled in, bgl binding0 +FRAGMENT); the expansion families per-pixel = "clip the world, not the types"; None/EMPTY
+  all-zero always-bound early-exit = the R4 guardrail shape, the golden suite zero re-records
+- IR: REND-32 world f64 coefficients + ClipSetup::new degenerate rejection; clip_to_local the **model-space identity**
+  (n_m=Mᵀn/d_m=d+n·(o+t_M); two self-caught root fixes recorded honestly — the column-major Mᵀ and M's translation column)
+- picking: the engine retry loop (hit on the negative side of keeps = excluded, keep searching; whatever is visible after cutting must be pickable); the capi pick domain
+  = positions × IDENTITY, the existing fact noted as "two frames merged" into the example body and tests
+- examples/gates: E813 headless three-segment living run (baseline red 10816 / half-cut red-dead-green-alive + the retry loop / corner triple-face 1764∈[800,4000]
+  — the two-face shape g2=0 probe win = the front wall occludes on-screen, PIT-8 third sighting); tests/clip.rs five gates (canary byte-for-byte / None≡EMPTY / half-cut halves / full-cut zeroes / corner ¼ + far_origin 1e7 bit-equal + line/point color families + caster 6.5×)
+- new pit: PIT-26 (from_raw_parts NULL+0 is UB, the debug precheck nailed — NULL counting paths must guard m>0);
+  PIT-7 8th sighting (audit TLS flapped once, retry green)
+- baseline: **191 passed · spec-trace 130↔130 · GATE-ABI 26/26 · GATE-DOCS ✓ E 23 items three-way
+  · ctest 24 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 + web_capi_pair_mirror ✓ · ci ten segments ✓ ·
+  8 crates unchanged**
+- non-goals on account: stencil caps (the BIM interior demo list) · six-face boxes · OR/union · the hardware CLIP_DISTANCES
+  dual path (present in wgpu30 but DX12 not in the list) · interactive clip sliders (E901 keys pending demand) · LAS (ticket-gated, standing by)
+- decisions registered: **D17 eight adjudication points** (discard single-path + re-eval trigger / ≤4 AND / no caps / Mᵀ identity / all families clipped / casters clipped alike / retry loop / E813)
+
+## S2 text-label band baseline (2026-09-18, plan io-text-labels-band v1.1 · Momus OKAY 0B/A-1 fixed in)
+
+- band meaning: tier ① + scheme I (engine self-managed fontdue rasterization, the user's explicit ruling) — label/caption rendering promoted from "SDK short board" to first-class
+- port surface: CAPI-21 load_font (replacement style; failure keeps the old) + CAPI-22 add_label (the struct_size forward gate +
+  the timing gate "no font = reject" + the full value-domain zero-commit catalog; 26→28 entry points, minor=7); three-surface mirror across the band (header POD / hpp thin
+  forwards / wasm loadFont+addLabel→bigint+MISS / d.ts pins / mirror value pairs); the E701 text closed-loop section + gate-abi 28
+- new crate: visiaengine-io-text, the 9th (face / GlyphCache R8-shelf-512²-1px-gutter-refreeze-on-full / layout
+  LTR; the three clauses IO-07..09; fontdue locked default=false + hashbrown [the probe blind spot corrected against local sources])
+- pipeline: REND-33 LabelMark 64B 4×vec4 layout lock + DrawLabels the 6th variant + create_labels default rejection;
+  WGPU-24 standalone bgl(0+11+12+13) + R8 atlas + ClampToEdge + always-on-top (Always/no depth write) + SRC_ALPHA;
+  WGPU-25 anchor verdict: the whole label lives or dies together; GEO-25 text-field "{prop}" unwrap / constant two forms + a missing column value skips, never prints the literal
+- examples and three gates: E205 dual mode (white=667 / warm=348 probe thresholds; ortho cross-zoom assert_eq pixel-equal) /
+  E814 C living run (timing gate + utf8 + white=3917) / labels.rs WGPU dual tests (atlas texel / constant size / anchor verdict bidirectional)
+- lessons filed: PIT-28 (pen is px, cannot enter anchor world coordinates — caught by the hist probe, the three-port grep rule);
+  #17 double-corrected (the plan's 140 = a phantom count from REND-32 double-counting, the real 139 pasted from the log; the "positions enumerable" assertion went wrong twice =
+  the out-of-items domain semantics never checked against the table); the E0449 cfg(test) cross-crate invisibility lesson → the self-introspection port became a formal API
+- baseline: **202 passed · spec-trace 139↔139 · GATE-ABI 28/28 · GATE-DOCS ✓ E 25 items three-way ·
+  ctest 26 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 (abi pin 0x…0007) · ci ten segments 0 red · 9 crates**
+- R2 re-account: wasm gz 429401→490967 = +14.3% (inside the threshold, zero margin; the probe's +6% estimate was optimistic, recorded honestly)
+- remaining balance: push awaiting · billboard/halo/declutter/wrapped-rich-text/text-update port = label follow-on bands, trigger-gated ·
+  CJK = the host font-injection same port (the demo keeps a Latin fixture as an open account)
+
+## E901 interaction close band (2026-09-18, D17-h/D18 demo close-out, single example file + zero ledger movement)
+
+- the twin-city resident window gains keys: **C = clip knife ON/OFF (blade rises at z≤6m, shadows collapse with the blade) · [ / ] = blade height ±1m (clamp 0.5..15) · L = three tower-top labels (Tower-A/B/C, the io-text full-chain window debut) · Esc = quit**; the title echoes state live
+- one construction-side lesson (post-write self-check root fix): the first version's "append then pop to restore the base" swap logic would **empty all commands** on the no-font branch — the correct form = the base never mixes labels, the redraw frame concatenates per switches (the show domain lives in rendering, not construction)
+- verification: the headless path zero regression (bright=3019 dark=2426 original values) · 22s alive + real-window nodes ✓ · SMOKE ✓ · ctest #14 Passed · ci ten segments 0 red 202 passed · clauses/entry points/ctest counts all unmoved (pure consumer surface)
+
+## ⑤a camera-flight band baseline (2026-09-18, plan camera-flyto-band v1.1 · Momus OKAY 0B/3A fixed in)
+
+- port surface: CAPI-23 fly_to (pose f64 eight slots with the struct_size gate / teleport form / reroute continuity / near-far always current) +
+  CAPI-24 fly_state (done includes idle, single source / out written only mid-flight); 28→30 entry points, minor=8; three-surface mirror across the band
+  (wasm flyTo·flyState·flyProgress + d.ts + hpp); E701 no new section (E815 is a standalone example)
+- IR: REND-34 Easing three families + the fly_sample pure function (endpoints return from/to originals as the fast path; the yaw shortest arc lives in the sampler's
+  construction piece, mix_rig untouched = zero regression for REND-15/16 stock); the E302 counter-evidence lock (linear-midpoint two-sided comparison)
+- **the wasm clock mine defused first**: std::time is unavailable at wasm32-unknown-unknown runtime → the now_ms() dual-form shim
+  (native Instant process anchor / wasm js_sys::Date::now; js-sys 0.3 target dep) — compiling ≠ running
+- examples: E302_fly_camera dual mode (1/2/3 presets flying between each other / drag+wheel cancel / R/Esc; headless four assertions, bright measured
+  96, threshold 40) + E815_fly_camera.c headless living run (idle-is-done / teleport / progress monotonic 14 samples / cancel / domain reject ×4)
+- lessons honestly: the wasm bridge pose flat 7/8 args hand-slip self-caught; the closure-borrow triple errors → expanded to direct writes; the Chinese-anchor heredoc
+  stumble (#9 cross-band recurrence, sighting N); the T2 gate-docs miss (E815's tutorials line) recovered at T3 = the gates mutual-guard
+- baseline: **209 passed · spec-trace 142↔142 · GATE-ABI 30/30 · GATE-DOCS ✓ E 27 items three-way ·
+  ctest 28 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 (abi pin 0x…0008) + pair_mirror ✓ ·
+  ci ten segments 0 red · 9 crates unchanged**
+- non-goals on account: multi-viewport split screen (the four-pit list D19 / trigger = split-screen demo list) · altitude arcs · multi-keyframe flythroughs ·
+  inertial damping · fly event pushes · CJK embedding (the S2 remaining balance)
+
+## ⑤b multi-viewport split-screen band baseline (2026-09-18, plan multiview-split-screen-band v1.1 · Momus OKAY + user "full band")
+
+- pipeline: render_view_rects (N Frames × ViewportRects, single surface / single full-extent depth, multiple passes; first pass
+  Clear paints the whole-area base color + later passes Load color + **depth Clear+Discard every pass**); casters do one shared-map trip;
+  full-rect emits zero set_* = the old path's bit-equality canary; REND-35 ViewportRect standalone type, **zero Frame touch** (the 44-fallback wave exempt)
+- the adjudication gate's conclusion: wgpu30 LoadOp::Clear = the whole attachment (AllClear redA=0, the live lock, consistent with the Vulkan conclusion) —
+  the two probes' disagreement was decided by this machine's pixel gate (E303's first run again caught the depth-Load-swallowing mine → the every-pass-clear shape, overwriting the probes' expectation)
+- legacy mine eradicated: the fov radian/degree unit (E501/E302 window projection distortion nailed, E302 bright 96→1987);
+  camera.rs orbit doc nails the unit; the four multiview gates (adjudication / mutual non-aggression + gutter color / depth fence / shared shadow 328×328 threshold 150)
+- examples: E303_split_screen dual mode (96×64 four assertions + the top-right square small-window follower; resident window ✓); four registration faces + the full gate suite
+- lessons registered: "a window surface the pixel gate never looked at is an unverified surface" (D20's last item); the isolation-probe method (single projection full-screen ISO → multi-viewport
+  differencing) located the inter-pass difference in two minutes; the U1 REND-35 body omission surfaced through spec-trace 143 (the target/body pairing discipline)
+- baseline: **214 passed · spec-trace 144↔144 · GATE-ABI 30 (untouched) · GATE-DOCS ✓ E 28 items three-way ·
+  ctest 29 items · CMAKE-SMOKE ✓ · ci ten segments 0 red · R2 untouched (pure rs band) · 9 crates**
+- remaining balance: push awaiting (3 commits this band) · the capi multi-viewport wave two (CAPI-25/click-to-fly) · the shared viewer library entry awaiting ·
+  the translucency ④ band / packaging round / LAS standing by
+
+## ④ translucency band baseline (2026-09-18, plan translucent-water-band v1.1 · Momus OKAY 0B/3A fixed in)
+
+- the three-zero discipline honored: **zero new ports / zero dependencies / zero IR fields** (entry count 30 · abi · R2 all silent; transparency decision = material alpha<1
+  sorted by a backend side table, WGPU-28); material a==1 always takes the old road = the **golden family full-suite zero-re-record construction guarantee** (the labels family runs the two passes live)
+- V0 blend domain settled: this machine's wgpu30 = linear domain (151 vs 83 checkerboard gate, decided on a single value, consistent with the Vulkan spec);
+  the prediction arithmetic's first version missed the Lambert shade — the PIT-8 extended note "predictions carry all chain factors"
+- pipeline: Variant extended FlatT/TexturedT/InstancedT (bgl/layout fully identical, only pipeline state: the SRC_ALPHA standard form +
+  no depth write + Less preserved for occlusion); two passes = opaque vec order + trans view-depth descending (the f64 D7 key origin + M translation column,
+  same-key submission order stable) + Labels always-on-top; **pass2 depth Load inherits occlusion** (domain-split from ⑤b's inter-viewport depth clearing)
+- E504 bidirectional semantic lock: the water film = attenuating contrast (52→15 control band (10,30)), not destroying contrast; keys 1/2 = a living demo of
+  the host path re-uploading materials to change alpha; the GEO-26 target + clause (park α=0.8, the WGPU-11 gate re-measured within zero-re-record margin)
+- lesson: the transparency-order test's "near/far" naming was slapped by the camera pose once (z50 top-down → z7 = near; expectations re-labeled, the engine untouched);
+  the amend triple-offense (fmt/clippy/dead Mats code — run the full local chain before the final verification, don't use amend as a lint loop)
+- baseline: **220 passed · 148↔148 · GATE-ABI 30/30 · GATE-DOCS ✓ E 29 items three-way · ctest 30 items ·
+  CMAKE-SMOKE ✓ · WEB MIRROR 3/3 · ci ten segments 0 red · D21 registered**
+- remaining balance: push awaiting (the ④ band's four commits + prior accumulated) · set_material_alpha / soft shadows / OIT / per-instance alpha / per-vertex alpha
+  all trigger-gated · ⑤b capi wave two unchanged
+
+## ⑤b wave-two minimap navigation band baseline (2026-09-18, plan capi-minimap-nav-band v1.1 · Momus OKAY 0B/2A fixed in)
+
+- port surface: CAPI-25 set_map (the VeMapView proportional rect; NULL = off = the old path; domain rejection zero side effects) + CAPI-26
+  navigate_click (outside the region / no map = reject; entity→ground two-stage; keeps angles and distance [ruling e]) + CAPI-27
+  get_camera (the VeCameraPose dual-use = input for fly / output for readback; hosts pre-set struct_size, check before writing);
+  30→33 entry points, minor=9; three-surface mirror across the band (header / hpp three thin forwards / wasm 4 bridges setMap·clearMap·
+  navigateClick·getCameraPose + d.ts roster + mirror pin 0x…0009)
+- engine state: MapView + set_map/map_rect/map_rig (the top view derived from the main target) / navigate_click /
+  camera_pose; the render dual-projection branch (the first consumption proof of ⑤b render_view_rects; None = the old-path canary);
+  the pick minimap-region-priority routing; apply_input minimap region kind1..4 = consumed no-ops
+- examples: E816_minimap_nav.c five-segment living gate (canary byte-for-byte / corner dual families 1596g+756r / minimap pick /
+  600ms flight 257 ticks to (3.579,3.714,0) / value-domain reject + no-map reject); ctest #31
+- lessons honestly: E816's first version treated two horizontal planes as "walls" — the top view = red covering green, g=42 exposed it via probe (PIT-8 fourth sighting;
+  probe scene geometry before asserting); segment 5's end-state canary compared against the old ref = the flight moved the camera and must break (post-write self-check root fix,
+  the baseline-refetch shape); the ffi_spec use block missed three function names (the regex newline anchor didn't hit = the edit-safety #9 family)
+- baseline: **226 passed · spec-trace 152↔152 · GATE-ABI 33/33 · GATE-DOCS ✓ E 30 items
+  three-way · ctest 31 items · CMAKE-SMOKE ✓ · WEB MIRROR 3/3 (abi pin 0x…0009) · ci ten segments
+  0 red · 9 crates · R2 untouched (the web gz increment is accounted by what web-check prints)**
+
+## Super-band five-in-a-row baseline (2026-09-24, plan super-band-2026-09-24 v1.1 · Momus OKAY + three red-team reviews + user nine-card item-by-item rulings all A)
+
+- origin: three-team gap audit (`docs/reference/team-gap-analysis-2026-09-24.md` supersedes the 09-17 edition) → user "adopt everything", action order 1-5 → four-lane review (Momus OKAY 0 blocking + feasibility/consistency/risk three volumes, /tmp index) → two plan-killers (B2 VePickHit premise collapse, B1 thumbnail premise collapse) + one CRITICAL (B2 API shape), all fixed into v1.1
+- **B4 documentation reconciliation** (`51f94bb`): the three drifts WMTS "built-in" / scene tree ×3 / capability_query reworded (EN, C17) + **the 10MB first measurement closed** (cdylib strip 7.25MB ≤10MB, a 27% margin, evidence/2026-09-24-native-size.md) + the gap-analysis canon landed
+- **B2 point picking** (`03a864a`): ruling ④A = zero ABI change (the engine keeps positions + the CAPI-04 revision sentence + the kind account trigger-gated); REND-38 screen-space nearest-point predicate (the **local-point direct projection compose_mvp** = origin already baked into the matrix, don't double-count + the RH [0,1] depth-domain guard); REND-39 mesh-priority canary; CAPI-13 corrected to the CAPI-15 precedent; E204 `--pick-check` argv single master (C15②)
+- **B1 Web gallery** (`2254bbc`): ruling ⑤ reversed during execution = the tool bin rebuilding scenes (drift tax) discarded → **example-side self-emit** (the gallery.rs helper ×10 dual-mode examples save_frame; examples = the card-image true source, zero drift); gen_gallery.py reads the single registry (the three shapes: cmake + per-directory CMakeLists + qt bare add_executable) + fail-loud, dual negative paths measured; 32 cards / 11 real images / build gitignored
+- **B3 MVT tile streaming Phase 0** (`080e07e`): the 10th crate io-tiles — the 353-line handwritten protobuf wire decoder (ruling ①A, zero dependencies; the fixture generator's two wire errors surfaced via Rust/python cross comparison = the decoder error-free) + slippy tile math (neighbor-edge seamlessness law) + FileSource / typed HttpSource stub / stdlib LRU + the GEO-27 GeoTile mapping (y flip + D7 origin anchor); E206 walks the whole chain; **PIT-8 again justified**: the camera look_at sits at the world origin while tiles live at x=−2e7 m = everything off-screen + far < eye distance clips all
+- **B5 one-example-four-meals policy** (`a58e689`): gate-docs six checks + ⑥ the gallery manifest↔on-disk registry set machine lock (negative path measured red); the policy text in three places (tutorials header / dev-workflow / gate comments, EN)
+- **E206 user triple-measurement fixes** (`3f3fccd`/`3690a34`/`9eceb18`): ① no-args immediate exit = the C15 dual-mode breach (the window stub) → the E204 skeleton real window + Xvfb liveness probe; ② drag/wheel unresponsive = Redraw rebuilt tile_rig every frame hardcoded + rig not a field → the persisted rig + orbit_delta/zoom; ③ single tile too plain → the **3×3 neighborhood** (per-tile changing water patches / staggered roads / border linework = seams visible / center POI; vertices baked into small values around the scene center, f32 single world frame); the wheel root cause = **orthographic zoom's only definition is half-width while rig.zoom was never consumed** (look_at default zoom=1.0 + the render hardcoded tile_w, double-stacked)
+- baseline: **259 passed · spec-trace 158↔158 · GATE-ABI 33/33 (the zero-ABI-change line held) · GATE-DOCS six checks ✓ 32 cards · ctest 24 (machine-reported) · 10 crates · zero new dependencies · ci ten segments rc=0 · worktree clean**
+- to-do: push (11 ahead) · the Phase 1 tile band (C API + HTTP, the whitepaper date promise 2026-Q4) · the gallery T3 human check
+
+## ⑤ Phase-1 tile streaming band baseline (2026-09-24, plan tile-streaming-phase1.md P1-S1–S4 all landed)
+
+- port surface: CAPI-28 load_mvt_dir (the FileSource z-level scan; domain z≤30; return = mounted tile count) + CAPI-29 set_tile_view (feed the scheduler a 3857 bbox; return = visible count; not mounted = reject); 30→**35 entry points minor=10 (0x0001000A)**; three-surface mirror across the band (header 2 prototypes / hpp thin forwards / wasm loadMvtDir+setTileView + d.ts roster / mirror abi pin 0x…000A)
+- engine state: the TileLayer structure (set:TileSet + ids + center/wpos/widx/strokes/points + uploaded:Option; render-loop integration = a later band, annotated `#[expect(dead_code)]`); load_mvt_dir scan+ensure+decoded→GeoTile batch build; set_tile_view only ensures, never rebuilds (batches = one-time at mount)
+- io-tiles new pieces: `scheduler.rs` TileSet{visible half-open enumeration + boundary snap / ensure idempotent loading + accounting / decoded through-cache second tier} (IO-13/14); HttpSource::new(root) ureq implemented (IO-15, target-gated: wasm = typed stub, the getrandom/js conflict root-cause fixed); `tests/tile_set.rs` 6 gates; `tests/http_source.rs` 3+1 ignored; the stub tests in source.rs upgraded to new()+ domain assertions
+- dependencies: ureq 3.4.2 (rustls, default-features=false) → webpki-roots (CDLA-Permissive-2.0) → **deny.toml += CDLA-Permissive-2.0**
+- E206: load_tile retired (dead code) + the FileSource/decode_tile imports cleaned; load_viewport driven through the scheduler (the IO-13/14 consumption surface)
+- gate-abi.sh: the expected count updated 33→35; web-mirror.mjs: abiVersion 0x0001000A + roster +2 bridges
+- whitepaper: MVT Phase 1 honored (moved from "delivering" to "delivered" + the WMS/WMTS separate note); README synchronized 163 clauses / 35 entry points / 32 cards
+- lessons filed: PIT-28 (pen px vs anchor world coordinates, the three-port grep rule) · **PIT-31** (ffi_spec domain tests cwd=crate dir, the relative-path trap) · **PIT-32** (the full ureq dependency dragged getrandom into the wasm target — fixed with a target-gate, wasm HttpSource = typed stub)
+- baseline: **270 passed · spec-trace 163↔163 · GATE-ABI 35/35 · GATE-DOCS ✓ E 31 items · ci ten segments rc=0 · web MIRROR 3/3 · 9 crates · ureq 1 new-dep**
+- remaining balance: push (all P1-S1..4 commits of this band) · the render-loop TileLayer integration (E206's prove shape into the engine main loop) · the HTTP source C API (**CAPI-35+** set_tile_source_http; CAPI-30..34 already consumed by the scene-tree band, re-accounted 2026-09-28) · the CJK font S2 balance · LAS ticket-gated, standing by
+
+## ⑥ Scene-tree band baseline (2026-09-24, plan scene-tree-band.md S1-S4)
+
+- port surface: CAPI-30 create_group (the out_entity catalog) + CAPI-31 set_parent (0=root, cycle / depth≤16 detection) + CAPI-32 get_parent + CAPI-33 set_group_offset (the finite gate) + CAPI-34 get_group_offset; 35→**40 entry points minor=11 (0x0001000B)**; three-surface mirror across the band (header 5 prototypes / hpp 5 thin forwards / wasm 5 bridges + d.ts roster / mirror abi pin 0x…000B)
+- engine state: Slot gains parent:Option<EntityId> + offset:[f64;3] (core scene.rs, the Component::Group pure-marker variant, slot_of zero cost); Engine::new_scene (pre-occupies slot0gen0 → the handle is never zero); is_hidden (walks the ancestor chain, tree-aware visibility); the render loop origin = it.origin + scene.effective_offset(entity) (CORE-21 accumulation, O≤16)
+- **design decision**: rotation/scale inheritance = trigger-gated (YAGNI: mainstream GIS engines = visibility + translation only); despawning a group auto-detaches children back to root (no cascade delete)
+- lesson: PIT-31 (ffi_spec tests cwd=crate dir, the relative-path trap) **second sighting** (both the load_mvt_dir and set_group_offset domain tests tripped it) · **PIT-33** (the scene-tree handle=0 semantic collision: slot0gen0 legal vs the parent=0=root sentinel; fix = new_scene pre-occupies slot 0 + the set_parent parent==0 special case)
+- baseline: **287 passed · spec-trace 173↔173 · GATE-ABI 40/40 · GATE-DOCS ✓ E 31 · ctest 33 items · ci 9/10 (audit = PIT-7 11th sighting, a persistent TLS outage, not momentary flake) · web MIRROR ✓ · 9 crates**
+- remaining balance: push (ahead includes this band's S1/S2/S3 three commits + ⑤ P1 five commits ≈ 11) · rotation inheritance = open it when demanded · scene-tree name lookup (node_names stored in engine.rs, no C query port) · the CJK font S2 balance · LAS ticket-gated
+
+## Gap research → hyperplan → Session N+1 baseline (2026-09-28, eight commits closed)
+
+- team mode: four-lane research (.refinfo six families + self-audit) → adversarial planning 4 batches ×3 rounds (C1-C10 all signed + the concession ledger) → Momus OKAY → four-card adjudication (1a tile pump / 2 golden+EDL / 3 morph do / 4 no-deploy + three.js benchmark) → execution
+- N1.1 `a5d3180`: the hpp fly_state forward + **the hpp⊇header mirror gate** (alias-table form: destroy→destroy_now, entity_set_visible→set_visible; breakage-probe self-proof) + the CAPI-30→35+ re-accounting + the legacy clippy debt cleared
+- N1.2 `59c772a`: whitepaper L27/L103 + README L11/L38 precise rewording ("smooth/seamless/stepless" → delivered semantics; the L22 competitor sentence kept)
+- N1.4 `47bbe54`: **CAPI-35 set_tile_source_http** (discovery-style loading) + the io-tiles 4-state pump (begin/pump(budget)/state) + HttpSource 5s timeout + loopback proxy-exempt (PIT-35) + the render loop 4 tiles/frame budget + three-surface mirror abi 0x0001000C + E206 --source real run 9/9 (4+4+1 across frames) + the rebuild_tile_batch extraction
+- N1.3 `354a8e7`: **goldens-10 per-attribute goldens** (good/bad pair self-proof form; all predicates probe-pinned values: opacity 145/207, point 4672/232, clip upper/lower halves, shadow mid-band split)
+- N1.5 `e55dd2f`: **EDL** (Frame.edl None = bit-for-bit zero-regression old path; intermediate texture + the PIT-33 use-domain law; ON 2790px + top row 331.0→322.9 measured; the WGPU-33+REND-40 clauses; E204 --edl)
+- N1.6 `ca6dbee`: the gallery three.js-style detail pages ×32 (CARD 4 = no deploy, purely local)
+- review fixes `60a24a3`: #1 detail-page full-name key (E811_c/_cpp split pages + collision fail-loud) + #2 C17 21 lines zeroed
+- N2.0 `cd55fc1`: #3 the evict_done+decoded_cached reconciliation (PIT-34) + #4 center shifts clear uploaded/batch (misalignment eradicated)
+- lessons: PIT-33/34/35/36 + edit-safety #21/22/23 + the testing.md HashMap-order discipline (registered this round)
+- baseline: **297 passed · spec-trace 177↔177 · ABI 41/41 (0x0001000C) · GATE-DOCS ✓ · ci rc=0 · 8 commits ahead**
+- remaining balance: push awaiting · N+2 = the morph band + entity animation 6a + gallery category expansion · deferrable = property_golden anchor fill / mirror-gate declaration form / multi-viewport EDL assert / point-radius floor
+
+## Session N+2/N+3 baseline (2026-09-28 continued, five commits: the four N2 bands + sweep)
+
+- N2.1 `6d65346`: **projection morph** (M, Momus OKAY + card A pure rs) — the render::morph pure function (endpoint byte-for-byte law) + Engine::set_morph_time (slider clamp semantics, an intentional fork from EdlSetup's rejection form) + the morph_spec 3 gates + E304 dual-mode example (window [/] slides t; the Xvfb liveness probe). Whitepaper §3.1 honored; README "switch" → "continuous projection morph" (the N1.2 honesty arc closed)
+- N2.2 `2ca8551`: **entity animation 6a** (S, split by C5) — render::anim::anim_origin (endpoint identity + f64 far-origin precision) + the anim_spec 4 gates + E305 trajectory replay (24 markers, pixel gate). The example's first run caught the normalized-t misuse = the sampler time-domain contract surfaced
+- N2.3 `f10baff`: the gallery sticky category nav (three.js browsing shape, the 9-domain anchor bar; the lesson of the cards key = restoring title numbers)
+- N2.4 `8b18937`: **attribute hot-update CAPI-36..38** (M, 44 entry points minor=0x0001000D) — the override layer + override-first read + typed-reject (CORE-11/12) + three-surface mirror across the band + the attr_diff_spec 2 gates (fixtures copied the attr_ffi_spec precedent). The rs-only plan upgraded to three C ports = a test-reachability ruling (Engine ownership lives in the handle table)
+- sweep `0d430c4`: review items #5-#8 deferred list zeroed (multi-viewport EDL debug_assert / point-radius dual bands / anchorless golden declaration / mirror-gate declaration-form predicate triple self-proofs; the column-zero [[nodiscard]] lesson = self-proof samples must take real lines)
+- baseline: **306 passed · spec-trace 182↔182 · ABI 44/44 (0x0001000D) · gallery 34 cards + 34 detail pages + nav bar · ci rc=0 · 15 commits ahead**
+- the digital-twin three bones: attribute hot-update ✓ / animation sampling 6a ✓ / serialization S3' on account (triggered by Studio's dependency)
+- to-do: the trigger-gated queue fully empty (geometry diff / box-select / ODR / LAS / 7-state machine tickets standing by)
+- **T3 human checks (2026-09-28 user measurement)**: E304 `[/]` slides the projection morph ✓ · E305 resident window drone loop replay ✓ (the window-surface gap found by the user, filled at eab5530) — two closed, the digital-twin demo surface double-verified
+
+## N4 post-processing framework band baseline (2026-09-28, plan n4-post-framework-band.md v1.0 · Momus OKAY)
+
+- IR: REND-43 PostEffect{Bloom{strength},Outline{width}} + Frame.post Vec (empty = the bit-for-bit zero-regression old path) + the bloom/outline constructors' domain-reject Option (same catalog as EdlSetup::new); **a 46-site Frame construction sweep** (python indent-aware insertion + manual contract.rs edits); the contract_spec + domain-reject gate
+- pipeline: WGPU-34 stage-chain orchestration — ensure_stage_color fixed 2 slots (size+format cache) + per-(effect,format) lazy pipeline creation + bgl shares EDL's 4-binding shape (fullscreen_entries extracted as shared descriptors); the depth Store single flag `edl_on||post_on`; **effect i writes stage[i+1], the last effect writes the final view, stage[0] = chain input never a write target** (the first version writing stage[i] collided with wgpu's usage-scope RESOURCE+COLOR_TARGET in one pass = caught as a validation error)
+- shaders: bloom.wgsl 9-tap luma-threshold additive (THRESHOLD=0.25 tiered by a probe in the linear-decode domain — sRGB encoded 138/px ≈ linear 0.25); outline.wgsl depth-gradient ratio (the WGPU-33 rel same-family threshold 0.08) + selection orange; vs_main same catalog across three shapes (fullscreen triangle strip from vertex_index)
+- examples/gates: E506_postprocessing dual mode (keys 1/2/3 + title echo; --frames off determinism + bloom/outline pixel assertions probe=1289/1509px thresholds 600/700) + four-way consumption across the band (cmake registry disp default headless / tutorials line / gallery 37 cards / smoke-post); the post_chain.rs four gates (off bit-for-byte / bloom 432 / outline 678 / chain order 1038·1640, all probe values in the notes)
+- **web-check caught a real mine**: the engine.rs wasm-only new_canvas constructor was mis-injected with post fields by the sweep script (unreachable by native check = behind the cfg gate) — the living evidence for always running web-check after CI (R2 gz=539641B accounted)
+- baseline: **311 passed (+5) · spec-trace 184↔184 · GATE-ABI 44/44 · GATE-DOCS ✓ E 36 items three-way + 37 cards · ctest 37 items · CMAKE-SMOKE ✓ (Xvfb display ✓) · ci ten segments rc=0 · 9 crates**
+- remaining balance: push awaiting · SSAO/DOF/SSR = framework-following, trigger-gated · multi-viewport post (on account like EDL) · >2-effect chains = non-goal
+
+## T3 human-check addendum (2026-09-29, the N3-N6 full-band interaction surface)
+
+- E508 drag-orbit / wheel-zoom ✓ (the rig hard-coding root-fixed = 733de61) · keys 1/2/3 effects ✓
+- E507 tonemap/bloom keys ✓ · E403 box-select ✓ · E306 map controls ✓ · E304 morph (verified earlier) ✓
+- conclusion: all five N3-N6 bands' interaction surfaces double-verified, no residual T3 items
+
+## V-series gap-closure baseline (2026-09-30, hyperplan → full-closure adjudication → Block A/B execution)
+
+- origin: hyperplan adversarial 5 members ×3 rounds (research base = the three.js 608-example census + refinfo 13 projects + self-audit) → the full-closure adjudication → plan v1.1 (`.omo/plans/gap-closure-full-2026-09-30.md`, 4 reviewers, 10 fixes, 4 risks) → execution
+- audit canon (**2026-10-08 corrected**): this line originally cited the "09-30 audit" and `docs/gap-closure-roadmap.md` as "dual canons", but the former (team-gap-analysis-2026-**09-30**.md) **was never committed** (no such file in the full git history) and the latter did not exist at the time. The live on-disk canons = `docs/reference/team-gap-analysis-2026-09-24.md` (the S-grade gap table + example census) + `docs/reference/team-gap-analysis-2026-09-28b.md` (the three.js 608-example benchmark, superseding 09-24's example-count section) + `docs/gap-closure-roadmap.md` (actually written 2026-10-08: the clause-by-clause re-measured coverage map / not-done list / triggers / reverse advantages; the 09-30 synthesis judgment stays in the gitignored plan `.omo/plans/gap-closure-full-2026-09-30.md`, not citable from the repo)
+- **W1** (`9fd64a2`): REND-46 stroke screen-space picking predicate (+5 pure-math tests; the engine wiring honestly on account — the C pick surface's EntityId vs segs having no entity table collides with CAPI-01; disguising it would be a breach)
+- **W2** (`e24b308`): WGPU-38 depth haze — **the raw-depth perspective-compression mine surfaced by probe** (16m ≈ 0.994), SSAO view_z metric-domain linearization; the three-band geometry-aware dual lock (bg 12114 fully fogged / near 0 touched); E506 key 4
+- **D** (`13035eb`): four drift reconciliations (MVT/morph/scene-tree/Flutter-C#) + **check-promises lint** (the proximity matcher; the self-test breakage probe caught the first version's line-level allowlist as too coarse) + llms.txt/docs-gen; **ci ten segments → eleven**
+- **R** (`54f4e26`): **whitepaper L53's WMS/WMTS promise honored** (the raster surface) — IO-18 the `TilePayload{Mvt,Raster}` enum (anti-trap ruling = single-lane pump / LRU zero fork) + CAPI-39/40 the flat basemap (the N1.2 discipline: NOT terrain); five-surface mirror abi 0x0001000E
+- **I** (`49c2a95`): **WGPU-39 SH-9 environment lighting** (demo-grade claim narrowed; the View block 256→416B tail scheme, zero new bindings; PIT-41/42/43 all three mines tripped and defused); CAPI-41; the E507 env probe
+- **V2.1** (`88e2e90`): REND-47 Bezier/CatmullRom + tube/ribbon (+0-ABI consumption band) — **E510's endpoint-law assertion caught a real sampler bug on first run** (the last knot never landed); E510 four consumers + the resident-window shell added (`5e34bc0`, a new variant of the C15 fourth case = no window); the destroy_points engine port landed as a precondition
+- **V2.2** (`68cc205`): **CAPI-42/43 node local transforms + a legacy root fix** — the glTF entity.world hierarchy matrices were discarded at mount time (multi-node hierarchies had never rendered correctly, masked by E201's single layer); DrawItem.transform wired through the full chain + rigid parent chains; five-surface mirror abi 0x00010010 (49 entry points); E511 rotation pixel proof
+- **V2.3 LAS = conditional, not opened** (no real .las fixture in the repo); **V2.4 skinning+morph = L-grade, awaiting entry** (the F1 promotion on record; it requires its own plan → Momus → approval)
+- baseline: **343 passed · spec-trace 199↔199 · ABI 49/49 (0x00010010) · ci eleven segments · gallery 43 cards · 3 commits ahead of origin (gitee auth failed, user side to refresh)**
+- lessons registered: PIT-41 (multi-block patch truncation mine, the io-gltf wipeout incident) / PIT-42 (the WGSL uniform trio: closures / let-if / array stride) / PIT-43 (flag-offset drift = a probe's job); the background-agent five-losses review (rpm rate limits ×3 + stale-timeout ×2; the main session did W1 directly in 40 minutes vs agents wiped out in 3 rounds — small bands are better done directly than dispatched)
+
+## Install-tree band baseline (2026-10-08, packaging-round v1.3 P1-P4)
+
+- Scope as user cut it: install tree only (npm/pip K0/K3/K4 out). Nine adjudication
+  cards walked one at a time with the new adjudication-walkthrough skill; Momus
+  re-reviewed v1.3 -> OKAY (0 blocking, 1 non-blocking dangling probe-B citation,
+  fixed). Decisions in **D23**.
+- P1 `c2fab6d`: SONAME stamped by the repo's first `build.rs`; gate-abi asserts it
+  (expected name derived live from `[lib] name`). Measured payoff: absolute-path
+  linking now yields `NEEDED=libvisiaengine.so` (was the full build path).
+- P2a `af2608f`: `cmake/VisiaEngineInstall.cmake` + `visiaengineConfig.cmake.in`;
+  S-c beta fail-loud guard retired in the facade (43 lines, gate-docs 5 budget OK);
+  `cmake-smoke` negative state inverted into a positive install state.
+- P2b `2d5fb2d`: pkg-config face; `.pc` URL read from Cargo.toml repository
+  (missing line = configure FATAL, probed); prefix uses the `pcfiledir` form after
+  a real bug (configure-time bake reported /usr/local) was caught and turned into
+  three text assertions.
+- P3 `8da46b3`: `scripts/gate-pack.sh` + `pixi run pack-check` (out of ci). All
+  three assertions seen red by break probes; RUNPATH reported not judged because
+  the leak was traced to this env's relocated conda `.pc` files (tinfo.pc naming a
+  sibling checkout prefix) feeding a `-sys` link line -- a publish-band assembly
+  concern, not a repo defect (user adjudicated P3=A against my written rec).
+- P4 (this commit): README install wording + numbers 40->43 with **two new locks**
+  (gallery cards in gate-docs 7, ctest count in cmake-smoke; both probe-red);
+  `docs/tutorials.md` installed-consumption section; D23; AGENTS COMMANDS line.
+- Incidental root-fix caught by the band's own web channel (`PIT-44` + the
+  `web-mirror.mjs` staleness guard): the V2.2 wasm bridge `get_node_transform(&mut
+  Vec<f64>)` never compiled for wasm32 -- host tests and the artifact-reading
+  mirror script both missed it for two bands.
+- Baseline: **ci rc=0, 343 passed, 11 segments; spec-trace 199<->199; GATE-ABI
+  (49 entries + SONAME) OK; GATE-DOCS 7 checks OK; CMAKE-SMOKE four states OK
+  (install tree 9 files, .pc text checks, ctest count lock); pack-check OK;
+  pixi run web-check rc=0 + MIRROR 3/3 same-terminal; 9 crates unchanged;
+  zero new dependencies (patchelf deliberately NOT added).**
+- Open (declared, not swallowed): npm/pip packaging, staticlib consumer day,
+  win/mac install forms, publish-band RUNPATH cleaning + CPack tarball,
+  T3 human verification for E510/E511/E506 key4/E507.
+
+## Band L baseline (ledger reconciliation, 2026-10-08, plan ledger-tiles-keys v1.1)
+
+- Scope as adjudicated one card at a time (7/7, all to the lazy option; protocol
+  `adjudication-walkthrough`). Plan `.omo/plans/ledger-tiles-keys-2026-10-08.md`; Momus OKAY
+  (0 blocking, 1 non-blocking path-name nit, fixed in-plan).
+- `e8ddfb5`: `docs/gap-closure-roadmap.md` written for real (census + refreshed coverage map +
+  open gaps with triggers + reverse advantages) and the two dangling audit citations repaired.
+- `0ef26fc`: haze gates' background reference self-calibrated from the frame's own corner pixel,
+  with a >2% frequency guard; corner read back [13,18,25] = bit-identical behaviour, now proven.
+- `4618896`: three existence locks — cited `docs/**` paths must exist (check-promises), README
+  package count must equal `cargo metadata` (gate-docs 8, README fixed 10→11 crates/12 packages),
+  no `let clear: [u8;3] = [` literals (gate-docs 9). Each lock shown red by a planted probe.
+- Ledger truth today: **199 clauses / 49 C entries / abi (1<<16)|16 / 12 packages / 43 examples
+  = ctest 43 = gallery 43 cards / ci 11 segments**, all four recomputed by the gates.
+- Found while planning band T: the tile gap is the **single layer slot** in the capi engine
+  (basemap XOR vector), not scheduling — see PIT-46. Band T proceeds with zero ABI change
+  (Adjudication 2 = A: per-kind addressing).
+
+## Band T + Band K baseline (2026-10-08, plan ledger-tiles-keys v1.1, all 7 cards = lazy option)
+
+- **Band T (two-layer map)**: capi Engine went from one tile slot to `layers: Vec<TileLayer>`
+  with an explicit `LayerKind`, per-kind view addressing, first-mount-only camera fit and
+  `RASTER_UNDERLAY_Z` applied only when both kinds are mounted. **Zero ABI change held**
+  (49 entries, abi `(1<<16)|16` untouched, no wasm/hpp work). Clauses CAPI-28/29/39/40 each
+  carry a Band T revision sentence; spec-trace stayed 199<->199 (no new clause ids).
+  - `d79bf78` engine + `tests/tile_layers.rs` (2 tests). Discrimination: single-slot revert
+    -> `COEXIST both=0`, `set_raster_view=-1`, red at `tile_layers.rs:90`.
+  - `23abf75` **E817_two_layer_map.c** — the visual witness: 5-segment live gate, families
+    measured `raster_only basemap=69120 road=0 poi=0` / `vector_only road=10739 poi=1314
+    basemap=0` / stacked v-then-r `9782/1314/26030` / stacked r-then-v `5343/684/60322` /
+    re-mount memcmp == 0. Break probe: single-slot semantics -> `road=0 poi=0` FAIL rc=1.
+  - Two plan premises died on contact: the proof cannot live in examples/rs (Engine is a
+    private `mod`), and the two fixtures sit on opposite sides of the planet, so stacking
+    them never shared a frame -> added `resources/data/raster_over` (the same four 79-byte
+    PNGs re-keyed into the vector region, 316 bytes) instead of claiming a gate that cannot
+    pass. Basemap witness = the EXCLUSION bucket, because the basemap's own colours satisfy
+    E206's water/seam predicates (PIT-8 fifth sighting).
+  - README: stacking claim added + its two numbers 43->44 measured from the same terminal
+    (gallery "44 cards (17 thumbnails, 44 detail pages)", cmake-smoke count lock 44==44).
+- **Band K (input probe becomes a repo tool)**: `scripts/xinject.c` + `scripts/keys-probe.py`
+  + `pixi run keys-probe` (out of the ci chain, pack-check policy) and the previously
+  caller-less `scripts/window-probe-all.sh` wired into `.github/workflows/ci.yml` L2.
+  Measured: E506 key4 23.90%, E507 keys 2/3/1 = 5.87/29.85/29.85%, E510 drag 8.95% +
+  wheel 9.18% (title `phase=43.0`->`56.9`), E511 clock 1.79% at a 4s gap, Escape exits all
+  four. Break probe: stubbed `self.haze = !self.haze` -> `changed=0.00%` + rc=1.
+  Two port bugs found by running it for real: the X needle is the E number (titles use a
+  space, not the file stem), and XWD `header_size` includes the variable-length name so no
+  constant guards it -- the length identity `off + h*bpl == len` does.
+- Close-out `7e139f0` (PIT-47): the two new ci.yml L2 lines could only ever SKIP -- `xwd` ships in the system package `x11-apps` (not pixi) and the runner installed only `xvfb`, so the probes' own skip-on-missing-toolchain convention = a green not earned (PIT-25's CI-wiring variant). Fixed: apt installs x11-apps with a do-not-remove comment, keys-probe gained `--strict` (skip -> exit 1 naming the missing tool; ci.yml uses it, local default still skips), xwd found via PATH instead of a hardcoded /usr/bin. Branch tests: stub-only-xwd-missing + --strict -> rc=1 "missing toolchain: xwd"; default -> SKIP rc=0; real run --strict -> 4/4 rc=0. And window-probe-all.sh, wired a session ago and never run here, now has: rc=0, 20 resident windows, E509 lit=100.0% vs a 5.0% floor.
+- Ledger now: **199 clauses / 49 C entries / abi (1<<16)|16 / 12 packages / 44 examples =
+  ctest 44 = gallery 44 cards / ci 11 segments / 9 crates**.
+
+## Band V baseline (shared viewer bootstrap, 2026-10-08, plan viewer-shared-band)
+
+- Adjudicated 5/5 = A/A/B/C/A (one card at a time, protocol adjudication-walkthrough).
+  Momus REJECTed v1.0 on one blocking item (canary E101 collided with C3b's protected
+  specimen) and 6 non-blocking nits; all fixed in v1.1, then executed.
+- New shared piece `examples/rs/src/viewer.rs` (206 non-blank lines): `argv_frames` /
+  `argv_frames_and_rest`, `Ctx::new(title,w,h,FormatPolicy)` (window+adapter+device+
+  surface+config+MeshCore), `on_resize`, `present`. Scope by ruling: **G1+G2 only**
+  (C2=A). FormatPolicy is a parameter because 4 examples (E204/E206/E502/E503) prefer an
+  Srgb format while 22 take the surface default -- collapsing that is how PIT-9 was born.
+- Migrated **24/29** rs examples: E502(canary) E205 E501 E504 E901 E202 E402 E403 E201
+  E301 E204 E206 E302 E304 E305 E510 E511 E303 E306 E505 (the last three of those
+  five in `--bootstrap-only` mode: their `render_view_rects` present is the ⑤b lesson).
+  Example bodies: 11,480 -> 10,104 non-blank lines = **-1,376** (883 of it moved into
+  the 206-line shared piece, the rest is duplicated blocks collapsed to one call).
+- Deliberately NOT shared: interaction semantics (drag means pick in E402/E403, phase in
+  E510, per-viewport follow in E303) and the `render_view_rects` present of the ⑤b family
+  (that call IS those examples' lesson). Protected manual specimens: **E101 + E503**
+  (measured: only 9 of 26 window examples were fully unshared today; E201 could not be a
+  specimen because it already consumed `examples::BBox`).
+- V3 queue is closed: the five non-migrated files are excluded by evidence, not by
+  preference -- E101/E503 (specimens, C3=B), E203 (positional CLI, never in scope),
+  E401/E601 (no G1 bootstrap to share: zero Instance/adapter/Surface/winit; they already
+  use the production `HeadlessBackend`, shared one level above the viewer shell; E601's
+  lone `Instance::new` is the IR struct, not a wgpu Instance). The codemod refuses them
+  with `!! no ApplicationHandler impl` **before writing** -- both files byte-identical
+  to backups afterwards, which is edit-safety #26 item 3 executing, not being described.
+  199 clauses, 49 C entries, 12 packages, 44 examples all unchanged.
+- Baseline at close: `pixi run ci` rc=0 (11 segments) 345 passed · `keys-probe` 4/4 ·
+  GATE-DOCS ok (44 cards) · CMAKE-SMOKE ok · spec-trace 199<->199 · worktree clean.
+- Method worth reusing: per batch = determinism pre-check (two back-to-back captures) ->
+  static scenes may then use **live-window sha equality** as the gate; animated examples
+  must use keys-probe percentages / time-progress + interaction tri-state instead.
+
+## lesson-review record (2026-10-08, band V batches 12–14 + V3/V4 close-out session)
+
+- new: PIT-48 (harness invocation errors swallowed by `2>/dev/null` = misread as the object-under-test being dead; assert rc first),
+  C19 (self-check/prune predicates must be token-level + plant a breakage probe in the check itself before commissioning; includes the honest note: the parent codemod
+  still carries the crude predicate, the repo's real judge is `lint -D warnings`), D24 (shared-code value counts in sites, not lines;
+  triggers covered by measurement override the plan's archived steps; V4 net line change = zero).
+- extended: testing.md harness-truth item (2) gains the **fourth sighting** (E201's argv has the positional asset first; the ad-hoc
+  `--frames 1` dropped into the window lane — winit's error looks like a rendering bug but is a lane-selection bug).
+- this review caught one of its own: the newly written C19 check command was **a fake gate in its first version** (the predicate couldn't even hit the positive case,
+  and it depended on a session-level /tmp file); rewritten as the falsifiable form with a built-in breakage probe and actually run (planted sample=1, in-repo=0).
+- queue unchanged: push (the V4 commit) · five T3 human checks · the npm/pip packaging round · LAS/skinning ticket-gated, standing by.
+
+## Publish band ledger note (2026-10-09, plan next-band-queue todo 3)
+- Live counters moved by this band, measured same-terminal: ci depends-on = **12**
+  (`pack-check` promoted into the chain); install tree = **9 files**, unchanged --
+  no new install rules; the CPack TGZ packages exactly what `cmake --install`
+  produces (file-for-file diff recorded in `.omo/evidence/todo3-tarball-list.txt`,
+  LOCAL artifact only, nothing published). Packaged lib: SONAME bare name +
+  system-only NEEDED; RUNPATH names this env's sibling conda prefix = the D23 P3
+  assembly concern, adjudicated report-only (no patchelf), decision note in
+  `cmake/VisiaEnginePackaging.cmake`. Dated baselines above keep their
+  as-of-close values (append-only history discipline).
+
+## Next-band-queue baseline (2026-10-09, plan next-band-queue, todos 1-5)
+- Four commits, one per todo, each leaving `pixi run ci` rc=0: `98bdbbe` census ·
+  `0682fe3` keys-probe CASES 4→8 · `10c7dc7` CPack tarball + pack-check into ci ·
+  `81d89d0` npm local artifact + gate-docs check 4 extended. Todo 5 = this write-back.
+- **Todo 1 census** (`docs/reference/c-example-witness-census-2026-10-09.md`): the predicate
+  was written into the doc *before* any counting, then applied to 17 tracked files =
+  **6 WITNESS / 11 NO-witness** (`grep -c '| WIT[N]ESS |'` → 6, `'| N[O]-witness |'` → 11,
+  sum 17). Structural claim: a pixel witness **requires a `readback` call**; 10 of 11
+  NO-witness files have readback n=0 and the 11th (examples/cpp/template.cpp, readback=2)
+  asserts no bound -- readback is necessary, not sufficient. The WITNESS six: E701, E802, E813, E814, E816, E817.
+  Of the 11, eight still claim visible output (seven render call-sites E702/E704/E801/
+  E812/E815/template.c/template.cpp + the Qt pump E703), so a blanking or distortion
+  regression there stays green.
+- **Todo 2 keys-probe 4→8 rows** (`scripts/keys-probe.py:63`): E303/E306/E504/E901 added,
+  each drag + wheel + one key. Floors = 0.4 × the row's weakest *measured* action min,
+  with deliberate downward rounding (E303 15.46→6.0, E306 25.07→10.0, E504 13.24→5.0,
+  E901 5.96→2.3 -- integer-floor where the margin is wide, 1-dp at E901's lower bound);
+  the floor is a
+  per-action contract, not a row average. 8/8 green over 5 consecutive `--all` runs; each
+  new row shown red by temporarily replacing its actions with `noop` (restore proven).
+- **Keys-probe exclusions**, deliberate and recorded: E201_load_gltf, where Escape is a zoom
+  key (`examples/rs/E201_load_gltf.rs:52`, `Escape => dist *= 0.9`), and E501_shadow_demo,
+  which has zero keyboard handling (only a MouseWheel arm) -- the probe asserts Escape closes
+  within 6s, so both would be permanently red. **Noop-ban rationale**: those four window rows
+  must never use `noop`, because their idle frame is static, so a noop gate would print 0.00%
+  and test the harness instead of the app. `noop` survives only on E511, whose scene clock is
+  the thing under test.
+- **Todo 3 publish band**: CPack TGZ packages the install tree **file-for-file identical to
+  `cmake --install`, 9 files**, with no new install rules (diff recorded in
+  `.omo/evidence/todo3-tarball-list.txt`; LOCAL artifact, nothing published or pushed).
+  SONAME bare-name consumer witness: E701's `NEEDED` line reads `libvisiaengine.so`. RUNPATH
+  naming this env's sibling conda prefix = the D23 P3 assembly concern, documented in
+  `cmake/VisiaEnginePackaging.cmake` and adjudicated report-only -- **no patchelf**, no new
+  tool dependency.
+- **Todo 4 npm**: `build/npm/visiaengine-0.1.0.tgz` = **11 files**, version read from
+  `Cargo.toml` `[workspace.package]` by `scripts/gen-npm-package.sh` (never hand-typed). The
+  builder is a pixi task **out of ci** (same policy as gallery / keys-probe), and the
+  internal-link gate was folded into **gate-docs check 4 in place** (`.md-only` → every
+  markdown link in README / docs / llms.txt). So **ci 11→12 came from pack-check alone**;
+  this todo added no segment.
+- Ledger at close, every value recomputed same-terminal: **ci 12 segments · spec-trace
+  199↔199 · ctest 44 · gallery 44 cards · install tree 9 files · crates/ 9 (workspace 12
+  packages)**. Only the ci segment count moved this band.
+- **Open items (registered, not fixed)**: `examples/c/E814_labels_headless.c:48` --
+  `if (white < 60) fail(...)` drops the return, so that census row's pixel bound cannot
+  redden ctest; keys-probe's single-shot `noop` invocation prints a cosmetically wrong
+  usage/error line (no gate impact); an exit-key convention band for E201/E501 would unlock
+  two more probe rows; the npm package name was never checked against a registry (deliberate
+  offline stance, nothing pushed); the npm `exports` map is deferred.
+
+## PolyOrch embedding round (2026-10-12, in force)
+
+Supplier consumption landed end to end: submodule pinned PolyOrch 457234e (D39 contract + D40 EXAMPLE
+kind), shim reuse/embed + USE_PIXI master switch + 0.2.0 version floor (T-B1/T-D, five cmake-smoke
+negative paths pin the failure lanes). Build engine: capi (cdylib+staticlib handles, ALL wrapper,
+staged artifacts in cmake-build*/lib|bin, install-tree guard moved to install time) and all 28 rs
+examples (polyorch_rust_build EXAMPLE kind; ctest runs staged binaries directly). Debug: the `debug`
+preset opens 29 CodeLLDB launch+task pairs in the committed .vscode managed regions (idempotent).
+Presets re-shaped: default/release/prebuilt + debug + ci-strict (Qt is a plain VISIAENGINE_QT
+bool, no Qt preset; legacy QT_SDK five-value cache renamed with a stale-detection WARNING).
+T-A0..T-F + i18n E1-E5 committed (gate-i18n in ci; PIT-49/50 recorded; C20 in force).
+Open: PolyOrch upstream push (gitee auth expired -- 457234e unpublished; fresh clones cannot
+resolve the gitlink until pushed); cargo-build_examples/cargo-run_* naming lives in smoke anchors
+swept; T-D deferred items none; examples' RA lane unaffected.
+
+## Naming + taxonomy round (2026-10-12/13, T-H2/T-H3/T-H3.5 + user-caught PIT-51 fix, in force)
+
+Bindings face normalized on the four-axis grammar: link faces
+`visiaengine::c/::cpp/::qt` (real names `visiaengine-c/-cpp/-qt`; aliases are the
+only contract -- `::capi` renamed per the iceoryx2-c/zenoh-c consumer-language
+corpus), IDE viewers `visiaengine-{c,cpp,qt}-sources` (polyorch_header_face
+viewer+audit; viewer-only STATUS contract on the PolyOrch side, 1ee0359),
+aggregate `visiaengine-wasm-all`. Directory taxonomy single-axis: crates/ = the
+rust set incl. visiaengine-ffi (ex bindings/c/visiaengine-capi, crate renamed)
+and visiaengine-wasm (ex bindings/js/rust); bindings/ = pure consumer faces with
+the C header at bindings/c/include/. qt link face repaired (the T-H commit
+promised ::qt but never landed it -- Momus round-1 BLOCKER, user-adjudicated
+BUILD; examples/qt re-linked off its raw include-dir anti-pattern). CMake
+handle names follow the home (visiaengine-ffi-*; the user-caught PIT-51 fix).
+Button grammar finalized (-build/-test/-clean plain verbs; the rusttest
+coinage retired; the wasm glue buttons merged into the deliverable-word
+aggregate visiaengine-wasm-js-build -- one button, all flavors, C22
+deliverable-word clause). T-H5/T-H6 (2026-10-13): the four example
+lanes share ONE head word -- visiaengine-example-<name>{,-run,-build}
+across rs+c+cpp+qt (source files keep bare E names, R10 amended); wasm
+gains the serve button (visiaengine-wasm-serve: assemble web-demo +
+python http.server :8017, wasm MIME pinned, stale-glue replay edge);
+PolyOrch gains polyorch_example_run + polyorch_rust_wasm_serve; the
+cargo-run_/rs-/run_ prefixes are retired repo-wide; .vscode regen on
+rename (delete + reconfigure). Machine gates: ctest 108/108, pixi run ci ALL GREEN,
+gate-abi/gate-i18n green, negative audits both header lanes (hpp +
+visiaengine.h delete->FATAL->restore).
+Push backlog: PolyOrch 6 commits + V commits pending gitee credentials.
+
+## T-H12 round (2026-10-14, the ffi aggregate cleanup)
+
+visiaengine-cargo (last cargo- coinage) -> visiaengine-ffi-build (lane
+word, symmetric with rlibs-build); smoke/install/preset texts follow,
+zero-residue sweep green. The deletion probe REVERSED the redundancy
+guess: the example->cargo ordering bridge is LOAD-BEARING (the link
+face chains the artifact file path; file deps propagate no target
+edges) -- kept with its evidence in the comment (edit-safety rule 33
+born here). FOLDER re-homed per the T-H10 rule's corollary: an
+aggregate with an on-disk home goes to it (crates/visiaengine-ffi,
+where ffi-test already lives); the root group is now strictly the
+homeless tree-level zone. Commits 2b14dc5/d6899b7.
+
+## T-H11 round (2026-10-14, the web example wall -- P1+P2 landed)
+
+examples/wasm/ is now a three.js-style wall: hub index.html (searchable
+43-entry sidebar from wall.json; iframe viewer; placeholder cards with the
+ctest how-to for native-only entries) + common.js bootstrap + 6 LIVE pages
+(E101/E201/E202/E401/E811/E813 -- the entire wasm surface gets pressed by
+the wall itself). wall.json = the single list source; gate-docs ⑧ locks
+number-set equality wall<->registry + live-entry html existence. serve
+globs the wall, stages park.geojson + hierarchy.glb, and the glue .js are
+REAL file-level DEPENDS now (supplier 4dfa89b: the ';' in a -c one-liner
+split into argv -- server exited 0 silently; and serve served an EMPTY
+pkg/ without the js edge; post-hoc set_property(DEPENDS) never reaches the
+Ninja graph -- constructor only). Live: [4/5] replays both flavors, all
+probes 200, .wasm = application/wasm. gallery REMOVED at P3, same session (11-point list executed: targets/pixi tasks/gen_gallery.py/gate-docs ⑥⑦/smoke/README/tutorials/roadmap/rule text -- save_frame thumbnails KEPT per adjudication; wall.json is now the four-consumer card). Old text (P3 carries
+the removal contract: 11-point list + judgment in the plan (Momus write-back); trigger
+goes to Open Items at P3 time). Gates: suite 80/0/26, gate-docs/i18n ✓,
+ci ALL GREEN.
+
+## T-H10 round (2026-10-14, the aggregate opt-in flip + root-group migration)
+
+The user caught the default-named polyorch-rust-all aggregate drifting
+into the examples/rs folder: a redundant tree-wide button (every lane
+already aggregates: visiaengine-rlibs-{build,test,clean},
+visiaengine-example-build/-clean, wasm family) whose FOLDER was
+rewritten by the last registering lane. Supplier flipped to strictly
+opt-in + first-writer folder pin (PolyOrch 2f71338); V's own rs
+aggregates moved to the root group (no FOLDER -- the rlibs sibling
+pattern; fafe3c7). Verified: help shows zero polyorch-rust-all;
+example-build rebuilds the full gallery (32/32); suite 80/0/26;
+default preset green.
+
+
+
+The knob family is namespace-ordered (PolyOrch_VSCODE_DEBUG_{ALL,RUST,
+NODE,PYTHON,NATIVE}), ALL boolean -- ON forces every face (the full
+octk_option port landed: six keywords + expression evaluator, user-
+adjudicated; the OR_CONDITION cache-FORCE pins display=effect). The
+NATIVE face gives c/cpp/qt executables CodeLLDB F5 rows via
+polyorch_native_debug (self-target task rows; path computed at
+registration; MC expanded). V: debug preset = 29 rs + 14 native
+launch rows (Qt's E703 arrives with the opt-in lane, VISIAENGINE_QT=ON
+-- same macro shape, wiring proven). Machine gates: suite 78/0/26,
+t-option 10 cases, t-native-debug 5 legs; V build rc=0, example ctest
+36/44 (8 = the headless display lane standing state), ci ALL GREEN.
+
+## T-H7 pending gate (2026-10-14, the VSCode debug knob family round)
+
+- **T-H7 legacy-knob removal gate** (the T-H7.1 removal contract): delete the
+  three compat reads (PolyOrch_{RUST,NODE,PYTHON}_VSCODE_DEBUG -> the
+  PolyOrch_VSCODE_DEBUG_* family) when BOTH hold: (a) zero grep hits for the
+  three old names over both repos' formal surfaces, (b) one minor cycle since
+  landing. One cleanup commit: compat reads + STATUS lines + this line,
+  together.
+
+## Stale-fixes round (executed 2026-10-15, team audit + 11 user-adjudicated points, serial workers, ci green per phase)
+
+V-A: smoke-x11 include path fixed (the dir never existed; compiler-proven); `N` artifact removed; llms counts 49/44 via generator bump + NEW gate-docs leg 10 locking llms==README==live census (negative proof: planted `50 entries` observed red); web-serve.sh tombstone deleted; `gen-hdr` task registered (keys-probe precedent). Deps: rustls 0.23.45->0.23.46 clears the 4 RustSec advisories (de3fd05; upstream DB surfaced them against the pre-existing lock; diff = version+checksum+one in-range dep-ref). V-B: activation trio is now PolyOrch-managed generated content at root (`polyorch_pixi_setup(COPY_SCRIPTS)` + bootstrap cp for the cold window; hand copies git-rm'd + gitignored); bootstrap.bat delegates to pixi-init.bat (T-B2 mirrored), PIXI_PIN gone, env.md pin prose = CI + upstream default. V-C: modules renamed VisiaEngineFfi/Crates/Wasm + lowercase fn names (VisiaEnginePolyOrch stays as the SOLE seam file; conventions.md C21 check-body path fixed in the same commit with gate-liveness red proof); pre-T-C dead block + three SDK set-never-read exports deleted; Packaging/WARNING/README texts corrected; the `debug` preset became the FULL-FEATURE F5 tree (Qt+knob, own cmake-build-debug, runs in the qt-spike env via `pixi run f5`) -- first-ever committed tasks.json, launch rows 43->44 incl. E703, everyday presets provably never touch .vscode (PIT-64/65/66 filed). P-batch: PolyOrch rust-bindings stops re-concatenating the lane prefix (four sites; bare standalone names frozen; fused names single-prefixed app/consumer/clean/cxx-regen proven), tutorials :98 + :167-168, three examples comment blocks, and the loader-active status.md verification row re-copied from LIVE target lists; PolyOrch suite RECORDED offline 80/0/26 / e2e 102/0/4 at parity. Ledger: .omo/plans/2026-10-14-stale-{audit,fixes}.md. Commits: V a0c4489..8687d42 (14 incl. deps+memory), PolyOrch cf5f1f9/34dae27, gitlink advanced (all still unpublished -- gitee blocker).
+
+## Reuse-audit round (executed 2026-10-15, adjudications 13-17, all five cashed)
+
+13+17 (run buttons -> supplier machine): three hand sites swapped to polyorch_example_run (WORKING_DIRECTORY + GUI splat shape), scripts/run-gui.sh retired with reference sweep, d45efd1 -- path required a supplier side-quest (17=R1c: GUI form set()+re-expansion split the probe at ';' -- inline COMMAND quoting now load-bearing + t-example-run LIVE-exec leg with negative proof; PolyOrch PIT-65; v0.2.2 e7f61ab). 15+16 (Qt): SDK two-generation discovery (Qt6 -> Qt>=5.15, canonical VISIAENGINE_QT_* outputs, generation-honest STATUS), E703 folded into visiaengine_add_example (one compile guard from the REAL 5.15.15 build: VE_MOUSE_POS; wheel unguarded -- position() exists since 5.0, measured; zero moc stance kept), qt5-spike validation env (5.12 explicitly out of contract per owner directive), smoke-qt's T-H6 path-drift fossil fixed en route -- both generations build AND run real windows (e51fae8/ed140a3/9d49915). 14 (rlib): supplier v0.3.0 LIB kind (D42: cargo --lib restriction, platform-invariant lib<name>.rlib naming proven from rustc output.rs, INTERFACE handle + POLYORCH_RUST_LIB, default dispatch untouched; aec3278/b078e51/d96713c) + host Crates lane collapsed onto it (ba72ac4): 283 addressable target names byte-preserved, ctest 44 identical, bare-PATH build wrappers retired (PIT-14 leak class killed at the lane, --unset lines visible in generated ninja), 9 rlibs cold-built 23.6s through the face, full ci 345 tests green. Acceptance-phrasing lesson: "help diff = 0" is the wrong pin when a face stamps outputs -- the honest criterion is addressable-NAME-SET identity (worker caught it, ticket author = orchestrator). C23 first runs held (dev-visiaengine work, ff main, suite-on-main, HEAD back to dev); inner a246861 (PIT-65 memory commit) had in fact PUSHED (ls-remote re-check after a swallowed-output timeout; PIT-69 filed for the phantom claims in the closing report -- c3c5355/39-backlog were fabrications, real backlog 2); outer pin followed to a246861 once publication was proven, closing the M-PolyOrch drift.
+
+## Headless-page-gate round (executed 2026-10-16, owner-adjudicated chain: download / heartbeat / option-4 beacon)
+
+gate-web joins the gate family (scripts/gate-web.sh, 155 lines: ~65 bash + embedded stdlib python gate server on :8018; pixi task + ci step wired, honest self-SKIP). Wall count 43/43, engine fail-marks + Uncaught legs live, heartbeat via anchor-img + 8-frame beacon (VE_GATE_FRAMES/VE_GATE_MIN_FRAMES coupling commented both sides). Chromium 131 CLI-only (npmmirror playwright-cache path; conda-forge has NO chromium package, measured), WebGPU over swiftshader with the D26 flag combo; D-Bus proxy scrub (PIT-70). C0 duty: orchestrator's independent FIRST run went RED (cold wall race) -> root-caused to a bounded 3-roll re-jury (verdict unsoftened) -> 2x green + `pixi run gate-web` green; negative ledger (a)-(e) all observed red-in-channel (glue-throw, port-BUSY, no-manifest SKIP, boot-throw ✗, beacon-removal). Numbers: beacon 618-1353 ms, full run ~4 s warm. D26 records the five rejected browser channels with evidence. PolyOrch gitlink advanced to 5945f2a (owner sync, CMP0174 guards, c5d4d1b -- publication ls-remote-proven per C23). Plan: .omo/plans/2026-10-16-headless-page-gate.md. ## Serve-https lane (executed 2026-10-16, owner project-approval after the LAN secure-context report)
+
+Host-side TLS sibling of the wasm serve lane: scripts/wasm-serve-https-gen.sh (idempotent mkcert CA+leaf, SANs localhost/127.0.0.1/192.168.122.177/10.144.0.10, NSS step degrades honestly -- no certutil on this host) + scripts/wasm-serve-https.py (32-line stdlib ssl static lane :8443, guards: missing dir/cert/BUSY) + pixi tasks serve-https-gen/serve-https + .gitignore .certs/. Measured: https 200 on LAN IPs, wall 43/43 + beacon-over-https GREEN with the UNtrusted cert = secure-context confirmed (chrome 131, --ignore-certificate-errors route empirically backed); four negatives red. Cross-browser remote live-fire awaits the owner's GPU machine (T3). PIT-73 (setsid $! vs port holder) + PIT-74 (orchestrator spec-confabulation retracted before damage) filed. Commits c7fdeb4.
+
+Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match --version drift red / honest SKIP absent / opt-in sha-verified provisioning) because conda-forge provably carries no chromium; anchor-beacon heartbeat rolled to all 6 live pages with per-page READY namespaces (beacons 581-975 ms measured, E401 beacon-cut reddens only its own leg).
+
+## Dual-serve round baseline (2026-10-19, owner-adjudicated: one button, http+https)
+
+- owner request: the `visiaengine-wasm-serve` button must start BOTH servers and its
+  `[n/m]` build-line must name both URLs. Root lesson: supplier's serve function bakes
+  its Ninja DESC at add_custom_target time and is C23-frozen, so the host registers the
+  button itself (VisiaEngineWasm.cmake, assembly recipe mirrored from
+  PolyOrchRustHelpers.cmake) -- `COMMENT` written at registration carries both URLs.
+- behavior: `.certs/` present (serve-https-gen once) = dual serve, http :8017 (dev +
+  gate-web replay) + https :8443 (LAN secure-context WebGPU, self-signed cert, SANs
+  cover 192.168.122.177 / 10.144.0.10); no certs = supplier's http-only form verbatim.
+  The pixi `serve-https` standalone task stays as the non-button alternative.
+- measured: DESC line in build.ninja carries `...http://127.0.0.1:8017 +
+  https://<LAN-IP>:8443...`; generated script py_compile OK; live run http 200 + https
+  200 (real TLS handshake); verify processes cleaned, port handed back to the IDE.
+- new lessons: PIT-75 (DESC baked at registration; register, not patch) / PIT-76
+  (file(WRITE) multi-line parse error + stray-`]` smuggling; py_compile the artifact)
+  / PIT-77 (port-bound verification must return the port; setsid children survive the
+  launcher kill) + edit-safety 39/40/41.
+- open: commit awaiting user instruction; gate-docs has no anchor on the serve DESC
+  text (checked: no gate greps it); supplier retirement condition recorded inline
+  (adopt when PolyOrch grows TLS_PORT/TLS_CERT/TLS_KEY args post-unfreeze).
+
+## Review-fix band baseline (2026-10-19, 5-agent review FAILED -> three blocking fixes landed)
+
+- origin: the /review-work 5-lane round (goal/QA/quality/security/context) on the wasm band;
+  3 FAIL 1 PASS 1 INCONCLUSIVE; the QA lane's live probes caught what the green ci could not.
+- fixes (3 commits): E811 fixture = twoprim.glb (the "two-primitive" claim was a
+  1-primitive poser) / mount_gltf framing fit (E202 family law, gltf leg -- the QA
+  "wasm pick dead" report was THIS engine bug: hierarchy.glb off-frustum, 0 pick hits;
+  oblique-depression camera per the E201 pitch law) / E813 knife sign [0,0,-1,v]
+  (keeps=n*p+d>=0) + pick-target sweeping for the de-centered consumers (E701/E811_c/
+  E811cpp) + gate-web consumes the ?selftest beacon (E401 asserts RED+GREEN, 165 cells).
+- disproven en route: the matrix-transpose hypothesis (gltf crate is column-major per
+  the glTF spec, verified from crate source; the transpose was reverted same-session).
+- honest note: the QA lane's "wasm32-specific" framing was wrong -- the bug was engine-
+  level; the wasm surface just had no fit and no page-level pick probe to see it.
+- new gates: gltf_node_transform_pick_preserved / clip_knife_sign_semantics (both
+  RED-proven) / gate-web E401 pick-surface assertion (RED-proven by its first run).
+- baseline: pixi run ci rc=0 (13 segments); ctest headless lane green; gate-web OK with
+  the pick assertion; worktree clean; 3 commits this band.
+- remaining: user hard-refresh retest of E401/E811/E813 (staged artifacts good);
+  group-offset pick leg landed in the same session as the review's blocking #3.
+
+## Web wall expansion band baseline (2026-10-23, live pages 6 -> 26)
+
+- six sessions of wall expansion: E302/E306/E502/E814/E505/E812/E402/E403/
+  E305/E901/E304/E301/E203/E506/E509/E511/E508/E510/E501 live, plus the
+  E302/E306 C-twin cross-references (E815/E816 stay native by family).
+- bridges added: setMorphTime/clearMorph (REND-41), loadEnvHdrBytes (bytes
+  entry + wasm leaf), setProjection/getProjection (N2.1 seam + query),
+  pickPoint (pick_geo now returns the full surface point; pick_hit engine
+  face), setPostEffects (flat kind/p1/p2 chain: bloom/outline/tonemap/ssao/
+  haze; post field wired through BOTH Frame sites AND the wasm-only
+  new_canvas constructor -- the N4 band's web-check catch repeating), setEdl,
+  setShadow (light-dir -> CameraRig construction, E501 family).
+- gate hardening: gate-web PAGES + summary derive from wall.json (the
+  hardcoded list drifted twice); tag-balance check per live page (PIT-82
+  breakage probe red-proven naming E812).
+- lessons: PIT-81 (veLoop onFrame takes NO arguments; ad-hoc chrome probes
+  need the D-Bus scrub -- empty dom + no console = probe-side), PIT-82
+  (unclosed <script type="module"> = the page NEVER evaluates, zero console
+  evidence; node --check cannot catch it -- sed range falls through to EOF;
+  tag balance grep is the gate), C21 re-sighting (quoted 'a;b' in the copy
+  foreach is ONE string; assemble failed loudly), bindgen glue does not
+  track lib.rs (rm -rf web/pkg-web forces the replay).
+- baseline: pixi run ci rc=0; web-check + MIRROR 3/3; gate-web 26 live
+  pages all beacon green (396-2219ms, E501's shadow pass the slowest);
+  43 wall items = ctest = registry; worktree clean; 14 commits ahead.
+- remaining native-only: E204 (load_pcl bytes needed), E205 (text labels
+  need the C text port semantics), E206 (load_tile_file bytes needed),
+  E303 (render_view_rects bridge, the largest face), E503 (strokes bridge
+  absent -- addPoints covers dots only), E504 (alpha hot-update semantics
+  via addMesh rebuild is possible but the native page teaches the material
+  hot path), E601/E70x/E801/E802/E810 (bench/window/CLI families, non-web),
+  E815/E816 (C twins cross-referenced), E817 (loadRasterDir bytes needed).
+
+## Web wall expansion addendum (2026-10-23 same band, live pages 26 -> 29)
+
+- three bytes-bridge pages: E204 (loadPclBytes was already on the face --
+  zero new bridge), E206 (MemSource in io-tiles + load_tile_bytes on the
+  engine; mount_tile_layer tail carved out of load_mvt_dir and shared),
+  E817 (load_raster_bytes single-tile quad tail + loadRasterBytes; the
+  band-T same-domain pair: raster_over underlay + vector overlay, z10).
+- wall now 29/43 live (67%). Bridge face 41 -> 51 across the whole band.
+- a botched extraction (mount_tile_layer) produced duplicate mount_layer
+  blocks and an unclosed fn -- reverted to HEAD and redone with window-based
+  string surgery; the compiler spans named every defect. Lesson: large
+  multi-site extractions go through revert-and-redo, not incremental patches.
+- remaining native-only (14): E205 (C text-port semantics), E303
+  (render_view_rects bridge, the largest face), E503 (strokes bridge),
+  E504 (material hot-path semantics), E601/E70x/E801/E802/E810 (non-web
+  families), E815/E816 (C twins cross-referenced).
+- 17 commits ahead at close; worktree clean; ports returned after every
+  verification run.
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->
+<!-- END:agents-memory -->

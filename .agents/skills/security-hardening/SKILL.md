@@ -1,11 +1,11 @@
 ---
 name: security-hardening
-description: "Generic security audit and hardening: OWASP Top 10 checks, hardcoded secrets/ports/URLs scan (merged review-hardcode), PSK/JWT auth flow review, WebSocket security, secrets management, media transport security. Use before release, after auth changes, or when rotating pre-shared keys. Also accessible via /review-hardcode."
+description: "Security audit and hardening: OWASP Top 10 checks, hardcoded secrets/ports/URLs scan (merged review-hardcode), token/auth flow review, FFI and binding boundary review, and dependency/license risk. Use before release, after auth or binding changes, or when rotating credentials. Also accessible via /review-hardcode."
 ---
 
 # security-hardening — Security Hardening
 
-> OWASP Top 10 + PSK/JWT auth + WebSocket security + secrets management.
+> OWASP Top 10 + token auth + WebSocket security + secrets management.
 > Every rule carries a check command. Every check must pass.
 > `<src>` = the project's source directory; substitute per actual layout (crates/, src/, app/ …).
 
@@ -14,7 +14,7 @@ description: "Generic security audit and hardening: OWASP Top 10 checks, hardcod
 - Before release (release candidate)
 - After changes to the Auth module
 - New WebSocket endpoint
-- New PSK key / JWT secret
+- New token / credential handling
 - The user says "security review" / "安全审计"
 - New FFI boundary (C/ObjC bridge)
 
@@ -95,11 +95,6 @@ description = "Known false positives"
 paths = [
   ".env.example",               # placeholder values
 ]
-
-[[rules]]
-id = "custom-psk-pattern"
-description = "Pre-shared key literals"
-regex = '''(?i)(psk|pre_shared_key)\s*=\s*["'][A-Za-z0-9+/]{32,}["']'''
 ```
 
 ### gitleaks pre-commit hook (.git/hooks/pre-commit)
@@ -186,27 +181,6 @@ Hardcoded values marked `TODO:` (allowed temporarily) need manual review to deci
 
 ## Phase 2: Auth-flow audit
 
-### PSK (pre-shared key) authentication
-
-```
-// generic PSK flow:
-// Client ──[PSK in handshake/header]──> Server ──[validate]──> Session token
-
-// checkpoints:
-// 1. is the PSK injected via env var / secrets manager? (not plaintext in a config file)
-// 2. is the PSK ≥32 bytes?
-// 3. does the Server rate-limit PSK validation? (brute-force defense)
-// 4. does the Session token have an expiry?
-// 5. are PSK-error responses vague? (never leak "user exists" or "key nearly correct")
-```
-
-```bash
-grep -rn 'pre_shared_key\|psk' <src>/ --include='*.rs'
-grep -rn 'env::var.*PSK\|env::var.*SECRET' <src>/ --include='*.rs'
-grep -rn 'session.*ttl\|token.*expir\|jwt.*exp' <src>/ --include='*.rs'
-grep -rn 'rate.limit\|429\|too.many' <src>/ --include='*.rs'
-```
-
 ### JWT authentication
 
 ```bash
@@ -221,6 +195,12 @@ grep -rn 'exp\|expir' <src>/ --include='*.rs'
 
 # 4. confirm refresh-token rotation exists
 grep -rn 'refresh_token\|refresh' <src>/ --include='*.rs'
+
+# 5. confirm the token/session lifetime is enforced (not merely stored)
+grep -rn 'session.*ttl\|token.*expir\|jwt.*exp' <src>/ --include='*.rs'
+
+# 6. confirm credential validation is rate-limited (brute-force defense)
+grep -rn 'rate.limit\|429\|too.many' <src>/ --include='*.rs'
 ```
 
 ## Phase 3: WebSocket security
@@ -252,22 +232,25 @@ grep -rn '#\[serde(deny_unknown_fields)\|unknown_fields\|additional_properties' 
 grep -rn 'from_slice\|from_str\|unmarshal\|json.loads' <src>/ --include='*.rs'
 ```
 
-## Phase 4: Media transport security (if the project involves it)
+## Phase 4: FFI and binding boundary
 
-For real-time media / port-heavy transports (WebRTC-class systems are typical) — the method is generic:
+The engine's outward surface is a C ABI mirrored to C++ headers and wasm; treat it as an attack surface, not just a compatibility surface.
 
 ```bash
-# 1. is the media port range controlled (not 0-65535 wide open)
-grep -rn 'min_port\|max_port\|port_range\|rtp' <src>/ --include='*.rs'
+# 1. every exported symbol takes caller data that must be validated (lengths, null, alignment)
+grep -rn 'pub unsafe extern "C" fn\|extern "C" fn' <src>/ --include='*.rs'
 
-# 2. does transport establishment require auth (token/handshake validation)
-grep -rn 'transport.*auth\|token\|dtls\|ice' <src>/ --include='*.rs'
+# 2. pointer + length pairs must reject null, zero length, and absurd lengths at the boundary
+grep -rn 'from_raw_parts\|slice::from_raw\|as_ptr()' <src>/ --include='*.rs'
 
-# 3. does session/room creation require permission
-grep -rn 'create.*session\|create.*room' <src>/ --include='*.rs'
+# 3. panics must never cross the ABI (catch or abort at the boundary, never unwind into C)
+grep -rn 'catch_unwind\|panic = "abort"' <src>/ Cargo.toml
 
-# 4. publisher/subscriber permission isolation (is reading another's stream authorized?)
-grep -rn 'peer_id\|publisher\|subscriber\|producer\|consumer' <src>/ --include='*.rs'
+# 4. ownership rules: who frees what, and is every handle released on the early-return path
+grep -rn 'fn .*_free\|fn .*_destroy\|Box::from_raw' <src>/ --include='*.rs'
+
+# 5. header mirror drift (declaration vs implementation vs wasm signature)
+grep -rn 'pub extern "C" fn' <src>/ --include='*.rs' | wc -l
 ```
 
 ## Phase 5: Dependency audit
@@ -308,7 +291,7 @@ grep -rn 'content-security\|CSP\|frame-ancestors' <src>/ --include='*.rs'
 | A04 | insecure design | rate limiting + timeouts | `grep -rn 'rate.limit\|timeout' <src>/` | ✅ |
 | A05 | security misconfiguration | debug mode disabled in production | `grep -rn 'debug_assert\|cfg(debug)' <src>/` | ✅ |
 | A06 | vulnerable components | dependency audit passes | `cargo audit` / stack equivalent | ✅ |
-| A07 | authentication failure | PSK/JWT flows complete | all Phase 2 checks | ✅ |
+| A07 | authentication failure | token/auth flows complete | all Phase 2 checks | ✅ |
 | A08 | software/data integrity | serialization format validation + signed provenance | dedicated verification per format | ✅ |
 | A09 | logging/monitoring failure | security-event audit log | `grep -rn 'audit\|security.log' <src>/` | ⚠️ |
 | A10 | SSRF | server-side HTTP fetches go through an allowlist | `grep -rn 'reqwest\|hyper::Client\|fetch(' <src>/` | ✅ |
@@ -322,8 +305,8 @@ grep -rn 'content-security\|CSP\|frame-ancestors' <src>/ --include='*.rs'
 ✅ scan passed: 0 CRITICAL, 0 HIGH, 0 MEDIUM
 
 ### Phase 2: auth flow
-✅ PSK from environment variable
-✅ PSK length: 64 bytes
+✅ token secret from environment variable
+✅ algorithm pinned (none rejected)
 ⚠️ Session TTL: 24h (suggest 2h)
 ❌ no rate limiting (P0)
 
@@ -332,10 +315,10 @@ grep -rn 'content-security\|CSP\|frame-ancestors' <src>/ --include='*.rs'
 ❌ no Origin validation (CSWSH-attackable)
 ⚠️ TLS enabled only in some environments
 
-### Phase 4: media transport
-✅ port range controlled
-✅ session creation requires auth
-⚠️ publishers have no bandwidth limit
+### Phase 4: FFI boundary
+✅ all exported symbols null-check pointers + lengths
+✅ panics cannot unwind across the ABI
+⚠️ header mirror drift: 1 symbol declared but not implemented
 
 ### Phase 5: dependencies
 ✅ cargo-audit: 0 vulnerabilities
@@ -348,7 +331,7 @@ Fix recommendations: [sorted by severity]
 
 ## Forbidden
 
-- hardcoded secrets: never allowed — keys go only through env vars/secrets managers; any leaked key is rotated immediately
+- hardcoded secrets: never allowed — keys go only through env vars/secrets managers; any leaked key is rotated at once
 - silently swallowed errors: auth failures must be logged but never leak the key
 - ignoring dependency-audit warnings: every vulnerability alert needs a recorded decision
 - production running debug config: `debug_assert!` doesn't execute in release

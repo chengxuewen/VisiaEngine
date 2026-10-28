@@ -1,6 +1,6 @@
 ---
 name: api-interface-design
-description: "Contract-first interface design for polyglot projects: trait/interface boundaries, WebSocket signaling protocols (tagged serde enums), and REST APIs (OpenAPI spec). Enforces protocol backward compatibility, module-boundary contracts, and wire-format discipline. Use BEFORE adding new API endpoints, WS message types, or cross-module trait changes."
+description: "Contract-first interface design for polyglot projects: Rust trait boundaries, the C ABI surface (header + cpp/wasm mirrors), and REST/JSON protocols. Enforces backward compatibility, module-boundary contracts, and wire-format discipline. Use BEFORE adding an exported symbol, changing a trait, or introducing a new protocol message."
 ---
 
 # api-interface-design — Contract-First API Design
@@ -14,7 +14,7 @@ Most projects have three distinct API contract surfaces:
 | Boundary | Form | Typical Location | Contract |
 |----------|------|----------|----------|
 | **Internal module traits/interfaces** | Language-level interfaces | Core library modules | Signature stability |
-| **WebSocket signaling** | JSON enum | Shared protocol module | `#[serde(tag = "type")]` discipline |
+| **C ABI surface** | `extern "C"` symbols + handwritten header | `bindings/c/include` + cpp / wasm mirrors | signature parity across header ↔ hpp ↔ wasm |
 | **REST API** | OpenAPI spec | `docs/openapi.yaml` | Schema + validation |
 
 ## Design Protocol
@@ -54,7 +54,7 @@ Rules:
 - Never expose internal types in public API
 - `#[non_exhaustive]` on enums meant for extension
 
-**WebSocket Protocol Contract:**
+**WebSocket / JSON message contract** (only if the host project has a message channel; this engine's outward surface is the C ABI):
 
 ```rust
 // ✅ CORRECT: tagged enum, snake_case, backward-compatible

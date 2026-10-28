@@ -89,6 +89,9 @@ node_modules
 .venv-openspace
 .playwright-mcp
 .codegraph
+# Agent single-source: local MCP overrides (secrets). Canonical .agents/mcp.json is committed;
+# this carries real credentials and must never be tracked (review #3 / adjudication 3-B).
+.agents/mcp.local.json
 # pixi environment manager
 .pixi
 .pixi-pack
@@ -103,6 +106,8 @@ node_modules
 .sisyphus
 .omo/*
 !.omo/omo.jsonc
+
+.codebuddy
 
 # Official reference source clones (git-ignored, script-managed)
 .refinfo

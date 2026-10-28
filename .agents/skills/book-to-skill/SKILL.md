@@ -5,9 +5,9 @@ description: "Converts books and documents (PDF, EPUB, DOCX, HTML, Markdown, pla
 
 <!--
 Cross-agent notes (informational; ignored by host agents):
-  - Compatible skill roots: GitHub Copilot CLI (~/.copilot/skills, ~/.agents/skills,
-    .github/skills, .claude/skills, .agents/skills), Amp (.agents/skills,
-    ~/.config/agents/skills, ~/.config/amp/skills), Claude Code (~/.claude/skills).
+  - Skill root: this skill lives in the project's single source `.agents/skills/`. Host
+    activation directories (.codebuddy/skills, .claude/skills) are generated link layers
+    pointing here — never install or edit a copy inside them.
   - `allowed-tools` is intentionally omitted to stay agent-neutral: Copilot CLI uses
     `shell`/MCP-server names, Claude uses `Bash`/`Read`/`Write`/`Glob`/`Grep`, Amp
     adds `shell_command`. The skill needs shell (to run extract.py) and file
@@ -64,18 +64,14 @@ Four paths available. Route based on what the user asks:
 
 ## Skill Locations
 
-This converter can run from multiple skill systems. When looking for this converter's helper script or writing the generated book skill, prefer these locations in order:
+This skill lives in the project's single source: `.agents/skills/book-to-skill/`. Its helper script sits beside it at `.agents/skills/book-to-skill/scripts/extract.py`.
 
-1. GitHub Copilot CLI personal skills: `~/.copilot/skills/`
-2. Cross-agent personal skills (Copilot + Amp): `~/.agents/skills/`
-3. Claude Code personal skills: `~/.claude/skills/`
-4. Project-local Copilot skills: `.github/skills/`
-5. Project-local Claude skills: `.claude/skills/`
-6. Project-local Amp / Copilot skills: `.agents/skills/`
-7. Amp global skills: `~/.config/agents/skills/`
-8. Amp legacy global skills: `~/.config/amp/skills/`
+**Generated** book skills may be written to exactly two destinations:
 
-For **generated** book skills, pick a destination that the user's host agent can actually discover (see Step 5). When more than one valid root exists, ask the user once and remember the answer for the session — do not silently default.
+1. Project-level (default): `.agents/skills/<skill-name>/` — the canonical source. Host activation layers (`.codebuddy/skills/`, `.claude/skills/`) link back to it; writing there directly would be pruned by the link harness.
+2. An absolute path the user names explicitly (outside this repo) — only when asked.
+
+If the destination is ambiguous, ask once and keep the answer for the session.
 
 ---
 
@@ -129,25 +125,12 @@ Store the answer as `BOOK_TYPE`:
 Run the extraction script, passing the input paths:
 
 ```bash
-SCRIPT_PATH=""
-for candidate in \
-  "$HOME/.copilot/skills/book-to-skill/scripts/extract.py" \
-  "$HOME/.agents/skills/book-to-skill/scripts/extract.py" \
-  "$HOME/.claude/skills/book-to-skill/scripts/extract.py" \
-  ".github/skills/book-to-skill/scripts/extract.py" \
-  ".claude/skills/book-to-skill/scripts/extract.py" \
-  ".agents/skills/book-to-skill/scripts/extract.py" \
-  "$HOME/.config/agents/skills/book-to-skill/scripts/extract.py" \
-  "$HOME/.config/amp/skills/book-to-skill/scripts/extract.py"
-do
-  if [ -f "$candidate" ]; then
-    SCRIPT_PATH="$candidate"
-    break
-  fi
-done
+# The skill lives in the project's single source; override only when installed elsewhere.
+SKILL_DIR="${CODEBUDDY_SKILL_DIR:-.agents/skills/book-to-skill}"
+SCRIPT_PATH="$SKILL_DIR/scripts/extract.py"
 
-if [ -z "$SCRIPT_PATH" ]; then
-  echo "Could not find scripts/extract.py for book-to-skill" >&2
+if [ ! -f "$SCRIPT_PATH" ]; then
+  echo "Could not find $SCRIPT_PATH" >&2
   exit 1
 fi
 
@@ -209,30 +192,7 @@ Wait for the user to confirm before proceeding. If they say "analyze only", swit
 
 ## Step 2.6 — REPL-style access for large books (> 50k tokens)
 
-Inspired by the Recursive Language Model (RLM) paradigm: treat `full_text.txt` as a queryable corpus, not a single read. Loading the whole file into context burns budget you will need later for generation.
-
-For books over ~50k tokens, prefer programmatic probes over `Read(full_text.txt)` without bounds:
-
-```bash
-# Size check before any Read
-wc -w "$FULL_TEXT_PATH"
-
-# Find chapter offsets without loading the whole file
-grep -n -E "^\s*(Chapter|CHAPTER)\s+[0-9]+" "$FULL_TEXT_PATH" | head -40
-
-# Pull only the chapter you need (lines start..end inclusive)
-sed -n '<start>,<end>p' "$FULL_TEXT_PATH"
-
-# Verify a framework is actually mentioned before claiming it in SKILL.md
-grep -c -i "westrum\|dora" "$FULL_TEXT_PATH"
-
-# Targeted Read with offset/limit avoids dumping the full file
-# Read(file_path=full_text.txt, offset=<line>, limit=<lines>)
-```
-
-Use this approach for Step 3 (structure analysis), Step 7 (per-chapter summaries), and Step 8 (glossary / patterns extraction). On books under 50k tokens, a single `Read` is fine.
-
-Why this matters: a 200-page book is ~75k tokens. Re-reading it once per chapter (28 passes) costs ~2M input tokens; using grep + sed to pull only relevant slices keeps generation cost proportional to the output, not the source.
+See `references/repl-access.md` (load only when handling large sources).
 
 ---
 
@@ -300,19 +260,18 @@ Otherwise, propose two options and let the user choose:
 
 Default to author-concept format if the book has a strong methodological identity.
 
-Choose the destination skill root (`SKILLS_HOME`). Probe the user's filesystem for existing skill homes and pick by **the host the user is running in**:
+Choose the destination root (`SKILLS_HOME`):
 
-| Host agent | Personal skill root (probe in order) | Project-local root |
+| Destination | Path | When |
 |---|---|---|
-| **GitHub Copilot CLI** | `~/.copilot/skills` → `~/.agents/skills` | `.github/skills` → `.claude/skills` → `.agents/skills` |
-| **Amp** | `~/.agents/skills` → `~/.config/agents/skills` → `~/.config/amp/skills` | `.agents/skills` |
-| **Claude Code** | `~/.claude/skills` | `.claude/skills` |
+| Project-level (default) | `.agents/skills` | always, unless the user names another path |
+| Caller-specified | the absolute path the user gives | only when explicitly requested |
 
 Selection rules:
-1. If **exactly one** of the host's candidate roots exists on disk, use it without asking.
-2. If **none** exist (fresh machine), ask the user which root to create — present the host-appropriate options and remember the choice for the session. Do not silently pick.
-3. If the user explicitly asked for project-local output, prefer the project-local row.
-4. If you cannot identify the host, ask: "Which agent are you running this in — GitHub Copilot CLI, Amp, or Claude Code?"
+1. Default to `.agents/skills` in the current repository — it is the single source; host activation layers link back to it.
+2. If the user names an absolute path, use it verbatim; do not append host-specific suffixes.
+3. Never write into a host activation directory (`.codebuddy/skills`, `.claude/skills`): those are generated link layers and the link harness prunes foreign entries.
+4. If the destination is unclear, ask once and remember the choice for the session. Do not silently pick.
 
 Set `SKILLS_HOME` to the selected root and check if `$SKILLS_HOME/<skill_name>/` already exists.
 If it does, prompt the user to choose:
@@ -450,71 +409,7 @@ Avoid: bare term→definition rows (that's the glossary), and prose paragraphs (
 
 ## Step 9 — Generate the master SKILL.md
 
-**CRITICAL TOKEN BUDGET: Keep SKILL.md body under 4,000 tokens.**
-Compaction truncates from the END — put the most important content FIRST.
-
-Create `$SKILLS_HOME/<skill_name>/SKILL.md`:
-
-```markdown
----
-name: <skill_name>
-description: "Knowledge base from \"<Full Title>\" by <Author(s)>. Use when applying <author>'s frameworks for <key topics, 3–6 terms>, studying the book, or referencing its concepts."
----
-
-<!-- argument-hint: [topic, framework name, or chapter number] -->
-
-# <Full Title>
-**Author**: <Author(s)> | **Pages**: ~<N> | **Chapters**: <N> | **Generated**: <YYYY-MM-DD>
-
-## How to Use This Skill
-
-- **Without arguments** — load core frameworks for reference
-- **With a topic** — ask about `replication`, `pricing`, or another indexed topic; I find and read the relevant chapter
-- **With chapter** — ask for `ch05`; I load that specific chapter
-- **Browse** — ask "what chapters do you have?" to see the full index
-
-When you ask about a topic not covered in Core Frameworks below, I will read
-the relevant chapter file before answering.
-
----
-
-## Core Frameworks & Mental Models
-<!-- ~2,000 tokens: the author's most important named frameworks and principles.
-     Preserve exact names. Write as "Use X when Y", "Prefer X over Y because Z".
-     This is a toolkit, not a summary. -->
-
-<generate 2,000 tokens of the most critical frameworks and insights here>
-
----
-
-## Chapter Index
-
-| # | Title | Key Frameworks |
-|---|-------|----------------|
-| [ch01](chapters/ch01-<slug>.md) | <Title> | <framework1>, <framework2> |
-| [ch02](chapters/ch02-<slug>.md) | <Title> | <framework1>, <framework2> |
-...
-
-## Topic Index
-
-<!-- Alphabetical. Major terms/frameworks → chapter(s) that cover them. -->
-- **<Term>** → ch<N>[, ch<N>]
-- **<Term>** → ch<N>
-
-## Supporting Files
-
-- [glossary.md](glossary.md) — all key terms with definitions
-- [patterns.md](patterns.md) — all techniques and design patterns
-- [cheatsheet.md](cheatsheet.md) — quick reference tables and decision guides
-
----
-
-## Scope & Limits
-
-This skill covers the book content only. For hands-on implementation in your codebase,
-combine with project-specific tools. For topics beyond this book, check related skills
-or ask the agent directly.
-```
+Use the template in `references/master-skill-template.md` to create `$SKILLS_HOME/<skill_name>/SKILL.md`.
 
 ---
 
@@ -575,50 +470,7 @@ Share this skill (Copilot ecosystem, optional):
 
 ## Update / Fold-in Workflow
 
-When performing an Update/Fold-in operation on an existing skill at `$SKILLS_HOME/<skill_name>/`:
-
-### 1. Read Existing Skill Structure
-Read and parse the existing skill's files:
-- Read `$SKILLS_HOME/<skill_name>/SKILL.md` to parse the existing **Chapter Index**, **Topic Index**, metadata (author, total chapters), and **Core Frameworks**.
-- List all files in `$SKILLS_HOME/<skill_name>/chapters/` to find the highest chapter number (e.g. `ch12`).
-- Read `$SKILLS_HOME/<skill_name>/glossary.md`, `$SKILLS_HOME/<skill_name>/patterns.md`, and `$SKILLS_HOME/<skill_name>/cheatsheet.md` to see what terms and frameworks are already indexed.
-
-### 2. Match Content & Identify Revisions vs. Additions
-Analyze the new extracted text in `<tempdir>/book_skill_work/full_text.txt` to identify if the new content represents:
-- **Updates/Revisions to existing chapters**: If a section of the new content directly updates or expands an existing chapter's topic, read the existing chapter file, merge the new details into it, and rewrite the file.
-- **New additions**: If the content introduces new chapters, papers, or separate sections, create **new chapter summary files** under `chapters/`. Start numbering these files after the highest existing chapter number (e.g. if the existing chapters stop at `ch12`, create `ch13-*.md`, `ch14-*.md`, etc.).
-
-### 3. Generate or Update Chapter Summary Files
-For each new or revised chapter:
-- Read the corresponding section of the extracted new text.
-- Follow the formatting guidelines in **Step 7** to build the summary.
-- Write/update the file in `$SKILLS_HOME/<skill_name>/chapters/`.
-
-### 4. Merge Supporting Files
-- **Merge glossary.md**:
-  - Read the existing `$SKILLS_HOME/<skill_name>/glossary.md`.
-  - Extract all new terms and definitions from the new content (Step 8 glossary guidelines).
-  - Combine and alphabetize the list of existing and new terms.
-  - If a term already exists, append the new chapter/source references to it (e.g. `**Term** — definition (Ch 4, Ch 13)`).
-  - Rewrite `$SKILLS_HOME/<skill_name>/glossary.md` with the fully merged, alphabetized list.
-- **Merge patterns.md**:
-  - Read existing `$SKILLS_HOME/<skill_name>/patterns.md`.
-  - Extract any new techniques, algorithms, or patterns from the new content.
-  - Append the new patterns, ensuring consistent formatting, and keeping the total length concise (under 2,500 tokens).
-- **Merge cheatsheet.md**:
-  - Read existing `$SKILLS_HOME/<skill_name>/cheatsheet.md`.
-  - Extract new comparison rules, decision tables, or parameter guides.
-  - Integrate them cleanly into the cheatsheet structure.
-
-### 5. Re-generate the Master SKILL.md
-Update the master skill file `$SKILLS_HOME/<skill_name>/SKILL.md`:
-- **Metadata**: Increment the chapter count, update the estimated page count, and add the new source names if appropriate. Update the `Generated` date to the current date.
-- **Core Frameworks**: Fold in the most high-impact mental models or principles from the new content (ensuring the overall file remains under 4,000 tokens).
-- **Chapter Index**: Append the new chapters to the index table, linking to the newly created files.
-- **Topic Index**: Merge the new topics alphabetically. If an existing topic is also covered in the new chapters, append the new chapter links to its line (e.g. `- **Topic** → ch05, ch13`).
-
-### 6. Cleanup and Proceed to Step 10
-Once the files are successfully written and merged, skip to **Step 10** to perform cleanup and print a custom update report summarizing the newly added chapters, merged glossary terms, and updated indices.
+See `references/update-fold-in.md` (load only when updating an existing generated skill).
 
 ---
 
