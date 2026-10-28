@@ -112,3 +112,10 @@ The committed `.vscode` debug lists are refreshed by `pixi run f5` — the `debu
 `-DVISIAENGINE_QT=ON` resolves two generations, Qt6 preferred then Qt5: **Qt 6.x** (pixi `qt-spike` env, the CI lane — proven by `xvfb-run -a pixi run -e qt-spike smoke-qt`) and **Qt >= 5.15** (pixi `qt5-spike` validation env, conda-forge `qt 5.15.*`; validated live at 5.15.15 — discovery, E703 real-window run and the ctest leg all green). **Qt 5.12 and older are excluded from the contract** (owner directive 2026-10-15): the `find_package(Qt5 5.15)` version arg enforces the floor and the widget header carries exactly one version guard (`QMouseEvent::position()` on Qt6 vs `pos()` on Qt5 — the only compile-measured divergence).
 
 Consumers never spell a generation name: the SDK publishes the canonical `VISIAENGINE_QT_*` variables (FOUND / MAJOR / VERSION / TARGET / LIBDIR / PLUGINSDIR — the last two probed per packaging shape, conda and Debian layouts both resolve) and the example family consumes them inside `visiaengine_add_example(... QT)`. The `qt5-spike` env is validation-only: no solve-group, no ci chain.
+
+## Skill naming convention (future additions)
+
+- Pattern: `<domain>-<activity>`, 2–4 lowercase hyphenated words (e.g. `rust-engineering`, `shipping-and-launch`).
+- Avoid names already owned by global plugins / marketplaces (`test-driven-development`, `debugging`, `frontend`, `git-master`); pick a specific name instead.
+- Do not rename existing skills for style alone — renaming breaks cross-references (`skill-router`, `doc-audit`, `AGENTS.md` SKILL DIRECTORY) and muscle memory.
+- A colon namespace (`plugin:skill`) is a plugin-loader feature; it cannot be encoded in a directory name (illegal on Windows) and is not used here.

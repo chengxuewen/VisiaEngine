@@ -22,13 +22,18 @@ Read the user message and classify it:
 | Class | Keywords | Default recommendation |
 |------|--------|---------|
 | **Implement** | "添加"/"实现"/"创建"/"修改" | `/think-before-act` + `/incremental-implementation` |
-| **Fix** | "修复"/"bug"/"错误"/"不工作" | `/test-harness` + `/think-before-act` |
+| **Fix** | "修复"/"bug"/"错误"/"不工作" | `/debugging-and-error-recovery` + `/test-driven-development` |
 | **Refactor** | "重构"/"优化"/"简化"/"清理" | `/think-before-act` + `/code-simplification` |
 | **Design** | "设计"/"架构"/"方案"/"怎么做" | `/think-before-act` + `/openspec-propose` |
 | **Adjudication** | "裁决逐项过"/"一个个来"/"不要一起列出"/"walk the options one by one" | `/adjudication-walkthrough` |
-| **Test** | "测试"/"E2E"/"覆盖率" | `/test-harness`（Web 面再加 `/browser-testing`） |
-| **Docs** | "文档"/"README"/"说明" | `/doc-audit` |
+| **Test** | "测试"/"E2E"/"覆盖率" | `/test-harness`（骨架）/ `/test-driven-development`（红绿）；Web 面再加 `/browser-testing` |
+| **Docs** | "文档"/"README"/"说明" | `/doc-audit`（一致性）/ `/documentation-and-adrs`（写决策） |
 | **Security** | "安全"/"权限"/"认证" | `/security-hardening` |
+| **Release** | "发布"/"上线"/"打包"/"tag" | `/shipping-and-launch` |
+| **Hygiene** | "死代码"/"技术债"/"AI 垃圾"/"清理" | `/code-simplification`（+ 将来 `/ai-slop-cleanup`） |
+| **Observability** | "日志"/"指标"/"追踪"/"告警" | `/observability-and-instrumentation` |
+| **Triage** | "不确定改哪层"/"跨模块"/"从哪下手" | `/repo-triage` |
+| **Orchestration** | "并行"/"子代理"/"拆任务" | `/planning-and-task-breakdown`（+ 将来 `/subagent-orchestration`） |
 | **Explore** | "调研"/"对比"/"有什么方案" | `/ecosystem-scan` + the host's own subagent mechanism |
 | **Ambiguous** | no clear keyword | propose 2-3 possible directions and let the user choose |
 

@@ -1,6 +1,6 @@
 ---
 name: doc-audit
-description: "Project documentation and architecture audit. Checks self-consistency, completeness, gaps, and optimization opportunities across architecture docs, design docs, and decision records in parallel. Confirms every finding with the user interactively, item by item, listing details, options with pros/cons, sources, impact, recommendation. Supports team mode (large audits) and background-agent mode (lightweight checks)."
+description: "Project documentation and architecture audit. Checks self-consistency, completeness, gaps, and optimization opportunities across architecture docs, design docs, and decision records in parallel. Confirms every finding with the user interactively, item by item, listing details, options with pros/cons, sources, impact, recommendation. Supports team mode (large audits) and background-agent mode (lightweight checks). Use when docs drift from reality, a decision needs verification, or before a Phase transition."
 ---
 
 # Document & Architecture Audit

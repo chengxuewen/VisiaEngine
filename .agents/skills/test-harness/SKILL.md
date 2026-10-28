@@ -1,6 +1,6 @@
 ---
 name: test-harness
-description: "Multi-language automated test harness. Generates test skeletons from SDD specs (Rust/TS/Python/C++/C), enforces the AAA pattern, reverse-traces tests to specs, produces coverage reports. Interactive menu-driven. Phase-aware (skips not-yet-ready modules)."
+description: "Multi-language automated test harness. Generates test skeletons from SDD specs (Rust/TS/Python/C++/C), enforces the AAA pattern, reverse-traces tests to specs, produces coverage reports. Interactive menu-driven. Phase-aware (skips not-yet-ready modules). Use when a module needs a test skeleton from its spec, or coverage must be reported."
 ---
 
 # Test Harness
