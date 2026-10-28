@@ -5,6 +5,7 @@
   "mcp_local": ".agents/mcp.local.json",
   "memory_hub": "AGENTS.md",
   "skills_root": ".agents/skills",
+  "constraints_hub": "CONSTRAINTS.md",
   "targets": [
     {
       "label": "codebuddy",

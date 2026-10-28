@@ -35,7 +35,8 @@ rules_links = _load_layer("rules-links")
 mcp_links = _load_layer("mcp-links")
 memory_aggregate = _load_layer("memory-aggregate")
 skills_index = _load_layer("skills-index")
-LAYERS = [rules_links, mcp_links, memory_aggregate, skills_index]
+constraints_index = _load_layer("constraints-index")
+LAYERS = [rules_links, mcp_links, memory_aggregate, skills_index, constraints_index]
 
 
 def main(argv):
