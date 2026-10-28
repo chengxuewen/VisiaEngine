@@ -92,3 +92,23 @@ After all adjudications are walked:
 | Card opens with tool/API names before the plain statement | Lead with "一句话版本" in everyday objects; API names go to Sources |
 | Two cards in one session need "说人话" corrections | Rule 5 self-check runs before sending, not after being told |
 | Adjudication results not written back | Closure protocol: summary table + plan/D-entry write-back |
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "batch all options, save time" | Batching defeats one-at-a-time adjudication; the protocol requires sequence. |
+| "skip Sources" | A claim without a source is an opinion. |
+| "the user will ask if unclear" | The self-check runs before sending, not after correction. |
+
+## Red Flags
+
+- More than one adjudication card at a time.
+- Jargon without a plain-language translation.
+- Options without paired pros/cons.
+- Adjudication results not written back (plan/D-entry).
+
+## Verification (evidence)
+
+- Each card has the seven parts and exactly one decision.
+- The closure table + write-back exist.

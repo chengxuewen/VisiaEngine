@@ -217,3 +217,23 @@ Replace the variables:
 - **ecosystem-scan** (this skill): audits the **agent system** (`.agents/` skills/rules/MCP) and scans the **external** ecosystem for adoptable content.
 - **doc-audit**: audits **project documentation** consistency (architecture/design/decision records); it already carries the "Division of labor with ecosystem-scan" table.
 - Rule of thumb: adopting/optimizing skills or rules → this skill; docs/architecture consistency → `doc-audit`.
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "more skills = better" | AI-slop skills dilute routing; adopt only high-fit, safe ones. |
+| "skip the security gate, it's a popular repo" | Popularity is not safety; run the 6 checks. |
+| "one quick scan is enough" | Quick misses duplicates/security; escalate to Full periodically. |
+
+## Red Flags
+
+- Installing a skill without the security gate.
+- A skill whose frontmatter lacks name/description.
+- Duplicated skills competing for the same trigger.
+- No record of the scan result in memory.
+
+## Verification (evidence)
+
+- The scan report with per-item score + security verdict.
+- `GATE-SKILLS-INDEX` covers every skill (inventory consistent).

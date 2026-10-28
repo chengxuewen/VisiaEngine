@@ -80,6 +80,25 @@ Confirmed: loading the /think-before-act skill...
 
 Boundary: if the question is "which rules apply to this file/language", use `context-engineering`; if it is "which skill should I use", use this skill.
 
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "the user named a skill, so skip routing" | Respect the choice; only add a skill if a gap is clear. |
+| "recommend everything" | A list is not a recommendation; pick one combination. |
+| "re-recommend the same skill" | Anti-harassment: suggest once per session. |
+
+## Red Flags
+
+- Recommending a skill that does not exist in the SKILL DIRECTORY.
+- More than 3 skills in one recommendation.
+- Ignoring an explicit user choice.
+
+## Verification (evidence)
+
+- The recommendation names skills that exist in `AGENTS.md` SKILL DIRECTORY.
+- The reason cites the intent class and current task state.
+
 ## When NOT to Recommend
 
 | Scenario | Don't recommend | Reason |

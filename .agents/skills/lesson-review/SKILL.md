@@ -103,3 +103,22 @@ Applies to any project; just adjust the paths:
 - Rust coding      → {rust_coding_style}   # VisiaEngine: .agents/rules/rust/coding-style.md
 - project status   → {status}              # VisiaEngine: .agents/memorys/status.md
 ```
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "the session was fine, nothing to record" | Missed lessons are re-learned expensively; scan for corrections. |
+| "record it in chat only" | Chat is ephemeral; memory files are the durable store. |
+| "one big lesson entry" | Atomic entries are retrievable; one blob is not. |
+
+## Red Flags
+
+- A repeated mistake with no PIT entry.
+- Lessons written in chat but not in `.agents/memorys/`.
+- A vague lesson ("be careful") instead of a concrete rule.
+
+## Verification (evidence)
+
+- The new C/D/PIT entry exists and is referenced from the session summary.
+- `agent-sync` picks it up; `gate-agents` green.

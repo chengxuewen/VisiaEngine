@@ -212,3 +212,24 @@ Next suggestion: [issue-dense area]
 | Internal doc consistency | ❌ | ✅ specialty |
 | Decision verification | ❌ | ✅ specialty |
 | Security audit gate | ✅ Full mode | ❌ |
+
+## Rationalizations (anti-excuse)
+
+| Excuse | Rebuttal |
+|--------|----------|
+| "the docs are roughly right" | Roughly right is how contradictions ship; check the exact claim. |
+| "skip the interactive review" | Batch-dumping findings hides the hard choices; go item by item. |
+| "one dimension is enough" | A contradiction needs two sources; run the cross-check. |
+| "fix the docs later" | Later means the next reader trusts a wrong doc. |
+
+## Red Flags
+
+- A "decision says A, reality is B" contradiction left unfixed.
+- Findings without file:line evidence.
+- Numbering holes (C/D/PIT) not flagged.
+- A stale reference to a moved/renamed file.
+
+## Verification (evidence)
+
+- Each finding cites the two sources (file + line) that conflict.
+- After fixes, the same grep/section re-check passes.
