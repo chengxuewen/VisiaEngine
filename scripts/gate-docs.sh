@@ -158,7 +158,51 @@ if [ -n "$pin" ] && ! git -C PolyOrch branch -r --contains "$pin" 2>/dev/null | 
   fi
 fi
 
+# 12) CLI front door (visiaengine.sh / .bat) — the human entry documented in AGENTS.md and
+# docs/env.md. Three things must hold, otherwise "docs say ./visiaengine.sh X" is a lie:
+#   a) the wrapper parses and its own contract is intact (-h -> 0, no args -> 2);
+#   b) every task name it mentions (in the docs AND in its own USAGE text) exists in pixi.toml;
+#   c) pixi.toml is parsed directly, NOT via `pixi task list`: whether `pixi` resolves inside a
+#      task depends on the machine-local O5 PATH fix, which a CI gate must not assume.
+if [ -f visiaengine.sh ]; then
+    bash -n visiaengine.sh || { echo "GATE-DOCS ✗ 12)syntax error in visiaengine.sh"; fail=1; }
+
+    hout=$(./visiaengine.sh -h 2>&1); hrc=$?
+    { [ "$hrc" = 0 ] && grep -q 'usage:' <<< "$hout"; } \
+        || { echo "GATE-DOCS ✗ 12)-h must exit 0 and print usage (got $hrc)"; fail=1; }
+    ./visiaengine.sh >/dev/null 2>&1; nrc=$?
+    [ "$nrc" = 2 ] || { echo "GATE-DOCS ✗ 12)no-argument invocation must exit 2 (got $nrc)"; fail=1; }
+
+    cli_tasks=$(awk '
+        /^\[/ { in_tasks = ($0 ~ /^\[(feature\.[a-z0-9_-]+\.)?tasks\]$/); next }
+        in_tasks && /^[A-Za-z0-9_-]+[ \t]*=/ { name=$0; sub(/[ \t]*=.*/, "", name); print name }
+    ' pixi.toml | sort -u)
+    tn=$(printf '%s\n' "$cli_tasks" | grep -c . || true)
+    [ "${tn:-0}" -ge 60 ] \
+        || { echo "GATE-DOCS ✗ 12)pixi.toml task parse looks broken (${tn:-0} names, expected >= 60)"; fail=1; }
+
+    cli_refs=$(grep -ohE 'visiaengine\.(sh|bat)[[:space:]]+(-e[[:space:]]+[^[:space:]]+[[:space:]]+)?[^[:space:]]+' \
+            visiaengine.sh visiaengine.bat AGENTS.md docs/env.md README.md 2>/dev/null \
+        | sed -E 's/.*visiaengine\.(sh|bat)[[:space:]]+//; s/^-e[[:space:]]+[^[:space:]]+[[:space:]]+//' \
+        | sort -u | grep -vE '^(-|<|>)' | grep -v '[<>]' || true)
+    if [ -z "$cli_refs" ]; then
+        echo "GATE-DOCS ✗ 12)no ./visiaengine.sh <task> reference found (docs and USAGE both empty?)"; fail=1
+    fi
+    # `pixi run <name>` also accepts executables from the environment PATH (cmake, cargo, ...),
+    # so the allowlist below is part of the contract, not an escape hatch: a name that is
+    # neither a task nor one of these is almost certainly a typo in the docs.
+    cli_exes="cmake cargo node npm python3 ctest rustc rustfmt"
+    while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        if grep -qxF "$name" <<< "$cli_tasks" || grep -qwF "$name" <<< "$cli_exes"; then
+            continue
+        fi
+        echo "GATE-DOCS ✗ 12)'$name' referenced by the CLI docs or USAGE is neither a pixi.toml task nor a known env executable"
+        fail=1
+    done <<< "$cli_refs"
+fi
+
 if [ "$fail" = 0 ]; then
-    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk} / gitlink aligned)"
+    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk} / gitlink aligned / cli ${tn:-0} tasks)"
 fi
 exit $fail
