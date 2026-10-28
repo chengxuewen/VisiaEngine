@@ -113,6 +113,7 @@ gate-docs = "bash scripts/gate-docs.sh"   # batch 5 T3: the four zero-drift docu
 gate-skills = "python3 scripts/skills-links.py check"   # single-source skills: the .codebuddy link layer must match .agents/skills (guard exits 2, never 1)
 gate-agents = "python3 scripts/agent-links.py check"   # single-source rules/mcp/memory: generated host layers (.mcp.json, opencode mcp{}, AGENTS.md region) must match .agents/ (guard exits 2)
 agent-sync = "python3 scripts/agent-links.py sync"     # repair generated host layers from .agents/ single source (rules symlinks, mcp files, AGENTS.md memory region)
+agents = "python3 scripts/agents-cli.py"               # unified entry: agents sync|check|status (delegates to agent-links + skills-links)
 gate-web = "bash scripts/gate-web.sh"   # headless page gate: wall count + boot fail-marks + anchor-beacon heartbeat (self-SKIP without chromium; gate server :8018, staging replay rides :8017)
 serve-https-gen = "bash scripts/wasm-serve-https-gen.sh"   # local CA + leaf with LAN-IP SANs -> .certs/ (gitignored; mkcert via pixi global 1.4.4)
 serve-https = "python3 scripts/wasm-serve-https.py cmake-build-debug/web-demo 8443 .certs/server.pem .certs/server-key.pem"   # TLS sibling of the serve button: LAN clients get secure-context WebGPU over https (untrusted cert still counts, measured on chrome 131); run serve-https-gen once first

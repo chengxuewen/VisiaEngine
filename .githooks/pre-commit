@@ -10,6 +10,6 @@ if ! command -v pixi >/dev/null 2>&1; then
   echo "pre-commit: pixi not found on PATH; skipping agent-sync (commit proceeds un-synced)"
   exit 0
 fi
-pixi run agent-sync
+pixi run agents sync
 git add .opencode/opencode.json AGENTS.md 2>/dev/null || true
-pixi run gate-agents
+pixi run agents check

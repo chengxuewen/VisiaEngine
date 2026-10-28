@@ -119,3 +119,16 @@ Consumers never spell a generation name: the SDK publishes the canonical `VISIAE
 - Avoid names already owned by global plugins / marketplaces (`test-driven-development`, `debugging`, `frontend`, `git-master`); pick a specific name instead.
 - Do not rename existing skills for style alone — renaming breaks cross-references (`skill-router`, `doc-audit`, `AGENTS.md` SKILL DIRECTORY) and muscle memory.
 - A colon namespace (`plugin:skill`) is a plugin-loader feature; it cannot be encoded in a directory name (illegal on Windows) and is not used here.
+
+## Agent config sync: one entry (`pixi run agents`)
+
+`pixi run agents sync|check|status` is the unified entry. It **delegates** to
+`scripts/agent-links.py` and `scripts/skills-links.py`:
+
+- `sync` — regenerate every generated host layer (rules / mcp / memory / hub indexes / skills links).
+- `check` — same as `sync`'s verification; exits non-zero on drift.
+- `status` — read-only, always exits 0; shows both reports and the worst code.
+
+The older `agent-sync`, `gate-agents`, and `gate-skills` tasks remain valid aliases; `ci`
+keeps the two gates separate (so the CONSTRAINTS gate list is unchanged). `visiaengine.sh
+agents <sub>` works through the passthrough.
