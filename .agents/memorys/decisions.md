@@ -451,6 +451,12 @@ P2 (deferred): 6-section (Rationalizations / Red Flags / Verification) audit of 
 `memory-aggregate.py` now emits a **digest** — one bullet per `## ` entry in each memory file plus a `- full text: .agents/memorys/<file>.md` pointer — instead of the full text of the four memory files. Result: `AGENTS.md` **334 KB → ~40 KB** (memory region 314 KB → ~22 KB, a 93% cut) while the full text stays in `.agents/memorys/*.md` (read on demand). The digest is deterministic, so `gate-agents` content-compare still passes.
 
 Rationale: D28/D37 already specified "concise aggregation into root AGENTS.md, deep records kept as on-demand references", but the aggregator dumped full text, injecting ~314 KB every session. Trade-off accepted: the hub now carries titles, not full rule bodies — the digest header tells the agent to read the source file before acting on a rule it is unsure about.
+
+## D42: New host onboarding deferred; Cursor needs a flat .mdc layout when adopted (2026-10-28)
+
+Cursor/Qoder/Trae/ZCode are **not installed** on this machine, so no host adapter was enabled — adding one unverified is the D35 dead-file trap. Verified from Cursor's official docs: project rules are `.cursor/rules/**/*.mdc` (flat `.mdc` files; a plain `.md` is ignored), frontmatter is `description`/`globs`/`alwaysApply`, and **`globs` is officially supported**; MCP is `.cursor/mcp.json` with `type: "stdio"` required for stdio servers.
+
+Decision (user-adjudicated): **defer**. Do not implement the flat `.mdc` layout or enable the target until Cursor is actually installed/used. When it is, the work is: a flat `<lang>-<topic>.mdc` layout variant, map canonical `paths` to `globs`, and emit `type: "stdio"` in the MCP entry. Qoder/Trae/ZCode remain unverified and are not added.
 ## D42: MCP lifecycle CLI (`pixi run mcp`) — install/index/status consolidated (2026-10-28)
 
 Plan: `.omo/plans/2026-10-28-mcp-lifecycle-cli.md` (four adjudications + three re-adjudications + an executability review; Chinese working doc in gitignored `.omo/` per D38).
