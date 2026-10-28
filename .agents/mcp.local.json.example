@@ -1,7 +1,4 @@
 {
-  "mcpServers": {
-    "local-github": {
-      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_REPLACE_ME_with_a_fine_grained_token" }
-    }
-  }
+  "_note": "Optional local overrides, merged over .agents/mcp.json by scripts/mcp-links.py. Copy this file to .agents/mcp.local.json (gitignored). Values are merged into TRACKED generated files (.mcp.json, .opencode/opencode.json), so never put real secrets here -- inject them through the process environment instead (e.g. GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}).",
+  "mcpServers": {}
 }

@@ -71,14 +71,25 @@ function installedVersion() {
 }
 
 // review #4 (version pinning): never reuse a pre-existing binary at a different version.
-// Reinstall whenever the bin is missing OR the installed version != the pinned version.
+// Missing binary -> install (first run); installed-but-different -> fail (pin drift).
 const have = installedVersion()
 if (!existsSync(binPath) || have !== version) {
+  // Pin drift is a real state (someone ran `npm install`, or the pin was bumped
+  // without setup): fail loudly instead of reinstalling silently on every start.
   if (have && have !== version) {
-    console.error(`[mcp-serve] version drift: installed ${pkg}@${have}, pin wants @${version} — reinstalling`)
+    console.error(`[mcp-serve] pin drift: ${pkg} installed @${have}, pin wants @${version}`)
+    console.error('[mcp-serve] run: pixi run mcp setup')
+    process.exit(1)
   }
+  // Missing binary is the first-run path (GUI host first click, clean clone, CI
+  // probe) and must keep working. npm writes its summary to stdout, which IS the
+  // MCP JSON-RPC channel here, so capture it and re-emit on stderr.
   console.error(`[mcp-serve] installing ${pkg}@${version} (into ./node_modules, gitignored) ...`)
-  execSync(`npm install -D ${pkg}@${version}`, { cwd: root, stdio: 'inherit' })
+  const out = execSync(`npm install -D --save-exact ${pkg}@${version}`, {
+    cwd: root,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  })
+  if (out && out.length) process.stderr.write(out)
 }
 
 const child = spawn(binPath, serverArgs, { stdio: 'inherit' })

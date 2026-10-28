@@ -7,17 +7,6 @@
       ],
       "command": "bash",
       "type": "stdio"
-    },
-    "local-github": {
-      "args": [
-        "scripts/mcp-launch.sh",
-        "mcp-github"
-      ],
-      "command": "bash",
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-      },
-      "type": "stdio"
     }
   }
 }

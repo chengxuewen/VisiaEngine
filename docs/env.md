@@ -20,7 +20,22 @@ Fix once per machine, on the PATH the GUI inherits:
 
 Verify: `command -v pixi` in a shell that did **not** `source pixi.sh` must resolve. `pixi run gate-mcp` probes under this sanitized PATH, so the regression is caught in CI.
 
-Gitignored host layers (`.codebuddy/mcp.json`) instead use `scripts/mcp-launch.sh` / `mcp-launch.bat`, which resolve pixi themselves and are immune to the spawn PATH / cwd.
+The generated project-scope MCP file (root `.mcp.json`) uses `scripts/mcp-launch.sh` / `mcp-launch.bat` instead, which resolve pixi themselves and are immune to the spawn PATH / cwd.
+
+### MCP lifecycle: install, index, status
+
+All local MCP maintenance goes through one task (`scripts/mcp-cli.py`):
+
+```bash
+pixi run mcp setup    # install/repair every server at the pinned version (idempotent, --save-exact)
+pixi run mcp index    # first run: build .codegraph; later runs: full rebuild
+pixi run mcp sync     # incremental sync (the watcher covers normal editing)
+pixi run mcp status   # pin vs installed versions + index state (read-only)
+```
+
+- Pins live in `scripts/mcp-servers.json` (single source); `package.json`, `package-lock.json` and `node_modules/` are gitignored local echoes.
+- `.codegraph/` is a machine-local cache (gitignored) and is **not** built in CI -- build it once per machine.
+- The MCP host spawns `scripts/mcp-launch.sh`: a missing binary is installed on the spot, but a **pin drift fails fast** with `run: pixi run mcp setup` instead of silently reinstalling (an install would write to stdout, which is the JSON-RPC channel).
 
 ## Environment composition
 

@@ -82,8 +82,6 @@ web-check = "bash -c 'bash scripts/web-build.sh && cargo test -p visiaengine-was
 #   - @modelcontextprotocol/server-github@0.6.0 works but is deprecated w/ 3 high vulns (review #8, deferred).
 [feature.mcp.tasks]
 mcp-codegraph = "node scripts/mcp-serve.mjs --from scripts/mcp-servers.json --name local-codegraph"
-mcp-github = "node scripts/mcp-serve.mjs --from scripts/mcp-servers.json --name local-github"
-mcp-setup = "python3 scripts/mcp-bootstrap.py"
 gate-mcp = "python3 scripts/gate-mcp.py"
 
 [environments]
@@ -164,6 +162,9 @@ smoke-qt = "bash scripts/smoke-qt.sh"   # three-state: no env / no X = SKIP (req
 smoke-twin-city = "bash scripts/smoke-rs.sh E901_twin_city"   # L2: the vertical-slice seed (the batch-4 one-image deliverable + human PNG check)
 bench = "bash scripts/bench.sh"   # [6b] the artifact chain (two release examples; a local lavapipe observational tier, not a gate)
 verify = "rustc --version && cargo --version && rustfmt --version && clippy-driver --version && cargo deny --version && rg --version"
+# MCP lifecycle (one entry, subcommands): pixi run mcp -h | status | setup | index | sync
+# Global on purpose: the mcp feature is default-env-only, while nodejs is a base dependency.
+mcp = "python3 scripts/mcp-cli.py"
 smoke-morph = "bash scripts/smoke-rs.sh E304_projection_morph"
 smoke-box-select = "bash scripts/smoke-rs.sh E403_box_select"
 smoke-post = "bash scripts/smoke-rs.sh E506_postprocessing"   # L2: post chain bloom/outline pixel asserts (WGPU-34)
