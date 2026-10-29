@@ -135,3 +135,6 @@ __pycache__/
 
 # Human-facing docs site output (book-build / book-serve); source of truth is docs/ + book/
 /www/
+
+# Repo-local cargo-binstall tools (mdbook-i18n-helpers); inside .gitignore since 2026-10-29
+/.tools/

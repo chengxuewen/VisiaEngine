@@ -148,6 +148,9 @@ serena = { features = ["serena"] }
 # assemble build/book-src from docs/ + book/toc.toml, then mdbook build into www/book/<lang>.
 book-build = "python3 scripts/book-build.py"
 book-check = "python3 scripts/book-check.py"
+book-i18n = "python3 scripts/book-i18n.py"
+# Only non-pixi install in the book toolchain: mdbook-i18n-helpers (cargo-binstall, repo-local).
+book-i18n-setup = "cargo-binstall mdbook-i18n-helpers -y --root .tools"
 # The cargo-flavored tasks are an interface contract: running them before the Cargo workspace lands (build day) must fail -- that is expected
 check = "cargo check --workspace"
 build = "cargo build --workspace"

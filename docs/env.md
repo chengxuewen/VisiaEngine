@@ -175,3 +175,16 @@ agents <sub>` works through the passthrough.
 - Chapter order and metadata live in `book/toc.toml` (`type`, `translated`, `visibility`); markdown not listed there lands in an Appendix with a warning.
 - Diagrams are ```` ```mermaid ```` fences rendered by a 1 KB lazy loader (mermaid 11.17.2 is vendored; the 3.5 MB bundle is fetched only on pages that contain a diagram). The call/dependency page is an iframe over a cytoscape app fed by `graph.json`, which `book-build` exports from `.codegraph` — run `pixi run mcp index` first.
 - Preview directly: `pixi run mdbook serve book -d www/book/en`.
+
+Translation (PO workflow; S5):
+
+```bash
+./visiaengine.sh book-i18n-setup       # one-time: cargo-binstall mdbook-i18n-helpers into .tools/ (gitignored)
+./visiaengine.sh book-i18n pot         # regenerate book/po/messages.pot from the 7-page scope
+./visiaengine.sh book-i18n status      # translated / fuzzy / untranslated per file
+BOOK_LANG=zh-CN ./visiaengine.sh book-build   # translated build -> www/book/zh-CN
+```
+
+`book/po/zh-CN.po` is tracked and reviewable; untranslated entries fall back to English at build
+time, so a partially translated book is always publishable. The translated build runs from a
+generated book directory (`build/book-<lang>/`) so the English build never depends on `.tools/`.
