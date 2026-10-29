@@ -73,31 +73,15 @@ Developers urgently need a **solution between the lightweight library and the he
 ### 4.1 The core idea
 An architecture of **"engine kernel + pluggable rendering backends + application-layer bindings"**.
 
-```
-┌────────────────────────────────────────────────────────┐
-│                Application layer (host)                │
-│              Qt / Flutter / C# / Web                   │
-└───────────────────────────┬────────────────────────────┘
-                            │ FFI (C API)
-┌───────────────────────────▼────────────────────────────┐
-│                VisiaEngine core (Rust)                 │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ visiaengine-core: data model, spatial index,     │  │
-│  │ coordinate systems, scene graph, resource mgmt   │  │
-│  └──────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ visiaengine-render: unified rendering abstraction│  │
-│  │ (Trait definitions, render-command generation)   │  │
-│  └──────────────────────┬───────────────────────────┘  │
-│                         │                              │
-│  ┌──────────────────────▼───────────────────────────┐  │
-│  │ visiaengine-render-wgpu (default backend)        │  │
-│  │ in-house rendering pipeline on wgpu              │  │
-│  └──────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │ future optional backends                         │  │
-│  └──────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    host["Application layer (host)<br/>Qt / Flutter / C# / Web"]
+    core["visiaengine-core<br/>data model · spatial index · coordinates · scene graph · resource management"]
+    render["visiaengine-render<br/>unified rendering abstraction<br/>(Trait definitions, render-command generation)"]
+    wgpu["visiaengine-render-wgpu (default backend)<br/>in-house rendering pipeline on wgpu"]
+    future["future optional backends"]
+    host -->|FFI (C API)| core --> render --> wgpu
+    render -.-> future
 ```
 
 ### 4.2 Key design decisions

@@ -14,132 +14,140 @@ Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding
 
 ## ① Full panoramic layering
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Host app layer      Qt/C++   C# (WPF/Unity)   Flutter  Web   │
-└───────────────┬─────────────────────────────────────────────┘
-                │  C ABI (the only stable boundary, versioned handshake)
-┌───────────────▼─────────────────────────────────────────────┐
-│  Binding-gen layer   visiaengine-ffi(headers) → bindgen/csbindgen/pub │
-├─────────────────────────────────────────────────────────────┤
-│  Engine core layer   visiaengine-core ── visiaengine-geo (style layer inside) │
-│  (pure Rust)         scene graph/coords  MVT/projection/style expressions    │
-├─────────────────────────────────────────────────────────────┤
-│  Render abstract     visiaengine-render: Trait + render commands (IR), no GPU types │
-├─────────────────────────────────────────────────────────────┤
-│  Backend layer       visiaengine-render-wgpu (default, in-house pipeline, D4) │
-├─────────────────────────────────────────────────────────────┤
-│  Platform layer      wgpu v30                                 │
-│   T1: Vulkan│Metal│DX12│WebGPU   T2: GL3.3+/GLES3.0(±ANGLE)  │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    host["Host app layer<br/>Qt/C++ · C# (WPF/Unity) · Flutter · Web"]
+    abi{{"C ABI — the only stable boundary, versioned handshake"}}
+    bind["Binding-gen layer<br/>visiaengine-ffi headers → bindgen / csbindgen / pub"]
+    core["Engine core (pure Rust)<br/>visiaengine-core: scene graph, coordinates<br/>visiaengine-geo: MVT, projection, style expressions"]
+    abstract["Render abstraction<br/>visiaengine-render: Trait + render commands (IR), no GPU types"]
+    backend["Backend<br/>visiaengine-render-wgpu (default, in-house pipeline, D4)"]
+    platform["Platform<br/>T1: Vulkan · Metal · DX12 · WebGPU<br/>T2: GL3.3+ / GLES3.0 (±ANGLE)"]
+    host --> abi --> bind --> core --> abstract --> backend --> platform
 ```
 
 ## ② Crate dependency directions
 
-```
-                 visiaengine-ffi ─(cdylib/staticlib + hand-written, human-reviewed header, 49 entries
-                     │              gate-abi nm symbol count + gate-docs signature-name-set double lock)
-                     │
-   ┌──────────────┬──────────────┬──────────────┐
-visiaengine-core  visiaengine-geo  visiaengine-io-*
- (no wgpu         (tiles/coords/   (gltf/geojson/
-  dependency)      LOD sched/       mvt/hdr/points/
-                   style exprs)     text)
-   └──────────────┴───────┬──────┴──────────────┘
-                    visiaengine-render (pure IR/Trait)
-                          │
-                  visiaengine-render-wgpu ──→ wgpu, lyon, cosmic-text, rstar
- [extension tier, zero core dependency] visiaengine-3dtiles │ visiaengine-odr(Beta) │ visiaengine-ifc(Beta+)
+```mermaid
+flowchart TB
+    ffi["visiaengine-ffi<br/>cdylib / staticlib + hand-written, human-reviewed header (49 entries)<br/>gate-abi nm symbol count + gate-docs signature-name-set double lock"]
+    core["visiaengine-core<br/>no wgpu dependency"]
+    geo["visiaengine-geo<br/>tiles · coords · LOD scheduling · style expressions"]
+    io["visiaengine-io-*<br/>gltf · geojson · mvt · hdr · points · text"]
+    render["visiaengine-render (pure IR / Trait)"]
+    wgpu["visiaengine-render-wgpu<br/>wgpu · lyon · cosmic-text · rstar"]
+    ext["extension tier, zero core dependency<br/>3dtiles · odr (Beta) · ifc (Beta+)"]
+    ffi --> core
+    ffi --> geo
+    ffi --> io
+    core --> render
+    geo --> render
+    io --> render
+    render --> wgpu
+    ext -.-> render
 ```
 Iron rule: dependency arrows point down only; the independence of `visiaengine-geo` — which now owns the style layer (`crates/visiaengine-geo/src/style.rs`) — is the Open Core plugin boundary coded into structure. Splitting style back out into its own crate remains an option, not a current fact.
 
 ## ③ One frame's data flow
 
-```
-host events ──▶ input pump ──▶ interaction/camera state (main world)
-                          │
-        ┌─────────────────▼──────────────────┐
-        │ 1 CULL     R-tree/quadtree + SSE picks LOD │
-        │ 2 STREAM   tile scheduler (demand − cache -> merge -> throttle) │──▶ background-thread IO
-        │ 3 PREPARE  dirty flags -> render-entry extraction (viewport snapshot) │
-        │ 4 BUILD    frame-graph recording (thin in-house layer)  │
-        │            pass: shadow✓(PCSS 4f)→tile-2D→3D→text      │
-        │ 5 ENCODE   → wgpu command buffer              │
-        │ 6 SUBMIT/PRESENT (non-blocking poll semantics)│
-        └────────────────────────────────────┘
+```mermaid
+flowchart LR
+    ev["host events"] --> pump["input pump"] --> cam["interaction / camera state<br/>(main world)"]
+    cam --> cull["1 CULL<br/>R-tree/quadtree + SSE picks LOD"]
+    cull --> stream["2 STREAM<br/>demand − cache → merge → throttle"]
+    stream --> io["background-thread IO"]
+    cull --> prep["3 PREPARE<br/>dirty flags → render-entry extraction<br/>(viewport snapshot)"]
+    prep --> build["4 BUILD<br/>frame-graph recording (thin in-house layer)<br/>shadow (PCSS 4f) → tile-2D → 3D → text"]
+    build --> enc["5 ENCODE<br/>→ wgpu command buffer"]
+    enc --> present["6 SUBMIT / PRESENT<br/>(non-blocking poll semantics)"]
 ```
 - **Scene storage settled (converged on this round's Unity-DOTS/UE6 evidence)**: start with slab-handle indexing + dirty flags, **no ECS**; should future performance evidence overturn this, the swap is confined inside `visiaengine-core` and does not break the C ABI.
 - **Render-entry IR annotated cluster-ready** (the UE Nanite lesson): the data structures reserve the meshlet/indirect-draw extension slots — unimplemented in MVP, never sealed off.
 
 ## ④ 2D/2.5D/3D unification and coordinate precision
 
-```
-     unified projection P = mix(ortho, perspective, t)   t∈[0,1]
-  t=0 orthographic/bird's-eye (map)   t=0.5 oblique (2.5D)   t=1 perspective (3D)
-     ▲ what is interpolated are the frustum parameters; one single camera model
+The projection is one continuous parameter, not three renderers:
+`P = mix(ortho, perspective, t), t ∈ [0, 1]` — what is interpolated are the frustum parameters; one single camera model.
 
-  coordinate precision: world f64 (ECEF/projection domain) ──RTC tiling──▶ render chunk local f32
-     (large-coordinate offsets take the camera/tile center as origin; not doing so = the map engine's number-one killer)
+```mermaid
+flowchart LR
+    ortho["t = 0<br/>orthographic / bird's-eye (map)"] --> oblique["t = 0.5<br/>oblique (2.5D)"] --> persp["t = 1<br/>perspective (3D)"]
+```
+
+Coordinate precision:
+
+```mermaid
+flowchart LR
+    world["world f64<br/>(ECEF / projection domain)"] -->|RTC tiling| chunk["render chunk local f32"]
 ```
 **Ruled (D7, 2026-09-03)**: three layers combined — core f64 global / vertex f32 local (model·tile-level origin) / draw uniform f64 `origin−eye`→f32 (viewer-origin, per frame). Evidence chain `reference/evidence/2026-09-03-rtc-hierarchy.md`; implementation = the GeoJSON slice, glTF's current path stays compatible.
 
 ## ⑤ Host embedding model
 
+```mermaid
+flowchart LR
+    win["host native window handle"] -->|raw-window-handle| surface["wgpu surface"]
+    off["visia offscreen render"] --> cb["texture callback"] --> comp["host composites"]
+    subgraph pathA["Path A — own surface"]
+        win
+        surface
+    end
+    subgraph pathB["Path B — texture interop (Qt/Unity first)"]
+        off
+        cb
+        comp
+    end
 ```
-Path A (own surface): host native window handle ──raw-window-handle──▶ wgpu surface
-Path B (texture interop, Qt/Unity first): visia offscreen render -> texture callback -> host composites
 
 Thread contract (modeled on the Flutter embedder):
-  platform thread = the host's main thread (visia never builds its own event loop, never preempts)
-  engine work     = an internal task pool (posted via the C API / callbacks)
-  render work     = driven by the host calling visiaengine_frame(); a dedicated render thread is an optional switch
-ABI: first struct fields {size, api_version}; export only opaque handles;
-     errors = int code + visiaengine_last_error()
-```
+
+- platform thread = the host's main thread (visia never builds its own event loop, never preempts)
+- engine work = an internal task pool (posted via the C API / callbacks)
+- render work = driven by the host calling `visiaengine_frame()`; a dedicated render thread is an optional switch
+- ABI: first struct fields `{size, api_version}`; export only opaque handles; errors = int code + `visiaengine_last_error()`
 
 ## ⑥ Compatibility-tier capability matrix
 
-```
-            T1 first-class        T2 degraded         T3 Web
-API surface all                  all                 all      ← the "consistency" promise means exactly this
-compute      ✅                 GLES3.1+/missing      ✅(WebGPU)/—(WebGL2)
-indirect     ✅                 simulated on GL path  ~
-shadow/MSAA  full               half                 half
-tex compress BC/ETC2/ASTC       per driver           per browser
-→ visiaengine_capability_query() returns tier+flags; styles/layers auto-degrade quality per flags
-```
+| Capability | T1 first-class | T2 degraded | T3 Web |
+|---|---|---|---|
+| API surface | all | all | all |
+| compute | yes | GLES3.1+ / missing | yes (WebGPU) / no (WebGL2) |
+| indirect | yes | simulated on the GL path | partial |
+| shadow / MSAA | full | half | half |
+| texture compression | BC / ETC2 / ASTC | per driver | per browser |
 Re-validated this round: Godot 4.7 (Vulkan+D3D12+Metal+GL+ANGLE option) and wgpu **independently converged on an isomorphic matrix**; three.js's decade of coexisting WebGL/WebGPU dual renderers proves the "runtime tier selection" route is viable.
 
 ## ⑦ Data-source streaming scheduling
 
-```
-sources: MVT(http) │ WMTS │ GeoJSON files │ glTF │ [extension: 3D Tiles │ ODR │ IFC]
-         └──────┬──────┘
-   tile scheduler: (viewport×LOD demand) − cache -> merge & dedup -> throttle concurrency
-   cache: LRU (memory budget) + optional disk layer; eviction -> GPU buffer pool reclamation
-   decode: background threads (geozero/open-vector-tile) -> meshing (lyon) -> upload (render thread)
+```mermaid
+flowchart LR
+    src["sources<br/>MVT (http) · WMTS · GeoJSON files · glTF<br/>extension: 3D Tiles · ODR · IFC"]
+    sched["tile scheduler<br/>(viewport × LOD demand) − cache<br/>merge & dedup → throttle concurrency"]
+    cache["cache<br/>LRU (memory budget) + optional disk layer<br/>eviction → GPU buffer pool reclamation"]
+    dec["decode (background threads)<br/>geozero / open-vector-tile → meshing (lyon)<br/>→ upload (render thread)"]
+    src --> sched --> cache --> dec
 ```
 Known risks (evidence-backed): the MVT parsing piece is thin (open-vector-tile 10★ -> vendoring allowed); no mature 3D Tiles streaming piece -> **in-house, assigned to Beta**; draco-core is new and thin.
 
 ## ⑧ Layer/style model
 
-```
-Scene ─ Layer* (ordered)     Layer = Source + StyleSpec + interaction toggles
-StyleSpec (declarative, diffable): type(fill|line|symbol|heatmap|model|volume)
-    ─ paint/layout split ─ zoom/tier functions ─ filter-expression subset
-render mapping: fill/line→tile-2D pass; model→3D; symbol→text pass
+```mermaid
+flowchart TB
+    scene["Scene"] --> layers["Layer* (ordered)<br/>Layer = Source + StyleSpec + interaction toggles"]
+    layers --> spec["StyleSpec (declarative, diffable)<br/>type: fill | line | symbol | heatmap | model | volume<br/>paint/layout split · zoom/tier functions · filter-expression subset"]
+    spec --> mapping["render mapping<br/>fill/line → tile-2D pass<br/>model → 3D · symbol → text pass"]
 ```
 Open question: spec-compatibility with the MapLibre v8 subset (migration cost traded for ecosystem goodwill) versus a custom design — to be ruled when the style-system design doc is written.
 
 ## ⑨ Build/delivery matrix
 
-```
-cargo ──▶ visiaengine-ffi: cdylib(.dll/.dylib/.so) + staticlib + visiaengine.h (hand-written, human-reviewed, I0)
-      ──▶ wasm: the visiaengine-wasm standalone crate (CAPI-09 dual-face mirror) has landed; npm packaging = Alpha
-packaging: vcpkg/NuGet/pub mirrors; size budget core .so ≤6MB, total marked ≤10MB — the re-measurement check has been written off (2026-09-24): native cdylib stripped to 7.25 MB, target met (docs/reference/evidence/2026-09-24-native-size.md)
-CI matrix: the full suite runs on T1; T2 spot-checked on LLVMPipe/Mesa software rendering + the Android emulator; WebGL2 in browsers
-pin discipline: wgpu's quarterly breaks -> pin the major version + a per-quarter upgrade window (re-verify all tiers)
-```
+| Stage | What it produces |
+|---|---|
+| cargo | `visiaengine-ffi`: cdylib (.dll/.dylib/.so) + staticlib + hand-written, human-reviewed `visiaengine.h` (I0) |
+| wasm | the `visiaengine-wasm` standalone crate (CAPI-09 dual-face mirror) has landed; npm packaging = Alpha |
+| packaging | vcpkg / NuGet / pub mirrors; size budget core `.so` ≤ 6 MB, total ≤ 10 MB — native cdylib stripped to 7.25 MB, target met (2026-09-24) |
+| CI matrix | the full suite runs on T1; T2 spot-checked on LLVMPipe/Mesa software rendering + the Android emulator; WebGL2 in browsers |
+| pin discipline | wgpu's quarterly breaks → pin the major version + a per-quarter upgrade window (re-verify all tiers) |
 
 ## Open decision points
 

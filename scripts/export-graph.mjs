@@ -19,7 +19,7 @@ const DB = path.join(ROOT, ".codegraph", "codegraph.db");
 const OUT = process.argv[2] || path.join(ROOT, "build", "book-src", "graph.json");
 
 // Directories that are noise for a project-architecture view.
-const EXCLUDE = [/^\.agents\//, /^\.opencode\//, /^\.omo\//, /^PolyOrch\//, /^target\//, /^build\//, /^www\//];
+const EXCLUDE = [/^\.agents\//, /^\.opencode\//, /^\.omo\//, /^PolyOrch\//, /^target\//, /^build\//, /^www\//, /^book\//];
 const NODE_KINDS = ["function", "method", "struct", "trait", "class", "enum", "type_alias", "file", "constant"];
 const EDGE_KINDS = ["calls", "imports", "contains", "instantiates"];
 
