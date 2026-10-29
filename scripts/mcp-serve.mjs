@@ -18,7 +18,7 @@
 //   --from    path to scripts/mcp-servers.json
 //   --name    server key inside that json
 //   --        separator; everything after is passed verbatim to the server bin
-import { execSync, spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -85,11 +85,20 @@ if (!existsSync(binPath) || have !== version) {
   // probe) and must keep working. npm writes its summary to stdout, which IS the
   // MCP JSON-RPC channel here, so capture it and re-emit on stderr.
   console.error(`[mcp-serve] installing ${pkg}@${version} (into ./node_modules, gitignored) ...`)
-  const out = execSync(`npm install -D --save-exact ${pkg}@${version}`, {
+  // Arguments are passed as an array (no shell), so a package name or version
+  // from the manifest can never turn into shell syntax. Windows resolves npm
+  // through npm.cmd, hence the explicit command name.
+  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const res = spawnSync(npm, ['install', '-D', '--save-exact', `${pkg}@${version}`], {
     cwd: root,
     stdio: ['ignore', 'pipe', 'inherit'],
   })
-  if (out && out.length) process.stderr.write(out)
+  if (res.stdout && res.stdout.length) process.stderr.write(res.stdout)
+  if (res.error) {
+    console.error('[mcp-serve] install failed:', res.error.message)
+    process.exit(1)
+  }
+  if (res.status !== 0) process.exit(res.status ?? 1)
 }
 
 const child = spawn(binPath, serverArgs, { stdio: 'inherit' })
