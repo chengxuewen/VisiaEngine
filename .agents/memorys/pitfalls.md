@@ -2,6 +2,8 @@
 
 > Every PIT is the five-part form; symptom / root cause / solution / verification are all mandatory (consolidation duty per C9). Lessons repeated ≥2 times or costing >3 rounds of localization are promoted in sync into an executable rule in `rules/common/edit-safety.md`.
 
+> Numbering note: PIT-27 and PIT-63 were never allocated (verified 2026-10-29); the gaps are intentional.
+
 ## Format example
 
 ## PIT-{n}: <one-line title> (YYYY-MM-DD)
@@ -192,7 +194,7 @@
 - **Verification**: grep the example surface for `orbit\(.*[0-9]\.[0-9], [0-9]{2}\.0` — degree-magnitude values (fov slots >7) = red; window-example pixel gates (the E302/E303 headless assertion family) run green.
 - **Lesson**: a window surface the pixel gate never looked at is an unverified surface — when T3 human verification is unreachable, headless structural assertions must cover the window example's same frame shape (this band's double-insurance precedent).
 
-## PIT-29: an ortho camera's only zoom definition = half-width; the dist field is decoration (2026-09-24, E206 third fix, second sighting)
+## PIT-86: an ortho camera's only zoom definition = half-width; the dist field is decoration (2026-09-24, E206 third fix, second sighting) — renumbered from a duplicate PIT-29 on 2026-10-29
 - **Symptom**: wheel zoom "does nothing" — both rig.zoom and rig.dist updated while the picture didn't budge.
 - **Root cause**: dual stacking. ① `look_at()` constructs with default zoom=1.0 while the rendered ortho half-width consumed a hardcoded tile_w constant (rig.zoom was never read); ② under orthographic projection dist does not affect picture size (only perspective gets "farther = smaller") — changing dist = no-op.
 - **Solution**: wheel → rig.zoom (the only ortho zoom semantics); the rendered half-width consumes rig.zoom; the clamp domain recomputed to the scene's scale (a 3857-meter world = 8km..500km, not E204's meter-scale 2..60).

@@ -1,6 +1,6 @@
 # VisiaEngine Status
 
-**Generated**: 2026-09-03 | Phase: project init | Branch: main (first 6 commits in git log; a clean worktree is the normal state)
+**Last updated**: 2026-10-29 | Phase: MVP closed + rendering hardening / host embedding / packaging band | Branch: main (a clean worktree is the normal state)
 
 > The full history of the predecessor MediaServo (the D/PIT/C numbering system, the crate matrix, Phase records) lives in the local archive `.refinfo/MediaServo/.agents/memorys/` (gitignored, not distributed with clones). This directory accumulates VisiaEngine history from scratch starting 2026-09-03.
 
@@ -10,28 +10,24 @@
 |----|------|
 | Tech stack | ✅ Rust core + wgpu rendering (whitepaper v0.1.0, settled 2026-09-03); **backend = D4 final ruling: wgpu direct use, self-built pipeline `visiaengine-render-wgpu` (Bevy not adopted)**; SDK form (C API FFI); Open Core business model |
 | License | ✅ landed: MIT OR Apache-2.0 dual-license canonical files (LICENSE-MIT/LICENSE-APACHE); the irrevocability promise is in the README |
-| Source | crates/ **5** crates (core/render/render-wgpu/io-gltf/geo), ~4.7k lines, **68 cargo tests all green** + 4×L2 smoke wired; offscreen golden 9/9 on this machine's lavapipe with no SKIP; fixtures migrated to `resources/data/` (1b) |
+| Source | `crates/` (Rust kernel + IO leaves + ffi) + the wasm binding + the examples shell package form the workspace; counts are gate-quoted — run `cargo metadata`, `pixi run test` or `scripts/spec-trace.sh` rather than copying numbers here |
 | Positioning | ✅ multi-dimensional spatial visualization engine (unified 2D/2.5D/3D; GIS / digital twin / AV simulation / BIM), not a game engine |
-| Agent toolchain | ✅ neutralized + registry + two-tier AGENTS; Rust rules loaded into instructions (16 entries); MCP repair round: nodejs into the pixi env + the with-node wrapper, codegraph/github paths green, openspace moved to the on-demand family (PIT-6) |
+| Agent toolchain | ✅ single source in `.agents/` + generated host layers; 16 instruction files; CodeBuddy rules generated and gated by `gate-agents`; MCP: codegraph / playwright / serena (github retired by D42); skills gated by `gate-skills` |
 
 ## Phase status
 
 | Phase | State |
 |-------|:----:|
 | 0 project init (config neutralization / whitepaper / architecture baseline / reference library / licenses) | ✅ |
-| 1 MVP | 🔨 content round + GeoJSON slice done (G1-G4 ✓; H1-H4 ✓: geo parsing / tessellation styles / D7 landed / geo_viewer); host embedding / capi = later slices |
+| 1 MVP | ✅ closed — MVP content + GeoJSON slice + host embedding + C ABI (49 entries) + install tree delivered; see README Development Status for the gate-quoted surface |
 | 2 Alpha / 3 Beta / 4 1.0 | — whitepaper roadmap |
 
 ## Next steps
 
-1. **push gitee** (remote sync advanced on the user's side; the local-ahead count varies per round) + the GitHub mirror decision (the five L2 smoke+gate lanes in ci.yml go live that day) — **user side still needs GITHUB_TOKEN + restart to verify MCP**
-2. ~~P1 adjudication~~ ✅ D7 ruled + **H3 implemented** (compose_mvp landed, WGPU-10 far-origin pixel-equality proven)
-3. ~~host-embedding slice standing by~~ ✅ **approval round (2026-09-11)**: batch 2 v1.4 + batch 7 v1.4 approved together; I0/J0 environment round started; the Qt demo stays its own entry (qt-main expansion rides that round)
-4. capi slice (ABI surface locked by D6: visiaengine_*/visiaengine.h); texture/material PBR, screen-space line width, MVT/tile streaming (⑦) = Alpha tier
-5. P2 style-spec compatibility adjudication (above the six simplestyle keys: a MapLibre v8 subset?) — style-system design round
-4. CI activation: the GitHub mirror repo decision day (ci.yml already has three chained smokes); Gitee push awaiting instruction
-5. wgpu upgrade window (quarterly): re-run the PIT-3/PIT-5 breakage checklist
-6. env/license clauses unchanged (D5/D6); during the mirror-CI standby, this machine's `pixi run ci` is the only gate (proven in the G round)
+1. **S5 — Qoder rules discovery**: confirm the Rules panel, remove the two probes, then generate `.qoder/rules` (`2026-10-28-agent-audit-followups.md`).
+2. **packaging follow-ups**: install tree / corrosion re-evaluation / npm-pip (`packaging-round.md`).
+3. **repo-docs-web**: still backlog (`2026-10-28-repo-docs-web.md`).
+4. **keep the gates green**: `pixi run ci` is the only gate while the GitHub mirror stays on standby.
 
 ## MVP content-round baseline (2026-09-03, G1-G4)
 

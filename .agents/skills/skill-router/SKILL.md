@@ -30,10 +30,10 @@ Read the user message and classify it:
 | **Docs** | "文档"/"README"/"说明" | `/doc-audit`（一致性）/ `/documentation-and-adrs`（写决策） |
 | **Security** | "安全"/"权限"/"认证" | `/security-hardening` |
 | **Release** | "发布"/"上线"/"打包"/"tag" | `/shipping-and-launch` |
-| **Hygiene** | "死代码"/"技术债"/"AI 垃圾"/"清理" | `/code-simplification`（+ 将来 `/ai-slop-cleanup`） |
+| **Hygiene** | "死代码"/"技术债"/"AI 垃圾"/"清理" | `/code-simplification` + `/ai-slop-cleanup` |
 | **Observability** | "日志"/"指标"/"追踪"/"告警" | `/observability-and-instrumentation` |
 | **Triage** | "不确定改哪层"/"跨模块"/"从哪下手" | `/repo-triage` |
-| **Orchestration** | "并行"/"子代理"/"拆任务" | `/planning-and-task-breakdown`（+ 将来 `/subagent-orchestration`） |
+| **Orchestration** | "并行"/"子代理"/"拆任务" | `/planning-and-task-breakdown` + `/subagent-orchestration` |
 | **Explore** | "调研"/"对比"/"有什么方案" | `/ecosystem-scan` + the host's own subagent mechanism |
 | **Ambiguous** | no clear keyword | propose 2-3 possible directions and let the user choose |
 

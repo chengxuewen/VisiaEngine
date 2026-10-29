@@ -63,7 +63,7 @@ cargo metadata --no-deps --format-version 1 |
 | Gap | Verified state today |
 |---|---|
 | Skinned meshes / morph targets | no joint palette, no per-vertex targets; only rigid node transforms (CAPI-42/43) and origin-track replay (REND-42) |
-| Vector + raster tile layers **at the same time** | single layer slot in the capi engine (`engine.rs:1196/1991/2021` all assign one slot) → basemap and overlay are mutually exclusive; band T of `.omo/plans/ledger-tiles-keys-2026-10-08.md` fixes it |
+| Vector + raster tile layers **at the same time** | single layer slot in the capi engine (`engine.rs:1196/1991/2021` all assign one slot) → basemap and overlay are mutually exclusive; the band-T finding recorded in `status.md` (2026-10-08) targets it |
 | Scene serialisation | 0 code |
 | Spatial index (quadtree / kd-tree / R-tree) | 0 code (grep for kdtree/quadtree/rtree/spatial_index across `crates/` returns nothing) |
 | 3D Tiles, terrain/DEM/heightmap, OGC 3D formats | 0 code |

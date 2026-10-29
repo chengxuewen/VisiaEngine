@@ -1,6 +1,6 @@
 # .agents — project memory / rules / skills
 
-Root of the agent toolchain (149 files, all .md or skill attachments). The assembly point is `.opencode/opencode.json`.
+Root of the agent toolchain (directory tree below; all .md or skill attachments). The assembly point is `.opencode/opencode.json`.
 
 ## STRUCTURE
 

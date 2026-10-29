@@ -70,7 +70,7 @@ argv parsing). The code by which an example teaches its one lesson (present-path
 `render_view_rects` is ⑤b's course text; drag in E402/E403 is picking/box-selection, not orbiting. Criterion: if deleting some code leaves the example's tutorials.md
 claim undemonstrated, that code is course text, not duplication.
 
-**Check command**: `grep -n 'Non-goal\|keep local' .omo/plans/viewer-shared-band-2026-10-08.md | head`;
+**Check command**: `grep -rn 'Non-goal\|keep local' .omo/plans/*.md | head` (the 2026-10-08 band plan is local-only and no longer present);
 the migration batch's gates (determinism pre-check → sha/timeline → interaction tri-state) live in `rules/common/testing.md`, section "Batch-migration gates".
 
 ## C19: Self-check/prune/gate-step predicates must be token-level, and a breakage probe must run before commissioning (2026-10-08 band V, hard evidence)

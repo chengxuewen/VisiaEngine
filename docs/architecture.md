@@ -22,8 +22,8 @@ Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding
 ┌───────────────▼─────────────────────────────────────────────┐
 │  Binding-gen layer   visiaengine-ffi(headers) → bindgen/csbindgen/pub │
 ├─────────────────────────────────────────────────────────────┤
-│  Engine core layer   visiaengine-core ── visiaengine-geo ── visiaengine-style │
-│  (pure Rust)         scene graph/coords  MVT/projection sched  layers/styles/expr │
+│  Engine core layer   visiaengine-core ── visiaengine-geo (style layer inside) │
+│  (pure Rust)         scene graph/coords  MVT/projection/style expressions    │
 ├─────────────────────────────────────────────────────────────┤
 │  Render abstract     visiaengine-render: Trait + render commands (IR), no GPU types │
 ├─────────────────────────────────────────────────────────────┤
@@ -37,21 +37,21 @@ Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding
 ## ② Crate dependency directions
 
 ```
-                 visiaengine-ffi ─(cdylib/staticlib + hand-written, human-reviewed header, 14 entries
+                 visiaengine-ffi ─(cdylib/staticlib + hand-written, human-reviewed header, 49 entries
                      │              gate-abi nm symbol count + gate-docs signature-name-set double lock)
                      │
-   ┌───────┬────────┼─────────┬──────────┬──────────┐
-visiaengine-core  visiaengine-geo  visiaengine-style   visiaengine-io-*   visiaengine-proj
- (no wgpu     (tiles/     (style spec,    (gltf/       (projection: feature-gate
-  dependency)  coords/     expressions)    geojson/     pure Rust | C binding, pick one)
-               LOD sched)                  mvt)
-   └───────┴────────┴─────┬────┴──────────┴──────────┘
+   ┌──────────────┬──────────────┬──────────────┐
+visiaengine-core  visiaengine-geo  visiaengine-io-*
+ (no wgpu         (tiles/coords/   (gltf/geojson/
+  dependency)      LOD sched/       mvt/hdr/points/
+                   style exprs)     text)
+   └──────────────┴───────┬──────┴──────────────┘
                     visiaengine-render (pure IR/Trait)
                           │
                   visiaengine-render-wgpu ──→ wgpu, lyon, cosmic-text, rstar
  [extension tier, zero core dependency] visiaengine-3dtiles │ visiaengine-odr(Beta) │ visiaengine-ifc(Beta+)
 ```
-Iron rule: dependency arrows point down only; the independence of `visiaengine-style`/`visiaengine-geo` = the Open Core plugin boundary coded into structure.
+Iron rule: dependency arrows point down only; the independence of `visiaengine-geo` — which now owns the style layer (`crates/visiaengine-geo/src/style.rs`) — is the Open Core plugin boundary coded into structure. Splitting style back out into its own crate remains an option, not a current fact.
 
 ## ③ One frame's data flow
 
@@ -146,7 +146,7 @@ pin discipline: wgpu's quarterly breaks -> pin the major version + a per-quarter
 | # | open question | blast radius | ruling due |
 |---|------|--------|--------|
 | ~~P1~~ | RTC granularity | — | **✅ ruled by D7 (layered origin)** |
-| P2 | style-spec compatibility (MapLibre v8 subset?) | visiaengine-style + migration tooling | at style-system design time |
+| P2 | style-spec compatibility (MapLibre v8 subset?) | `visiaengine-geo` style layer + migration tooling | at style-system design time |
 | P3 | RK3588 driver stack (vendor blob/BSP vs mainline Panvk) | release matrix / QA cost | **business input** (customer persona); does not block code |
 | P4 | material expression layer (TSL-style) | rendering long-term | post-MVP, not designed now |
 
