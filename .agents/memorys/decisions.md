@@ -526,3 +526,14 @@ The file had grown by append (136 lines, 12 implicit groups, `.pixi` duplicated,
 - D2 = **A**: legacy `stash`/`nodejs` rules are kept but root-anchored, with a legacy note (no current user; grep found no directory references).
 
 Result: 12 explicit sections (noise -> legacy toolchains -> IDE -> build -> node -> python -> pixi -> secrets -> agent layers -> local notes -> wrapper -> clones), `.pixi` deduped, five `cmake-build-*` collapsed to `cmake-build*/`, `/CMakeUserPresets.json` added, and `.serena/*` root anchoring restored. Verification: 22/22 ignore matrix, ignored list no-diff, zero tracked-but-ignored files. The inline-comment trap found during review is recorded as PIT-85.
+
+## D49: CodeBuddy rule budget — two always-on rules plus described on-demand rules (2026-10-29)
+
+CodeBuddy injected all 40 generated rules with `alwaysApply: true` into every request — 139,613 characters, ~14x the IDE's 10k warning. Two changes landed:
+
+- **Always-on whitelist** (`always_on_rules` in `agent-targets.json`, honored by `_mdc_content`): only `common-constraints` + `common-security` stay `alwaysApply: true`; the other 38 flip to `false`. Always-on payload 139,613 -> **3,048** characters (-98%); 2 true / 38 false.
+- **Rule descriptions** (`rule_descriptions`, same config): 12 high-frequency non-core rules (common coding-style / testing / edit-safety / performance / code-review; rust coding-style / testing / security / hooks; cpp, typescript, web coding-style) get a hand-written "Use when ..." description instead of their H1 title — with `alwaysApply: false`, the description is what selects the rule.
+
+`edit-safety` was deliberately **not** trimmed (483 lines / 45 KB): it left the always-on budget when it flipped to `false`, so the 10k warning is resolved without cutting content (adjudicated C).
+
+Verification: 2 true / 38 false; always-on stays 3,048 chars; a second `agent-sync` produces zero `MDCMK` (idempotent); `gate-agents` green. Open item: whether the host actually pulls in `alwaysApply: false` rules by description is unverified — if it does not, the canonical files remain readable on demand at `.agents/rules/<lang>/`.

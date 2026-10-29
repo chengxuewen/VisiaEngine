@@ -73,7 +73,7 @@ def _retarget_links(body):
     return _LINK.sub(lambda m: "](../%s-%s/RULE.mdc%s)" % (m.group(1), m.group(2), m.group(3)), body)
 
 
-def _mdc_content(canonical_path, rel, always_on=None):
+def _mdc_content(canonical_path, rel, always_on=None, descriptions=None):
     with open(canonical_path, "r", encoding="utf-8") as handle:
         raw = handle.read()
     body = _retarget_links(_strip_frontmatter(raw))
@@ -81,7 +81,10 @@ def _mdc_content(canonical_path, rel, always_on=None):
     folder = _mdc_folder(rel)
     if h1 is None:
         h1 = folder
-    desc = '"%s"' % h1.replace("\\", "\\\\").replace('"', '\\"')
+    desc_text = h1
+    if descriptions and folder in descriptions:
+        desc_text = descriptions[folder]
+    desc = '"%s"' % desc_text.replace("\\", "\\\\").replace('"', '\\"')
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
     apply = "true" if (always_on and folder in always_on) else "false"
     front = "---\ndescription: %s\nalwaysApply: %s\nenabled: true\nupdatedAt: %s\n---\n" % (desc, apply, digest)
@@ -93,13 +96,14 @@ def sync_layer_mdc(target, rules_root, dry_run):
     if target_dir is None:
         return 0
     always_on = set(target.get("always_on_rules") or [])
+    descriptions = target.get("rule_descriptions") or {}
     rels = _canonical_rels(rules_root, _langs(target))
     ac.ensure_dir(target_dir)
     actions = 0
     expected = set()
     for rel in rels:
         canonical = os.path.join(rules_root, rel)
-        folder, content = _mdc_content(canonical, rel, always_on)
+        folder, content = _mdc_content(canonical, rel, always_on, descriptions)
         expected.add(folder)
         rfile = os.path.join(target_dir, folder, "RULE.mdc")
         current = None
@@ -139,6 +143,7 @@ def check_layer_mdc(target, rules_root):
     if target_dir is None:
         return []
     always_on = set(target.get("always_on_rules") or [])
+    descriptions = target.get("rule_descriptions") or {}
     findings = []
     if not os.path.isdir(target_dir):
         if os.path.isdir(rules_root):
@@ -148,7 +153,7 @@ def check_layer_mdc(target, rules_root):
     expected = set()
     for rel in rels:
         canonical = os.path.join(rules_root, rel)
-        folder, content = _mdc_content(canonical, rel, always_on)
+        folder, content = _mdc_content(canonical, rel, always_on, descriptions)
         expected.add(folder)
         rfile = os.path.join(target_dir, folder, "RULE.mdc")
         if not os.path.isfile(rfile):

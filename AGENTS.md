@@ -308,6 +308,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D44: local-playwright added via the MCP runbook; 0.0.83 publish is broken (2026-10-28)
 - D47: Memory digest compresses to the host budget (2026-10-28)
 - D48: `.gitignore` reorganized by ownership; build outputs root-anchored (2026-10-29, user-adjudicated one by one)
+- D49: CodeBuddy rule budget — two always-on rules plus described on-demand rules (2026-10-29)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`

@@ -17,6 +17,20 @@
       "rules_mode": "mdc",
       "langs": ["common","rust","cpp","web","typescript","python"],
       "always_on_rules": ["common-constraints","common-security"],
+      "rule_descriptions": {
+        "common-coding-style": "Use when writing or reviewing code in any language -- naming, structure, error handling, and comment conventions.",
+        "common-testing": "Use when adding or changing tests, or when a behavior change has no regression guard yet.",
+        "common-edit-safety": "Use BEFORE editing files or running destructive shell/git commands -- tool selection, forbidden sed/regex rewrites, and how to verify an edit.",
+        "common-performance": "Use when a change touches hot paths, allocations, frame timing, or whenever a slowdown is reported.",
+        "common-code-review": "Use when reviewing a diff or PR -- five axes, severity labels, and the ~100-line change discipline.",
+        "rust-coding-style": "Use when writing or reviewing Rust (.rs) -- ownership/borrowing, error types, iterator idioms, and clippy-clean patterns.",
+        "rust-testing": "Use when adding Rust tests -- cargo test layout, property tests with proptest, and insta snapshots.",
+        "rust-security": "Use when Rust code touches unsafe, FFI boundaries, or untrusted input -- SAFETY comments and audit expectations.",
+        "rust-hooks": "Use when editing Rust lifecycle hooks or callbacks -- initialization order and teardown guarantees.",
+        "cpp-coding-style": "Use when touching C or C++ headers, FFI shims, or the CMake consumption surface.",
+        "typescript-coding-style": "Use when writing TypeScript (.ts) in bindings or web demo glue.",
+        "web-coding-style": "Use when editing web demo pages (HTML/CSS/JS) or the page-level beacon wiring."
+      },
       "mcp_file": ".mcp.json",
       "mcp_shape": "mcpServers",
       "mcp_launcher": true
