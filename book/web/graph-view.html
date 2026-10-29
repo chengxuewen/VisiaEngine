@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VisiaEngine — call &amp; dependency graph</title>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { margin: 0; height: 100%; font: 14px/1.45 system-ui, sans-serif; }
+  #wrap { display: flex; height: 100%; }
+  #side { width: 280px; padding: 12px; box-sizing: border-box; overflow: auto; border-right: 1px solid #8884; }
+  #cy { flex: 1; min-width: 0; }
+  input[type=search] { width: 100%; padding: 6px 8px; box-sizing: border-box; }
+  #hits { list-style: none; margin: 8px 0 0; padding: 0; }
+  #hits li { padding: 4px 6px; cursor: pointer; border-radius: 4px; }
+  #hits li:hover { background: #8882; }
+  #hits .k { opacity: .6; font-size: 12px; }
+  #info { margin-top: 12px; font-size: 13px; word-break: break-all; }
+  #info a { color: #2a6fdb; }
+  .legend { margin-top: 12px; font-size: 12px; opacity: .8; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+  label { display: block; margin-top: 8px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <aside id="side">
+    <strong>Call &amp; dependency graph</strong>
+    <p style="font-size:12px;opacity:.7;margin:6px 0">Generated from <code>.codegraph</code>. Pick a symbol to see its neighbourhood.</p>
+    <input id="q" type="search" placeholder="search functions, methods, structs…" autocomplete="off">
+    <ul id="hits"></ul>
+    <label><input id="depth" type="range" min="1" max="2" step="1" value="1"> depth <span id="depthVal">1</span></label>
+    <label><input id="showDeps" type="checkbox"> include file-dependency edges</label>
+    <div id="info"></div>
+    <div class="legend">
+      <div><i style="background:#2a6fdb"></i>function / method</div>
+      <div><i style="background:#d9822b"></i>struct / class / trait</div>
+      <div><i style="background:#6b7280"></i>file</div>
+    </div>
+    <p style="font-size:12px;opacity:.7;margin-top:12px" id="stats"></p>
+  </aside>
+  <div id="cy"></div>
+</div>
+<script src="vendor/cytoscape.min.js"></script>
+<script src="graph.js"></script>
+</body>
+</html>

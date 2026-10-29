@@ -70,6 +70,19 @@ def main() -> int:
     if os.path.isdir(web_src):
         shutil.copytree(web_src, os.path.join(SRC_DIR, "web"))
 
+    # 3b) Graph data for the interactive page (S2). Missing index is not fatal:
+    #     the page renders an actionable hint instead (plan §3.2 tolerance).
+    graph_db = os.path.join(ROOT, ".codegraph", "codegraph.db")
+    if os.path.exists(graph_db):
+        code = subprocess.run(
+            ["node", "scripts/export-graph.mjs", os.path.join(SRC_DIR, "graph.json")],
+            cwd=ROOT, stdin=subprocess.DEVNULL,
+        ).returncode
+        if code != 0:
+            print("BOOK WARN graph export failed -- graph page will be empty", file=sys.stderr)
+    else:
+        print("BOOK - no .codegraph yet (run: pixi run mcp index) -- graph page will be empty")
+
     # 4) Collect the chapter list in toc order, expanding glob groups.
     hidden = {entry["source"] for entry in toc.get("chapter", [])
               if entry.get("visibility") == "internal"}
@@ -96,7 +109,7 @@ def main() -> int:
         if group != current_group:
             lines.append(f"# {group}" if group else "")
             current_group = group
-        rel = entry_src if entry_src.startswith("docs/") else os.path.basename(entry_src)
+        rel = entry_src
         lines.append(f"- [{entry_title}]({rel})")
         covered.add(entry_src)
 

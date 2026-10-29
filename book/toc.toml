@@ -15,6 +15,11 @@ source = "docs/architecture.md"
 type = "explanation"
 
 [[chapter]]
+title = "Call & Dependency Graph"
+source = "web/graph.md"
+type = "reference"
+
+[[chapter]]
 title = "Product & Positioning"
 source = "docs/whitepaper.md"
 type = "explanation"
