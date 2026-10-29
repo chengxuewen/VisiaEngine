@@ -310,6 +310,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D48: `.gitignore` reorganized by ownership; build outputs root-anchored (2026-10-29, user-adjudicated one by one)
 - D49: CodeBuddy rule budget — two always-on rules plus described on-demand rules (2026-10-29)
 - D50: Trae host onboarding — four adjudications (2026-10-29, user-adjudicated one by one)
+- D51: `.gitignore` gaps closed — pre-declared hosts, local env files, pycache (2026-10-29, user-adjudicated one by one)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`

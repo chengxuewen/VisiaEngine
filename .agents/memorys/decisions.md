@@ -571,3 +571,15 @@ Two review findings remain to be fixed in the implementation, both pre-existing 
 Also fixed en route: `bootstrap.sh` now runs `agent-sync` as step 4/4 (advisory), `.agents/rules/common/agents.md` documents the generated-layer map for every host, and root `AGENTS.md` lists `.trae/` among generated layers. Two incidental findings were filed: PIT-86 (launcher reference cwd) and PIT-87 (a 0-byte case-variant `AGENTS.md` in a rules folder silently became a generated rule).
 
 Still open after landing: whether Trae injects all three `.trae/rules/*.md` every turn or only directory-scoped ones is unmeasured (it decides how large the router card may grow), Trae's panel has not been observed rewriting `.trae/mcp.json` (byte-equal after the first sync, but the panel was never saved), and `bootstrap.sh` previously left every host layer absent on a fresh clone — now covered by step 4/4.
+
+## D51: `.gitignore` gaps closed — pre-declared hosts, local env files, pycache (2026-10-29, user-adjudicated one by one)
+
+Audit of the post-D48 ignore set found no over-ignores (0 tracked-but-ignored, 0 ignored files in source/docs/resources, sensitive paths covered) and four preventive gaps. Adjudicated A/A/A/A:
+- D1: `.claude/` and `.cursor/` are ignored now, alongside `.codebuddy/`/`.qoder/`/`.trae/`; both targets are pre-declared (disabled) in `agent-targets.json`.
+- D2: `.env`, `.env.local`, `.env.*.local` are ignored with `!.env.example` kept committable.
+- D3: `__pycache__/` is ignored as a directory (`*.pyc` alone misses non-pyc leftovers).
+- D4: `*.log` is deliberately NOT ignored — ctest logs are already covered by `Testing/`, and a global rule would hide future sample-log fixtures.
+
+Verification: 29-case `git check-ignore --no-index` matrix passes (22 existing + 7 new), `git ls-files -ci --exclude-standard` is empty, inline-comment grep is empty, `GATE-AGENTS` green. Plan: `.omo/plans/2026-10-29-gitignore-gaps.md`.
+
+Note: the same audit round resolved a concurrent numbering collision — the renumbered duplicate PIT-29 entry became PIT-88 because the Trae onboarding round had independently taken PIT-86.

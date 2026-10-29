@@ -82,6 +82,7 @@ node_modules/
 
 # --- Python -----------------------------------------------------------------
 *.pyc
+__pycache__/
 .venv-openspace/
 
 # --- pixi environment manager ----------------------------------------------
@@ -92,6 +93,11 @@ node_modules/
 # --- Local secrets and overrides (never track) ------------------------------
 # Canonical .agents/mcp.json is committed; this file carries real credentials.
 .agents/mcp.local.json
+# local environment files (the .example template stays committable)
+.env
+.env.local
+.env.*.local
+!.env.example
 # wasm serve-https TLS artefacts
 .certs/
 # Serena generated state (project.yml stays tracked by design)
@@ -107,6 +113,9 @@ node_modules/
 .trae/
 .playwright-mcp/
 .codegraph/
+# pre-declared targets (disabled in agent-targets.json)
+.claude/
+.cursor/
 
 # --- Local planning / scaffolding ------------------------------------------
 .omo/*
