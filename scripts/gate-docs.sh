@@ -42,14 +42,14 @@ while IFS= read -r f; do
     dir=$(dirname "$f")
     while IFS= read -r dest; do
         case "$dest" in
-            http*|mailto:*|\#*|*\ *|build/*|target/*) continue ;;
+            http*|mailto:*|\#*|*\ *|build/*|target/*|www/*) continue ;;
         esac
         target=${dest%%#*}
         target=${target%%\?*}
         [ -n "$target" ] || continue
         [ -e "$dir/$target" ] || { echo "GATE-DOCS ✗ ④broken link: $f → $dest"; fail=1; }
     done < <(grep -oE '\]\([^)]+\)' "$f" 2>/dev/null | sed -E 's/^\]\(//; s/\)$//')
-done < <(ls README.md docs/*.md docs/sdd/*.md docs/reference/*.md llms.txt 2>/dev/null)
+done < <(ls README.md docs/*.md docs/sdd/*.md docs/reference/*.md book/web/*.md llms.txt 2>/dev/null)
 
 # ⑤ root-facade purity (T-A 2026-10-10 ruling 1-B+: assembly-layer positioning) — soft line
 # cap 120 + exemption marker + structural hard locks (compile rules banned from the root;
@@ -202,7 +202,26 @@ if [ -f visiaengine.sh ]; then
     done <<< "$cli_refs"
 fi
 
+# ⑬ assembled book (S4): when build/book-src exists, every SUMMARY entry must resolve and
+# the graph chapter must still embed the app page (guards the S2 path-collision regression).
+# A bare clone has no build/book-src -> SKIP, same convention as cmake-smoke/gate-pack.
+book_note="book: no build yet"
+if [ -f build/book-src/SUMMARY.md ]; then
+    book_chapters=0
+    while IFS= read -r bdest; do
+        book_chapters=$((book_chapters + 1))
+        [ -e "build/book-src/$bdest" ] || { echo "GATE-DOCS ✗ ⑬SUMMARY points at a missing file: $bdest"; fail=1; }
+    done < <(grep -oE '^- \[[^]]*\]\([^)]+\)' build/book-src/SUMMARY.md | sed -E 's/.*\]\(([^)]+)\)$/\1/')
+    if [ -f build/book-src/web/graph.md ]; then
+        grep -q 'src="graph-view.html"' build/book-src/web/graph.md \
+            || { echo "GATE-DOCS ✗ ⑬graph chapter no longer embeds graph-view.html"; fail=1; }
+    fi
+    book_note="book: ${book_chapters} chapters"
+else
+    echo " [ SKIP ] ⑬ no build/book-src (run: pixi run book-build)"
+fi
+
 if [ "$fail" = 0 ]; then
-    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk} / gitlink aligned / cli ${tn:-0} tasks)"
+    echo "GATE-DOCS ✓ (E $(echo "$files" | wc -l) files three-way / README=${rn}↔spec=${sn} / header signatures $(echo "$hs" | wc -l) names / links alive / wall $(grep -c '"id"' examples/wasm/wall.json 2>/dev/null || echo 0) entries / packages ${pk} / gitlink aligned / cli ${tn:-0} tasks / ${book_note})"
 fi
 exit $fail

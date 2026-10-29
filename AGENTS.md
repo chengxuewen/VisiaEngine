@@ -260,8 +260,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### decisions
 - full text: `.agents/memorys/decisions.md`
-- ... 29 older entries omitted (read the full file)
-- D28: Agent config unification = "single source `.agents/` + read-through-first + one rules translation + CodeBuddy/WorkBuddy first then Qoder/Trae/ZCode + memory aggregation into AGENTS.md + subagent slot reserved" (2026-10-28)
+- ... 30 older entries omitted (read the full file)
 - D29: Serena deferred from single-source MCP — this environment lacks clangd and an installer (2026-10-28)
 - D30: All MCP local stdio, commands unified as `pixi run mcp-<name>`, needs a bootstrap mechanism (2026-10-28)
 - D31: MCP single-source second-round adjudication (2026-10-28, user-adjudicated one by one) — scope / abstraction / credentials
@@ -286,6 +285,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D50: Trae host onboarding — four adjudications (2026-10-29, user-adjudicated one by one)
 - D51: `.gitignore` gaps closed — pre-declared hosts, local env files, pycache (2026-10-29, user-adjudicated one by one)
 - D52: Repo-wide review fixes — six batches, with the debt named (2026-10-29)
+- D45: human-facing docs site -- mdBook + codegraph graph + lazy mermaid (2026-10-29)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`

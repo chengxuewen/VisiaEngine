@@ -162,3 +162,16 @@ Consumers never spell a generation name: the SDK publishes the canonical `VISIAE
 The older `agent-sync`, `gate-agents`, and `gate-skills` tasks remain valid aliases; `ci`
 keeps the two gates separate (so the CONSTRAINTS gate list is unchanged). `visiaengine.sh
 agents <sub>` works through the passthrough.
+
+### Docs site (mdBook)
+
+```bash
+./visiaengine.sh book-build            # assemble build/book-src from docs/ + book/toc.toml, then mdbook build into www/book/en
+./visiaengine.sh book-build --public   # same, but skip pages marked visibility = "internal" (and drop them from the artifact)
+./visiaengine.sh book-check            # static checks on www/book: index, graph.json, embedded graph app
+```
+
+- `docs/` stays the single source of truth. `book/` holds only the site shell (`book.toml`, `toc.toml`, `web/`); `build/` and `www/` are generated and gitignored (`build/` remains the wasm-wall territory).
+- Chapter order and metadata live in `book/toc.toml` (`type`, `translated`, `visibility`); markdown not listed there lands in an Appendix with a warning.
+- Diagrams are ```` ```mermaid ```` fences rendered by a 1 KB lazy loader (mermaid 11.17.2 is vendored; the 3.5 MB bundle is fetched only on pages that contain a diagram). The call/dependency page is an iframe over a cytoscape app fed by `graph.json`, which `book-build` exports from `.codegraph` — run `pixi run mcp index` first.
+- Preview directly: `pixi run mdbook serve book -d www/book/en`.
