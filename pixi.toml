@@ -22,6 +22,18 @@ fonttools = ">=4.66.0,<5"
 # Official PyPI distribution by the ast-grep author (MIT); pinned, verified 2026-10-28.
 ast-grep-cli = "==0.51.0"
 
+# Book toolchain for the human-facing docs site (book/, output in www/ -- see docs/env.md).
+# Everything conda-installable lives here; the only cargo-binstall exception is
+# mdbook-i18n-helpers (added in S5), pinned per .agents/rules/common/constraints.md.
+[feature.book.dependencies]
+gettext = ">=0.22,<2"          # GNU gettext tools (msgfmt/xgettext); S1 verifies msgfmt --version
+markdownlint-cli = ">=0.45,<1"
+mdbook = ">=0.5,<0.6"
+
+# No aarch64 build on conda-forge (solve verified 2026-10-29); same pattern as clang-tools.
+[feature.book.target.linux-64.dependencies]
+cargo-binstall = ">=1.26,<2"
+
 [feature.tools.dependencies]
 cargo-deny = ">=0.20,<0.21"
 cmake = ">=4.4.3,<5"
@@ -114,7 +126,7 @@ mcp-serena = "serena start-mcp-server --transport stdio --context claude-code --
 
 [environments]
 # Single-environment scheme: all lightweight binaries go into default (tools/ide and the base deps share a solve-group; no isolation needed)
-default = { features = ["tools", "ide", "mcp"], solve-group = "base" }
+default = { features = ["tools", "ide", "mcp", "book"], solve-group = "base" }
 # Batch 2 I0 / batch 7 J0 (approval round 2026-09-11): the two spike environments share the base solve-group = a single toolchain [FFI-R:env-W2]
 host-spike = { features = ["tools", "ide", "host"], solve-group = "base" }
 # PF3 (2026-10-29): verify the declared MSRV (Cargo.toml rust-version = 1.98.0)
@@ -132,6 +144,9 @@ qt5-spike = { features = ["tools", "qt5"] }
 serena = { features = ["serena"] }
 
 [tasks]
+# Human-facing docs site (see .omo/plans/2026-10-28-repo-book.md §14):
+# assemble build/book-src from docs/ + book/toc.toml, then mdbook build into www/book/<lang>.
+book-build = "python3 scripts/book-build.py"
 # The cargo-flavored tasks are an interface contract: running them before the Cargo workspace lands (build day) must fail -- that is expected
 check = "cargo check --workspace"
 build = "cargo build --workspace"

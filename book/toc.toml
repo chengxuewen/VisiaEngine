@@ -1,0 +1,99 @@
+# Chapter order for the book (learning path first).
+# Titles are English-only on purpose: gate-i18n scans .toml, and the Chinese
+# titles come from book/po/zh-CN.po in S5 (gettext workflow).
+# title = ""  -> take the first `# ` heading from the source file.
+# visibility = "internal" -> excluded by `book-build --public` (see plan §12-6).
+
+[[chapter]]
+title = "Overview"
+source = "README.md"
+type = "index"
+
+[[chapter]]
+title = "Architecture"
+source = "docs/architecture.md"
+type = "explanation"
+
+[[chapter]]
+title = "Product & Positioning"
+source = "docs/whitepaper.md"
+type = "explanation"
+visibility = "internal"
+
+[[chapter]]
+title = "Developer Environment"
+source = "docs/env.md"
+type = "how-to"
+
+[[chapter]]
+title = "Tutorials (E-index)"
+source = "docs/tutorials.md"
+type = "tutorial"
+
+[[chapter]]
+title = "Gap-Closure Roadmap"
+source = "docs/gap-closure-roadmap.md"
+type = "explanation"
+visibility = "internal"
+
+# SDD contracts: one chapter each, auto-titled, grouped under one part header.
+[[chapter]]
+title = ""
+source = "docs/sdd/core.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/render.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/render-wgpu.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/capi.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/geo.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/io-gltf.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/io-points.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/io-text.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+[[chapter]]
+title = ""
+source = "docs/sdd/io-tiles.md"
+type = "reference"
+group = "Contracts (SDD)"
+
+# External-ecosystem research notes: auto-collected by glob (plan §14-4:
+# they ship in the book but are exempt from the prose gates).
+[[group]]
+title = "Reference Library"
+type = "reference"
+glob = "docs/reference/**/*.md"

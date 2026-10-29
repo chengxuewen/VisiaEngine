@@ -132,3 +132,6 @@ __pycache__/
 
 # --- External reference clones (script-managed, read-only) ------------------
 .refinfo/
+
+# Human-facing docs site output (book-build / book-serve); source of truth is docs/ + book/
+/www/

@@ -1,0 +1,12 @@
+[book]
+title = "VisiaEngine"
+authors = ["VisiaEngine contributors"]
+src = "../build/book-src"
+language = "en"
+
+# build-dir is deliberately NOT set here: book-build passes -d per language
+# (www/book/en, www/book/zh-CN) so each build clears only its own subtree,
+# and the root redirect page + api/ survive outside those subtrees.
+[output.html]
+git-repository-url = "https://gitee.com/chengxuewen/VisiaEngine"
+edit-url-template = "https://gitee.com/chengxuewen/VisiaEngine/edit/main/{path}"

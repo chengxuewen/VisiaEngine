@@ -35,7 +35,9 @@ Status prose lives in `README.md` §Development Status (MVP closed, then renderi
 ├── docs/sdd/                # behavior clauses (CORE / REND / WGPU / GLTF / GEO / IO / CAPI), `// spec:` two-way trace
 ├── docs/tutorials.md        # E-number index: filename = header comment = index row (machine-locked by gate-docs)
 ├── docs/                    # whitepaper.md (positioning) · architecture.md (design baseline) · env.md · reference/
-├── scripts/                 # the gate surface: gate-* · smoke-* · spec-trace.sh · web-* · bench.sh
+├── scripts/                 # the gate surface: gate-* · smoke-* · spec-trace.sh · web-* · book-build.py · bench.sh
+├── book/                    # human-facing mdBook site source: book.toml · toc.toml (chapter order/types) · web/ (graph page)
+├── www/                     # ⚠ generated docs site (gitignored): www/book/<lang>/ · www/book/api/ (rustdoc)
 ├── .github/workflows        # ci.yml on standby (activates on the GitHub mirror day); local equivalent = `pixi run ci`
 ├── .agents/ .opencode/ .omo/ # memory+rules+skills / assembly points / model tiering
 ├── .refinfo/                # ⚠ ~11G gitignored local archive (MediaServo + external reference projects) — read-only, never edit, always exclude from searches
@@ -148,7 +150,7 @@ ctest --preset default          # whole example registry (all languages)
 
 # --- gates ---
 bash scripts/spec-trace.sh              # SDD clause ↔ test bidirectional trace
-./visiaengine.sh gate-docs              # four zero-drift document checks
+./visiaengine.sh gate-docs              # zero-drift document checks (links · wall manifest · header signatures · CLI task names)
 ./visiaengine.sh pack-check             # installed-tree hygiene (manifest / NEEDED / build paths)
 ./visiaengine.sh gate-web               # headless browser wall gate (self-SKIP without chromium)
 ./visiaengine.sh check-promises         # overclaim lint
@@ -164,7 +166,7 @@ Not in the `ci` chain (run deliberately): `gate-web`, `keys-probe`, `serve-https
 ## NOTES
 
 - Output territories: `build/` = save-frame wall assets · `target/` = cargo-direct only · `cmake-build*/` = CMake preset trees. Do not mix them.
-- `.sisyphus` is gitignored (`.gitignore` L103) and absent on disk; `www/` is **not** reserved — the project is unbuilt, do not assume it exists.
+- `.sisyphus` is gitignored (`.gitignore` L103) and absent on disk. `www/` is now the **generated** docs site (`pixi run book-build`), gitignored — never hand-edit it, and never treat it as source.
 - MCP: one local server (`local-codegraph`, pinned in `scripts/mcp-servers.json`); maintain it with `./visiaengine.sh mcp {setup,index,sync,status}`. `.codegraph/` is a per-machine index (gitignored, never built in CI). The GitHub server was removed (deprecated package, no token, no use case while the remote is gitee); re-select the official implementation when the GitHub mirror turns on. playwright/postgres/websearch/openspace stay disabled by default (openspace also needs a python tree + LLM key).
 - `PolyOrch` is a separate repository: its own rules/skills live under `PolyOrch/.agents/`. Change it there, not here.
 - `docs/env.md` is the environment guide; `docs/architecture.md` is the design baseline; `docker.md` in the rules tree stays on-demand reference only.
