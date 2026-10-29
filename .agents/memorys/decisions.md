@@ -583,3 +583,16 @@ Audit of the post-D48 ignore set found no over-ignores (0 tracked-but-ignored, 0
 Verification: 29-case `git check-ignore --no-index` matrix passes (22 existing + 7 new), `git ls-files -ci --exclude-standard` is empty, inline-comment grep is empty, `GATE-AGENTS` green. Plan: `.omo/plans/2026-10-29-gitignore-gaps.md`.
 
 Note: the same audit round resolved a concurrent numbering collision — the renumbered duplicate PIT-29 entry became PIT-88 because the Trae onboarding round had independently taken PIT-86.
+
+## D52: Repo-wide review fixes — six batches, with the debt named (2026-10-29)
+
+A read-only review of the whole repo (engineering, scripts, build, config, gates) produced 6 Optional + 7 Nit findings; six batches landed:
+
+- **B1 `ebb65c4`**: `mcp-serve.mjs` spawns npm with an argument array (no shell) while still capturing stdout and re-emitting it on stderr — stdout is the JSON-RPC channel. The dead `@modelcontextprotocol/server-github` entry lived only in the gitignored, generated `package.json`, so removing it is a local clean-up with no repo diff.
+- **B2 `ef207c3`**: rules copy mode prunes like the mdc path (symlink/dir/file) and skips pruning when a whitelist entry is unusable; `check` classifies nested dirs as `subdir` and ignores `.bak-*` backups (a pre-existing false positive that would redden after any prune). codebuddy is no longer `optional`, and CI runs `pixi run agents sync` before `pixi run ci`, so a missing primary layer is a real defect instead of a silent SKIP.
+- **B3 `96fe1ec`**: `cmake-smoke` and `check-promises --self-test` restore their moved files via traps on EXIT/INT/TERM.
+- **B4 `77363bd`**: workspace member de-duplicated; `deny.toml` header refreshed and `MPL-2.0` removed from the allow list (zero MPL crates today, so an MPL dep now fails the gate for adjudication); the pre-commit hook stages generated artefacts line by line.
+- **B5 `49ebd8e`**: `[workspace.lints.rust] unsafe_op_in_unsafe_fn = "deny"` inherited by all 12 packages (0 hits); four pre-existing clippy hits fixed in ffi; qt6-main/binaryen/gxx_linux-64/gcc/binutils range-pinned from the lock; a new `msrv` environment pins rust 1.98.0 and `cargo check --workspace` passes there (48.7 s), wired into CI.
+- **B6 `b3eeed8`**: two gate scripts gained `pipefail`; `docs/env.md` names directory ownership (cmake-build* trees, build/gallery/assets thumbnails, target/ cargo); `SECURITY.md` and `CONTRIBUTING.md` added; the standby CI workflow records that its actions must be SHA-pinned before enabling.
+
+**Named debt**: `clippy::undocumented_unsafe_blocks` is deliberately NOT enabled — 37 legacy FFI blocks lack `// SAFETY:`, and `-D warnings` overrides per-crate `[lints]` (measured: `-W` and per-crate `allow` both lose), so the lint cannot be scoped. The root `Cargo.toml` note records it; enable workspace-wide once backfilled. **Skipped as designed**: wasm-serve main guard, `bootstrap.bat` partial-submodule condition, Trae's bash dependency. **Environment limits** (identical before and after): full `cmake-smoke` is blocked by the sandbox bulk-delete guard, and `gate-web` needs a serve on :8018.

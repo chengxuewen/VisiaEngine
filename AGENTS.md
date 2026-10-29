@@ -311,6 +311,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D49: CodeBuddy rule budget — two always-on rules plus described on-demand rules (2026-10-29)
 - D50: Trae host onboarding — four adjudications (2026-10-29, user-adjudicated one by one)
 - D51: `.gitignore` gaps closed — pre-declared hosts, local env files, pycache (2026-10-29, user-adjudicated one by one)
+- D52: Repo-wide review fixes — six batches, with the debt named (2026-10-29)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
