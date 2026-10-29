@@ -4,7 +4,7 @@
 # gitignored. Idempotent: regenerates only when the leaf is missing or the
 # detected address set changed. Flags are measured against `mkcert -help`
 # of the installed 1.4.4 build; no imagined options.
-set -eu
+set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIR="$ROOT/.certs"
 MKCERT="${MKCERT_BIN:-}"

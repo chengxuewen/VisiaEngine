@@ -1,5 +1,7 @@
 # VisiaEngine CI -- pixi version pin (D5 clause ④). Until this repo mirrors GitHub, it is a "standby" setup:
 # each step's same commands run locally by hand are equivalent (the plan K2 framing).
+# Before enabling it for real, pin both actions to a commit SHA (tags can be moved):
+# actions/checkout@v4 and prefix-dev/setup-pixi@v0.8.1.
 name: CI
 on:
   push:

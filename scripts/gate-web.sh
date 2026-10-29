@@ -9,7 +9,7 @@
 # assembled dir. Each live page's anchor <img> is held by this server until
 # that page's post-await beacon (VE_GATE_FRAMES frames turned) arrives: the
 # browser then survives to see it, load fires after boot, dump lands on truth.
-set -u
+set -uo pipefail
 CHROME="${VE_CHROMIUM:-}"
 [ -x "$CHROME" ] || CHROME="$HOME/.pixi/global/bin/chromium"
 [ -x "$CHROME" ] || CHROME="$(ls "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux/chrome 2>/dev/null | head -1)"
