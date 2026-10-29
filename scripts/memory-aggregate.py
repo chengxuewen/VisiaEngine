@@ -26,7 +26,9 @@ END = "<!-- END:agents-memory -->"
 
 # Per-file digest windows (D47): pitfalls and status are append-only logs that
 # would otherwise push the hub past the host's observed ~30k injection ceiling.
-WINDOW = {"pitfalls": 15, "status": 6}
+# decisions joined the windowing on 2026-10-29: 52 entries had already pushed the
+# hub to 28.6 KB, inside the 1.4 KB that separates the warn line from the hard cap.
+WINDOW = {"pitfalls": 15, "status": 6, "decisions": 25}
 
 
 def _digest(path):
