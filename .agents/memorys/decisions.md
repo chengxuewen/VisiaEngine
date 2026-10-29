@@ -458,6 +458,8 @@ Cursor/Qoder/Trae/ZCode are **not installed** on this machine, so no host adapte
 
 Decision (user-adjudicated): **defer**. Do not implement the flat `.mdc` layout or enable the target until Cursor is actually installed/used. When it is, the work is: a flat `<lang>-<topic>.mdc` layout variant, map canonical `paths` to `globs`, and emit `type: "stdio"` in the MCP entry. Qoder/Trae/ZCode remain unverified and are not added.
 
+**Correction (2026-10-28, audit):** the "not installed" premise is wrong for Qoder — QoderCN 1.106.3 is installed on this machine (`~/.qoder-cn/`, project `.mcp.json` is loaded by it). The actual blocker is the unverified project-level rules path/shape: no `.qoder/` directory exists and the official Rules page returns 404. A runtime probe is scheduled (`.omo/plans/2026-10-28-agent-audit-followups.md` S5); the deferral itself (no adapter enabled) still stands. Cursor/Trae/ZCode remain unverified / not in use.
+
 ## D43: ast-grep ported — CLI dependency + ast-grep-rewrites skill (2026-10-28)
 
 `ast-grep-cli ==0.51.0` (official PyPI distribution by the ast-grep author, MIT) added to the default pixi env `[pypi-dependencies]`; verified `ast-grep 0.51.0` runs. New skill `.agents/skills/ast-grep-rewrites/` (six sections): dry-run the pattern first, preview with `-r`, apply with `--update-all`, then run the gates; regex matching is the failure mode it replaces. This **supersedes** the 2026-10-28 deferral.
