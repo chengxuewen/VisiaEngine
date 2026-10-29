@@ -68,7 +68,7 @@ def _skill_rows(skills_root):
         label = "`%s`" % (fm.get("name") or name)
         if fm.get("status") == "deprecated":
             label += " (deprecated alias)"
-        rows.append((label, _shorten(fm.get("description", ""))))
+        rows.append((label, _shorten(fm.get("description", ""), limit=45)))
     return rows
 
 
@@ -86,6 +86,31 @@ def _current_region(hub_text):
     if BEGIN in hub_text and END in hub_text:
         return hub_text.split(BEGIN, 1)[1].split(END, 1)[0]
     return None
+
+
+MEMORY_BEGIN = "<!-- BEGIN:agents-memory -->"
+
+
+def _without_own_region(hub_text):
+    if BEGIN not in hub_text or END not in hub_text:
+        return hub_text
+    before, rest = hub_text.split(BEGIN, 1)
+    _own, after = rest.split(END, 1)
+    return before + after.lstrip("\n")
+
+
+def _place(hub_text, block):
+    """Insert the skills region BEFORE the memory region (D47/B4).
+
+    Hosts truncate long instruction files from the tail, so the skill directory
+    must not sit at EOF. Idempotent: an already-correct region rewrites to itself.
+    """
+    text = _without_own_region(hub_text)
+    section = BEGIN + "\n" + block + END + "\n"
+    if MEMORY_BEGIN in text:
+        head, tail = text.split(MEMORY_BEGIN, 1)
+        return head + section + "\n" + MEMORY_BEGIN + tail
+    return text.rstrip("\n") + "\n\n" + section
 
 
 def run(command, targets, cfg, dry_run):
@@ -109,30 +134,29 @@ def run(command, targets, cfg, dry_run):
         print("%-10s skills -> %s" % ("hub", cfg["memory_hub"]))
         return ac.EXIT_OK
 
+    memory_pos = hub_text.find(MEMORY_BEGIN)
+    own_pos = hub_text.find(BEGIN)
+    misplaced = memory_pos != -1 and own_pos != -1 and own_pos > memory_pos
+
     if region is None:
         if command == "check":
             print(" [ FIX ] hub %s (skills directory absent)" % cfg["memory_hub"])
             print("%s ✗ hub needs repair (run: agent-links.py sync)" % PREFIX)
             return ac.EXIT_FINDINGS
-    elif region.strip() != block.strip():
+    elif region.strip() != block.strip() or misplaced:
         if command == "check":
-            print(" [ FIX ] hub %s (skills directory drift)" % cfg["memory_hub"])
+            reason = "drift" if region.strip() != block.strip() else "out of order (must precede the memory region)"
+            print(" [ FIX ] hub %s (skills directory %s)" % (cfg["memory_hub"], reason))
             print("%s ✗ hub needs repair (run: agent-links.py sync)" % PREFIX)
             return ac.EXIT_FINDINGS
 
     if command == "check":
-        print("%s ✓ skills directory matches (%d skill(s))" % (PREFIX, count))
+        print("%s ✓ skills directory matches (%d skill(s), before memory)" % (PREFIX, count))
         return ac.EXIT_OK
 
     # sync / dry-run
-    if region is None:
-        new_text = hub_text.rstrip("\n") + "\n\n" + BEGIN + "\n" + block + END + "\n"
-        print(" [ APPEND ] hub %s (skills directory)" % cfg["memory_hub"])
-    else:
-        before = hub_text.split(BEGIN, 1)[0]
-        after = hub_text.split(END, 1)[1] if (END in hub_text) else ""
-        new_text = before + BEGIN + "\n" + block + END + after
-        print(" [ REWRITE] hub %s (skills directory)" % cfg["memory_hub"])
+    new_text = _place(hub_text, block)
+    print(" [ PLACE ] hub %s (skills directory before memory)" % cfg["memory_hub"])
     if not dry_run:
         with open(hub_path, "w") as handle:
             handle.write(new_text)

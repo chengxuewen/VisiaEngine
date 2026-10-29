@@ -508,3 +508,11 @@ Open: full project index pending (verified so far: rust LSP cache created in-rep
 - The runbook (docs/env.md "Adding an MCP server") caught this at steps 7-8: the probe red is exactly why the manual-acceptance step exists; `mcp status` alone had shown "ok" (package installed) -- recorded as a known limitation of automated gating.
 - Legacy `.opencode/init-mcp-playwright.mjs` is superseded by the pinned package (kept on disk until proven). opencode's legacy disabled `local-playwright` entry is overwritten by the enabled canonical entry (name match, non-destructive merge).
 - Browsers are a tool-call-time runtime dependency: the probe passes without them; first real use may need `pixi run npx playwright install`.
+
+## D47: Memory digest compresses to the host budget (2026-10-28)
+
+D41 made `AGENTS.md` a navigable digest, but the digest still exceeded the observed per-turn injection ceiling: the previous 329,047-byte hub was cut at line 391 / 29,941 bytes, so everything after the first ~30,000 characters never reached the model. Measured 2026-10-28 before this change: hub 42,621 chars (pitfalls 10.5k, status 5.0k, skills directory 5.1k).
+
+Decision (user-adjudicated): keep the digest shape and compress per file — pitfalls keep the latest 15 entries, status the latest 6 band sections, and the skill directory carries a ~45-character purpose; each window ends with a pointer to the full file. The skills region moves BEFORE the memory region because hosts truncate the tail. `GATE-HUB` asserts both `wc -m` and `wc -c` <= 30,000 (warn at 28,500, 95% of the limit).
+
+This amends D41: "one bullet per entry" now applies to conventions and decisions only; pitfalls and status are windowed. Trade-off accepted: older entries leave the digest but stay one Read away in `.agents/memorys/*.md`. Rationale: a hub that cannot be read in full is not a hub.

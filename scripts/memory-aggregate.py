@@ -24,6 +24,11 @@ BEGIN = "<!-- BEGIN:agents-memory -->"
 END = "<!-- END:agents-memory -->"
 
 
+# Per-file digest windows (D47): pitfalls and status are append-only logs that
+# would otherwise push the hub past the host's observed ~30k injection ceiling.
+WINDOW = {"pitfalls": 15, "status": 6}
+
+
 def _digest(path):
     """One bullet per `## ` entry (title only), so AGENTS.md stays a navigable
     index instead of a 300 KB full-text dump. Full text lives in the source file."""
@@ -33,6 +38,15 @@ def _digest(path):
             if line.startswith("## "):
                 out.append("- " + line[3:].strip())
     return out
+
+
+def _windowed(items, limit):
+    """Newest `limit` bullets plus a pointer line for the rest (D47)."""
+    if not limit or len(items) <= limit:
+        return items
+    omitted = len(items) - limit
+    word = "entry" if omitted == 1 else "entries"
+    return ["- ... %d older %s omitted (read the full file)" % (omitted, word)] + items[-limit:]
 
 
 def _build_block(memorys_root):
@@ -51,7 +65,7 @@ def _build_block(memorys_root):
         name = os.path.splitext(rel)[0]
         parts.append("### %s" % name)
         parts.append("- full text: `.agents/memorys/%s`" % rel)
-        for item in _digest(os.path.join(memorys_root, rel)):
+        for item in _windowed(_digest(os.path.join(memorys_root, rel)), WINDOW.get(name)):
             parts.append(item)
         parts.append("")
     return "\n".join(parts).rstrip("\n") + "\n"

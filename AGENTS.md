@@ -187,6 +187,51 @@ adapter (e.g. qoder/trae), add an entry to `scripts/agent-targets.json` — but 
 that host's discovery paths/shape from its docs (a wrong path is a dead, unread file). See
 `.omo/plans/2026-10-28-agent-config-unification.md` and decisions D27–D35.
 
+<!-- BEGIN:skills-directory -->
+
+## SKILL DIRECTORY (generated -- edit .agents/skills/*, not this block)
+
+| Skill | Purpose |
+|-------|---------|
+| `adjudication-walkthrough` | one-at-a-time adjudication protocol. |
+| `ai-slop-cleanup` | Remove AI-generated noise from this repo's... |
+| `api-interface-design` | Contract-first interface design for polygl... |
+| `ast-grep-rewrites` | Structural search and rewrite with the ast... |
+| `book-to-skill` | Converts books and documents (PDF, EPUB, D... |
+| `browser-testing` | Browser-side verification of this engine's... |
+| `ci-cd-automation` | Generic CI/CD pipeline management: Docker... |
+| `code-review-and-quality` | Code review and quality for this engine: f... |
+| `code-simplification` | Reduce complexity in Rust/TS code. |
+| `constraint-driven-development` | Constraint-driven development for this eng... |
+| `context-engineering` | Route language-specific rules to the right... |
+| `debugging-and-error-recovery` | Systematic debugging and error recovery fo... |
+| `deprecation-and-migration` | Deprecate and migrate safely in this repo:... |
+| `doc-audit` | Project documentation and architecture audit. |
+| `documentation-and-adrs` | Record architecture decisions and keep doc... |
+| `ecosystem-scan` | Audit the .agents/ system and scan the com... |
+| `incremental-implementation` | Thin vertical slice methodology — implemen... |
+| `lesson-review` | Batch session review: systematically extra... |
+| `observability-and-instrumentation` | Observability and instrumentation for this... |
+| `openspec-apply-change` | Implement tasks from an OpenSpec change. |
+| `openspec-archive-change` | Archive a completed change in the experime... |
+| `openspec-explore` | Enter explore mode — a thinking partner fo... |
+| `openspec-propose` | Propose a new change with structured artif... |
+| `openspec-sync-specs` | Sync delta specs from a change to main specs. |
+| `performance-optimization` | Generic performance profiling and optimiza... |
+| `planning-and-task-breakdown` | Turn a spec or a vague ask into ordered, v... |
+| `repo-triage` | Layer triage for an ambiguous task in this... |
+| `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
+| `rust-engineering` | Rust engineering workflow for this engine... |
+| `security-hardening` | Security audit and hardening: OWASP Top 10... |
+| `shipping-and-launch` | Release and launch checklist for this engi... |
+| `skill-router` | Analyze user intent and output a recommend... |
+| `source-driven-development` | Ground every external dependency decision... |
+| `subagent-orchestration` | Orchestrate subagents for this repo: decid... |
+| `test-driven-development` | Red-green-refactor for this engine: write... |
+| `test-harness` | Multi-language automated test harness. |
+| `think-before-act` | Meta-constraint: investigate before acting... |
+<!-- END:skills-directory -->
+
 <!-- BEGIN:agents-memory -->
 
 ## AGENT MEMORY (generated digest -- full text in `.agents/memorys/*.md`, read on demand)
@@ -261,79 +306,11 @@ file. Read the source file before acting on a rule you are unsure about.
 - D42: MCP lifecycle CLI (`pixi run mcp`) — install/index/status consolidated (2026-10-28)
 - D45: Serena MCP integrated as a pixi-env server behind the unified registry (2026-10-28)
 - D44: local-playwright added via the MCP runbook; 0.0.83 publish is broken (2026-10-28)
+- D47: Memory digest compresses to the host budget (2026-10-28)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
-- Format example
-- PIT-{n}: <one-line title> (YYYY-MM-DD)
-- PIT-1: "Pre-set facts" in research prompts pollute deliverables — must be labeled as unverified assumptions (2026-09-03)
-- PIT-2: .gitignore negation-order bug + check-ignore -q exit-code misleading (2026-09-03)
-- PIT-3: wgpu v30 upgrade breakage trio — flags default / Color semantics / draw migration (2026-09-03, S3/S4 measured)
-- PIT-4: cargo integration-test CWD = crate dir + Iter construction probing trips library debug_assert (2026-09-03, G1)
-- PIT-5: wgpu projection depth must be [0,1] — a GL-convention matrix silently culls the whole frame (2026-09-03, G2 golden)
-- PIT-6: MCP bridge's bare-PATH dependency + opencode config-key silent ignore (2026-09-03, MCP repair round)
-- PIT-7: cargo-deny audit fetches live over network = false-failure source of local network jitter (2026-09-11)
-- PIT-8: first-version T2 pixel assertions must fail — geometric coverage/channel-multiply chains unmeasured (2026-09-12, batch 4ab M2/M3 two rounds)
-- PIT-9: L2 smoke lanes not in the local ci chain = false-green window for window-format regressions (2026-09-14, 4c seven-lane first blowup)
-- PIT-10: scene human-check "the foreground should be lit ground" = geometric assumption (2026-09-14, batch 5 E901)
-- PIT-11: judging an API ledger by name without reading the implementation = a whole plan premise collapses (2026-09-14, Qt round v1.0 REJECT)
-- PIT-12: conda-forge Qt6 twin pits — package-name orthography and QX11Application absence (2026-09-14, Qt round Q2)
-- PIT-13: handwritten C ABI header missing extern "C" guard — all-green C tests mask certain C++ breakage (2026-09-14, CMake layer C2)
-- PIT-14: environment-state pollutes gate assertions — the activated-shell PATH makes "forced modes" pass falsely + wrapped report lines defeat whole-sentence greps (2026-09-14, C1 review/C3)
-- PIT-15: enable_testing() after add_subdirectory = that directory's add_test silently dropped (2026-09-15, S4 real-machine proof)
-- PIT-16: two "scope/shape" pits — enable_language inside function() doesn't propagate; preset fields defer to the shipped schema (2026-09-15)
-- PIT-17: cargo harness threads share the pid — tmp-path uniqueness needs pid+nanoseconds (2026-09-15, S1 flicker)
-- PIT-18: validating through `pixi run` wrapping ≠ validating the user surface — the IDE's direct build call blew up on rustc-missing (2026-09-15, user-proven)
-- PIT-19: pixi file clobber makes the conda-built Xvfb always die on XKB (2026-09-16, S0 spike proof)
-- PIT-20: the "ghost API" family — interface/parameter names written from memory, ≥3 cases (established 2026-09-16)
-- PIT-21: edit-tool insert-style rewrites leave "old-new coexisting" residue + grep assertions' BRE false greens (2026-09-16, quadruple proof)
-- PIT-22: "verification channel ≠ user channel" environment blind spot, second sighting — the DISPLAY family (2026-09-16, user-proven)
-- PIT-23: three "tautology/swallow" shapes in CMake/ctest parameters and assertions (2026-09-16, the E801 hang case)
-- PIT-24: winding dumb-mine in shared geometry — cull-off makes winding a dark observation read only by picking (2026-09-17, the E402 band)
-- PIT-25: toolchain silent disconnection — package-name drift + absent-continue tautology (2026-09-17, dug out in the point-cloud band G3)
-- PIT-26: from_raw_parts(_mut)(NULL, 0) is UB — the debug precheck nails it (2026-09-17)
-- PIT-28: label centering's px offset may only enter the dx domain — the anchor is world coordinates (2026-09-18)
-- PIT-29: orbit constructed with degrees = perspective eating radians — three examples shipped with the bug (2026-09-18)
-- PIT-29: an ortho camera's only zoom definition = half-width; the dist field is decoration (2026-09-24, E206 third fix, second sighting)
-- PIT-30: cutting the window/interaction surface of window examples because "interaction = later Phase" = the C15 dual-mode breach trio (2026-09-24, E206, three measured cases)
-- PIT-31: ffi_spec integration tests' cwd = the crate directory (2026-09-24)
-- PIT-32: ureq's full dependency tree drags getrandom onto the wasm32 target (2026-09-24)
-- PIT-33: depth lifecycle after a full-screen pass and wgpu30's use-domain rules (2026-09-28, the EDL band)
-- PIT-34: LRU/state double ledgers desync — state() lies "Done" while the bytes were already evicted (2026-09-28, revision #3)
-- PIT-35: env proxies also eat loopback at the library layer — ureq honors http_proxy and 502s 127.0.0.1 (2026-09-28)
-- PIT-36: python module-level definition order — TEMPLATE not yet defined when main() runs (2026-09-28, the gallery band)
-- PIT-37: example refactor dropped origin — static-table refactors silently zero per-marker data (2026-09-28, the E305 window surface)
-- PIT-38: an if inside a winit match arm = the collapsible_match clippy rejection — use a match guard (2026-09-28)
-- PIT-39: window examples' "first frame" had no machine guard — three black screens, all caught by hand (2026-09-29, the E305/E508/E505 family)
-- PIT-40: registry disp/args must come in pairs — two half-missing cases (2026-09-28/29)
-- PIT-41: multi-block patch scripts = a truncation minefield — four hits this round (2026-09-30, the io-gltf wipeout)
-- PIT-42: WGSL uniform layout triple mine — closures/let-if/array stride (2026-09-30, the I band triple)
-- PIT-43: flag-offset mines = a probe's duty, not review's (2026-09-30, I band second hit)
-- PIT-44: the web channel is an independent surface outside ci + roster scripts read artifacts without freshness (2026-10-08, the V2.2 mine surfaced only two bands later)
-- PIT-45: "window looks lit" is not "window looks right" — two false-evidence channels (2026-10-08)
-- PIT-46: a stale ledger line generated a wrong plan (2026-10-08)
-- PIT-47: wiring a gate into CI without asking "who provides its tooling" — a permanently silent SKIP green (2026-10-08)
-- PIT-48: the probe/injector's own invocation errors swallowed by `>/dev/null 2>&1`, misjudged as "the object under test doesn't respond" (2026-10-08, band V4)
-- PIT-49: Translation batches can silently delete code lines; line-count diff is not a semantic check (2026-10-12)
-- PIT-50: `git add -A` while a parallel agent works in the same tree sweeps the agent's staged work (2026-10-12)
-- PIT-51: The "T-C contract" reading kept stale handle names after the crate homecoming (2026-10-12, user-caught)
-- PIT-52: Planned-rename inventories are stale on arrival; only a fresh git grep plus real execution catches the whole class (2026-10-12, three live catches in one round)
-- PIT-53: the INTERNAL metadata-source cache outlives its keys (2026-10-13)
-- PIT-54: a MID-argument quote in execute_process lands in the child cache as a literal (2026-10-13, three debug rounds)
-- PIT-55: test-scaffold CMakeLists trio -- CASE reset, bracket-arg escaping, python-chain quote-eating (2026-10-13/14, six recurrences)
-- PIT-56: renaming one creation point INTO the name of another arms a latent CMP0002 (2026-10-13, exploded in the debug preset a full round later)
-- PIT-57: a gated generator hook short-circuits the WHOLE surface -- switching presets FREEZES stale rows, it does not empty them (2026-10-14, measured)
-- PIT-58: a test leg that re-types the shipped string tests the copy, not the product (2026-10-14, live user failure)
-- PIT-59: a ';' inside an embedded -c script silently splits into argv (2026-10-14, serve button never bound)
-- PIT-60: post-hoc set_property(DEPENDS) never reaches the Ninja graph -- constructor only (2026-10-14)
-- PIT-61: curl-200 is not a browser -- page surfaces need execution checks (2026-10-14, hub DOM suicide)
-- PIT-62: shared-target attributes rewritten per registration drift by call ORDER; an opt-in with a default name is opt-out (2026-10-14)
-- PIT-64: a head-truncated wiring grep created a phantom gap -- the call already existed (2026-10-15, stale-fixes round)
-- PIT-65: a trailing comment on a .gitignore line voids the rule -- tasks.json never landed since T-E (2026-10-15)
-- PIT-66: two configure presets must not share one binaryDir; a refresh tree must see EVERY lane (2026-10-15)
-- PIT-67: audit dispatch pinned the WRONG repo's layout -- the auditor self-attested its drift via HEAD (2026-10-15, team audit round)
-- PIT-68: synthesis-lead member was dead weight in a read-only audit fanout (2026-10-15, one-line capture)
-- PIT-69: closing reports from memory fabricate facts -- hashes, backlogs, phantom fixes (2026-10-15, self-caught same session)
+- ... 70 older entries omitted (read the full file)
 - PIT-70: D-Bus system-proxy config poisons every chromium loopback fetch (2026-10-16, gate-web round)
 - PIT-71: --dump-dom fires AT the load event; CLI snapshots cannot see post-load GPU boot (2026-10-16, gate-web round)
 - PIT-72: restore-cp from a stale snapshot silently reverted an accepted mutation (2026-10-16, gate-web round)
@@ -352,60 +329,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### status
 - full text: `.agents/memorys/status.md`
-- Overview
-- Phase status
-- Next steps
-- MVP content-round baseline (2026-09-03, G1-G4)
-- GeoJSON slice baseline (2026-09-03, H1-H4)
-- Plan v1.1 batches 0/1 baseline (2026-09-03, Easy3D-borrowing port, work-start round)
-- Batch 3a baseline (2026-09-03, AttrSet attribute-column round)
-- Qt widget round baseline (2026-09-14, v1.3 Q1-Q3 all landed)
-- CMake engineering-layer baseline (2026-09-14, C1-C3; Qt round v1.3 consumption surface pending)
-- Batch 5 docs/tutorials landing baseline (2026-09-14 close-out)
-- Batch 4f Shadow/PCSS baseline + batch 4 close (2026-09-14)
-- Batch 4de VS-expansion family baseline (2026-09-14 close-out)
-- Batch 4c instancing+bench baseline (2026-09-14 close-out)
-- Batch 4ab material/texture slice baseline (2026-09-12 close-out)
-- Batch 2 + batch 7 landing baseline (2026-09-11 close-out)
-- CMake example-entry round baseline (2026-09-15, S1-S5 all landed)
-- capi attribute-read round baseline (2026-09-15, D13)
-- CMake structure round baseline (2026-09-16, v1.3 S0–S5 all landed)
-- B1 data band baseline (2026-09-16, Phase B first band: CAPI-13..16 four ports + the four E8xx examples)
-- lesson-review record (2026-09-16, structure-round + B1-band session batch review)
-- E202 gray-screen root fix (2026-09-17, the second sighting of the D7 camera-pose contract)
-- E402 interactive-pick window band (2026-09-17, reserved number promoted + the unit_box winding legacy mine root-fixed)
-- Color + events band (2026-09-17, CORE-16/CAPI-17, plan color-events-band.md K1-K6)
-- Dual-mode human acceptance round (2026-09-17, user order "check every example + complete cmake run targets")
-- Point-cloud data family band (2026-09-17, D16/hyperplan plan pcl-data-band.md, M0→G all collected)
-- B2 cross-section band baseline (2026-09-17, plan capi-cross-section-band v1.1 · Momus OKAY 0B/2A fixed in)
-- S2 text-label band baseline (2026-09-18, plan io-text-labels-band v1.1 · Momus OKAY 0B/A-1 fixed in)
-- E901 interaction close band (2026-09-18, D17-h/D18 demo close-out, single example file + zero ledger movement)
-- ⑤a camera-flight band baseline (2026-09-18, plan camera-flyto-band v1.1 · Momus OKAY 0B/3A fixed in)
-- ⑤b multi-viewport split-screen band baseline (2026-09-18, plan multiview-split-screen-band v1.1 · Momus OKAY + user "full band")
-- ④ translucency band baseline (2026-09-18, plan translucent-water-band v1.1 · Momus OKAY 0B/3A fixed in)
-- ⑤b wave-two minimap navigation band baseline (2026-09-18, plan capi-minimap-nav-band v1.1 · Momus OKAY 0B/2A fixed in)
-- Super-band five-in-a-row baseline (2026-09-24, plan super-band-2026-09-24 v1.1 · Momus OKAY + three red-team reviews + user nine-card item-by-item rulings all A)
-- ⑤ Phase-1 tile streaming band baseline (2026-09-24, plan tile-streaming-phase1.md P1-S1–S4 all landed)
-- ⑥ Scene-tree band baseline (2026-09-24, plan scene-tree-band.md S1-S4)
-- Gap research → hyperplan → Session N+1 baseline (2026-09-28, eight commits closed)
-- Session N+2/N+3 baseline (2026-09-28 continued, five commits: the four N2 bands + sweep)
-- N4 post-processing framework band baseline (2026-09-28, plan n4-post-framework-band.md v1.0 · Momus OKAY)
-- T3 human-check addendum (2026-09-29, the N3-N6 full-band interaction surface)
-- V-series gap-closure baseline (2026-09-30, hyperplan → full-closure adjudication → Block A/B execution)
-- Install-tree band baseline (2026-10-08, packaging-round v1.3 P1-P4)
-- Band L baseline (ledger reconciliation, 2026-10-08, plan ledger-tiles-keys v1.1)
-- Band T + Band K baseline (2026-10-08, plan ledger-tiles-keys v1.1, all 7 cards = lazy option)
-- Band V baseline (shared viewer bootstrap, 2026-10-08, plan viewer-shared-band)
-- lesson-review record (2026-10-08, band V batches 12–14 + V3/V4 close-out session)
-- Publish band ledger note (2026-10-09, plan next-band-queue todo 3)
-- Next-band-queue baseline (2026-10-09, plan next-band-queue, todos 1-5)
-- PolyOrch embedding round (2026-10-12, in force)
-- Naming + taxonomy round (2026-10-12/13, T-H2/T-H3/T-H3.5 + user-caught PIT-51 fix, in force)
-- T-H12 round (2026-10-14, the ffi aggregate cleanup)
-- T-H11 round (2026-10-14, the web example wall -- P1+P2 landed)
-- T-H10 round (2026-10-14, the aggregate opt-in flip + root-group migration)
-- T-H7 pending gate (2026-10-14, the VSCode debug knob family round)
-- Stale-fixes round (executed 2026-10-15, team audit + 11 user-adjudicated points, serial workers, ci green per phase)
+- ... 54 older entries omitted (read the full file)
 - Reuse-audit round (executed 2026-10-15, adjudications 13-17, all five cashed)
 - Headless-page-gate round (executed 2026-10-16, owner-adjudicated chain: download / heartbeat / option-4 beacon)
 - Dual-serve round baseline (2026-10-19, owner-adjudicated: one button, http+https)
@@ -414,47 +338,3 @@ file. Read the source file before acting on a rule you are unsure about.
 - Web wall expansion addendum (2026-10-23 same band, live pages 26 -> 29)
 <!-- END:agents-memory -->
 
-<!-- BEGIN:skills-directory -->
-
-## SKILL DIRECTORY (generated -- edit .agents/skills/*, not this block)
-
-| Skill | Purpose |
-|-------|---------|
-| `adjudication-walkthrough` | one-at-a-time adjudication protocol. |
-| `ai-slop-cleanup` | Remove AI-generated noise from this repo's code and docs: comments that restate the code, generic summaries, hedging, duplicate explanati... |
-| `api-interface-design` | Contract-first interface design for polyglot projects: Rust trait boundaries, the C ABI surface (header + cpp/wasm mirrors), and REST/JSO... |
-| `ast-grep-rewrites` | Structural search and rewrite with the ast-grep CLI (installed in the pixi env): pattern-based bulk edits that respect syntax, metavariab... |
-| `book-to-skill` | Converts books and documents (PDF, EPUB, DOCX, HTML, Markdown, plain text, RTF, MOBI/AZW with Calibre) into structured agent skills, extr... |
-| `browser-testing` | Browser-side verification of this engine's WebGPU demo wall and web builds via Playwright/DevTools: page boot, frame survival, canvas/Web... |
-| `ci-cd-automation` | Generic CI/CD pipeline management: Docker compose services, GitHub Actions gates (fmt/check/lint/test/audit/benchmark), task-runner mirro... |
-| `code-review-and-quality` | Code review and quality for this engine: five-axis review, severity labels (Nit/Optional/FYI/Blocking), ~100-line change discipline, adve... |
-| `code-simplification` | Reduce complexity in Rust/TS code. |
-| `constraint-driven-development` | Constraint-driven development for this engine: one quality-gate source of truth (CONSTRAINTS.md derived from pixi.toml ci), cost-based ch... |
-| `context-engineering` | Route language-specific rules to the right code in a multi-language workspace. |
-| `debugging-and-error-recovery` | Systematic debugging and error recovery for this engine: reproduce, localize, narrow (bisect), minimal fix, add a regression guard, and s... |
-| `deprecation-and-migration` | Deprecate and migrate safely in this repo: mark the old surface, publish a migration path, keep an alias until consumers move, then remove. |
-| `doc-audit` | Project documentation and architecture audit. |
-| `documentation-and-adrs` | Record architecture decisions and keep docs consistent in this repo: D-series entries in .agents/memorys/decisions.md, architecture doc u... |
-| `ecosystem-scan` | Audit the .agents/ system and scan the community ecosystem for adoptable skills/rules/MCP. |
-| `incremental-implementation` | Thin vertical slice methodology — implement→test→verify→commit per slice, each leaving the workspace compilable and tests green. |
-| `lesson-review` | Batch session review: systematically extract lessons learned, write them to project memory. |
-| `observability-and-instrumentation` | Observability and instrumentation for this engine: structured logging, RED metrics, tracing, symptom-based alerting, and the existing web... |
-| `openspec-apply-change` | Implement tasks from an OpenSpec change. |
-| `openspec-archive-change` | Archive a completed change in the experimental workflow. |
-| `openspec-explore` | Enter explore mode — a thinking partner for exploring ideas, investigating problems, and clarifying requirements. |
-| `openspec-propose` | Propose a new change with structured artifacts (proposal, design, tasks). |
-| `openspec-sync-specs` | Sync delta specs from a change to main specs. |
-| `performance-optimization` | Generic performance profiling and optimization across four dimensions: latency tracing, throughput benchmarking, web UI render profiling,... |
-| `planning-and-task-breakdown` | Turn a spec or a vague ask into ordered, verifiable work slices for this engine: dependency order, <=7 todos, each slice leaving the work... |
-| `repo-triage` | Layer triage for an ambiguous task in this polyglot engine: map the ask to core-engine / FFI / Qt / wasm / CLI-infra / docs, list affecte... |
-| `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
-| `rust-engineering` | Rust engineering workflow for this engine workspace: fmt/clippy/test/deny gates, unsafe and FFI review, MSRV/edition awareness, and prope... |
-| `security-hardening` | Security audit and hardening: OWASP Top 10 checks, hardcoded secrets/ports/URLs scan (merged review-hardcode), token/auth flow review, FF... |
-| `shipping-and-launch` | Release and launch checklist for this engine: full ci green, pack-check, version/tag policy, changelog decision, rollback, and docs. |
-| `skill-router` | Analyze user intent and output a recommended skill list. |
-| `source-driven-development` | Ground every external dependency decision in official docs. |
-| `subagent-orchestration` | Orchestrate subagents for this repo: decide parallel vs serial, define isolated scopes, merge results, and avoid duplicated exploration. |
-| `test-driven-development` | Red-green-refactor for this engine: write the failing test first, make it pass minimally, then refactor, using cargo test plus proptest/i... |
-| `test-harness` | Multi-language automated test harness. |
-| `think-before-act` | Meta-constraint: investigate before acting, present options for user approval, do not act rashly. |
-<!-- END:skills-directory -->

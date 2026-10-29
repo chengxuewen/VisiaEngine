@@ -149,6 +149,28 @@ def single_marker_ok(prefix, text, begin, end):
     return False
 
 
+HUB_LIMIT = 30000
+HUB_WARN = 28500  # 95% of the limit: the hub must keep headroom for new entries
+
+
+def hub_budget(path):
+    """D47: the hub must fit the host's per-turn injection ceiling.
+
+    Both units are checked because the observed cut was measured in bytes while
+    editors count characters; CJK text makes the two diverge.
+    """
+    text = open(path, "r", encoding="utf-8").read()
+    chars, nbytes = len(text), len(text.encode("utf-8"))
+    if chars > HUB_LIMIT or nbytes > HUB_LIMIT:
+        print("GATE-HUB ✗ %s %d chars / %d bytes > %d (see D47)"
+              % (os.path.basename(path), chars, nbytes, HUB_LIMIT))
+        return False
+    if chars > HUB_WARN or nbytes > HUB_WARN:
+        print("GATE-HUB ! %s %d chars / %d bytes (warn %d, limit %d)"
+              % (os.path.basename(path), chars, nbytes, HUB_WARN, HUB_LIMIT))
+    return True
+
+
 def gate(prefix, ok, msg):
     mark = "✓" if ok else "✗"
     print("%s %s %s" % (prefix, mark, msg))

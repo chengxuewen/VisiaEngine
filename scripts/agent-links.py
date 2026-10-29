@@ -55,6 +55,10 @@ def main(argv):
         worst = max(worst, rc)
         if worst == ac.EXIT_GUARD:
             break  # guard violation: stop, nothing was written
+    if command in ("check", "sync") and worst != ac.EXIT_GUARD:
+        hub = os.path.join(ac.ROOT, cfg["memory_hub"])
+        if os.path.exists(hub) and not ac.hub_budget(hub):
+            worst = max(worst, ac.EXIT_FINDINGS)
     if command == "check":
         if worst == ac.EXIT_OK:
             print("GATE-AGENTS ✓ all layers clean")
