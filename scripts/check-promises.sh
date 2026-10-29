@@ -49,6 +49,9 @@ PYIN
 
 if [ "${1:-}" = "--self-test" ]; then
   cp README.md /tmp/promises-backup-readme.md
+  # An interrupt between plant and restore would leave the planted claim in
+  # README.md. Restore on every exit path; the explicit restores below still run.
+  trap 'mv /tmp/promises-backup-readme.md README.md 2>/dev/null || true' EXIT INT TERM
   python3 -c "
 s = open('README.md').read()
 s = s.replace('tiled-vector MVT (directory/HTTP sources delivered)', 'tiled-vector MVT (in progress)', 1)

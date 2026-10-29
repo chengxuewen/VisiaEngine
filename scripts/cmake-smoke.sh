@@ -59,7 +59,12 @@ elif ! grep -q "SYSTEM" <<<"$out"; then
 fi
 # Negative path 3: PolyOrch absent (submodule not pulled / bare clone) -- the shim FATAL message must be readable and point the way
 # (D39 embed contract 2026-10-10; message asserts grep short phrases so cmake line wrapping cannot evade them -- same discipline as negative paths 1/2)
+HIDDEN="$PWD/PolyOrch.smoke-hidden"
 mv PolyOrch PolyOrch.smoke-hidden 2>/dev/null  # when it is a submodule the directory exists; machines missing the directory naturally take the same assert
+# An interrupt or timeout here would leave the submodule under the hidden name,
+# which breaks the working tree. Restore on every exit path; the explicit
+# restore below then simply becomes a no-op.
+trap 'mv "$HIDDEN" "$PWD/PolyOrch" 2>/dev/null || true' EXIT INT TERM
 rm -rf "$B-neg3"  # a separate directory: the SYSTEM cache from negative path 1 would blow first (SDK:86) before the shim ever runs -- measured trap
 out=$("$CM" -S . -B "$B-neg3" -G Ninja -DVISIAENGINE_QT=OFF 2>&1)  # purely bare: no escape-hatch flags, otherwise SDK resolution dies first and the shim never runs
 rm -rf "$B-neg3"
