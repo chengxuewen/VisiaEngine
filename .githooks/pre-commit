@@ -14,6 +14,9 @@ pixi run agents sync
 # Stage every tracked generated artefact from the ONE list in agent-targets.json.
 # A hand-written add-list drifted once: .mcp.json / CONSTRAINTS.md were rewritten
 # by the generators but never staged, so the commit carried the stale shape.
-generated=$(python3 -c 'import json; print(" ".join(json.load(open("scripts/agent-targets.json"))["generated_tracked"]))')
-[ -n "$generated" ] && git add $generated 2>/dev/null || true
+generated=$(python3 -c 'import json; print("\n".join(json.load(open("scripts/agent-targets.json"))["generated_tracked"]))' 2>/dev/null || true)
+printf '%s\n' "$generated" | while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  git add -- "$path" 2>/dev/null || true
+done
 pixi run agents check

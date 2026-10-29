@@ -1,5 +1,8 @@
-# cargo-deny -- skeleton era: licenses + bans + sources. advisories deferred to the CI mirror day (needs the advisory DB).
+# cargo-deny -- licenses + bans + sources + advisories, all enforced by `pixi run audit`.
+# The advisory DB is fetched live (RUSTSEC-2026-0382 was fixed this way on 2026-10-29).
 # Invariant ⑥ reference: any MPL-family item appearing in the tree triggers manual review (zero-pollution principle for the core static link).
+# MPL-2.0 is deliberately NOT in the allow list: the tree currently has zero MPL crates, so an MPL
+# dependency must fail the gate and be adjudicated rather than slip in silently.
 # Schema basis: measured against the cargo-deny 0.20.2 init template (0.20 changes: the [licenses] default key removed, highlight is an enum).
 
 [graph]
@@ -18,7 +21,6 @@ allow = [
     "Unlicense",
     "CC0-1.0",
     "Unicode-3.0",
-    "MPL-2.0",
     "CDLA-Permissive-2.0",  # webpki-roots (Mozilla root CA data, permissive)
 ]
 
