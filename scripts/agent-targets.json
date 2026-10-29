@@ -33,8 +33,7 @@
       },
       "mcp_file": ".mcp.json",
       "mcp_shape": "mcpServers",
-      "mcp_launcher": true,
-      "optional": true
+      "mcp_launcher": true
     },
     {
       "label": "trae",

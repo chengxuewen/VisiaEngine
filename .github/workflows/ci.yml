@@ -25,6 +25,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers xvfb x11-apps
 
       - run: pixi install --frozen
+      # Materialize the gitignored host layers first: gate-agents/gate-skills treat
+      # a missing primary layer as a defect (only activation layers such as .trae
+      # are optional). This also surfaces generated files that were not committed.
+      - run: pixi run agents sync
       - run: pixi run ci
 
       - name: invariant ① core has no rendering deps

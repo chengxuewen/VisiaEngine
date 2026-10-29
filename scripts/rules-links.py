@@ -165,6 +165,8 @@ def check_layer_mdc(target, rules_root):
         if actual != content:
             findings.append((rel, "mismatch"))
     for entry in sorted(os.listdir(target_dir)):
+        if ".bak-" in entry:
+            continue  # a deliberate backup from the last prune, not drift
         if entry not in expected:
             findings.append((entry, "extra"))
     return findings
@@ -278,13 +280,27 @@ def sync_layer_copy(target, rules_root, dry_run):
         if not dry_run:
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(content)
+    if missing:
+        # A whitelist entry is unusable, so the expected tree is incomplete.
+        # Pruning now would delete files that are still wanted: leave it alone.
+        print(" [ WARN ] %-10s prune skipped (unusable whitelist entries)" % target["label"])
+        return actions
     for entry in sorted(os.listdir(target_dir)):
         if entry in expected:
             continue
         actions += 1
         print(" [ PRUNE] %-10s %s" % (target["label"], entry))
-        if not dry_run:
-            os.remove(os.path.join(target_dir, entry))
+        if dry_run:
+            continue
+        full = os.path.join(target_dir, entry)
+        if os.path.islink(full):
+            os.unlink(full)
+        elif os.path.isdir(full):
+            shutil.rmtree(full, ignore_errors=True)  # the host may nest rule folders
+        else:
+            backup = ac.backup_name(target_dir, entry)
+            os.rename(full, backup)
+            ac.prune_backups(target_dir, entry)
     return actions
 
 
@@ -303,8 +319,12 @@ def check_layer_copy(target, rules_root):
             if handle.read() != content:
                 findings.append((name, "mismatch"))
     for entry in sorted(os.listdir(target_dir)):
-        if entry not in expected:
-            findings.append((entry, "extra"))
+        if entry in expected:
+            continue
+        if ".bak-" in entry:
+            continue  # a deliberate backup from the last prune, not drift
+        cls = "subdir" if os.path.isdir(os.path.join(target_dir, entry)) else "extra"
+        findings.append((entry, cls))
     return findings
 
 
