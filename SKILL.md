@@ -12,31 +12,48 @@ The routing trigger surface = each SKILL.md frontmatter's `description`; agents 
 
 The directory count is deliberately not written here: run `ls -d .agents/skills/*/ | wc -l`. Single source is `.agents/skills/`; host activation layers (e.g. `.codebuddy/skills/`) are generated links checked by `pixi run gate-skills`.
 
-| Skill | Type | Purpose |
-|-------|------|---------|
-| `think-before-act` | meta-constraint | research first → list options → user approval → execute |
-| `skill-router` | meta-constraint | intent analysis, output a recommended skill set |
-| `ecosystem-scan` | meta-constraint | .agents system audit + community ecosystem scan |
-| `adjudication-walkthrough` | meta-constraint | item-by-item adjudication (one at a time · seven-part template · plain language) |
-| `lesson-review` | memory | batch session review, deposit lessons into memorys |
-| `doc-audit` | docs | documentation and architecture self-consistency audit (interactive) |
-| `book-to-skill` | docs | books/documents → structured skills |
-| `openspec-explore` | spec | pre-change exploration / idea clarification |
-| `openspec-propose` | spec | generate the proposal + design + tasks trio |
-| `openspec-apply-change` | spec | implement per OpenSpec tasks |
-| `openspec-sync-specs` | spec | sync delta specs into the main specs |
-| `openspec-archive-change` | spec | archive a completed change |
-| `api-interface-design` | engineering | contract-first design (trait / WS protocol / REST) |
-| `context-engineering` | engineering | context routing for multi-language workspaces |
-| `incremental-implementation` | engineering | thin vertical-slice implementation loop |
-| `code-simplification` | engineering | over-engineering detection and complexity reduction |
-| `source-driven-development` | engineering | dependency decisions follow official docs |
-| `performance-optimization` | engineering | four-dimension latency/throughput/rendering/benchmark triage |
-| `ci-cd-automation` | engineering | CI gate and build-matrix management |
-| `test-harness` | testing | spec → test skeleton generation and verification |
-| `browser-testing` | testing | Playwright verification of the web panel |
-| `security-hardening` | security | OWASP + secret scanning + audit flow |
-| `review-hardcode` | security | quick hardcoded-value scan (merged into security-hardening) |
+<!-- BEGIN:skill-registry -->
+
+| Skill | Purpose |
+|-------|---------|
+| `adjudication-walkthrough` | one-at-a-time adjudication protocol. |
+| `ai-slop-cleanup` | Remove AI-generated noise from this repo's... |
+| `api-interface-design` | Contract-first interface design for polygl... |
+| `ast-grep-rewrites` | Structural search and rewrite with the ast... |
+| `book-to-skill` | Converts books and documents (PDF, EPUB, D... |
+| `browser-testing` | Browser-side verification of this engine's... |
+| `ci-cd-automation` | Generic CI/CD pipeline management: Docker... |
+| `code-review-and-quality` | Code review and quality for this engine: f... |
+| `code-simplification` | Reduce complexity in Rust/TS code. |
+| `constraint-driven-development` | Constraint-driven development for this eng... |
+| `context-engineering` | Route language-specific rules to the right... |
+| `debugging-and-error-recovery` | Systematic debugging and error recovery fo... |
+| `deprecation-and-migration` | Deprecate and migrate safely in this repo:... |
+| `doc-audit` | Project documentation and architecture audit. |
+| `documentation-and-adrs` | Record architecture decisions and keep doc... |
+| `ecosystem-scan` | Audit the .agents/ system and scan the com... |
+| `incremental-implementation` | Thin vertical slice methodology — implemen... |
+| `lesson-review` | Batch session review: systematically extra... |
+| `observability-and-instrumentation` | Observability and instrumentation for this... |
+| `openspec-apply-change` | Implement tasks from an OpenSpec change. |
+| `openspec-archive-change` | Archive a completed change in the experime... |
+| `openspec-explore` | Enter explore mode — a thinking partner fo... |
+| `openspec-propose` | Propose a new change with structured artif... |
+| `openspec-sync-specs` | Sync delta specs from a change to main specs. |
+| `performance-optimization` | Generic performance profiling and optimiza... |
+| `planning-and-task-breakdown` | Turn a spec or a vague ask into ordered, v... |
+| `repo-triage` | Layer triage for an ambiguous task in this... |
+| `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
+| `rust-engineering` | Rust engineering workflow for this engine... |
+| `security-hardening` | Security audit and hardening: OWASP Top 10... |
+| `shipping-and-launch` | Release and launch checklist for this engi... |
+| `skill-router` | Analyze user intent and output a recommend... |
+| `source-driven-development` | Ground every external dependency decision... |
+| `subagent-orchestration` | Orchestrate subagents for this repo: decid... |
+| `test-driven-development` | Red-green-refactor for this engine: write... |
+| `test-harness` | Multi-language automated test harness. |
+| `think-before-act` | Meta-constraint: investigate before acting... |
+<!-- END:skill-registry -->
 
 ## Division of Labor vs Rules/Memory
 

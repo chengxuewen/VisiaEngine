@@ -5,6 +5,7 @@
   "mcp_local": ".agents/mcp.local.json",
   "memory_hub": "AGENTS.md",
   "skills_root": ".agents/skills",
+  "skills_registry": "SKILL.md",
   "constraints_hub": "CONSTRAINTS.md",
   "mcp_file_guard": ".mcp.json",
   "generated_tracked": ["AGENTS.md", "CONSTRAINTS.md", ".mcp.json", ".opencode/opencode.json", "SKILL.md"],
