@@ -29,7 +29,7 @@ ninja = ">=1.13.2,<2"
 sdl3 = ">=3.4,<4"
 
 [feature.tools.target.linux-64.dependencies]
-gxx_linux-64 = "*"   # the C++ compiler for the CMake consumption surface (linux-64 target slot only; not installed on Win/mac [plan §1③])
+gxx_linux-64 = ">=16,<17"   # the C++ compiler for the CMake consumption surface (linux-64 target slot only; not installed on Win/mac [plan §1③])
 xorg-libx11 = "*"      # the E702 C demo consumption surface (FindX11 headers+libs; absent = E702 skips gracefully, double-gated)
 xorg-xproto = "*"     # the base protocol headers Xlib.h depends on (the same lesson row as the host feature)
 xorg-xvfb-server = ">=21.1.24,<22"
@@ -54,18 +54,21 @@ rust-std-wasm32-unknown-unknown = "=1.98.0"
 xorg-xvfb-server = "*"   # note: the real package name carries -server (the pixi search fuzzy-hit lesson)
 xorg-libx11 = "*"
 xorg-xproto = "*"      # the X.h/Xproto.h base protocol headers (Xlib.h depends on them; not inside the libx11 package)
-gcc = "*"
-binutils = "*"
+gcc = ">=16,<17"
+binutils = ">=2.46,<3"
+
+[feature.msrv.dependencies]
+rust = "=1.98.0"
 
 [feature.wasm.dependencies]
 # The components carry no rust<->cross-std lockstep run-dep [FFI-R:env-B1]: the pin must == the rust lockfile reality (1.98.0),
 # moving either means moving both + committing the pixi.lock migration together (D5). The bindgen-cli schema duality is checked on execution day [FFI-R:CS-5].
 rust-std-wasm32-unknown-unknown = "=1.98.0"
 wasm-bindgen-cli = "=0.2.127"  # kept in sync with the Cargo pin (the schema changes every patch; measured mutual rejection, J1)
-binaryen = "*"
+binaryen = ">=121,<122"
 
 [feature.qt.dependencies]
-qt6-main = "*"   # the full Qt6 stack. Trap on record: conda-forge `qt-main` = Qt5! The real Qt6 name is `qt6-main` (the second case in the package-name trap family)
+qt6-main = ">=6.11,<7"   # the full Qt6 stack. Trap on record: conda-forge `qt-main` = Qt5! The real Qt6 name is `qt6-main` (the second case in the package-name trap family)
 
 [feature.qt5.dependencies]
 qt = "5.15.*"   # the Qt5 validation stack (conda-forge metapackage -> qt-main 5.15.15). Orthography trap PIT-12 again: `qt`/`qt-main` = Qt5; `qt6-main` = Qt6
@@ -114,6 +117,11 @@ mcp-serena = "serena start-mcp-server --transport stdio --context claude-code --
 default = { features = ["tools", "ide", "mcp"], solve-group = "base" }
 # Batch 2 I0 / batch 7 J0 (approval round 2026-09-11): the two spike environments share the base solve-group = a single toolchain [FFI-R:env-W2]
 host-spike = { features = ["tools", "ide", "host"], solve-group = "base" }
+# PF3 (2026-10-29): verify the declared MSRV (Cargo.toml rust-version = 1.98.0)
+# on a real 1.98 toolchain. no-default-feature keeps the pinned rust away from the
+# shared `default` feature; its own solve-group means this env can never bump the
+# base lock. Not in `ci` until it runs green once.
+msrv = { features = ["msrv"], no-default-feature = true, solve-group = "msrv" }
 wasm-spike = { features = ["tools", "ide", "wasm"], solve-group = "base" }
 qt-spike = { features = ["tools", "ide", "qt"], solve-group = "base" }
 # R2 validation-only env for the Qt >= 5.15 floor (owner ruling 16: lock 5.15.15; 5.12 is out of contract).

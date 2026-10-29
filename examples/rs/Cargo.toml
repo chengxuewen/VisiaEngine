@@ -126,3 +126,6 @@ path = "E509_ssao.rs"
 [[example]]
 name = "E505_cjk_labels"
 path = "E505_cjk_labels.rs"
+
+[lints]
+workspace = true

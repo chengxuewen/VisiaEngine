@@ -9,6 +9,16 @@ rust-version = "1.98.0"
 license = "MIT OR Apache-2.0"
 repository = "https://gitee.com/chengxuewen/VisiaEngine"
 
+# Workspace-wide lint policy (safety-oriented). `pixi run lint` already runs
+# `-D warnings`, so `unsafe_op_in_unsafe_fn` turns "an unsafe fn needs an inner
+# unsafe block" into a build failure instead of a review convention.
+# `clippy::undocumented_unsafe_blocks` is deliberately NOT enabled: the FFI crate
+# still has 37 legacy blocks without SAFETY comments, and the lint cannot be scoped
+# per crate under `-D warnings` (the command line wins over [lints]). It stays
+# tracked as debt; enable it workspace-wide once the backfill lands.
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
 [workspace.dependencies]
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 proptest = "1"

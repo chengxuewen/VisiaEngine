@@ -1115,7 +1115,7 @@ impl Engine {
             // ortho: world width 2*hw spans W px -> px_world_scale = 2*hw/W (REND-29 exact path;
             // mid-morph = linear interpolation of the two ends, REND-41)
             px_world_scale,
-            shadow: self.shadow.clone(),
+            shadow: self.shadow,
             clip: self.clip,
             edl: self.edl,
             post: self.post.clone(),
@@ -1145,7 +1145,7 @@ impl Engine {
                 eye: mrig.eye(),
                 proj,
                 px_world_scale: (2.0 * mrig.zoom / f64::from(rw)) as f32,
-                shadow: self.shadow.clone(),
+                shadow: self.shadow,
                 clip: self.clip,
                 edl: self.edl,
                 post: self.post.clone(),
@@ -1784,11 +1784,11 @@ impl Engine {
     /// 1=outline(width) 2=tonemap(mode) 3=ssao(radius,intensity) 4=haze(start,full).
     /// Empty = clear. Invalid kind / non-finite param = Err (zero side effects).
     pub fn set_post_effects(&mut self, flat: &[f64]) -> Result<(), String> {
-        if flat.len() % 3 != 0 {
+        if !flat.len().is_multiple_of(3) {
             return Err("set_post_effects: len%3 != 0".into());
         }
         let mut post = Vec::new();
-        for t in flat.chunks_exact(3) {
+        for t in flat.as_chunks::<3>().0 {
             let f = |v: f64, name: &str| -> Result<f32, String> {
                 let x = v as f32;
                 if x.is_finite() { Ok(x) } else { Err(format!("set_post_effects: {name} non-finite")) }

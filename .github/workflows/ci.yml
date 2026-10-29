@@ -31,6 +31,14 @@ jobs:
       - run: pixi run agents sync
       - run: pixi run ci
 
+      # PF3: the declared MSRV (Cargo.toml rust-version = 1.98.0) must really
+      # compile. The `msrv` environment pins rust 1.98.0 and sits outside the base
+      # solve-group, so it cannot bump the shared lock.
+      - name: MSRV (rust 1.98.0)
+        run: |
+          pixi install -e msrv --frozen
+          pixi run -e msrv cargo check --workspace
+
       - name: invariant ① core has no rendering deps
         run: |
           ! cargo tree -p visiaengine-core -i wgpu

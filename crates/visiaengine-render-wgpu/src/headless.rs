@@ -282,6 +282,9 @@ impl HeadlessBackend {
         display: Option<raw_window_handle::RawDisplayHandle>,
         window: raw_window_handle::RawWindowHandle,
     ) -> Result<crate::surface::Swapchain, BackendError> {
+        // SAFETY: the handle-lifetime duty is carried by the caller (see the
+        // `# Safety` section above); the swapchain is configured against the
+        // same core immediately after, so no handle outlives this call.
         let mut sw = unsafe {
             crate::surface::Swapchain::from_raw_handles(
                 &self.core,

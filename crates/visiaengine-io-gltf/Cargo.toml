@@ -19,3 +19,6 @@ gltf = { version = "1.4", default-features = false, features = ["utils", "names"
 proptest.workspace = true
 visiaengine-core.workspace = true
 image.workspace = true
+
+[lints]
+workspace = true

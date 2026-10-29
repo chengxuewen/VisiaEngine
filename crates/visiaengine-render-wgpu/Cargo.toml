@@ -30,3 +30,6 @@ image = { workspace = true }   # E901 PNG write-out (human-check images, T3 mate
 visiaengine-io-gltf.workspace = true
 visiaengine-geo.workspace = true
 visiaengine-io-text.workspace = true
+
+[lints]
+workspace = true
