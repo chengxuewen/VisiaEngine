@@ -307,11 +307,11 @@ file. Read the source file before acting on a rule you are unsure about.
 - D45: Serena MCP integrated as a pixi-env server behind the unified registry (2026-10-28)
 - D44: local-playwright added via the MCP runbook; 0.0.83 publish is broken (2026-10-28)
 - D47: Memory digest compresses to the host budget (2026-10-28)
+- D48: `.gitignore` reorganized by ownership; build outputs root-anchored (2026-10-29, user-adjudicated one by one)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
-- ... 70 older entries omitted (read the full file)
-- PIT-70: D-Bus system-proxy config poisons every chromium loopback fetch (2026-10-16, gate-web round)
+- ... 71 older entries omitted (read the full file)
 - PIT-71: --dump-dom fires AT the load event; CLI snapshots cannot see post-load GPU boot (2026-10-16, gate-web round)
 - PIT-72: restore-cp from a stale snapshot silently reverted an accepted mutation (2026-10-16, gate-web round)
 - PIT-73: with setsid, $! is NOT the server -- the port holder is (2026-10-16, serve-https round)
@@ -326,6 +326,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - PIT-82: an unclosed <script type="module"> tag silently disables the whole page -- and my own degenerate write caused it (2026-10-23, E901 band)
 - PIT-83: wasm-bindgen glue does not track lib.rs -- a stale pkg passes host checks and ships without the new bridge (2026-10-23, bytes-bridge band)
 - PIT-84: generated hub regions silently duplicate their END marker every sync -- and the gate's "first END" check hid it (2026-10-28, agent-sync)
+- PIT-85: a `.gitignore` inline comment silently disables the rule it annotates (2026-10-29, .gitignore reorg)
 
 ### status
 - full text: `.agents/memorys/status.md`

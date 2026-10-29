@@ -737,3 +737,11 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: one idempotent rewrite: `before = split(BEGIN, 1)[0]`, `after = split(END, 1)[1]`, `new_text = before + BEGIN + "\n" + block + END + after` (single END, no re-prepend). Rebuilt the hubs from their hand-written head (truncate at the first BEGIN, then `agent-sync` re-appends one clean region).
 - **Verification**: two consecutive `agent-sync` runs leave `END:agents-memory` / `END:skills-directory` / `END:ci-gates` at exactly 1 each; `gate-agents` green. (The second `BEGIN:agents-memory` is a literal mention inside the D34 prose, not a marker.)
 - **Forbidden**: a generated-region rewrite that re-adds BEGIN/END; trusting a "gate green" check that only reads the first occurrence of a marker.
+
+## PIT-85: a `.gitignore` inline comment silently disables the rule it annotates (2026-10-29, .gitignore reorg)
+
+- **Symptom**: the cleanup draft carried lines such as `*.flc              # xemacs temporary files` and `Testing/                        # ctest output`. They read fine in review, but `git check-ignore` refused to match them — the whole line, spaces and `#` included, is the pattern.
+- **Root cause**: `.gitignore` has no inline-comment syntax; only a `#` at the START of a line starts a comment. A trailing `# ...` becomes pattern text, so the intended path is never ignored, and nothing goes red because no other check references those rules. Seven lines were affected by the first draft.
+- **Solution**: every explanatory note sits on its own comment line above the pattern. The syntax is proven in an isolated scratch repo (`git init` under `.cache/`): the inline form returns rc=1 (no match); moving the comment to its own line returns rc=0 (match).
+- **Verification**: `grep -nE '^[^#].*[[:space:]]#' .gitignore` is empty; the 22-case `git check-ignore --no-index` matrix passes; `git status --ignored` before/after shows no diff.
+- **Forbidden**: annotating a pattern on the same line; reviewing ignore files by eye without a parser probe; trusting "it looks right" for configuration syntax.

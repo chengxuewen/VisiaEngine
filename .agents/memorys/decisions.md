@@ -518,3 +518,11 @@ D41 made `AGENTS.md` a navigable digest, but the digest still exceeded the obser
 Decision (user-adjudicated): keep the digest shape and compress per file — pitfalls keep the latest 15 entries, status the latest 6 band sections, and the skill directory carries a ~45-character purpose; each window ends with a pointer to the full file. The skills region moves BEFORE the memory region because hosts truncate the tail. `GATE-HUB` asserts both `wc -m` and `wc -c` <= 30,000 (warn at 28,500, 95% of the limit).
 
 This amends D41: "one bullet per entry" now applies to conventions and decisions only; pitfalls and status are windowed. Trade-off accepted: older entries leave the digest but stay one Read away in `.agents/memorys/*.md`. Rationale: a hub that cannot be read in full is not a hub.
+
+## D48: `.gitignore` reorganized by ownership; build outputs root-anchored (2026-10-29, user-adjudicated one by one)
+
+The file had grown by append (136 lines, 12 implicit groups, `.pixi` duplicated, `.cache` under "IDE", `Testing/` under "reference clones", `.sisyphus`/`.omo` under the activation-trio comment). Two decisions were adjudicated:
+- D1 = **B**: build outputs (`build`, `target`, `out`, `dist`, `log`, `install`) are root-anchored (`/build/` etc.); measured: only `./build` exists, no nested same-name directories.
+- D2 = **A**: legacy `stash`/`nodejs` rules are kept but root-anchored, with a legacy note (no current user; grep found no directory references).
+
+Result: 12 explicit sections (noise -> legacy toolchains -> IDE -> build -> node -> python -> pixi -> secrets -> agent layers -> local notes -> wrapper -> clones), `.pixi` deduped, five `cmake-build-*` collapsed to `cmake-build*/`, `/CMakeUserPresets.json` added, and `.serena/*` root anchoring restored. Verification: 22/22 ignore matrix, ignored list no-diff, zero tracked-but-ignored files. The inline-comment trap found during review is recorded as PIT-85.
