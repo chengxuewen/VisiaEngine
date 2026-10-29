@@ -69,6 +69,18 @@ Launch 3 agents in parallel:
 First agent 1, then agent 2, then agent 3
 ```
 
+## Generated Host Layers (never hand-edit)
+
+Each host's configuration is generated from this tree by `pixi run agents sync`; the generated directories are gitignored and rebuilt on demand:
+
+| Layer | Generated into | Contents |
+|-------|----------------|----------|
+| CodeBuddy | `.codebuddy/` | `.mdc` rules, skill links, `skills-link-map.json` |
+| MCP files | `.mcp.json`, `.trae/mcp.json` | the same server set in each host's envelope |
+| Trae | `.trae/` | whitelisted rules as plain `.md` + a synthesized rules index + `mcp.json` |
+
+Edits belong in `.agents/`; `pixi run gate-agents` (part of `ci`) fails on drift, and a pre-commit hook regenerates before staging. Two host-specific facts worth remembering: Trae reads `.agents/skills/` natively, so **never create `.trae/skills/`** (a same-named skill there overrides the single source — `gate-skills` reports it), and Trae does not spawn MCP servers in the repo root, so its launcher path is absolute (legal because that file is gitignored).
+
 ## Multi-Perspective Analysis
 
 For complex problems, use split role sub-agents:

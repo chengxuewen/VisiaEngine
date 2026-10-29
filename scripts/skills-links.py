@@ -52,7 +52,27 @@ def load_config():
     with open(CONFIG_PATH, "r") as handle:
         data = json.load(handle)
     skills_root = os.path.join(ROOT, data["skills_root"])
-    return skills_root, data["targets"]
+    return skills_root, data["targets"], data.get("forbidden_dirs") or []
+
+
+def check_forbidden(forbidden):
+    """Host directories that must not hold skills.
+
+    A host that reads its own skills folder BEFORE `.agents/skills/` silently
+    shadows the single source for every same-named skill (Trae: `.trae/skills`
+    wins over `.agents/skills`). Reported as a finding, never as a guard: we
+    never write into that folder, so escalating would let one local skill file
+    abort every host's sync (D50 R3).
+    """
+    findings = []
+    for rel in forbidden:
+        root = os.path.join(ROOT, rel)
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(root):
+            if "SKILL.md" in filenames:
+                findings.append((os.path.relpath(dirpath, ROOT).replace(os.sep, "/"), "shadows-single-source"))
+    return findings
 
 
 def discover_skills(skills_root):
@@ -227,8 +247,16 @@ def check_target(skills, skills_dir, canonical_real, copy_mode):
     return findings
 
 
-def do_check(targets, skills, canonical_real, force_copy):
+def do_check(targets, skills, canonical_real, force_copy, forbidden=()):
     failures = 0
+    shadow = check_forbidden(forbidden)
+    if shadow:
+        print(" [ FIX ] %-12s shadow directory" % "forbidden")
+        for rel, cls in shadow:
+            print("        %-40s %s" % (rel, cls))
+        print("        a skill under %s overrides the same-named skill in .agents/skills"
+              % ", ".join(forbidden))
+        print("        fix: delete it, or create that skill outside the host skills folder")
     for target in targets:
         label = target["label"]
         if not target.get("enabled", True):
@@ -236,6 +264,11 @@ def do_check(targets, skills, canonical_real, force_copy):
             continue
         skills_dir = os.path.join(ROOT, target["skills_dir"])
         copy_mode = force_copy or target.get("mode") == "copy"
+        if target.get("optional") and not os.path.isdir(skills_dir):
+            # gitignored activation layer: absent means this host was never set
+            # up here (a fresh clone, a CI runner). Not a defect (D50 B1).
+            print(" [ SKIP ] %-12s %s (layer absent)" % (label, target["skills_dir"]))
+            continue
         findings = check_target(skills, skills_dir, canonical_real, copy_mode)
         if not findings:
             print(" [ OK  ] %-12s %s" % (label, target["skills_dir"]))
@@ -244,8 +277,11 @@ def do_check(targets, skills, canonical_real, force_copy):
         print(" [ FIX ] %-12s %s" % (label, target["skills_dir"]))
         for name, cls in findings:
             print("        %-38s %s" % (name, cls))
-    if failures:
-        print("GATE-SKILLS ✗ %d target(s) need repair (run: sync)" % failures)
+    if failures or shadow:
+        if failures:
+            print("GATE-SKILLS ✗ %d target(s) need repair (run: sync)" % failures)
+        if shadow:
+            print("GATE-SKILLS ✗ %d shadowed skill(s) -- sync cannot fix this, delete them" % len(shadow))
         return 1
     print("GATE-SKILLS ✓ (%d skills × %d target(s))" % (len(skills), len(targets)))
     return 0
@@ -352,14 +388,14 @@ def main(argv):
         return 0
     command = argv[1]
     force_copy = "--copy" in argv[2:]
-    skills_root, targets = load_config()
+    skills_root, targets, forbidden = load_config()
     skills = discover_skills(skills_root)
     canonical_real = os.path.realpath(skills_root)
     if command == "list":
         do_list(targets, skills)
         return 0
     if command == "check":
-        return do_check(targets, skills, canonical_real, force_copy)
+        return do_check(targets, skills, canonical_real, force_copy, forbidden)
     return do_sync(targets, skills, canonical_real, force_copy, dry_run=command == "dry-run")
 
 

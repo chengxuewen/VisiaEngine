@@ -16,6 +16,13 @@ envelope differs):
     local-playwright/postgres/openspace) are preserved (non-destructive).
 
 Exit codes: 0 clean, 1 findings, 2 guard violation (nothing written).
+
+Per-target flags (scripts/agent-targets.json):
+  - `optional`: the layer is gitignored and only exists on machines that ran
+    sync for that host; an absent file is a SKIP in `check`, not a finding.
+  - `structured_compare`: compare parsed JSON instead of bytes. A host that owns
+    its config file re-indents it on save (Trae, D50 R1), so byte comparison
+    would redden on formatting alone and rewrite the file on every sync.
 """
 
 import json
@@ -74,6 +81,14 @@ def _host_entry(entry, target):
         tail = args[1:]
         if os.name == "nt":
             item["command"], item["args"] = LAUNCHER_BAT, tail
+        elif target.get("mcp_launcher_absolute"):
+            # A gitignored host file may carry a machine-local path; a tracked one
+            # (root .mcp.json) may not. Needed because the launcher REFERENCE is
+            # cwd-dependent while the launcher itself is not: hosts differ in the
+            # spawn cwd (Trae does not start in the repo root, so a relative
+            # `scripts/mcp-launch.sh` dies with ENOENT / "no such file").
+            item["command"] = "bash"
+            item["args"] = [os.path.join(ac.ROOT, LAUNCHER_SH)] + tail
         else:
             item["command"], item["args"] = "bash", [LAUNCHER_SH] + tail
     return item
@@ -84,6 +99,34 @@ def _expected_mcp_file(merged, target):
     for name, entry in merged.items():
         out[name] = _host_entry(entry, target)
     return json.dumps({"mcpServers": out}, indent=2, sort_keys=True) + "\n"
+
+
+def _same_doc(have, want, structured):
+    """Is the file on disk already what the single source says?
+
+    Two comparison modes (`structured_compare` on the target):
+    - byte-ish (default): whitespace-insensitive string compare, as before.
+    - structured: parse both and compare the objects. Some hosts own their
+      config file and re-indent / re-key it on save (Trae, D50 R1); a formatting
+      churn would otherwise redden the gate and rewrite the file on every sync.
+    """
+    if not structured:
+        return have.strip() == want.strip()
+    try:
+        return json.loads(have) == json.loads(want)
+    except ValueError:
+        return False  # unparseable -> repair
+
+
+def _report(command, target, file_rel, ok):
+    """One line per target/file; absent optional layers are a SKIP, not a finding."""
+    label = target["label"]
+    if ok:
+        print(" [ OK  ] %-10s %s" % (label, file_rel))
+    elif command == "check":
+        print(" [ FIX ] %-10s %s (mcpServers drift)" % (label, file_rel))
+    else:
+        print(" [ WRITE] %-10s %s" % (label, file_rel))
 
 
 _ENV_REF = re.compile(r"^\$\{([A-Z_][A-Z0-9_]*)\}$")
@@ -130,13 +173,15 @@ def run(command, targets, cfg, dry_run):
                 continue
             if t.get("mcp_file"):
                 path = os.path.join(ac.ROOT, t["mcp_file"])
+                if t.get("optional") and not os.path.exists(path):
+                    print(" [ SKIP ] %-10s %s (layer absent)" % (t["label"], t["mcp_file"]))
+                    continue
                 want = _expected_mcp_file(merged, t)
                 have = open(path).read() if os.path.exists(path) else ""
-                if have.strip() != want.strip():
+                ok = _same_doc(have, want, t.get("structured_compare"))
+                if not ok:
                     failures += 1
-                    print(" [ FIX ] %-10s %s (mcpServers drift)" % (t["label"], t["mcp_file"]))
-                else:
-                    print(" [ OK  ] %-10s %s" % (t["label"], t["mcp_file"]))
+                _report("check", t, t["mcp_file"], ok)
             elif t.get("opencode_file"):
                 path = os.path.join(ac.ROOT, t["opencode_file"])
                 with open(path) as handle:
@@ -161,7 +206,7 @@ def run(command, targets, cfg, dry_run):
             path = os.path.join(ac.ROOT, t["mcp_file"])
             want = _expected_mcp_file(merged, t)
             have = open(path).read() if os.path.exists(path) else ""
-            if have.strip() == want.strip():
+            if os.path.exists(path) and _same_doc(have, want, t.get("structured_compare")):
                 print(" [ OK  ] %-10s %s" % (t["label"], t["mcp_file"]))
                 continue
             print(" [ WRITE] %-10s %s" % (t["label"], t["mcp_file"]))

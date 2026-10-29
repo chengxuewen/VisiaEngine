@@ -747,3 +747,19 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: every explanatory note sits on its own comment line above the pattern. The syntax is proven in an isolated scratch repo (`git init` under `.cache/`): the inline form returns rc=1 (no match); moving the comment to its own line returns rc=0 (match).
 - **Verification**: `grep -nE '^[^#].*[[:space:]]#' .gitignore` is empty; the 22-case `git check-ignore --no-index` matrix passes; `git status --ignored` before/after shows no diff.
 - **Forbidden**: annotating a pattern on the same line; reviewing ignore files by eye without a parser probe; trusting "it looks right" for configuration syntax.
+
+## PIT-86: the MCP launcher was cwd-robust but its REFERENCE was not -- Trae spawns outside the repo root (2026-10-29, Trae onboarding)
+
+- **Symptom**: after `agents sync` produced `.trae/mcp.json`, Trae failed every server with bash's localized "No such file or directory" (ENOENT) for `scripts/mcp-launch.sh` — while the same file worked in CodeBuddy and the script existed, was executable, and resolved its own repo root from `BASH_SOURCE`.
+- **Root cause**: `mcp-launch.sh` is cwd-independent *inside* itself, but the **argv that points at it** was repo-relative (`bash scripts/mcp-launch.sh <task>`). That only works for hosts whose MCP spawn cwd is the workspace root; Trae's is not. The design note in `mcp-links.py` ("so they work regardless of the spawn PATH / cwd") covered the script body and was silently read as covering the reference too.
+- **Solution**: `mcp_launcher_absolute` target flag — a **gitignored** host file (`.trae/mcp.json`) may carry a machine-local absolute launcher path; a **tracked** one (root `.mcp.json`) may not, so it keeps the relative form. The asymmetry is legitimate precisely because adjacency is an ownership fact, not a portability preference.
+- **Verification**: reproduced the exact message with `cd /tmp && bash scripts/mcp-launch.sh mcp-codegraph`; the absolute form returned valid MCP `initialize` results from `/tmp` for both `local-codegraph` (codegraph 1.6.0) and `local-serena` (Serena 2.1.0); root `.mcp.json` `git diff` stays empty; `gate-agents` green.
+- **Forbidden**: assuming every host spawns MCP servers with cwd = workspace root; treating "the wrapper is path-independent" and "the reference to the wrapper is path-independent" as the same claim.
+
+## PIT-87: a 0-byte case-variant `AGENTS.md` inside a rules folder becomes a generated rule, silently (2026-10-29, Trae onboarding)
+
+- **Symptom**: `.agents/rules/common/` gained a 0-byte `AGENTS.md` next to the canonical `agents.md`, and CodeBuddy's generated tree grew to 41 rules. Every gate stayed green.
+- **Root cause**: the generator mirrors canonical faithfully, so a stray `.md` at the expected depth IS a rule — that is the design, and it means garbage in the source is indistinguishable from a real rule once generated. The gate compares generated-vs-canonical, not canonical-vs-intent, so it cannot see the difference.
+- **Hazard beyond this incident**: `agents.md` and `AGENTS.md` are the SAME file on a case-insensitive filesystem (Windows, default macOS). A case variant in the source tree is a checkout collision waiting for the next Windows clone, not just extra noise.
+- **Solution**: delete the variant; confirm the generated tree pruned back to 40 (`[ MDCDEL] codebuddy common-AGENTS`). No code guard added: an empty-rule filter would hide the symptom, not the cause (the file must not exist), and it cannot fix a case collision anyway. Prevent with review discipline: never create a file in `.agents/rules/<lang>/` whose name differs from an existing one only by case, and read the `GATE-RULES ✓ (N rule files …)` count when it changes.
+- **Verification**: `ls .agents/rules/common/` shows 13 canonical files and no uppercase variant; `ls -d .codebuddy/rules/*/ | wc -l` = 40; `git status` clean of untracked files under `.agents/`.

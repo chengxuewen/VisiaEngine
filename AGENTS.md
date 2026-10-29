@@ -172,7 +172,7 @@ Not in the `ci` chain (run deliberately): `gate-web`, `keys-probe`, `serve-https
 ## AGENT CONFIG (single source)
 
 Agent configuration — rules, MCP servers, and the memory hub — has ONE source: `.agents/`.
-Host layers (`.codebuddy/`, `.opencode/opencode.json`, and the `AGENTS.md` memory region)
+Host layers (`.codebuddy/`, `.trae/`, `.opencode/opencode.json`, and the `AGENTS.md` memory region)
 are GENERATED, never hand-edited. After editing anything under `.agents/`, regenerate and
 verify:
 
@@ -309,12 +309,11 @@ file. Read the source file before acting on a rule you are unsure about.
 - D47: Memory digest compresses to the host budget (2026-10-28)
 - D48: `.gitignore` reorganized by ownership; build outputs root-anchored (2026-10-29, user-adjudicated one by one)
 - D49: CodeBuddy rule budget — two always-on rules plus described on-demand rules (2026-10-29)
+- D50: Trae host onboarding — four adjudications (2026-10-29, user-adjudicated one by one)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
-- ... 71 older entries omitted (read the full file)
-- PIT-71: --dump-dom fires AT the load event; CLI snapshots cannot see post-load GPU boot (2026-10-16, gate-web round)
-- PIT-72: restore-cp from a stale snapshot silently reverted an accepted mutation (2026-10-16, gate-web round)
+- ... 73 older entries omitted (read the full file)
 - PIT-73: with setsid, $! is NOT the server -- the port holder is (2026-10-16, serve-https round)
 - PIT-74: orchestrator "corrected" a working diagnostic with a spec-confabulated diagnosis; user evidence won (2026-10-16)
 - PIT-75: Ninja DESC of a custom target is baked at add_custom_target time; post-hoc COMMENT writes never reach it (2026-10-19, dual-serve round)
@@ -328,6 +327,8 @@ file. Read the source file before acting on a rule you are unsure about.
 - PIT-83: wasm-bindgen glue does not track lib.rs -- a stale pkg passes host checks and ships without the new bridge (2026-10-23, bytes-bridge band)
 - PIT-84: generated hub regions silently duplicate their END marker every sync -- and the gate's "first END" check hid it (2026-10-28, agent-sync)
 - PIT-85: a `.gitignore` inline comment silently disables the rule it annotates (2026-10-29, .gitignore reorg)
+- PIT-86: the MCP launcher was cwd-robust but its REFERENCE was not -- Trae spawns outside the repo root (2026-10-29, Trae onboarding)
+- PIT-87: a 0-byte case-variant `AGENTS.md` inside a rules folder becomes a generated rule, silently (2026-10-29, Trae onboarding)
 
 ### status
 - full text: `.agents/memorys/status.md`

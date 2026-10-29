@@ -104,6 +104,7 @@ node_modules/
 # --- Agent host layers (generated from .agents/; never hand-edit) -----------
 .codebuddy/
 .qoder/
+.trae/
 .playwright-mcp/
 .codegraph/
 

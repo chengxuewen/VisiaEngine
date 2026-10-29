@@ -58,10 +58,19 @@ fi
 echo "[3/3] Smoke: pixi run verify ..."
 "$PIXI" run --manifest-path "$MANIFEST" verify || { echo "ERROR: verify failed" >&2; exit 1; }
 
+# --- [4/4] Host activation layers ---
+# Generated layers are gitignored (a fresh clone has none), so a first start must
+# materialize them or the IDE hosts see an empty rule/skill/MCP surface. Advisory:
+# a failure here must not sink an otherwise working environment.
+echo "[4/4] Agent host layers: pixi run agent-sync ..."
+"$PIXI" run --manifest-path "$MANIFEST" agent-sync || \
+    echo "WARN: agent-sync failed; host layers stay empty (rerun: pixi run agents sync)" >&2
+
 echo ""
 echo "=============== VisiaEngine environment ready ==============="
 echo "  Daily activation:  source pixi.sh"
 echo "  One-shot commands: pixi run <task>     (all tasks: pixi task list)"
 echo "  Handy tasks:      pixi run verify (toolchain smoke) / pixi run lint (clippy -D warnings)"
+echo "  Agent layers:      pixi run agents status  (sync/check across hosts)"
 echo "  Guide:             docs/env.md"
 echo "===================================================="

@@ -33,7 +33,23 @@
       },
       "mcp_file": ".mcp.json",
       "mcp_shape": "mcpServers",
-      "mcp_launcher": true
+      "mcp_launcher": true,
+      "optional": true
+    },
+    {
+      "label": "trae",
+      "enabled": true,
+      "rules_dir": ".trae/rules",
+      "rules_mode": "copy",
+      "rules_files": ["common/constraints.md", "common/security.md"],
+      "router_card": true,
+      "mcp_file": ".trae/mcp.json",
+      "mcp_shape": "mcpServers",
+      "mcp_launcher": true,
+      "mcp_launcher_absolute": true,
+      "optional": true,
+      "structured_compare": true,
+      "notes": "activation layer, gitignored; mcp only (Trae natively reads AGENTS.md and .agents/skills). optional = absent layer is SKIP. structured_compare = the IDE re-indents the file on save (D50 R1). mcp_launcher_absolute = Trae does not spawn MCP servers in the repo root, so the launcher must be an absolute path (legal here because this file is gitignored)"
     },
     {
       "label": "claude",
