@@ -10,5 +10,5 @@ language = "en"
 [output.html]
 git-repository-url = "https://gitee.com/chengxuewen/VisiaEngine"
 edit-url-template = "https://gitee.com/chengxuewen/VisiaEngine/edit/main/{path}"
-# Tiny lazy loader; it only pulls the 3.5 MB mermaid bundle on pages with diagrams.
-additional-js = ["web/mermaid-init.js"]
+# mermaid-init: lazy loader, pulls the 3.5 MB bundle only on pages with diagrams.
+additional-js = ["web/mermaid-init.js", "web/footer.js"]

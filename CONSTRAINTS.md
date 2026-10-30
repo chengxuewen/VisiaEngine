@@ -30,11 +30,12 @@ Single source of truth for the local quality gate. Two parts:
 7. `gate-trace`
 8. `gate-abi`
 9. `gate-docs`
-10. `gate-skills`
-11. `gate-agents`
-12. `gate-mcp`
-13. `check-promises`
-14. `cmake-smoke`
-15. `pack-check`
-16. `i18n`
+10. `gate-prose`
+11. `gate-skills`
+12. `gate-agents`
+13. `gate-mcp`
+14. `check-promises`
+15. `cmake-smoke`
+16. `pack-check`
+17. `i18n`
 <!-- END:ci-gates -->
