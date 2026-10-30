@@ -34,7 +34,7 @@ Read the user message and classify it:
 | **Observability** | "日志"/"指标"/"追踪"/"告警" | `/observability-and-instrumentation` |
 | **Triage** | "不确定改哪层"/"跨模块"/"从哪下手" | `/repo-triage` |
 | **Orchestration** | "并行"/"子代理"/"拆任务" | `/planning-and-task-breakdown` + `/subagent-orchestration` |
-| **Explore** | "调研"/"对比"/"有什么方案" | `/ecosystem-scan` + the host's own subagent mechanism |
+| **Explore** | "调研"/"对比"/"有什么方案" | `/repo-audit (formerly ecosystem-scan)` + the host's own subagent mechanism |
 | **Ambiguous** | no clear keyword | propose 2-3 possible directions and let the user choose |
 
 ### Step 2: Context Check

@@ -21,7 +21,7 @@ description: "Layer triage for an ambiguous task in this polyglot engine: map th
 | **ffi** | `crates/visiaengine-ffi`, `bindings/c`, `bindings/cpp` | `rules/rust`, `rules/cpp` | `api-interface-design`, `security-hardening` |
 | **qt** | `bindings/qt`, `examples/qt` | `rules/cpp` | `api-interface-design` |
 | **wasm** | `bindings/wasm`, `examples/wasm` | `rules/rust`, `rules/web`, `rules/typescript` | `browser-testing`, `rust-engineering` |
-| **cli-infra** | `scripts/`, `pixi.toml`, `.githooks/`, `.agents/` | `rules/common` | `ci-cd-automation`, `ecosystem-scan`, `constraint-driven-development` |
+| **cli-infra** | `scripts/`, `pixi.toml`, `.githooks/`, `.agents/` | `rules/common` | `ci-cd-automation`, `repo-audit (formerly ecosystem-scan)`, `constraint-driven-development` |
 | **docs** | `docs/`, `AGENTS.md`, `CONSTRAINTS.md` | `rules/common` | `doc-audit` |
 
 ## Process (steps + checkpoints + exit)

@@ -1,4 +1,9 @@
-# ecosystem-scan — Whole-Repo Engineering Audit + Ecosystem Scan
+---
+name: repo-audit
+description: Whole-repo engineering audit across 10 domains (skills, rules, mcp, scripts, docs, book, cli, tests, structure, naming) + external ecosystem scan for adoptable skills; formerly ecosystem-scan.
+---
+
+# repo-audit — Whole-Repo Engineering Audit + Ecosystem Scan
 
 > Two-tier scan (Quick daily / Full deep) across **10 engineering domains**, quality scoring, security-audit gate.
 > Governing principle: **gates-first** -- this repo runs 17 gates in `pixi run ci`; the scan never re-checks by hand
@@ -9,19 +14,20 @@
 ## Trigger Conditions
 
 - The user says "优化 agents" / "审计 .agents" / "扫描生态" / "找新技能" / "全面体检" (optimize agents / audit .agents / scan ecosystem / find new skills / full checkup)
-- `/ecosystem-scan` -- pops up the mode-selection menu
-- `/ecosystem-scan quick` -- fast scan (default)
-- `/ecosystem-scan full` -- deep scan (auto-escalated on first run or after >5 Quick runs)
-- `/ecosystem-scan report` -- view the last scan report
-- `/ecosystem-scan <domain>` -- single-domain deep dive (skills|rules|mcp|scripts|docs|book|cli|tests|structure|naming)
+- `/repo-audit` -- pops up the mode-selection menu
+- `/repo-audit quick` -- fast scan (default)
+- `/repo-audit full` -- deep scan (auto-escalated on first run or after >5 Quick runs)
+- `/repo-audit report` -- view the last scan report
+- `/repo-audit <domain>` -- single-domain deep dive (skills|rules|mcp|scripts|docs|book|cli|tests|structure|naming)
+- `/ecosystem-scan ...` -- compatibility alias for every form above (retire after a grace period)
 
 ## The 10 Audit Domains
 
 | # | Domain | Surface | Enforcement owner (gates) | The scan adds |
 |---|--------|---------|---------------------------|---------------|
-| 1 | **skills** | `.agents/skills/` (37) | gate-skills, gate-skills-index, gate-agents | duplicate detection, community comparison, utilization |
+| 1 | **skills** | `.agents/skills/` | gate-skills (inventory); gate-agents (SKILLS-INDEX segment) | duplicate detection, community comparison, utilization |
 | 2 | **rules** | `.agents/rules/` (43 files) | gate-rules, gate-agents | semantic dedup, runnable-command check, quality |
-| 3 | **mcp** | `.mcp.json`, host mirrors, `scripts/mcp-*` | gate-mcp, gate-mcp-file | launcher portability (PIT-86), pin drift, per-host parity |
+| 3 | **mcp** | `.mcp.json`, host mirrors, `scripts/mcp-*` | gate-mcp (MCP-FILE segment via scripts/mcp-file-guard.py) | launcher portability (PIT-86), pin drift, per-host parity |
 | 4 | **scripts** | `scripts/` (~25 py/sh) | gate-docs 12 (names only) | syntax health sweep (`bash -n` / `ast.parse`), orphan detection (not referenced by pixi/gates/docs), CRLF/LF consistency (PIT-93), shebang + exec bits |
 | 5 | **docs** | `docs/` (README, env, whitepaper, sdd/, reference/) | gate-prose, gate-docs, gate-trace | cross-reference audit, numbering contiguity (§N, PIT-x, D-x), structure-rule coverage confirmation |
 | 6 | **book** | `book/` + `www/book/` | book-check, gate-docs 13 | toc<->SUMMARY<->sidebar nesting consistency, vendored offline assets, fold structure, title-length budget |
@@ -31,7 +37,8 @@
 | 10 | **naming** | files, tasks, branches | gate-rules (partial) | case-collision detection (PIT-87), task-name style consistency, kebab-case adherence, mixed line-ending detection |
 
 **Reading the table**: if the enforcement owner is green, that domain's mechanical health is proven -- do not re-audit it.
-The scan's local value concentrates in domains 4, 9, 10 (thin/no gate coverage) and in the judgment checks of 1-3, 5-8.
+The scan's local value concentrates in domains 4, 9, 10 (thin/no gate coverage), domain 6's nesting consistency
+(toc<->SUMMARY<->sidebar has NO gate -- gate-docs 13 only resolves entries), and the judgment checks of 1-3, 5-8.
 
 ## Entry Menu
 
@@ -67,8 +74,8 @@ With no arguments, pop up:
 2. rules:     conventions/decisions/pitfalls numbering contiguous; no orphan rule files
 3. mcp:       every instructions file referenced by the host configs exists; pins present
 4. scripts:   `bash -n` all *.sh, `ast.parse` all *.py -- zero syntax errors
-5. docs:      gate-prose/gate-docs green (re-run cheaply, do not hand-check)
-6. book:      book-check green; SUMMARY entry count == toc chapter count
+5. docs:      read the LAST gate output for gate-prose/gate-docs (do not hand-check; re-running gate-docs costs >15s -- its 11 does a network probe)
+6. book:      book-check green (no build artifacts = SKIP, same convention as gate-docs 13); SUMMARY entry count == toc chapter count
 7. cli:       USAGE-advertised names all exist in pixi.toml (gate-docs 12); .sh/.bat sets equal
 8. tests:     every smoke-*/ctest entry has a live example file (spot-check 5)
 9. structure: AGENTS.md STRUCTURE tree top-level dirs == actual `ls` (drift = finding)
@@ -184,22 +191,23 @@ Fetch READMEs with `webfetch`; 3-dimension quick scoring: tech-stack fit / alrea
 
 ### 3C: Persistence
 
-Record scan results in `.agents/memorys/`:
-- each scan's findings, scores, decisions
-- the next scan prioritizes checking whether last time's issues were fixed
+Record scan results in `.agents/memorys/status.md` (a fixed "ecosystem-scan" paragraph -- the memorys
+surface is a fixed four-file set, and new files change the agent-links sync face; keep the text English, C15):
+- each scan's findings, scores, decisions; the next scan first checks whether last time's issues were fixed
+- the Quick-run counter lives in the same paragraph
 - >=5 Quick runs -> automatically suggest Full
 
 ---
 
-## Team-mode configuration
+## Team-mode configuration (Full scan only; Quick runs in the main session)
 
 ```
 member 1: structure-analyst (deep) -- domains 9+10 + scripts syntax sweep
 member 2: content-auditor (deep)   -- domains 1+2+5 (skills/rules/docs content)
 member 3: platform-auditor (deep)  -- domains 3+6+7+8 (mcp/book/cli/tests)
 member 4: ecosystem-scanner (deep) -- Phase 2B external, 4 lanes parallel
-member 5: security-auditor (deep)  -- Phase 2B security audit (Full mode)
-member 6: synthesizer (deep)       -- Phase 3 synthesis (waits for 1-5)
+member 5: security-auditor (deep)  -- Phase 2B security audit
+member 6: synthesizer (deep)       -- Phase 3 synthesis (waits for 1-5; may be the main session)
 ```
 
 ## Community references
@@ -259,5 +267,5 @@ Replace the variables:
 ## Verification (evidence)
 
 - The scan report with per-domain verdict, per-item score + security verdict.
-- `GATE-SKILLS-INDEX` covers every skill (inventory consistent); the 17-gate ci chain green.
+- `GATE-SKILLS` and the gate-agents SKILLS-INDEX segment cover every skill (inventory consistent); the 17-gate ci chain green.
 - Gap findings cite file:line and name the enforcement owner that should own them.

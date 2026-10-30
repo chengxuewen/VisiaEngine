@@ -37,7 +37,6 @@ Status prose lives in `README.md` §Development Status (MVP closed, then renderi
 ├── docs/                    # whitepaper.md (positioning) · architecture.md (design baseline) · env.md · reference/
 ├── scripts/                 # the gate surface: gate-* · smoke-* · spec-trace.sh · web-* · book-build.py · bench.sh
 ├── book/                    # human-facing mdBook site source (English-only, D46): book.toml · toc.toml (chapter order/types) · web/ (graph page, mermaid+footer assets)
-├── www/                     # ⚠ generated docs site (gitignored): www/book/en/ · www/book/api/ (rustdoc)
 ├── .github/workflows        # ci.yml on standby (activates on the GitHub mirror day); local equivalent = `./visiaengine.sh ci`
 ├── .agents/ .opencode/ .omo/ # memory+rules+skills / assembly points / model tiering
 ├── .refinfo/                # ⚠ ~11G gitignored local archive (MediaServo + external reference projects) — read-only, never edit, always exclude from searches
@@ -166,8 +165,8 @@ Not in the `ci` chain (run deliberately): `gate-web`, `keys-probe`, `serve-https
 
 ## NOTES
 
-- Output territories: `build/` = save-frame wall assets · `target/` = cargo-direct only · `cmake-build*/` = CMake preset trees. Do not mix them.
-- `.sisyphus` is gitignored (`.gitignore` L103) and absent on disk. `www/` is now the **generated** docs site (`./visiaengine.sh book-build`), gitignored — never hand-edit it, and never treat it as source.
+- Output territories: `build/` = non-cargo derived output, one root (`book-src/` assembly · `book/` built site · `gallery/` thumbnail assets) · `target/` = cargo-direct only · `cmake-build*/` = CMake preset trees. Do not mix them.
+- `.sisyphus` is gitignored (`.gitignore` L103) and absent on disk. The docs site is **generated** into `build/book/` by `./visiaengine.sh book-build` — never hand-edit it, and never treat it as source.
 - MCP: one local server (`local-codegraph`, pinned in `scripts/mcp-servers.json`); maintain it with `./visiaengine.sh mcp {setup,index,sync,status}`. `.codegraph/` is a per-machine index (gitignored, never built in CI). The GitHub server was removed (deprecated package, no token, no use case while the remote is gitee); re-select the official implementation when the GitHub mirror turns on. playwright/postgres/websearch/openspace stay disabled by default (openspace also needs a python tree + LLM key).
 - `PolyOrch` is a separate repository: its own rules/skills live under `PolyOrch/.agents/`. Change it there, not here.
 - `docs/env.md` is the environment guide; `docs/architecture.md` is the design baseline; `docker.md` in the rules tree stays on-demand reference only.
@@ -211,7 +210,6 @@ that host's discovery paths/shape from its docs (a wrong path is a dead, unread 
 | `deprecation-and-migration` | Deprecate and migrate safely in this repo:... |
 | `doc-audit` | Project documentation and architecture audit. |
 | `documentation-and-adrs` | Record architecture decisions and keep doc... |
-| `ecosystem-scan` |  |
 | `incremental-implementation` | Thin vertical slice methodology — implemen... |
 | `lesson-review` | Batch session review: systematically extra... |
 | `observability-and-instrumentation` | Observability and instrumentation for this... |
@@ -222,6 +220,7 @@ that host's discovery paths/shape from its docs (a wrong path is a dead, unread 
 | `openspec-sync-specs` | Sync delta specs from a change to main specs. |
 | `performance-optimization` | Generic performance profiling and optimiza... |
 | `planning-and-task-breakdown` | Turn a spec or a vague ask into ordered, v... |
+| `repo-audit` | Whole-repo engineering audit across 10 dom... |
 | `repo-triage` | Layer triage for an ambiguous task in this... |
 | `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
 | `rust-engineering` | Rust engineering workflow for this engine... |
@@ -262,8 +261,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### decisions
 - full text: `.agents/memorys/decisions.md`
-- ... 31 older entries omitted (read the full file)
-- D30: All MCP local stdio, commands unified as `pixi run mcp-<name>`, needs a bootstrap mechanism (2026-10-28)
+- ... 32 older entries omitted (read the full file)
 - D31: MCP single-source second-round adjudication (2026-10-28, user-adjudicated one by one) — scope / abstraction / credentials
 - D32: Stage 0 start — codegraph confirmed an npm package (review #17 verified + implemented) (2026-10-28)
 - D33: MCP real-launch acceptance (acceptance #8, 2026-10-28) — version pins and env name corrected by live probe
@@ -288,6 +286,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D52: Repo-wide review fixes — six batches, with the debt named (2026-10-29)
 - D45: human-facing docs site -- mdBook + codegraph graph + lazy mermaid (2026-10-29)
 - D46: the book is English-only; browser-side translation covers other languages (2026-10-30)
+- D53: the docs site moves to `build/book`; `www/` retires (2026-10-30, user-adjudicated U4)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`

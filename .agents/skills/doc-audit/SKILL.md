@@ -203,9 +203,9 @@ Next suggestion: [issue-dense area]
 
 ---
 
-## Division of labor with ecosystem-scan
+## Division of labor with repo-audit (formerly ecosystem-scan)
 
-| Dimension | ecosystem-scan | doc-audit |
+| Dimension | repo-audit (formerly ecosystem-scan) | doc-audit |
 |------|:---:|:---:|
 | Agent infrastructure (skills/rules/MCP) | ✅ specialty | ✅ dimension 3 |
 | External community comparison | ✅ core capability | ❌ |

@@ -31,7 +31,6 @@ The directory count is deliberately not written here: run `ls -d .agents/skills/
 | `deprecation-and-migration` | Deprecate and migrate safely in this repo:... |
 | `doc-audit` | Project documentation and architecture audit. |
 | `documentation-and-adrs` | Record architecture decisions and keep doc... |
-| `ecosystem-scan` |  |
 | `incremental-implementation` | Thin vertical slice methodology — implemen... |
 | `lesson-review` | Batch session review: systematically extra... |
 | `observability-and-instrumentation` | Observability and instrumentation for this... |
@@ -42,6 +41,7 @@ The directory count is deliberately not written here: run `ls -d .agents/skills/
 | `openspec-sync-specs` | Sync delta specs from a change to main specs. |
 | `performance-optimization` | Generic performance profiling and optimiza... |
 | `planning-and-task-breakdown` | Turn a spec or a vague ask into ordered, v... |
+| `repo-audit` | Whole-repo engineering audit across 10 dom... |
 | `repo-triage` | Layer triage for an ambiguous task in this... |
 | `review-hardcode` (deprecated alias) | Hardcoded secrets/ports/URLs scan. |
 | `rust-engineering` | Rust engineering workflow for this engine... |
