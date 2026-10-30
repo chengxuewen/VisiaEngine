@@ -158,7 +158,9 @@ Open question: spec-compatibility with the MapLibre v8 subset (migration cost tr
 | P3 | RK3588 driver stack (vendor blob/BSP vs mainline Panvk) | release matrix / QA cost | **business input** (customer persona); does not block code |
 | P4 | material expression layer (TSL-style) | rendering long-term | post-MVP, not designed now |
 
-## Kickoff spike checklist (≤1 day once the toolchain is ready)
+## Kickoff spike checklist
+
+(≤1 day once the toolchain is ready.)
 
 - [ ] bare wgpu triangle vs bevy-minimal three-platform release sizes (fills the evidence data gap, archive-only)
 - [ ] frame budget of a 100k-entity slab walk + extract (validates the magnitude of the P0 conservative choice)

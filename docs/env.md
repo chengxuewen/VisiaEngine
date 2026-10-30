@@ -1,4 +1,6 @@
-# VisiaEngine development-environment guide (pixi single source, D5)
+# VisiaEngine developer environment guide
+
+(pixi single source; decision D5.)
 
 ## Three steps on a new machine
 
@@ -30,7 +32,9 @@ Who uses which form:
 
 Both forms are always equivalent; `pixi run <task>` is the fallback whenever the wrapper is unavailable (Windows without the `.bat`, a stripped-down container, etc.).
 
-## GUI apps / MCP hosts need `pixi` on their inherited PATH (O5)
+## GUI apps and the inherited PATH
+
+`pixi` must be on the PATH that GUI apps inherit (O5).
 
 `bootstrap.sh` / `bootstrap.bat` only fix the *terminal* environment. Desktop apps (CodeBuddy, opencode, ...) are launched from the desktop and **do not source shell rc files**, so a `pixi` that lives only in `~/.pixi/bin` (Linux) is invisible to them — MCP servers then fail with `Executable not found in $PATH: "pixi"`.
 
@@ -42,7 +46,7 @@ Verify: `command -v pixi` in a shell that did **not** `source pixi.sh` must reso
 
 The generated project-scope MCP file (root `.mcp.json`) uses `scripts/mcp-launch.sh` / `mcp-launch.bat` instead, which resolve pixi themselves and are immune to the spawn PATH / cwd.
 
-### MCP lifecycle: install, index, status
+### MCP lifecycle
 
 All local MCP maintenance goes through one task (`scripts/mcp-cli.py`):
 
@@ -104,7 +108,9 @@ Task surface (`pixi task list`): `check/build/test/lint/fmt/fmt-fix/audit/verify
 - pixi itself pinned 0.78.0; the pin lives in two places -- CI (`.github/workflows/ci.yml`, setup-pixi) and the upstream PolyOrch `pixi-init` default (the bootstrap scripts inherit it); upgrading pixi = bump both in sync.
 - Any new dependency goes through `pixi add <pkg>` (maintains the lock automatically); hand-editing the dependency section and forgetting to relock is forbidden.
 
-## Domestic mirrors (personal-machine configuration, **not committed**)
+## Domestic mirrors
+
+Personal-machine configuration, **not committed**:
 
 `~/.pixi/config.toml`:
 
@@ -140,7 +146,11 @@ The committed `.vscode` debug lists are refreshed by `./visiaengine.sh f5` — t
 
 ## Qt support matrix (R2, 2026-10-15)
 
-`-DVISIAENGINE_QT=ON` resolves two generations, Qt6 preferred then Qt5: **Qt 6.x** (pixi `qt-spike` env, the CI lane — proven by `xvfb-run -a ./visiaengine.sh -e qt-spike smoke-qt`) and **Qt >= 5.15** (pixi `qt5-spike` validation env, conda-forge `qt 5.15.*`; validated live at 5.15.15 — discovery, E703 real-window run and the ctest leg all green). **Qt 5.12 and older are excluded from the contract** (owner directive 2026-10-15): the `find_package(Qt5 5.15)` version arg enforces the floor and the widget header carries exactly one version guard (`QMouseEvent::position()` on Qt6 vs `pos()` on Qt5 — the only compile-measured divergence).
+`-DVISIAENGINE_QT=ON` resolves two generations, Qt6 preferred then Qt5: **Qt 6.x** (pixi `qt-spike` env, the CI lane — proven by `xvfb-run -a ./visiaengine.sh -e qt-spike smoke-qt`) and
+
+**Qt >= 5.15** (pixi `qt5-spike` validation env, conda-forge `qt 5.15.*`; validated live at 5.15.15 — discovery, E703 real-window run and the ctest leg all green).
+
+**Qt 5.12 and older are excluded from the contract** (owner directive 2026-10-15): the `find_package(Qt5 5.15)` version arg enforces the floor and the widget header carries exactly one version guard (`QMouseEvent::position()` on Qt6 vs `pos()` on Qt5 — the only compile-measured divergence).
 
 Consumers never spell a generation name: the SDK publishes the canonical `VISIAENGINE_QT_*` variables (FOUND / MAJOR / VERSION / TARGET / LIBDIR / PLUGINSDIR — the last two probed per packaging shape, conda and Debian layouts both resolve) and the example family consumes them inside `visiaengine_add_example(... QT)`. The `qt5-spike` env is validation-only: no solve-group, no ci chain.
 
@@ -151,7 +161,9 @@ Consumers never spell a generation name: the SDK publishes the canonical `VISIAE
 - Do not rename existing skills for style alone — renaming breaks cross-references (`skill-router`, `doc-audit`, `AGENTS.md` SKILL DIRECTORY) and muscle memory.
 - A colon namespace (`plugin:skill`) is a plugin-loader feature; it cannot be encoded in a directory name (illegal on Windows) and is not used here.
 
-## Agent config sync: one entry (`./visiaengine.sh agents`)
+## Agent config sync
+
+One entry: `./visiaengine.sh agents`.
 
 `./visiaengine.sh agents sync|check|status` is the unified entry. It **delegates** to
 `scripts/agent-links.py` and `scripts/skills-links.py`:

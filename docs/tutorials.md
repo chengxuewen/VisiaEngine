@@ -60,25 +60,20 @@
 
 After `pixi run cmake --preset default` (or open the project in an IDE and pick the default/qt preset; CI uses ci-strict):
 
-- **The Rust E family (examples/rs) comes as a trio**: PolyOrch build handle `visiaengine-example-<E#>` (mediator
-  `visiaengine-example-<E#>-build`, the D40 EXAMPLE kind -- the cargo call lives in the supplier wrapper),
-  run step `visiaengine-example-<E#>-run` (builds the handle first, then polyorch_example_run executes the staged binary with the
-  DISPLAY fallback), ctest entry `example_<E#>` (runs the staged binary directly, no cargo at test time) —
-  the single home of argv is the registry in `cmake/VisiaEngineBindings.cmake`, and the pixi `smoke-*` tasks
-  are all `ctest -R` forwarding shells. The cargo environment's self-sufficiency is locked by the cmake-smoke state-④ triple anchor (bare PATH =
-  IDE calls need no pixi activation); per-example breakpoint debugging runs through rust-analyzer Run/Debug,
-  and with the `debug` preset on, F5 rows ride the PolyOrch managed lane instead (`visiaengine-example-<E#>` launch + preLaunchTask pairs).
-- **The native E family is the real thing (examples/{c,cpp,qt})**: add_executable compiles what you change, one at a time,
-  ctest entries from the same source, FOLDER = the disk-directory mirror (examples/<language> auto-derived; root-level steps sit bare at the top), identity semantics belong to LABELS.
-- **ctest**: the headless family always truly runs; the default testPreset already skips the display family wholesale via `-LE display`,
-  and the true run goes through the xvfb sub-state (S4 joins the cmake-smoke display band).
+- **The Rust E family (examples/rs) comes as a trio**: PolyOrch build handle `visiaengine-example-<E#>` (mediator `visiaengine-example-<E#>-build`, the D40 EXAMPLE kind -- the cargo call lives in the supplier wrapper), run step `visiaengine-example-<E#>-run` (builds the handle first, then polyorch_example_run executes the staged binary with the DISPLAY fallback), ctest entry `example_<E#>` (runs the staged binary directly, no cargo at test time) — the single home of argv is the registry in `cmake/VisiaEngineBindings.cmake`, and the pixi `smoke-*` tasks are all `ctest -R` forwarding shells.
+- The cargo environment's self-sufficiency is locked by the cmake-smoke state-④ triple anchor (bare PATH = IDE calls need no pixi activation); per-example breakpoint debugging runs through rust-analyzer Run/Debug.
+- With the `debug` preset on, F5 rows ride the PolyOrch managed lane instead (`visiaengine-example-<E#>` launch + preLaunchTask pairs).
+- **The native E family is the real thing (examples/{c,cpp,qt})**: add_executable compiles what you change, one at a time, ctest entries from the same source, FOLDER = the disk-directory mirror (examples/<language> auto-derived; root-level steps sit bare at the top), identity semantics belong to LABELS.
+- **ctest**: the headless family always truly runs; the default testPreset already skips the display family wholesale via `-LE display`, and the true run goes through the xvfb sub-state (S4 joins the cmake-smoke display band).
 
 New examples must register in the same round: Rust example = a registry line in Bindings.cmake + an
 `[[example]]` block in `examples/rs`; C/C++ example = a `visiaengine_add_example()` line in the corresponding
 `examples/<lang>/CMakeLists.txt` (the anti-glob central ledger makes configure a hard error; comment-style disabling is forbidden).
 E703 (the Qt host band) exists under the ci-strict preset (or -DVISIAENGINE_QT=ON).
 
-## Human-verification form (the dual-mode convention · one entry for IDE manual runs and automated tests)
+## Human-verification form (the dual-mode convention)
+
+One entry for IDE manual runs and automated tests.
 
 Every example splits through the unified argv dual mode: the IDE's `visiaengine-example-*-run` (rs) / `run_*` (native) targets **start with zero arguments = the human-verification form**;
 ctest / `--frames N` = the automated quick-exit form (the argv single-source discipline: registry parameters serve only ctest, the run steps take zero args — C15).
@@ -95,7 +90,9 @@ Native-example window classification (the census of the same round as the 2026-0
 the remaining C/C++ examples (E701/E704/E802/E810/E811×2/E812/E813/E814) = headless evidence examples, whose human-verification face is the terminal `OK …` line / PPM file on disk
 — exiting in seconds is their designed identity.
 
-## Installed SDK consumption (install tree, packaging-round v1.3 P2)
+## Installed SDK consumption
+
+Install tree; packaging-round v1.3 P2.
 
 The in-tree lanes above build from source (`add_subdirectory`). Since P2 the repo
 also produces an install tree that a consumer can use without the Rust toolchain.

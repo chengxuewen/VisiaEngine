@@ -34,7 +34,9 @@ cargo metadata --no-deps --format-version 1 |
 | Native pixel witnesses | **6 of 17** tracked C/C++/Qt example files assert a numeric pixel-family bound; the other 11 have no bound: 10 have zero `readback` calls and the 11th (template.cpp, readback=2) asserts nothing -- readback necessary, not sufficient. 8 of the 11 still claim visible output (seven render entry-point call sites + the Qt pump) (named predicate + per-file table: `docs/reference/c-example-witness-census-2026-10-09.md`) |
 | C/C++/Qt shared example bootstrap | band-V analogue on the host-language examples -- **Closed, carded away, not built** (D25 #6). Measured (predicate: recursive extended grep for visiaengine_create-family call parentheses across examples/c, examples/cpp, examples/qt): 15 call-site lines across 13 files -- E817 re-creates on remount, so one file holds three. Drift is cosmetic (error-string prefixes), the templates are compile-in skeletons outside the ctest set, and those host-call lines ARE the tutorial claim (C18). Re-open triggers: native example count doubles, or a second real C++ consumer (same lineage as decisions.md L91) |
 
-## §2. The 2026-09-24 S-level gaps, re-checked line by line
+## §2. The 2026-09-24 S-level gaps
+
+Re-checked line by line.
 
 | Then | Evidence then | Now |
 |---|---|---|
@@ -43,7 +45,9 @@ cargo metadata --no-deps --format-version 1 |
 | S3' scene serialisation | grep = 0 | **Still open** (re-grep today: 0). Hard dependency of the Visia Studio Beta tier; no plan filed. See §4 |
 | S4' scene graph parent/child | `core` was a flat slab | **Closed** for the promise that mattered: CAPI-30..34 (groups, reparent with cycle/depth guard, group offsets, ancestor-aware visibility). Rotation/scale inheritance deliberately not inherited — trigger-gated |
 
-## §3. Coverage map vs the three.js benchmark (09-28b), refreshed
+## §3. Coverage map vs the three.js benchmark
+
+(09-28b edition, refreshed.)
 
 | Peer category | Our status | Anchor |
 |---|---|---|
@@ -58,7 +62,9 @@ cargo metadata --no-deps --format-version 1 |
 | Text | rasterised labels with anchor rules, CJK via host-supplied font subset | IO-07..09, GEO-25; `E205`, `E505` |
 | Points cloud | 100k-scale PLY, EDL outline, splat points | IO-\*, WGPU-33; `E204` |
 
-### Not done, written plainly (the peer categories we simply lack)
+### Not done, written plainly
+
+The peer categories we simply lack:
 
 | Gap | Verified state today |
 |---|---|

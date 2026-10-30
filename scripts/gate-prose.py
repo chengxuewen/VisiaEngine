@@ -12,6 +12,13 @@ Three checks, all driven by the chapter types declared in book/toc.toml:
                           no "Step N" procedure headings
               reference   no "you should / you must" instructions
   anchors  -- every path:line reference must point at a real file
+  headings -- length (h1<=60, h2-h4<=55 rendered chars) and phrase style
+              (no sentence punctuation; numbered prefixes exempt)
+  paragraphs -- prose paragraphs (outside fences/tables) and single list items
+              over 600 chars must be split
+
+Headings/paragraph checks apply only to chapters marked polish = true.
+All line scans are fence-aware (initial measurement bug fixed here).
 
 Exit codes follow the shared gate convention: 0 clean, 1 findings.
 """
@@ -40,6 +47,14 @@ EXTERNAL = re.compile(r"\]\(https?://")
 STEP_HEADING = re.compile(r"^\s*(?:step\s*\d+|\u6b65\u9aa4\s*\d+)", re.I | re.M)
 IMPERATIVE = re.compile(r"\byou (?:should|must)\b|\u5efa\u8bae|\u8bf7\u6267\u884c", re.I)
 
+# structure polish (plan 2026-10-30-book-structure-polish S1)
+HEADING = re.compile(r"^(#{1,6}) (.+)$")
+LIST_ITEM = re.compile(r"(?:[-*+]|\d+[.)])\s+(.*)$")
+NUM_PREFIX = re.compile(r"^\s*\u00a7?\d+(?:\.\d+)*\.?\s+")
+MD_MARKS = re.compile(r"[`*_~]")
+PARA_LIMIT = 600
+H1_LIMIT, H_LIMIT = 60, 55
+
 
 def load_chapters():
     with open(TOC, "rb") as handle:
@@ -61,6 +76,92 @@ def load_banned():
 def read(path):
     with open(path, encoding="utf-8") as handle:
         return handle.read()
+
+
+def structure_findings(source: str, text: str) -> list[tuple[str, str, str]]:
+    """Heading length/style + paragraph/list-item length, fence-aware.
+
+    Paragraph = blank-line-separated block with soft wraps joined. List items are
+    tracked per marker (each numbered item restarts). Tables and fences are
+    skipped. Polish-marked chapters only (call site).
+    """
+    out: list[tuple[str, str, str]] = []
+    para: list[str] = []
+    item: list[str] = []
+    item_marker = None
+    para_start = item_start = None
+    in_fence = False
+
+    def flush_para() -> None:
+        nonlocal para, para_start
+        if para:
+            joined = " ".join(x.strip() for x in para)
+            if len(joined) > PARA_LIMIT:
+                out.append((source, "paragraph-length",
+                            f"prose paragraph is {len(joined)} chars (line {para_start}) -- split it"))
+        para, para_start = [], None
+
+    def flush_item() -> None:
+        nonlocal item, item_start, item_marker
+        if item:
+            joined = " ".join(x.strip() for x in item)
+            if len(joined) > PARA_LIMIT:
+                out.append((source, "list-item-length",
+                            f"list item ({item_marker}) is {len(joined)} chars (line {item_start}) -- split it"))
+        item, item_start, item_marker = [], None, None
+
+    for no, line in enumerate(text.split("\n"), 1):
+        if line.lstrip().startswith(("```", "~~~")):
+            in_fence = not in_fence
+            flush_para(); flush_item()
+            continue
+        if in_fence:
+            continue
+        stripped = line.strip()
+        if not stripped:
+            flush_para(); flush_item()
+            continue
+        if stripped.startswith("|"):
+            flush_para(); flush_item()
+            continue
+        head = HEADING.match(stripped)
+        if head:
+            flush_para(); flush_item()
+            level, raw = len(head.group(1)), head.group(2).strip()
+            rendered = MD_MARKS.sub("", raw)
+            limit = H1_LIMIT if level == 1 else H_LIMIT
+            if len(rendered) > limit:
+                out.append((source, "heading-length",
+                            f"h{level} is {len(rendered)} chars (limit {limit}): {rendered[:60]}"))
+            body = NUM_PREFIX.sub("", rendered)
+            if re.search(r"[.\uff0e\uff1b;]$", body) or re.search(r"[:\uff1a]\s*\S.{19,}$", body):
+                out.append((source, "heading-prose",
+                            f"h{level} reads like a sentence: {rendered[:60]} -- make it a phrase"))
+            continue
+        item_match = LIST_ITEM.match(stripped)
+        if item_match:
+            # every marker line starts a NEW item; only unmarked lines continue it
+            flush_para()
+            flush_item()
+            number = re.match(r"\d+", stripped)
+            item_marker = number.group(0) if number else stripped[0]
+            item_start = no
+            item.append(item_match.group(1))
+            continue
+        if stripped.startswith(">"):
+            stripped = stripped.lstrip("> ").strip()
+            if not stripped:
+                flush_para(); flush_item()
+                continue
+        if item and line[:1] in (" ", "\t"):
+            item.append(stripped)   # soft-wrapped continuation of the current item
+            continue
+        flush_item()
+        if para_start is None:
+            para_start = no
+        para.append(stripped)
+    flush_para(); flush_item()
+    return out
 
 
 def run_markdownlint() -> list[str]:
@@ -119,6 +220,10 @@ def main() -> int:
                 findings.append((source, "type", "explanation contains step-by-step instructions (move them to a how-to)"))
         if ctype == "reference" and IMPERATIVE.search(text):
             findings.append((source, "type", "reference reads like instructions (you should / must)"))
+
+        # structure polish -- headings and paragraphs (polish-marked chapters only)
+        if chapter.get("polish"):
+            findings.extend(structure_findings(source, text))
 
         # anchors must resolve
         for match in ANCHOR.finditer(text):

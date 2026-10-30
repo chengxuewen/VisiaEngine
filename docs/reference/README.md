@@ -30,7 +30,9 @@ Purpose: the evidence base for the final rendering-backend ruling (D4), whitepap
 | [team-gap-analysis-2026-09-28b.md](team-gap-analysis-2026-09-28b.md) | three.js 608-example benchmark + machine census of this repo's 34 examples | the register of the example gap (supersedes the 09-24 edition's example-census section; coverage mapping + missing-domain->feature mapping + three quick wins + action order) | ★★★ |
 | [team-gap-analysis-2026-09-24.md](team-gap-analysis-2026-09-24.md) | this repo vs 24 archived projects + the GitHub ecosystem | feature-gap ledger (S/A/B grading; the example-census section was refreshed by 09-28b) | ★★☆ |
 
-## Evidence memos (evidence/, dated snapshots **never updated**; the landing points of the summary files' and D4's citation chains — do not delete or rename)
+## Evidence memos (evidence/)
+
+Dated snapshots, **never updated**; the landing points of the summary files' and D4's citation chains — do not delete or rename.
 
 - [2026-09-03-wgpu-direct.md](evidence/2026-09-03-wgpu-direct.md) — the wgpu in-house-route evidence memo (building blocks/precedents/person-months, 6/6 spot-checked through)
 - [2026-09-03-bevy-embed.md](evidence/2026-09-03-bevy-embed.md) — full evidence on Bevy embedding feasibility (2/2 spot-checked through)

@@ -85,7 +85,9 @@ flowchart TB
 ```
 
 ### 4.2 Key design decisions
-- **Why wgpu direct, pipeline in-house?** (the 2026-09 final backend ruling) wgpu provides a Rust-native modern GPU abstraction spanning Vulkan/Metal/DX12/WebGPU and ships its own GL/GLES degradation backends (an optional ANGLE build on Windows) — main-loop ownership, the size budget and compatibility tiering can all be held by the engine. Reusing an off-the-shelf engine's rendering stack (Bevy) was evaluated and not adopted: its rendering layer is inseparable from its own ECS/App framework, and the upstream API-stability cadence does not match an SDK's long-term compatibility promise. The `visiaengine-render` abstraction layer stays: future optional backends (a mobile-exclusive or an enterprise customization, say) still join through the same C API compatibility discipline.
+- **Why wgpu direct, pipeline in-house?** (the 2026-09 final backend ruling) wgpu provides a Rust-native modern GPU abstraction spanning Vulkan/Metal/DX12/WebGPU and ships its own GL/GLES degradation backends (an optional ANGLE build on Windows) — main-loop ownership, the size budget and compatibility tiering can all be held by the engine.
+- Reusing an off-the-shelf engine's rendering stack (Bevy) was evaluated and not adopted: its rendering layer is inseparable from its own ECS/App framework, and the upstream API-stability cadence does not match an SDK's long-term compatibility promise.
+- The `visiaengine-render` abstraction layer stays: future optional backends (a mobile-exclusive or an enterprise customization, say) still join through the same C API compatibility discipline.
 - **How are 2D/2.5D/3D unified?** All visual primitives (points, lines, faces, volumes) exist as spatial entities; perspective/orthographic projections switch freely and bird's-eye/oblique camera flights need no renderer swap. (The continuously interpolated projection morph between viewpoints is delivered: the `set_morph_time` continuous slider, E304.)
 
 ---

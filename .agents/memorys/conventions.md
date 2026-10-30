@@ -259,3 +259,12 @@ A `pre-commit` hook auto-runs `agent-sync` + `gate-agents` so stale generated la
 never be committed. `gate-agents` is also in the `ci` chain. New host adapters are added as
 entries in `scripts/agent-targets.json` — but first verify that host's discovery
 paths/shape from its docs (a wrong path is a dead, unread file; see D35).
+
+## Book structure rules (enforced by gate-prose, plan 2026-10-30-book-structure-polish)
+
+- Headings are phrases, not sentences: h1 <= 60 rendered chars, h2-h4 <= 55; no
+  sentence-ending punctuation (numbered prefixes like `§3. ` are exempt).
+- Prose paragraphs outside fences/tables stay under 600 chars; single list items
+  under 600 too (long enumerations become sub-bullets).
+- Fenced blocks carry commands only: usage prose belongs in the surrounding body,
+  never as `#` comments or pseudo-blockquotes inside a fence.

@@ -258,6 +258,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - C23: "PolyOrch submodule work runs on dev-visiaengine; main is merged-into and tested, never committed-on directly"
 - C24: "Commit message = short single-concern subject + bulleted body"
 - C25: Regenerate host config layers after editing `.agents/` (2026-10-28)
+- Book structure rules (enforced by gate-prose, plan 2026-10-30-book-structure-polish)
 
 ### decisions
 - full text: `.agents/memorys/decisions.md`
