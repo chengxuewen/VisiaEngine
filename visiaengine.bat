@@ -43,6 +43,12 @@ echo   visiaengine.bat agents check    verify every generated layer ^(non-zero o
 echo   visiaengine.bat agents status   read-only freshness report ^(always exit 0^)
 echo   visiaengine.bat gate-agents     single-source consistency gate
 echo   visiaengine.bat ci              the whole CI chain
+echo.
+echo docs (the book, output in www/book):
+echo   visiaengine.bat book-build      build the site ^(--public drops internal pages^)
+echo   visiaengine.bat book-serve      serve it on :3000 and rebuild on change
+echo   visiaengine.bat book-check      static checks on the built site
+echo.
 echo   pixi task list                  every task this workspace defines
 echo.
 echo pixi run ^<task^> is always equivalent.

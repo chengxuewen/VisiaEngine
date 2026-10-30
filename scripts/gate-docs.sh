@@ -183,7 +183,7 @@ if [ -f visiaengine.sh ]; then
 
     cli_refs=$(grep -ohE 'visiaengine\.(sh|bat)[[:space:]]+(-e[[:space:]]+[^[:space:]]+[[:space:]]+)?[^[:space:]]+' \
             visiaengine.sh visiaengine.bat AGENTS.md docs/env.md README.md 2>/dev/null \
-        | sed -E 's/.*visiaengine\.(sh|bat)[[:space:]]+//; s/^-e[[:space:]]+[^[:space:]]+[[:space:]]+//' \
+        | sed -E 's/.*visiaengine\.(sh|bat)[[:space:]]+//; s/^-e[[:space:]]+[^[:space:]]+[[:space:]]+//; s/[`)(,.;:]+$//' \
         | sort -u | grep -vE '^(-|<|>)' | grep -v '[<>]' || true)
     if [ -z "$cli_refs" ]; then
         echo "GATE-DOCS ✗ 12)no ./visiaengine.sh <task> reference found (docs and USAGE both empty?)"; fail=1
@@ -191,7 +191,22 @@ if [ -f visiaengine.sh ]; then
     # `pixi run <name>` also accepts executables from the environment PATH (cmake, cargo, ...),
     # so the allowlist below is part of the contract, not an escape hatch: a name that is
     # neither a task nor one of these is almost certainly a typo in the docs.
-    cli_exes="cmake cargo node npm python3 ctest rustc rustfmt"
+    # 12b) one command form: agents run what readers run, so task examples in the entry docs
+    # must go through the wrapper. `pixi run` stays legal only where the text explains the
+    # equivalence, the CI exception, or a historical measurement.
+    while IFS= read -r hit; do
+        bfile=${hit%%:*}; brest=${hit#*:}; bline=${brest%%:*}; btext=${brest#*:}
+        case "$btext" in
+            *equivalent*|*fallback*|*CI*|*standby*|*D[0-9]*) continue ;;
+        esac
+        btoken=$(printf '%s' "$btext" | sed -nE 's/.*pixi run (-e [a-z0-9_-]+ )?([a-z][a-z0-9_-]*).*/\2/p')
+        [ -n "$btoken" ] || continue
+        grep -qxF "$btoken" <<< "$cli_tasks" || continue
+        echo "GATE-DOCS ✗ 12)$bfile:$bline says 'pixi run $btoken'; the documented form is ./visiaengine.sh $btoken"
+        fail=1
+    done < <(grep -nE 'pixi run ' AGENTS.md docs/env.md 2>/dev/null || true)
+
+    cli_exes="cmake cargo node npm python3 ctest rustc rustfmt mdbook serena"
     while IFS= read -r name; do
         [ -n "$name" ] || continue
         if grep -qxF "$name" <<< "$cli_tasks" || grep -qwF "$name" <<< "$cli_exes"; then

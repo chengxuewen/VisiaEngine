@@ -26,6 +26,12 @@ common:
   ./visiaengine.sh agents status   read-only freshness report (always exit 0)
   ./visiaengine.sh gate-agents     single-source consistency gate
   ./visiaengine.sh ci              the whole CI chain
+
+docs (the book, output in www/book):
+  ./visiaengine.sh book-build      build the site (--public drops internal pages)
+  ./visiaengine.sh book-serve      serve it on :3000 and rebuild on change
+  ./visiaengine.sh book-check      static checks on the built site
+
   pixi task list                   every task this workspace defines
 
 `pixi run <task>` is always equivalent; Windows: visiaengine.bat <task>.'
