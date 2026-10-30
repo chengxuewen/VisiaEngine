@@ -152,6 +152,8 @@ grep -c "duplicate-pattern" <file>    # expect 1; >1 = edit inserted duplicates
 
 **Extension (2026-09-14, third judgment)**: anchor text for cross-step python batch-edit scripts **must be read from disk by the script at run time** (grep/sed live state); hand-typing it from the previous round's draft memory is forbidden — 3 script asserts in this session crashed precisely for this reason (rustfmt reflow had changed a comment AUTO→PIXI, a D8 heading variant, a smoke-bullet indentation layer); the assert-first pattern has proven zero-loss, but one crash = one wasted round. For "existing content + insert" patterns (adding logging or changing a signature before old code), prefer python precise string replacement (read → replace → write back) over edit's lines array, which can match multiple times.
 
+**Extension (2026-10-30)**: never issue two edit calls against the **same file** in one parallel batch. Both return success, but the later write is applied to the pre-edit content and silently discards the earlier one (measured: the `OUT_DIR` constant edit in `scripts/book-build.py` vanished while a sibling edit in the same batch survived; the loss surfaced only when the build wrote to the old path). Same-file edits are strictly sequential; parallel batches are only for files that do not overlap.
+
 **Precedent**: the 2026-08-11 debugging round — the edit tool inserted duplicates three times (stop() function signature ×2, main declaration ×2, residual log line), each only exposed at build time, wasting 3 rounds. The fix unified on python replace (assert count==1).
 
 **Blocking condition**: making a 2nd consecutive edit to the same function without grep verification; committing with duplicate insertions still present.

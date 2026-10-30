@@ -2,10 +2,10 @@
 """Assemble the mdBook source tree and build the docs site (plan §14, S1).
 
 docs/** + book/toc.toml  -->  build/book-src/ (SUMMARY generated)
-                          -->  mdbook build -d www/book/<lang>
-                          -->  rustdoc (target/doc) merged into www/book/api if present
+                          -->  mdbook build -d build/book/<lang>
+                          -->  rustdoc (target/doc) merged into build/book/api if present
 
-docs/ stays the single source of truth; build/ and www/ are fully derived.
+docs/ stays the single source of truth; everything under build/ is derived.
 Unlisted markdown files are appended under "Appendix" with a WARN (plan §9-1).
 """
 
@@ -23,7 +23,11 @@ import tomllib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOOK_DIR = os.path.join(ROOT, "book")
 SRC_DIR = os.path.join(ROOT, "build", "book-src")
-OUT_DIR = os.path.join(ROOT, "www", "book")
+# U4 (2026-10-30): build/ is the single derived root, so the assembled source and the
+# built site sit side by side. Keep the site one level down: the stale-language prune
+# below deletes anything directly under OUT_DIR that carries an index.html, so pointing
+# OUT_DIR at a bare "build" would sweep gallery/ along with it.
+OUT_DIR = os.path.join(ROOT, "build", "book")
 
 
 def first_heading(path: str) -> str:
@@ -222,7 +226,7 @@ def main() -> int:
     rustdoc = os.path.join(ROOT, "target", "doc")
     if os.path.isdir(rustdoc):
         shutil.copytree(rustdoc, os.path.join(OUT_DIR, "api"), dirs_exist_ok=True)
-        print("BOOK ✓ rustdoc merged -> www/book/api/")
+        print("BOOK ✓ rustdoc merged -> build/book/api/")
     else:
         print("BOOK - no target/doc yet (run: pixi run docs-gen) -- api/ skipped")
 

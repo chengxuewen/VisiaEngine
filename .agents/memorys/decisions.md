@@ -632,3 +632,29 @@ per-release maintenance.
 - **Simplified**: book-build emits www/book/en only (no generated per-language book
   dirs, no langs.json/root.html landing page); book-check drops the bilingual
   assertions; the cargo-binstall and gettext dependencies leave the book feature.
+
+## D53: the docs site moves to `build/book`; `www/` retires (2026-10-30, user-adjudicated U4)
+
+Supersedes D45's layout half. Its rationale -- "keeping `build/` reserved for the wasm
+wall" -- was already false when written: the wall is served from
+`cmake-build-*/web-demo` (gate-web.sh:34) and merely *consumes*
+`build/gallery/assets`. Measured tenants of `build/` before this ruling:
+`book-src/` (the assembled book source), `gallery/`, `i18n-src/`, `i18n-check/`.
+
+- **Decision A**: `book-build` writes `build/book/<lang>` (today `en/`), `build/book/api/`
+  and the root redirect; `build/book-src/` stays the assembly dir. One tool, one root.
+- **Why not B (`www/book`)**: `www` had exactly one tenant and three hardcoded constant
+  references (book-build/book-check/book-serve) -- a path alias, not an output territory.
+  Keeping it froze "one tool spans two derived roots", the only real defect in the status
+  quo. The "zero gitignore exception" argument for B was inverted: `/www/` had been ignored
+  since D45, so A *removes* a rule instead of adding one.
+- **Why not C (`out/book`)**: `out/` has no consumer anywhere (scripts / CMake / tasks:
+  zero writers). Giving an empty ignored slot its first meaning would force any future
+  deploy work to negotiate ownership with the book artifact.
+- **Guard**: `OUT_DIR` must stay a subdirectory of `build/` -- book-build's stale-language
+  prune deletes any *direct child* of `OUT_DIR` carrying `index.html`, so pointing it at a
+  bare `build` would sweep `gallery/`. Inline comment added at the constant.
+- **Deliberately unchanged**: `-d` still passes per target (the root redirect and `api/`
+  are siblings of `en/`); the artifact a CI pages job would take is `build/book`; no
+  command name changes. Touch list: three scripts, gate-docs ④ skip prefix, pixi.toml,
+  book/book.toml, docs/env.md, AGENTS.md, .gitignore.

@@ -26,7 +26,7 @@ import http.server
 import socketserver
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "www", "book")
+OUT = os.path.join(ROOT, "build", "book")
 
 
 def languages() -> list[str]:
@@ -147,7 +147,7 @@ def main() -> int:
 
     langs = languages()
     if not langs:
-        print("BOOK-CHECK ✗ no built site under www/book (run: pixi run book-build)")
+        print("BOOK-CHECK ✗ no built site under build/book (run: pixi run book-build)")
         return 1
 
     failures = sum(check_lang(lang) for lang in langs)

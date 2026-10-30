@@ -42,7 +42,7 @@ while IFS= read -r f; do
     dir=$(dirname "$f")
     while IFS= read -r dest; do
         case "$dest" in
-            http*|mailto:*|\#*|*\ *|build/*|target/*|www/*) continue ;;
+            http*|mailto:*|\#*|*\ *|build/*|target/*) continue ;;
         esac
         target=${dest%%#*}
         target=${target%%\?*}

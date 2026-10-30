@@ -21,7 +21,7 @@ import threading
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "www", "book")
+OUT = os.path.join(ROOT, "build", "book")
 POLL_SECONDS = 3.0
 
 

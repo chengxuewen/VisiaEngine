@@ -141,7 +141,7 @@ First-run solve+install **37s** (after the cache warms) · idempotent second run
 
 The CMake build trees live in `cmake-build*/` (VSCode picks a preset and goes). Mind the difference from the old `target/cmake-rust` shared incremental surface: now **the cargo cache is isolated per build tree** (PolyOrch defaults `.cargo-target/` inside each cmake-build*) — each preset's first build compiles cargo fully once; what that buys is build-directory self-sufficiency (deleting the tree = deleting everything) and parallel presets. The save-frame thumbnail pipeline owns `build/gallery/assets/` (wall thumbnail source), direct cargo calls own `target/` exclusively.
 
-Directory ownership is therefore explicit: `cmake-build*/` = configure trees (one per preset), `build/gallery/assets/` = thumbnail-pipeline output, `target/` = direct cargo. Nothing configures into a bare `build/` root, and a stray top-level `Testing/` is ctest residue (safe to remove).
+Directory ownership is therefore explicit: `cmake-build*/` = configure trees (one per preset), `build/gallery/assets/` = thumbnail-pipeline output, `build/book-src/` + `build/book/` = docs-site assembly and built site, `target/` = direct cargo. Nothing configures into a bare `build/` root, and a stray top-level `Testing/` is ctest residue (safe to remove).
 The committed `.vscode` debug lists are refreshed by `./visiaengine.sh f5` — the `debug` preset is the only tree that sees every lane (Qt on + the debug knob); no other configure touches them.
 
 ## Qt support matrix (R2, 2026-10-15)
@@ -179,24 +179,24 @@ agents <sub>` works through the passthrough.
 ### Docs site (mdBook)
 
 ```bash
-./visiaengine.sh book-build            # assemble build/book-src from docs/ + book/toc.toml, then mdbook build into www/book/en
+./visiaengine.sh book-build            # assemble build/book-src from docs/ + book/toc.toml, then mdbook build into build/book/en
 ./visiaengine.sh book-build --public   # same, but skip pages marked visibility = "internal" (and drop them from the artifact)
-./visiaengine.sh book-check            # static checks on www/book: index, graph.json, embedded graph app
+./visiaengine.sh book-check            # static checks on build/book: index, graph.json, embedded graph app
 ./visiaengine.sh book-serve            # foreground LAN server on :3000 with a rebuild watcher; Ctrl-C stops it
 ./visiaengine.sh book-graph            # re-export graph.json only (the watcher then rebuilds the pages)
 ```
 
-`book-serve` serves the whole built tree (`www/book/`), not one language, so the landing page,
-the language trees and `api/` stay intact. It polls `docs/` + `book/` + `.codegraph` and rebuilds
+`book-serve` serves the whole built tree (`build/book/`), not just the `en/` subtree, so the root
+redirect page and `api/` stay intact. It polls `docs/` + `book/` + `.codegraph` and rebuilds
 every built language on change. Override with `BOOK_PORT` / `BOOK_HOST`; if the shell exports
 `http_proxy`, add `no_proxy=127.0.0.1,localhost` or the browser will show the proxy page instead.
 Every page ends with a provenance footer (`commit · docs date · graph index time`) fed by the
 `meta.json` that `book-build` writes next to each language.
 
-- `docs/` stays the single source of truth. `book/` holds only the site shell (`book.toml`, `toc.toml`, `web/`); `build/` and `www/` are generated and gitignored (`build/` remains the wasm-wall territory).
+- `docs/` stays the single source of truth. `book/` holds only the site shell (`book.toml`, `toc.toml`, `web/`); `build/` is the one derived root (assembly `book-src/` + site `book/`) and is gitignored — there is no separate `www/` tree (D53).
 - Chapter order and metadata live in `book/toc.toml` (`type`, `polish`, `visibility`); markdown not listed there lands in an Appendix with a warning.
 - Diagrams are ```` ```mermaid ```` fences rendered by a 1 KB lazy loader (mermaid 11.17.2 is vendored; the 3.5 MB bundle is fetched only on pages that contain a diagram). The call/dependency page is an iframe over a cytoscape app fed by `graph.json`, which `book-build` exports from `.codegraph` — run `./visiaengine.sh mcp index` first.
-- Preview directly: `./visiaengine.sh mdbook serve book -d www/book/en`.
+- Preview directly: `./visiaengine.sh mdbook serve book -d build/book/en`.
 - The book is **English-only** (D46): other languages are covered by the reader's browser translation
   (Edge/Chrome built-in, or Immersive Translate), which needs no per-release maintenance.
 

@@ -142,7 +142,7 @@ serena = { features = ["serena"] }
 
 [tasks]
 # Human-facing docs site (see .omo/plans/2026-10-28-repo-book.md §14):
-# assemble build/book-src from docs/ + book/toc.toml, then mdbook build into www/book/<lang>.
+# assemble build/book-src from docs/ + book/toc.toml, then mdbook build into build/book/en.
 book-build = "python3 scripts/book-build.py"
 book-check = "python3 scripts/book-check.py"
 # Foreground LAN server with a rebuild watcher; Ctrl-C stops it (plan §12-3).
