@@ -916,3 +916,19 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   TS-domain -> rewrite-to-fit). Rejected: skillhub (enterprise registry, mismatch),
   skillfile (skill manager, we are our own), jcode (harness, not a skill).
 - **Next scan**: first check whether findings 1-2 were fixed by the D53 session.
+
+## repo-audit Quick Scan — 2026-10-30 (closure re-check)
+
+- Full-scan finding 1 (D45/D46 duplicates): **CLOSED** -- renumbered to D54/D55 in
+  3696c26, uniqueness re-verified (no dups, no holes, max=D55).
+- Full-scan finding 2 (toc 16 != SUMMARY 54): **RECLASSIFIED as a probe defect,
+  not a repo defect** -- the probe counted only [[chapter]] entries (16) against
+  all SUMMARY lines (54 = 52 entries + 2 draft parents). Correct accounting:
+  [[chapter]] 16 + [[group]] glob expansion 36 = 52 == SUMMARY 52. Match.
+- Quick sweep: 10/10 domains green (frontmatter, numbering, mcp pins, script
+  syntax, cli parity, registry spot-check, naming). Three probe artifacts
+  corrected for future runs: (a) conventions "holes" C2-C8/C10-C14 are documented
+  reserved slots; (b) pitfalls PIT-27/63 gaps are documented intentional (header
+  note); (c) the structure probe must compare hidden dirs on both sides and
+  exclude generated dirs (node_modules et al); AGENTS.md tree rows all resolve.
+- No new findings. Next scan: fresh cycle.
