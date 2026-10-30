@@ -973,3 +973,14 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   - PC-8 [discard] MADR template -- our decision format is strictly richer.
 - Lanes P-3/P-4: thin data this run (P-3 items were covered by the local audit's
   own probes; P-4 deferred to the next cycle with a dedicated search).
+
+## repo-audit Quick Scan #2 — 2026-10-30
+
+- 🟢 all clear, 10/10 domains. New surfaces verified post-quick-fix: 39 skills
+  (frontmatter complete, router rows Skill authoring/Impact analysis present, no
+  ecosystem-scan mirror residue), conventions header matches reality (C14+C15-C25
+  active, doc-audit M5 fix confirmed), structure probe with symmetric hidden-dir
+  comparison (zero real drift), toc+glob 52 == SUMMARY 52.
+- Previous findings: both remain CLOSED (D uniqueness, toc accounting).
+- Quick-run counter: 2 of 5 toward Full escalation. Probes refined again this run
+  (structure now separates documented generated/hidden dirs from real drift).
