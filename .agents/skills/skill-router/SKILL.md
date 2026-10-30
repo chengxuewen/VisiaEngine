@@ -28,13 +28,14 @@ Read the user message and classify it:
 | **Adjudication** | "裁决逐项过"/"一个个来"/"不要一起列出"/"walk the options one by one" | `/adjudication-walkthrough` |
 | **Test** | "测试"/"E2E"/"覆盖率" | `/test-harness`（骨架）/ `/test-driven-development`（红绿）；Web 面再加 `/browser-testing` |
 | **Docs** | "文档"/"README"/"说明" | `/doc-audit`（一致性）/ `/documentation-and-adrs`（写决策） |
+| **Audit** | "审计"/"体检"/"audit"/"扫描生态" | 对象 = docs/decisions 一致性 → `/doc-audit`；对象 = skills/rules/生态/全仓 → `/repo-audit`；两者皆像 → 交互确认 |
 | **Security** | "安全"/"权限"/"认证" | `/security-hardening` |
 | **Release** | "发布"/"上线"/"打包"/"tag" | `/shipping-and-launch` |
 | **Hygiene** | "死代码"/"技术债"/"AI 垃圾"/"清理" | `/code-simplification` + `/ai-slop-cleanup` |
 | **Observability** | "日志"/"指标"/"追踪"/"告警" | `/observability-and-instrumentation` |
 | **Triage** | "不确定改哪层"/"跨模块"/"从哪下手" | `/repo-triage` |
 | **Orchestration** | "并行"/"子代理"/"拆任务" | `/planning-and-task-breakdown` + `/subagent-orchestration` |
-| **Explore** | "调研"/"对比"/"有什么方案" | `/repo-audit (formerly ecosystem-scan)` + the host's own subagent mechanism |
+| **Explore** | "调研"/"对比"/"有什么方案" | `/repo-audit` + the host's own subagent mechanism |
 | **Ambiguous** | no clear keyword | propose 2-3 possible directions and let the user choose |
 
 ### Step 2: Context Check

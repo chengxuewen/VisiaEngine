@@ -29,7 +29,7 @@ description: Whole-repo engineering audit across 10 domains (skills, rules, mcp,
 | 2 | **rules** | `.agents/rules/` (43 files) | gate-rules, gate-agents | semantic dedup, runnable-command check, quality |
 | 3 | **mcp** | `.mcp.json`, host mirrors, `scripts/mcp-*` | gate-mcp (MCP-FILE segment via scripts/mcp-file-guard.py) | launcher portability (PIT-86), pin drift, per-host parity |
 | 4 | **scripts** | `scripts/` (~25 py/sh) | gate-docs 12 (names only) | syntax health sweep (`bash -n` / `ast.parse`), orphan detection (not referenced by pixi/gates/docs), CRLF/LF consistency (PIT-93), shebang + exec bits |
-| 5 | **docs** | `docs/` (README, env, whitepaper, sdd/, reference/) | gate-prose, gate-docs, gate-trace | cross-reference audit, numbering contiguity (§N, PIT-x, D-x), structure-rule coverage confirmation |
+| 5 | **docs** | `docs/` (README, env, whitepaper, sdd/, reference/) | gate-prose, gate-docs, gate-trace | cross-reference audit; numbering HOLES detected here, numbering SEMANTICS hand off to doc-audit dimension 3 |
 | 6 | **book** | `book/` + `www/book/` | book-check, gate-docs 13 | toc<->SUMMARY<->sidebar nesting consistency, vendored offline assets, fold structure, title-length budget |
 | 7 | **cli** | `visiaengine.sh` / `.bat` | gate-docs 12/12b | USAGE<->pixi task sync, sh/bat parity (advertised set diff), front-door discoverability |
 | 8 | **tests** | examples/, ctest registry, `smoke-*` | cmake-smoke, pack-check, ctest | orphaned tests, registry<->examples consistency, dual-mode (human/ctest) coverage |
@@ -48,7 +48,8 @@ With no arguments, pop up:
 [1] Quick Scan -- 10-domain fast audit (< 30s)
 [2] Full Scan -- deep audit + community sync + security gate (3-5min)
 [3] View Report -- view the last scan results
-[4] Quick Fix -- auto-fix LOW/MEDIUM issues (non-interactive)
+[4] Quick Fix -- auto-fix LOW/MEDIUM issues (non-interactive; NEVER touches
+                 .agents/memorys/decisions.md or status.md history -- report only)
 [5] Domain dive -- deep-scan one domain (see Trigger Conditions)
 ```
 
@@ -95,7 +96,7 @@ Fetch READMEs with `webfetch`; 3-dimension quick scoring: tech-stack fit / alrea
 
 ```
 🟢 No issues -- N checks passed, no deep scan needed
-🟡 Found N items worth attention -- recommend /ecosystem-scan full
+🟡 Found N items worth attention (CRITICAL/HIGH/MEDIUM/LOW ladder, matching code review) -- recommend /repo-audit full
 ```
 
 ---
@@ -239,10 +240,10 @@ Replace the variables:
 
 ## Boundary with doc-audit
 
-- **ecosystem-scan** (this skill): audits the **whole engineering surface** (10 domains above) and scans the
+- **repo-audit** (this skill): audits the **whole engineering surface** (10 domains above) and scans the
   **external** ecosystem for adoptable content.
 - **doc-audit**: audits **project documentation** consistency (architecture/design/decision records) in depth;
-  it already carries the "Division of labor with ecosystem-scan" table.
+  it already carries the "Division of labor with repo-audit" table.
 - Rule of thumb: adopting/optimizing skills or rules, or a periodic whole-repo checkup -> this skill;
   docs/architecture consistency deep-dive -> `doc-audit`.
 
