@@ -291,14 +291,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
-- ... 73 older entries omitted (read the full file)
-- PIT-73: with setsid, $! is NOT the server -- the port holder is (2026-10-16, serve-https round)
-- PIT-74: orchestrator "corrected" a working diagnostic with a spec-confabulated diagnosis; user evidence won (2026-10-16)
-- PIT-75: Ninja DESC of a custom target is baked at add_custom_target time; post-hoc COMMENT writes never reach it (2026-10-19, dual-serve round)
-- PIT-76: file(WRITE) with a multi-line quoted argument is a CMake parse error, and my edit-tool writes kept smuggling in a stray `]` (2026-10-19, dual-serve round)
-- PIT-77: smoke-testing a foreground serve target from the orchestrator shell kills the IDE's own run -- one port, one owner (2026-10-19, dual-serve round)
-- PIT-78: "pick dead on wasm" was an ENGINE bug -- a surface the pixel gate never probes can hide a total defect (2026-10-19, review-fix round)
-- PIT-79: transposing a matrix to "fix" a mystery -- verify the producer's contract from its SOURCE before touching conventions (2026-10-19, same round)
+- ... 80 older entries omitted (read the full file)
 - PIT-80: fit-changed framing breaks every "pick the center pixel" assumption downstream (2026-10-19, same round)
 - PIT-81: veLoop's onFrame callback receives NO arguments; ad-hoc harness chrome runs need the D-Bus scrub (2026-10-23, E305 band)
 - PIT-82: an unclosed <script type="module"> tag silently disables the whole page -- and my own degenerate write caused it (2026-10-23, E901 band)
@@ -307,15 +300,22 @@ file. Read the source file before acting on a rule you are unsure about.
 - PIT-85: a `.gitignore` inline comment silently disables the rule it annotates (2026-10-29, .gitignore reorg)
 - PIT-86: the MCP launcher was cwd-robust but its REFERENCE was not -- Trae spawns outside the repo root (2026-10-29, Trae onboarding)
 - PIT-87: a 0-byte case-variant `AGENTS.md` inside a rules folder becomes a generated rule, silently (2026-10-29, Trae onboarding)
+- PIT-88: msgid bytes are the gettext lookup key -- rewriting them silently de-translates entries (2026-10-30, book translation batches)
+- PIT-89: gettext reconstruction re-parses "N. Title" headings as ordered lists (2026-10-30, silent-fallback class)
+- PIT-90: whole-book greedy validation conflates failures -- use a one-page harness (2026-10-30, translation infrastructure)
+- PIT-91: prose scanners -- sibling bullets are distinct items, indented continuations are not (2026-10-30, gate-prose structure rules)
+- PIT-92: indented SUMMARY entries escaped the book chapter existence check (2026-10-30, sidebar folding)
+- PIT-93: docs/*.md are CRLF -- python string surgery with '\n' silently misses (2026-10-30, structure polish)
+- PIT-94: history surgery -- backup branch first, synchronous rebase, fresh origin/main (2026-10-30, 24->5 commit squash)
 
 ### status
 - full text: `.agents/memorys/status.md`
-- ... 54 older entries omitted (read the full file)
-- Reuse-audit round (executed 2026-10-15, adjudications 13-17, all five cashed)
+- ... 55 older entries omitted (read the full file)
 - Headless-page-gate round (executed 2026-10-16, owner-adjudicated chain: download / heartbeat / option-4 beacon)
 - Dual-serve round baseline (2026-10-19, owner-adjudicated: one button, http+https)
 - Review-fix band baseline (2026-10-19, 5-agent review FAILED -> three blocking fixes landed)
 - Web wall expansion band baseline (2026-10-23, live pages 6 -> 26)
 - Web wall expansion addendum (2026-10-23 same band, live pages 26 -> 29)
+- 2026-10-30: the docs book line closes (S1-S8 -> D46 -> polish)
 <!-- END:agents-memory -->
 

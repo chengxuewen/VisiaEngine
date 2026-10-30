@@ -763,3 +763,59 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Hazard beyond this incident**: `agents.md` and `AGENTS.md` are the SAME file on a case-insensitive filesystem (Windows, default macOS). A case variant in the source tree is a checkout collision waiting for the next Windows clone, not just extra noise.
 - **Solution**: delete the variant; confirm the generated tree pruned back to 40 (`[ MDCDEL] codebuddy common-AGENTS`). No code guard added: an empty-rule filter would hide the symptom, not the cause (the file must not exist), and it cannot fix a case collision anyway. Prevent with review discipline: never create a file in `.agents/rules/<lang>/` whose name differs from an existing one only by case, and read the `GATE-RULES ✓ (N rule files …)` count when it changes.
 - **Verification**: `ls .agents/rules/common/` shows 13 canonical files and no uppercase variant; `ls -d .codebuddy/rules/*/ | wc -l` = 40; `git status` clean of untracked files under `.agents/`.
+
+## PIT-88: msgid bytes are the gettext lookup key -- rewriting them silently de-translates entries (2026-10-30, book translation batches)
+
+- **Symptom**: a translation sat in `book/po/zh-CN.po` (`msgstr` filled, msgfmt green), but the built zh page still rendered the English sentence. No error anywhere.
+- **Root cause**: the mdbook gettext preprocessor matches `msgstr` to `msgid` by exact bytes. A hand "canonicalization" pass that rewrote every entry onto one physical line changed the byte form of entries containing escaped quotes (`\"`), so the lookup missed and the string silently fell back to English.
+- **Solution**: msgid lines are immutable -- only `msgstr` may be rewritten. When migrating translations across a POT refresh, key by the UNESCAPED msgid text and re-emit the msgid exactly as the reference generator (msginit/msgmerge) wrote it. Verify a distinctive phrase with `grep` on the built HTML, not on the PO.
+- **Verification**: `grep -c "它是什么" www/book/zh-CN/index.html` (or any batch phrase) changes only when the page changes; `pixi run book-i18n status` numbers move in lockstep.
+- **Forbidden**: treating a PO file as plain text; "normalize the whole catalog" scripts; trusting `msgfmt --check` (it validates format, not lookup success).
+
+## PIT-89: gettext reconstruction re-parses "N. Title" headings as ordered lists (2026-10-30, silent-fallback class)
+
+- **Symptom**: translations for every numbered heading ("1. Problem and Opportunity") always fell back, regardless of correctness; 15 strings formed a stable failure class across five batches.
+- **Root cause**: the preprocessor rebuilds markdown from the translated string and compares event streams. A heading whose text starts with `1. ` re-parses as an ordered list, so the source and translation event streams can never agree. Second bug in the same class: emitters that forgot to escape REAL newlines produced multi-line `msgstr` values polib rejects (all bash-comment entries died this way).
+- **Solution**: rename English headings to `## §N. Title` (section sign is not a list marker, and matches the existing §-cross-reference convention); append explicit translations for the new msgids. Any PO emitter escapes `\n` like any other metacharacter.
+- **Verification**: `grep -c "§1. 问题与机会" www/book/zh-CN/docs/whitepaper.html` >= 1; the harness fallback class count drops to the documented residue.
+- **Forbidden**: heading text starting with `N. `; PO emitters that escape only `"` and `\`.
+
+## PIT-90: whole-book greedy validation conflates failures -- use a one-page harness (2026-10-30, translation infrastructure)
+
+- **Symptom**: the greedy apply-one-rebuild-whole-book loop dropped 30 of 109 strings, including single words (`symptom` -> `症状`), and re-runs dropped a different set -- drops looked random and unfalsifiable.
+- **Root cause**: one bad string fails the entire book build, so every failure is attributed to the most recent candidate; whole-book builds also take minutes, capping batch size.
+- **Solution**: a per-entry harness: build a one-page book with a one-entry PO; verdict `ok` (Chinese marker in output) / `struct` (build fails) / `fallback` (builds, still English). ~5 s per string, and the two failure modes separate cleanly -- `fallback` is a lookup problem, `struct` is a markdown-reconstruction problem; they have different fixes.
+- **Verification**: harness verdicts predicted the fallback classes of the following three batches exactly (numbered headings, quoted strings, fence comments).
+- **Forbidden**: validating translation batches against whole-book builds; treating "the build passed" as "the translation landed".
+
+## PIT-91: prose scanners -- sibling bullets are distinct items, indented continuations are not (2026-10-30, gate-prose structure rules)
+
+- **Symptom**: the new paragraph-length check reported a 1110-char "list item" that was actually four sibling `-` bullets concatenated, then an 832-char "paragraph" that was actually the soft-wrapped continuation of one bullet.
+- **Root cause**: two symmetrical bugs: consecutive bullets sharing the same marker never flushed the accumulator (marker equality used as identity), and unmarked indented continuation lines flushed it instead of joining.
+- **Solution**: every marker line (`-`/`*`/`N.`) starts a NEW item unconditionally; only an UNMARKED line whose raw form starts with whitespace continues the current item. Tables and fences reset both accumulators.
+- **Verification**: gate-prose findings matched the manually counted real blocks (README 2990-char paragraph, tutorials trio, Qt matrix); zero false concatenations after the fix.
+- **Forbidden**: using the marker character as item identity; stripping indentation before continuation detection.
+
+## PIT-92: indented SUMMARY entries escaped the book chapter existence check (2026-10-30, sidebar folding)
+
+- **Symptom**: after nesting the SDD contracts and the reference library under draft parent rows, gate-docs' chapter count silently dropped 52 -> 7 -- 45 entries were no longer existence-checked.
+- **Root cause**: the check greps `^- \[...\](path)` -- anchored at line start, so the indented children of a folded section match nothing.
+- **Solution**: `grep -oE '^[[:space:]]*- \[...\](...)'`. Re-verified the count returns to 52 and the negative path (a ghost entry) still turns red.
+- **Verification**: `pixi run gate-docs` prints `book: 52 chapters`; removing a target file goes red.
+- **Forbidden**: line-start-anchored greps over generated outlines that can gain indentation; trusting a count drop as "fewer chapters" instead of "fewer checks".
+
+## PIT-93: docs/*.md are CRLF -- python string surgery with '\n' silently misses (2026-10-30, structure polish)
+
+- **Symptom**: three consecutive edit scripts reported success but the target text never changed; a later block replacement glued the following bullets onto one physical line.
+- **Root cause**: the docs tree is CRLF. `t.replace(old_with_newline)` misses every pattern spanning a line break (`\r\n` in the file); `t.index('\n\n')` never finds a blank line; re-emitting a multi-line block with bare `\n` glued what the blank line used to separate.
+- **Solution**: detect `'\r\n' in raw` first, normalize to `\n` for processing, restore on write; or operate line-wise and re-join with the file's own ending. After every scripted edit, `git diff` must show exactly the intended hunks.
+- **Verification**: `git diff --stat` hunk count matches the number of intended edits; grep finds the new text.
+- **Forbidden**: multi-line python replace on repo text files without a line-ending check; re-emitting blocks with hardcoded `\n`.
+
+## PIT-94: history surgery -- backup branch first, synchronous rebase, fresh origin/main (2026-10-30, 24->5 commit squash)
+
+- **Symptom**: a reword-rebase driven by a backgrounded editor script raced and produced a mangled stack; a "24 unpushed commits" premise turned out stale because the user had pushed mid-session (origin/main was ahead of the local assumption), so a soft-reset targeted the wrong base.
+- **Root cause**: three compounding process errors: rebase + sleep-coordinated background scripts; no backup ref before rewriting; origin state assumed instead of fetched.
+- **Solution**: the checklist that finally worked: `git branch backup/<name> <tip>` BEFORE touching anything; `git fetch` + read `origin/main` immediately before the reset; `git reset --soft origin/main` then file-grouped re-commits (deterministic, no conflicts); verify with `git diff <old-tip> HEAD` == the intended delta only; synchronous `git rebase -i` with a GIT_SEQUENCE_EDITOR sed, `--amend` and `--continue` in one `&&` chain.
+- **Verification**: `git diff <backup> HEAD` shows only the intended follow-up change; `git status` clean; `git log origin/main..HEAD` shows the intended thematic stack.
+- **Forbidden**: backgrounding any rebase step; rewriting history without a backup ref; trusting an "unpushed count" from earlier in the session.

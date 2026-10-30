@@ -882,3 +882,17 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   families), E815/E816 (C twins cross-referenced).
 - 17 commits ahead at close; worktree clean; ports returned after every
   verification run.
+
+## 2026-10-30: the docs book line closes (S1-S8 -> D46 -> polish)
+
+- The mdBook site is English-only (D46): the PO translation pipeline was removed
+  after five batches reached ~86% calibrated coverage; the 513-string lineage is
+  preserved on the local branch `backup/pre-squash` (delete only on explicit
+  owner instruction).
+- Structure polish landed (plan 2026-10-30-book-structure-polish, expert-revised):
+  gate-prose enforces heading length/style and paragraph/list-item length; the
+  22 real findings were fixed information-preservingly.
+- The sidebar folds: SDD contracts (9) and the reference library (37) nest under
+  draft parents; gate-docs 13 now checks indented SUMMARY entries.
+- Pending: push (4 commits), backup branch deletion decision, optional C24
+  subject fixes on two PUSHED commits (force-push required -- owner's call).
