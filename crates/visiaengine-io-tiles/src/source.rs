@@ -40,7 +40,10 @@ impl MemSource {
     }
 
     pub fn insert(&self, z: u8, x: u32, y: u32, bytes: Vec<u8>) {
-        self.tiles.lock().expect("mem source").insert((z, x, y), bytes);
+        self.tiles
+            .lock()
+            .expect("mem source")
+            .insert((z, x, y), bytes);
     }
 }
 

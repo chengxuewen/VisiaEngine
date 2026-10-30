@@ -851,7 +851,9 @@ impl Engine {
     pub fn render(&mut self) -> Result<(), String> {
         self.advance_fly();
         let [cr, cg, cb] = self.clear.unwrap_or([0.05, 0.07, 0.10]);
-        let mut commands = vec![DrawCommand::ClearColor { rgba: [cr, cg, cb, 1.0] }];
+        let mut commands = vec![DrawCommand::ClearColor {
+            rgba: [cr, cg, cb, 1.0],
+        }];
         for it in &self.items {
             if self.is_hidden(it.entity) {
                 continue; // CAPI-13 + CORE-18 tree visibility
@@ -1251,7 +1253,8 @@ impl Engine {
         source.insert(z, x, y, bytes.to_vec());
         let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
             .map_err(|e| format!("tiles: {e:?}"))?;
-        set.ensure(&[id]).map_err(|e| format!("tiles ensure: {e:?}"))?;
+        set.ensure(&[id])
+            .map_err(|e| format!("tiles ensure: {e:?}"))?;
         if set.decoded_raster(&id).is_none() {
             return Err(format!("raster decode failed: {z}/{x}/{y}"));
         }
@@ -1267,10 +1270,22 @@ impl Engine {
             );
             let (x1, y0) = (x0 + tile_w, y1 - tile_w);
             quads.push([
-                ([((x0 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0], [0.0f32, 0.0]),
-                ([((x1 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0], [1.0, 0.0]),
-                ([((x1 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0], [1.0, 1.0]),
-                ([((x0 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0], [0.0, 1.0]),
+                (
+                    [((x0 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0],
+                    [0.0f32, 0.0],
+                ),
+                (
+                    [((x1 - center[0]) as f32), ((y1 - center[1]) as f32), 0.0],
+                    [1.0, 0.0],
+                ),
+                (
+                    [((x1 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0],
+                    [1.0, 1.0],
+                ),
+                (
+                    [((x0 - center[0]) as f32), ((y0 - center[1]) as f32), 0.0],
+                    [0.0, 1.0],
+                ),
             ]);
         }
         let count = quads.len() as u64;
@@ -1502,7 +1517,9 @@ impl Engine {
             if let Some((id, pt)) = self.pick_geo(&mrig, true, lx, ly, r.width, r.height) {
                 return Some((id, pt));
             }
-            return self.pick_points_in(&mrig, lx, ly, r.width, r.height).map(|id| (id, [0.0; 3]));
+            return self
+                .pick_points_in(&mrig, lx, ly, r.width, r.height)
+                .map(|id| (id, [0.0; 3]));
         }
         let ortho = matches!(self.mode, Proj::Ortho);
         if let Some((id, pt)) = self.pick_geo(&self.rig, ortho, px, py, self.w, self.h) {
@@ -1791,11 +1808,19 @@ impl Engine {
         for t in flat.as_chunks::<3>().0 {
             let f = |v: f64, name: &str| -> Result<f32, String> {
                 let x = v as f32;
-                if x.is_finite() { Ok(x) } else { Err(format!("set_post_effects: {name} non-finite")) }
+                if x.is_finite() {
+                    Ok(x)
+                } else {
+                    Err(format!("set_post_effects: {name} non-finite"))
+                }
             };
             post.push(match t[0] as u32 {
-                0 => visiaengine_render::PostEffect::Bloom { strength: f(t[1], "strength")? },
-                1 => visiaengine_render::PostEffect::Outline { width: f(t[1], "width")? },
+                0 => visiaengine_render::PostEffect::Bloom {
+                    strength: f(t[1], "strength")?,
+                },
+                1 => visiaengine_render::PostEffect::Outline {
+                    width: f(t[1], "width")?,
+                },
                 2 => visiaengine_render::PostEffect::Tonemap { mode: t[1] as u32 },
                 3 => visiaengine_render::PostEffect::Ssao {
                     radius: f(t[1], "radius")?,
@@ -1832,10 +1857,16 @@ impl Engine {
         let lrig = visiaengine_render::CameraRig::look_at(eye, [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
         let (w, h) = (self.w.max(1), self.h.max(1));
         self.shadow = Some(visiaengine_render::ShadowSetup {
-            proj: lrig.ortho_frame(40.0, w as f32, h as f32, 1.0, 160.0).expect("light proj"),
+            proj: lrig
+                .ortho_frame(40.0, w as f32, h as f32, 1.0, 160.0)
+                .expect("light proj"),
             view_rot: lrig.view_rotation(),
             eye: lrig.eye(),
-            light_dir: [ld[0] as f32 / n as f32, ld[1] as f32 / n as f32, ld[2] as f32 / n as f32],
+            light_dir: [
+                ld[0] as f32 / n as f32,
+                ld[1] as f32 / n as f32,
+                ld[2] as f32 / n as f32,
+            ],
             size: 2.0,
             bias: visiaengine_render::ShadowSetup::DEFAULT_BIAS,
         });
@@ -1848,9 +1879,8 @@ impl Engine {
     }
 
     pub fn set_edl(&mut self, strength: Option<f64>) {
-        self.edl = strength.map(|v| {
-            visiaengine_render::EdlSetup::new(v as f32).expect("edl strength")
-        });
+        self.edl =
+            strength.map(|v| visiaengine_render::EdlSetup::new(v as f32).expect("edl strength"));
     }
 
     pub fn set_clips(&mut self, planes: &[[f64; 4]]) -> Result<(), String> {
@@ -2183,20 +2213,15 @@ impl Engine {
     /// CAPI-28: mount an MVT tile directory (FileSource; same scheme = geometry ready at load time, the view fed afterwards).
     /// Single-tile bytes injection (the wasm face; the C dir scan wraps the
     /// same ensure+decode+fit tail). z/x/y domain-checked by TileId::new.
-    pub fn load_tile_bytes(
-        &mut self,
-        z: u8,
-        x: u32,
-        y: u32,
-        bytes: &[u8],
-    ) -> Result<u64, String> {
+    pub fn load_tile_bytes(&mut self, z: u8, x: u32, y: u32, bytes: &[u8]) -> Result<u64, String> {
         let id = visiaengine_io_tiles::TileId::new(z, x, y)
             .ok_or_else(|| format!("tile id out of range: {z}/{x}/{y}"))?;
         let source = visiaengine_io_tiles::MemSource::new();
         source.insert(z, x, y, bytes.to_vec());
         let mut set = visiaengine_io_tiles::TileSet::new(Box::new(source))
             .map_err(|e| format!("tiles: {e:?}"))?;
-        set.ensure(&[id]).map_err(|e| format!("tiles ensure: {e:?}"))?;
+        set.ensure(&[id])
+            .map_err(|e| format!("tiles ensure: {e:?}"))?;
         let decoded = set
             .decoded(&id)
             .map(|t| visiaengine_io_tiles::GeoTile::from_layers(id, &t.layers));
@@ -2209,7 +2234,10 @@ impl Engine {
         &mut self,
         set: visiaengine_io_tiles::TileSet,
         ids: Vec<visiaengine_io_tiles::TileId>,
-        decoded: Vec<(visiaengine_io_tiles::TileId, Option<visiaengine_io_tiles::GeoTile>)>,
+        decoded: Vec<(
+            visiaengine_io_tiles::TileId,
+            Option<visiaengine_io_tiles::GeoTile>,
+        )>,
     ) -> Result<u64, String> {
         // scene center = center of the union bbox of all tiles (batch vertices baked into a center small-value-range frame).
         let (min_x, min_y, max_x, max_y) = union_bbox(&ids);

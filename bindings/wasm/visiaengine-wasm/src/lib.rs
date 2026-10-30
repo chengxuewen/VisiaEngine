@@ -72,9 +72,7 @@ impl VisiaEngine {
     #[wasm_bindgen(js_name = pickPoint)]
     pub fn pick_point(&mut self, px: f32, py: f32) -> Box<[f64]> {
         match self.inner.pick_hit(px, py) {
-            Some((id, pt)) => Box::new([
-                enc_entity(id) as f64, pt[0], pt[1], pt[2],
-            ]),
+            Some((id, pt)) => Box::new([enc_entity(id) as f64, pt[0], pt[1], pt[2]]),
             None => Box::new([]),
         }
     }
@@ -368,7 +366,10 @@ impl VisiaEngine {
     /// Single MVT tile bytes injection (the wasm face; 0 = mounted, negative = rejected).
     #[wasm_bindgen(js_name = loadTileBytes)]
     pub fn load_tile_bytes(&mut self, z: u32, x: u32, y: u32, data: &[u8]) -> i32 {
-        match (u8::try_from(z), self.inner.load_tile_bytes(z as u8, x, y, data)) {
+        match (
+            u8::try_from(z),
+            self.inner.load_tile_bytes(z as u8, x, y, data),
+        ) {
             (Ok(_), Ok(n)) => n as i32,
             _ => -1,
         }
@@ -377,7 +378,10 @@ impl VisiaEngine {
     /// Single raster-tile bytes injection (0 = mounted quads, negative = rejected).
     #[wasm_bindgen(js_name = loadRasterBytes)]
     pub fn load_raster_bytes(&mut self, z: u32, x: u32, y: u32, data: &[u8]) -> i32 {
-        match (u8::try_from(z), self.inner.load_raster_bytes(z as u8, x, y, data)) {
+        match (
+            u8::try_from(z),
+            self.inner.load_raster_bytes(z as u8, x, y, data),
+        ) {
             (Ok(_), Ok(n)) => n as i32,
             _ => -1,
         }
