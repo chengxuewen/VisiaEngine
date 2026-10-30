@@ -309,12 +309,12 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### status
 - full text: `.agents/memorys/status.md`
-- ... 55 older entries omitted (read the full file)
-- Headless-page-gate round (executed 2026-10-16, owner-adjudicated chain: download / heartbeat / option-4 beacon)
+- ... 56 older entries omitted (read the full file)
 - Dual-serve round baseline (2026-10-19, owner-adjudicated: one button, http+https)
 - Review-fix band baseline (2026-10-19, 5-agent review FAILED -> three blocking fixes landed)
 - Web wall expansion band baseline (2026-10-23, live pages 6 -> 26)
 - Web wall expansion addendum (2026-10-23 same band, live pages 26 -> 29)
 - 2026-10-30: the docs book line closes (S1-S8 -> D46 -> polish)
+- repo-audit Full Scan — 2026-10-30 (first Full run)
 <!-- END:agents-memory -->
 

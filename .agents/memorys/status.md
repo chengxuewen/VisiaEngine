@@ -896,3 +896,23 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   draft parents; gate-docs 13 now checks indented SUMMARY entries.
 - Pending: push (4 commits), backup branch deletion decision, optional C24
   subject fixes on two PUSHED commits (force-push required -- owner's call).
+
+## repo-audit Full Scan — 2026-10-30 (first Full run)
+
+- **Local (24 items / 10 domains)**: mechanical health green across scripts (0 syntax
+  failures, 0 mixed EOL, 0 orphans after verification), naming (0 case collisions,
+  task style clean), cli (USAGE sh/bat parity), tests (registry<->examples complete),
+  mcp (3/3 pins match), book vendor+licenses complete; gates green this session.
+- **Findings**: (1) CRITICAL/domain-5: decisions.md carries two D45s and two D46s
+  (numbering-uniqueness defect; fix = manual renumber AFTER the parallel D53 session
+  closes -- same file); (2) HIGH/domain-6: toc(16) != SUMMARY(54) chapter counts,
+  attributed to the parallel D53 WIP mid-flight, re-verify after it lands;
+  (3) LOW/domain-2: conventions reserved-slot notation (C2-C8/C10-C14 documented in
+  the header) defeats naive contiguity probes -- future scanners must read the header.
+- **External scan**: P2 sammcj/agentic-coding#rust-engineer (6.3/10, Apache-2.0,
+  SAFE-with-warn: the author parks it under skills_disabled/; overlaps our own
+  rust rules -- skip unless a generic-Rust companion is wanted). P2 mattpocock/skills
+  (7/10, 51k stars: adopt the skill-structure discipline, specific skills are
+  TS-domain -> rewrite-to-fit). Rejected: skillhub (enterprise registry, mismatch),
+  skillfile (skill manager, we are our own), jcode (harness, not a skill).
+- **Next scan**: first check whether findings 1-2 were fixed by the D53 session.
