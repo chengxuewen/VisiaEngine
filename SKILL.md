@@ -31,7 +31,7 @@ The directory count is deliberately not written here: run `ls -d .agents/skills/
 | `deprecation-and-migration` | Deprecate and migrate safely in this repo:... |
 | `doc-audit` | Project documentation and architecture audit. |
 | `documentation-and-adrs` | Record architecture decisions and keep doc... |
-| `ecosystem-scan` | Audit the .agents/ system and scan the com... |
+| `ecosystem-scan` |  |
 | `incremental-implementation` | Thin vertical slice methodology — implemen... |
 | `lesson-review` | Batch session review: systematically extra... |
 | `observability-and-instrumentation` | Observability and instrumentation for this... |

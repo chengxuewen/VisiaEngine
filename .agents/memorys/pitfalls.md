@@ -769,7 +769,7 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Symptom**: a translation sat in `book/po/zh-CN.po` (`msgstr` filled, msgfmt green), but the built zh page still rendered the English sentence. No error anywhere.
 - **Root cause**: the mdbook gettext preprocessor matches `msgstr` to `msgid` by exact bytes. A hand "canonicalization" pass that rewrote every entry onto one physical line changed the byte form of entries containing escaped quotes (`\"`), so the lookup missed and the string silently fell back to English.
 - **Solution**: msgid lines are immutable -- only `msgstr` may be rewritten. When migrating translations across a POT refresh, key by the UNESCAPED msgid text and re-emit the msgid exactly as the reference generator (msginit/msgmerge) wrote it. Verify a distinctive phrase with `grep` on the built HTML, not on the PO.
-- **Verification**: `grep -c "它是什么" www/book/zh-CN/index.html` (or any batch phrase) changes only when the page changes; `pixi run book-i18n status` numbers move in lockstep.
+- **Verification**: grep the built page for a distinctive translated phrase (e.g. the zh tagline) -- the count changes only when the page actually changes; `pixi run book-i18n status` numbers move in lockstep.
 - **Forbidden**: treating a PO file as plain text; "normalize the whole catalog" scripts; trusting `msgfmt --check` (it validates format, not lookup success).
 
 ## PIT-89: gettext reconstruction re-parses "N. Title" headings as ordered lists (2026-10-30, silent-fallback class)
@@ -777,12 +777,12 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Symptom**: translations for every numbered heading ("1. Problem and Opportunity") always fell back, regardless of correctness; 15 strings formed a stable failure class across five batches.
 - **Root cause**: the preprocessor rebuilds markdown from the translated string and compares event streams. A heading whose text starts with `1. ` re-parses as an ordered list, so the source and translation event streams can never agree. Second bug in the same class: emitters that forgot to escape REAL newlines produced multi-line `msgstr` values polib rejects (all bash-comment entries died this way).
 - **Solution**: rename English headings to `## §N. Title` (section sign is not a list marker, and matches the existing §-cross-reference convention); append explicit translations for the new msgids. Any PO emitter escapes `\n` like any other metacharacter.
-- **Verification**: `grep -c "§1. 问题与机会" www/book/zh-CN/docs/whitepaper.html` >= 1; the harness fallback class count drops to the documented residue.
+- **Verification**: grep the built whitepaper page for a translated §-heading (the section-sign form) -- count >= 1; the harness fallback class count drops to the documented residue.
 - **Forbidden**: heading text starting with `N. `; PO emitters that escape only `"` and `\`.
 
 ## PIT-90: whole-book greedy validation conflates failures -- use a one-page harness (2026-10-30, translation infrastructure)
 
-- **Symptom**: the greedy apply-one-rebuild-whole-book loop dropped 30 of 109 strings, including single words (`symptom` -> `症状`), and re-runs dropped a different set -- drops looked random and unfalsifiable.
+- **Symptom**: the greedy apply-one-rebuild-whole-book loop dropped 30 of 109 strings, including single-word table cells, and re-runs dropped a different set -- drops looked random and unfalsifiable.
 - **Root cause**: one bad string fails the entire book build, so every failure is attributed to the most recent candidate; whole-book builds also take minutes, capping batch size.
 - **Solution**: a per-entry harness: build a one-page book with a one-entry PO; verdict `ok` (Chinese marker in output) / `struct` (build fails) / `fallback` (builds, still English). ~5 s per string, and the two failure modes separate cleanly -- `fallback` is a lookup problem, `struct` is a markdown-reconstruction problem; they have different fixes.
 - **Verification**: harness verdicts predicted the fallback classes of the following three batches exactly (numbered headings, quoted strings, fence comments).

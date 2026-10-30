@@ -211,7 +211,7 @@ that host's discovery paths/shape from its docs (a wrong path is a dead, unread 
 | `deprecation-and-migration` | Deprecate and migrate safely in this repo:... |
 | `doc-audit` | Project documentation and architecture audit. |
 | `documentation-and-adrs` | Record architecture decisions and keep doc... |
-| `ecosystem-scan` | Audit the .agents/ system and scan the com... |
+| `ecosystem-scan` |  |
 | `incremental-implementation` | Thin vertical slice methodology — implemen... |
 | `lesson-review` | Batch session review: systematically extra... |
 | `observability-and-instrumentation` | Observability and instrumentation for this... |
