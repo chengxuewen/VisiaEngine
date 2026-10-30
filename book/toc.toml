@@ -49,56 +49,65 @@ visibility = "internal"
 
 # SDD contracts: one chapter each, auto-titled, grouped under one part header.
 [[chapter]]
-title = ""
+title = "CORE — data model & scene graph"
 source = "docs/sdd/core.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "REND — rendering contract"
 source = "docs/sdd/render.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "WGPU — backend contract"
 source = "docs/sdd/render-wgpu.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "CAPI — C ABI contract"
 source = "docs/sdd/capi.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "GEO — geospatial contract"
 source = "docs/sdd/geo.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "IO — glTF loading"
 source = "docs/sdd/io-gltf.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "IO — point cloud loading"
 source = "docs/sdd/io-points.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "IO — text loading"
 source = "docs/sdd/io-text.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
 [[chapter]]
-title = ""
+title = "IO — vector tiles"
 source = "docs/sdd/io-tiles.md"
+parent = "Contracts (SDD)"
 type = "reference"
 group = "Contracts (SDD)"
 
@@ -108,3 +117,4 @@ group = "Contracts (SDD)"
 title = "Reference Library"
 type = "reference"
 glob = "docs/reference/**/*.md"
+nested = true   # one collapsible sidebar row; child titles = h1 up to the first em-dash

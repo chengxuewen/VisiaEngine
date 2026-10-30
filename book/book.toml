@@ -12,3 +12,8 @@ git-repository-url = "https://gitee.com/chengxuewen/VisiaEngine"
 edit-url-template = "https://gitee.com/chengxuewen/VisiaEngine/edit/main/{path}"
 # mermaid-init: lazy loader, pulls the 3.5 MB bundle only on pages with diagrams.
 additional-js = ["web/mermaid-init.js", "web/footer.js"]
+
+# Collapse nested sidebar sections (the SDD contracts nest under one draft parent).
+[output.html.fold]
+enable = true
+level = 0

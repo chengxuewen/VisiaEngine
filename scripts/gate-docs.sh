@@ -226,7 +226,7 @@ if [ -f build/book-src/SUMMARY.md ]; then
     while IFS= read -r bdest; do
         book_chapters=$((book_chapters + 1))
         [ -e "build/book-src/$bdest" ] || { echo "GATE-DOCS ✗ ⑬SUMMARY points at a missing file: $bdest"; fail=1; }
-    done < <(grep -oE '^- \[[^]]*\]\([^)]+\)' build/book-src/SUMMARY.md | sed -E 's/.*\]\(([^)]+)\)$/\1/')
+    done < <(grep -oE '^[[:space:]]*- \[[^]]*\]\([^)]+\)' build/book-src/SUMMARY.md | sed -E 's/.*\]\(([^)]+)\)$/\1/')
     if [ -f build/book-src/web/graph.md ]; then
         grep -q 'src="graph-view.html"' build/book-src/web/graph.md \
             || { echo "GATE-DOCS ✗ ⑬graph chapter no longer embeds graph-view.html"; fail=1; }

@@ -12,6 +12,7 @@ Unlisted markdown files are appended under "Appendix" with a WARN (plan §9-1).
 from __future__ import annotations
 
 import argparse
+import re
 import json
 import os
 import shutil
@@ -148,8 +149,19 @@ def main() -> int:
     lines: list[str] = ["# Summary", ""]
     current_group = None
 
-    def emit(entry_src: str, entry_title: str, group: str | None) -> None:
-        nonlocal current_group
+    current_parent = None
+
+    def emit(entry_src: str, entry_title: str, group: str | None, parent: str | None = None) -> None:
+        nonlocal current_group, current_parent
+        if parent:
+            # nested under a draft parent row: mdBook's fold collapses the children
+            if parent != current_parent:
+                lines.append(f"- [{parent}]()")
+                current_parent = parent
+            lines.append(f"  - [{entry_title}]({entry_src})")
+            covered.add(entry_src)
+            return
+        current_parent = None
         if group != current_group:
             lines.append(f"# {group}" if group else "")
             current_group = group
@@ -159,14 +171,26 @@ def main() -> int:
 
     for entry in chapters:
         title = entry.get("title") or first_heading(os.path.join(ROOT, entry["source"]))
-        emit(entry["source"], title, entry.get("group"))
+        emit(entry["source"], title, entry.get("group"), entry.get("parent"))
 
     import glob as globmod
     for group in toc.get("group", []):
         pattern = os.path.join(ROOT, group["glob"])
+        nested = group.get("nested", False)
+        parent = group["title"] if nested else None
+        if parent:
+            current_parent = None
         for match in sorted(globmod.glob(pattern, recursive=True)):
             rel = os.path.relpath(match, ROOT)
-            emit(rel, first_heading(match), group["title"])
+            title = first_heading(match)
+            if nested:
+                # sidebar navigation wants the short name; the page keeps the full h1
+                title = re.split(r"\s+[\u2014\u2013]\s+|:\s+", title, maxsplit=1)[0].strip()
+                if len(title) > 48:
+                    title = title[:48].rstrip(" ,;(") + "…"
+                emit(rel, title, None, parent)
+            else:
+                emit(rel, title, group["title"])
 
     # 5) Unlisted markdown -> Appendix, with a visible WARN (plan §9-1).
     #    Pages excluded by --public are not "unlisted": they are deliberately hidden.
