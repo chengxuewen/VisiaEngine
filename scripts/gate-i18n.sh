@@ -28,6 +28,9 @@ ALLOW = {  # path:lineno-allowances justified in the gate header
  'examples/rs/E505_cjk_labels.rs',
  'examples/wasm/wall.json',  # user-facing web surface: manifest descs are hub display data (the CJK-label fixture class, T-H11)
  'examples/wasm/common.js',  # user-facing web surface: the veDiag triage messages ARE the product copy (T-H11 diagnostics)
+ 'docs/prose-banned.toml',  # data, not prose: the Chinese banned-word list must be Chinese to match the corpus
+ 'scripts/gate-prose.py',   # gate code: the CJK patterns it searches for are data (kept as \u escapes where possible)
+ 'scripts/book-check.py',   # browser layer asserts a rendered Chinese heading; kept as a \u escape in source
 }
 bad = []
 for f in tracked:

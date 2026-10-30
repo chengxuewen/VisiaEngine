@@ -19,7 +19,7 @@ An open-source, lightweight, embeddable spatial visualization **engine kernel** 
 
 ## Repository Structure
 
-```
+```text
 ├── AGENTS.md / SKILL.md   # agent knowledge base and skill registry
 ├── crates/                # 5 pure-core crates: core / render / render-wgpu / io-gltf / geo (D6 naming)
 ├── examples/              # examples tiered by language: rs (Rust tutorial series) / c / cpp / qt — one-click via the ctest unified registry

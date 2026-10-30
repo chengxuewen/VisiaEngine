@@ -2,7 +2,7 @@
 
 > Translated from the Chinese original (v0.1.0, 2026-09). The Chinese original is preserved in git history (tag: whitepaper-zh-v0.1.0).
 
-### The multi-dimensional spatial visualization engine
+## The multi-dimensional spatial visualization engine
 
 **Version 0.1.0 | September 2026**
 
@@ -16,12 +16,12 @@ VisiaEngine does not chase game-grade lighting effects; it focuses on **presenti
 
 ---
 
-## 1. Problem and Opportunity
+## §1. Problem and Opportunity
 
 ### 1.1 The split in today's market
 The current visualization tooling market has a pronounced fault line:
 - **Game engines (Unreal, Unity)**: huge footprint, weak GIS support, hard to embed into ordinary desktop/Web apps, and their "game-style" rendering habitually distracts from data visualization.
-- **GIS and Web 3D libraries (Cesium, MapLibre, deck.gl)**: good at geographic data display, but most are confined to the Web stack, and deep embedding into native desktop frameworks (Qt, WPF) is costly; even mature products that offer 2D/2.5D/3D mode switching usually run a different scene semantic per dimension, making seamless transitions over one scene tree with one layer/entity semantics hard to achieve.
+- **GIS and Web 3D libraries (Cesium, MapLibre, deck.gl)**: good at geographic data display, but most are confined to the Web stack, and deep embedding into native desktop frameworks (Qt, WPF) is costly; even mature products that offer 2D/2.5D/3D mode switching usually run a different scene semantic per dimension, making continuously interpolated transitions over one scene tree with one layer/entity semantics hard to achieve.
 - **General graphics frameworks (Three.js, Qt 3D)**: lack the layer system, coordinate transforms and interaction purpose-built for spatial data; the development bar is high.
 
 ### 1.2 The unmet need
@@ -33,7 +33,7 @@ Developers urgently need a **solution between the lightweight library and the he
 
 ---
 
-## 2. What VisiaEngine Is
+## §2. What VisiaEngine Is
 
 **VisiaEngine** is a multi-dimensional visualization engine whose first goal is **the clear presentation of data**.
 - **Visia** is drawn from the vision word family (Latin visio, "sight"), signifying **"the domain of vision"**.
@@ -45,7 +45,7 @@ Developers urgently need a **solution between the lightweight library and the he
 
 ---
 
-## 3. Core Features
+## §3. Core Features
 
 ### 3.1 A unified 2D / 2.5D / 3D core
 - On a flat entity table (scene-tree grouping / parent-child offsets already delivered: the create_group/set_parent family), switch freely between the **bird's-eye map (2D)**, the **oblique view (2.5D)** and the **fully immersive 3D viewport**.
@@ -68,7 +68,7 @@ Developers urgently need a **solution between the lightweight library and the he
 
 ---
 
-## 4. Technical Architecture
+## §4. Technical Architecture
 
 ### 4.1 The core idea
 An architecture of **"engine kernel + pluggable rendering backends + application-layer bindings"**.
@@ -90,7 +90,7 @@ flowchart TB
 
 ---
 
-## 5. Application Scenarios
+## §5. Application Scenarios
 
 1. **Maps and geographic information systems (GIS)**
    A next-generation high-performance desktop/mobile map component replacing Mapbox/Leaflet, with zoomless continuous scaling and massive vector overlays.
@@ -109,7 +109,7 @@ flowchart TB
 
 ---
 
-## 6. Commercial Strategy and Roadmap
+## §6. Commercial Strategy and Roadmap
 
 ### 6.1 The Open Core model
 - **Open-source core**: the `visiaengine-core` and `visiaengine-render` runtime libraries are fully open source under the MIT OR Apache-2.0 dual license, **licenses of released versions are irrevocable and the core is never retroactively closed**, integrable by any commercial or non-commercial project.
@@ -142,7 +142,7 @@ flowchart TB
 
 ---
 
-## 7. Team and Community
+## §7. Team and Community
 
 *(This section fills in after the project launches: core contributors, organization background, contribution guide, code of conduct, etc.)*
 
@@ -150,7 +150,7 @@ VisiaEngine is committed to building a friendly, inclusive global developer comm
 
 ---
 
-## 8. In Closing
+## §8. In Closing
 
 VisiaEngine is a bold attempt — it sets out to fill a long-neglected gap: **to give a "data-driven" world a pure, powerful, ubiquitous visualization engine**.
 

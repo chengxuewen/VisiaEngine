@@ -1,0 +1,39 @@
+# Banned prose patterns for the human-facing docs (plan §11).
+# Scope: chapters marked translated = true in book/toc.toml (the seven pages a
+# newcomer reads). Contracts (docs/sdd) and the research library (docs/reference)
+# are deliberately out of scope -- they are reference text, not prose.
+#
+# Rationale: every adjective below stands in for a fact the reader cannot check.
+# Replace it with a measurement, a command, or a path:line anchor.
+
+[english]
+words = [
+  "delve",
+  "leverage",
+  "seamless",
+  "robust",
+  "comprehensive",
+  "unlock",
+  "elevate",
+  "cutting-edge",
+  "it's worth noting",
+  "in today's fast-paced",
+  "at the end of the day",
+  "game-changer",
+  "best-in-class",
+]
+
+[chinese]
+words = [
+  "赋能",
+  "助力",
+  "一站式",
+  "无缝",
+  "极致",
+  "强大",
+  "全面提升",
+  "显著提升",
+  "值得注意的是",
+  "需要注意的是",
+  "总而言之",
+]

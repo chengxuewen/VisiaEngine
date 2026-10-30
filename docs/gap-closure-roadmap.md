@@ -21,7 +21,7 @@ cargo metadata --no-deps --format-version 1 |
 
 ---
 
-## 1. Census (measured 2026-10-08, re-counted 2026-10-09)
+## §1. Census (measured 2026-10-08, re-counted 2026-10-09)
 
 | Axis | Value |
 |---|---|
@@ -34,7 +34,7 @@ cargo metadata --no-deps --format-version 1 |
 | Native pixel witnesses | **6 of 17** tracked C/C++/Qt example files assert a numeric pixel-family bound; the other 11 have no bound: 10 have zero `readback` calls and the 11th (template.cpp, readback=2) asserts nothing -- readback necessary, not sufficient. 8 of the 11 still claim visible output (seven render entry-point call sites + the Qt pump) (named predicate + per-file table: `docs/reference/c-example-witness-census-2026-10-09.md`) |
 | C/C++/Qt shared example bootstrap | band-V analogue on the host-language examples -- **Closed, carded away, not built** (D25 #6). Measured (predicate: recursive extended grep for visiaengine_create-family call parentheses across examples/c, examples/cpp, examples/qt): 15 call-site lines across 13 files -- E817 re-creates on remount, so one file holds three. Drift is cosmetic (error-string prefixes), the templates are compile-in skeletons outside the ctest set, and those host-call lines ARE the tutorial claim (C18). Re-open triggers: native example count doubles, or a second real C++ consumer (same lineage as decisions.md L91) |
 
-## 2. The 2026-09-24 S-level gaps, re-checked line by line
+## §2. The 2026-09-24 S-level gaps, re-checked line by line
 
 | Then | Evidence then | Now |
 |---|---|---|
@@ -43,7 +43,7 @@ cargo metadata --no-deps --format-version 1 |
 | S3' scene serialisation | grep = 0 | **Still open** (re-grep today: 0). Hard dependency of the Visia Studio Beta tier; no plan filed. See §4 |
 | S4' scene graph parent/child | `core` was a flat slab | **Closed** for the promise that mattered: CAPI-30..34 (groups, reparent with cycle/depth guard, group offsets, ancestor-aware visibility). Rotation/scale inheritance deliberately not inherited — trigger-gated |
 
-## 3. Coverage map vs the three.js benchmark (09-28b), refreshed
+## §3. Coverage map vs the three.js benchmark (09-28b), refreshed
 
 | Peer category | Our status | Anchor |
 |---|---|---|
@@ -63,7 +63,7 @@ cargo metadata --no-deps --format-version 1 |
 | Gap | Verified state today |
 |---|---|
 | Skinned meshes / morph targets | no joint palette, no per-vertex targets; only rigid node transforms (CAPI-42/43) and origin-track replay (REND-42) |
-| Vector + raster tile layers **at the same time** | single layer slot in the capi engine (`engine.rs:1196/1991/2021` all assign one slot) → basemap and overlay are mutually exclusive; the band-T finding recorded in `status.md` (2026-10-08) targets it |
+| Vector + raster tile layers **at the same time** | single layer slot in the capi engine (`crates/visiaengine-ffi/src/engine.rs:1196` -- the same slot is assigned at lines 1991 and 2021) → basemap and overlay are mutually exclusive; the band-T finding recorded in `status.md` (2026-10-08) targets it |
 | Scene serialisation | 0 code |
 | Spatial index (quadtree / kd-tree / R-tree) | 0 code (grep for kdtree/quadtree/rtree/spatial_index across `crates/` returns nothing) |
 | 3D Tiles, terrain/DEM/heightmap, OGC 3D formats | 0 code |
@@ -73,7 +73,7 @@ cargo metadata --no-deps --format-version 1 |
 | LAS / LAZ point clouds | PLY only; band V2.3 stays closed until a real `.las` fixture lands |
 | Browsable docs site | the wall is a serve-time assembly, not a published site |
 
-## 4. Deliberate gaps and their triggers
+## §4. Deliberate gaps and their triggers
 
 A gap stays closed until its trigger is real; that is a decision, not neglect (see D-entries).
 
@@ -91,7 +91,7 @@ A gap stays closed until its trigger is real; that is a decision, not neglect (s
 | Flutter / C# hosts | first external host asking | M each |
 | Docs site | card 3 = A (2026-10-09): no site -- llms.txt + rustdoc + local gallery were the terminal state (gallery superseded by the web wall, T-H11); mdbook stays rejected per the band-5 ruling | — |
 
-## 5. Reverse advantages — do not regress these
+## §5. Reverse advantages — do not regress these
 
 1. **Every example is machine-executed in CI** with golden pixel gates and dual-mode entry
    (zero-arg = human window, `--frames N` = ctest). The 09-24 census found no peer doing this:
@@ -108,7 +108,7 @@ A gap stays closed until its trigger is real; that is a decision, not neglect (s
    its commit (the discipline that found the constant-true pixel gate and the phantom citations
    behind §0 of this file).
 
-## 6. Tier alignment with the whitepaper
+## §6. Tier alignment with the whitepaper
 
 | Whitepaper tier | Status |
 |---|---|
@@ -118,7 +118,7 @@ A gap stays closed until its trigger is real; that is a decision, not neglect (s
 | Alpha: C API stabilisation + multi-language binding generation | C face stable and mirrored; **generation open** (hand-written header by decision) |
 | Beta: ODR/OSC, real-time twin binding, Studio preview | open, each its own band |
 
-## 7. Standing declines (anti-benchmark-anxiety)
+## §7. Standing declines (anti-benchmark-anxiety)
 
 Transform gizmos, volumetric raymarching, GPGPU/compute pipelines, WebXR, and "keep up with 609
 examples" as a goal in itself. Numbers of peer examples are not a metric we optimise; coverage of

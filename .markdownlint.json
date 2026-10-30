@@ -1,0 +1,7 @@
+{
+  "default": false,
+  "MD001": true,
+  "MD009": { "br_spaces": 2, "list_item_empty_lines": false },
+  "MD025": { "level": 1 },
+  "MD040": true
+}
