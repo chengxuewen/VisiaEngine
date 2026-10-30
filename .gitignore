@@ -133,5 +133,5 @@ __pycache__/
 # --- External reference clones (script-managed, read-only) ------------------
 .refinfo/
 
-# Repo-local cargo-binstall tools (mdbook-i18n-helpers); inside .gitignore since 2026-10-29
+# Repo-local tool binaries (pixi-managed installs; the gettext pair retired with D46); inside .gitignore since 2026-10-29
 /.tools/

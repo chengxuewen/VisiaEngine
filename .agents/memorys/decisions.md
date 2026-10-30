@@ -540,7 +540,7 @@ Verification: 2 true / 38 false; always-on stays 3,048 chars; a second `agent-sy
 
 ## D50: Trae host onboarding — four adjudications (2026-10-29, user-adjudicated one by one)
 
-D46 deferred Trae on the premise "not installed / not verified". That premise expired: a live Trae session reads the root `AGENTS.md` as always-applied workspace rules and natively discovers all project skills under `.agents/skills/` (37 routed, zero link layer). The two native surfaces mean Trae needs no skills target at all — only MCP, rules, and a shadow guard.
+D55 deferred Trae on the premise "not installed / not verified". That premise expired: a live Trae session reads the root `AGENTS.md` as always-applied workspace rules and natively discovers all project skills under `.agents/skills/` (37 routed, zero link layer). The two native surfaces mean Trae needs no skills target at all — only MCP, rules, and a shadow guard.
 
 Design (analysis only at time of writing; nothing landed yet):
 
@@ -610,7 +610,7 @@ Plan: `.omo/plans/2026-10-28-repo-book.md` (14 sections: four adjudication round
 - **Bug caught by the build**: the markdown chapter and the static app both resolved to `web/graph.html`; the app moved to `web/graph-view.html`, and gate-docs ⑬ now asserts the chapter embeds it.
 - **Gates**: `gate-docs` ⑬ (SUMMARY entries resolve; graph chapter embeds the app) SKIPs when `build/` is absent, like cmake-smoke; `pixi run book-check` asserts index/graph.json/app/vendor and will grow a browser layer once chromium is available.
 - **Language boundary**: book sources stay English (gate-i18n scans .toml/.js/.md, so `toc.toml` titles are English); Chinese arrives through PO catalogs in S5. `visibility = "internal"` marks pages that `--public` removes from both the SUMMARY and the artifact.
-- **Status**: S1-S4 landed; S5 (PO/i18n), S6 (language switch + browser checks), S7 (gate-prose: type rules, evidence anchors, banned words), S8 (book-serve/book-graph tasks, footer provenance) remain.
+- **Status**: S1-S8 all landed in subsequent waves. **Partially revised**: the bilingual plan half by D46 (the book is English-only; browser-side translation), the layout half by D53 (output `build/book/`, `www/` retired). Read together with those two entries.
 
 ## D46: the book is English-only; browser-side translation covers other languages (2026-10-30)
 

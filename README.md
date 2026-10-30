@@ -21,7 +21,7 @@ An open-source, lightweight, embeddable spatial visualization **engine kernel** 
 
 ```text
 ├── AGENTS.md / SKILL.md   # agent knowledge base and skill registry
-├── crates/                # 5 pure-core crates: core / render / render-wgpu / io-gltf / geo (D6 naming)
+├── crates/                # 10 Rust crates: core / ffi / geo / io-gltf / io-hdr / io-points / io-text / io-tiles / render / render-wgpu (D6 naming)
 ├── examples/              # examples tiered by language: rs (Rust tutorial series) / c / cpp / qt — one-click via the ctest unified registry
 ├── bindings/              # outward implementation surface: c (header + probe; the ffi crate lives in crates/) / cpp (RAII header) / qt (widget) / wasm (crate + demo)
 ├── pixi.toml / pixi.lock  # dev environment single source (D5: conda-forge, incl. rust toolchain)
@@ -45,10 +45,10 @@ An open-source, lightweight, embeddable spatial visualization **engine kernel** 
   - text annotation (incl. CJK subset fonts) + profile clipping
   - main/aux dual-projection minimap / click navigation + continuous 2D↔3D projection morph
   - picking (incl. point cloud REND-38 + line-feature screen space REND-46) / parametric-curve tube/ribbon (REND-47) / measurement loop + D7 far-coordinate rebase (pixel-verified)
-- Offscreen golden: no SKIP on real hardware; **ctest unified example registry (44 entries, incl. the SDL3 window family xvfb substate) + three gates (abi/trace/docs) + cmake-smoke four states (incl. installed tree) + pack-check installed-tree hygiene + bench artifact chain** as machine gates; the tutorial E-number system lives in [docs/tutorials.md](docs/tutorials.md) (filename = header comment = index, single source).  Web example wall The tutorial E-number system lives in [docs/tutorials.md](docs/tutorials.md) (filename = header comment = index, single source).
-- **Web example wall (43 entries)** — 6 live in-browser on WebGPU, the rest detail cards; thumbnails stay self-rendered via save_frame. The `visiaengine-wasm-serve` button assembles + serves → `http://localhost:8017`. A self-signed TLS sibling (`pixi run serve-https`, certs via `serve-https-gen`) serves `https://<LAN-IP>:8443` — https counts as a secure context even when the cert is untrusted (measured on chrome 131), so remote WebGPU works without tunnels. **Host embedding**
+- Offscreen golden: no SKIP on real hardware; **ctest unified example registry (44 entries, incl. the SDL3 window family xvfb substate) + three gates (abi/trace/docs) + cmake-smoke four states (incl. installed tree) + pack-check installed-tree hygiene + bench artifact chain** as machine gates; the tutorial E-number system lives in [docs/tutorials.md](docs/tutorials.md) (filename = header comment = index, single source).
+- **Web example wall (43 entries)** — 6 live in-browser on WebGPU, the rest detail cards; thumbnails stay self-rendered via save_frame. The `visiaengine-wasm-serve` button assembles + serves → `http://localhost:8017`. A self-signed TLS sibling (`pixi run serve-https`, certs via `serve-https-gen`) serves `https://<LAN-IP>:8443` — https counts as a secure context even when the cert is untrusted (measured on chrome 131), so remote WebGPU works without tunnels.
 - **Host embedding**: C ABI 49 entry points (+5 scene-tree ports + HTTP/raster tile sources + 3 property hot-update ports + .hdr environment + rigid-body node transforms) (event push / point cloud / profile / font annotation / flight / minimap navigation, mirrored three ways in wasm·hpp·header) (human-reviewed handwritten header + C demo fleet actually run) + Web surface (visiaengine-wasm dual mirror, runnable demo page) — proven on a Qt host ✅ (header-only widget + real-window smoke, three states).
-- **Install tree delivered**: **install tree delivered****install tree delivered** (`cmake --install` produces 9 items: library + three headers + licenses + `find_package(visiaengine)` how-to page + pkg-config receipt; out-of-tree consumers compiled and run in both C/C++ forms, re-prefix rebuild passes, the library ships its own SONAME so `NEEDED` records the bare name); npm/pip packaging deferred to Alpha.; npm/pip packaging deferred to Alpha.
+- **Install tree delivered**: (`cmake --install` produces 9 items: library + three headers + licenses + `find_package(visiaengine)` how-to page + pkg-config receipt; out-of-tree consumers compiled and run in both C/C++ forms, re-prefix rebuild passes, the library ships its own SONAME so `NEEDED` records the bare name); npm/pip packaging deferred to Alpha.; npm/pip packaging deferred to Alpha.
 
 ```bash
 bash bootstrap.sh && source pixi.sh && pixi run ci   # environment, three steps
@@ -56,7 +56,7 @@ pixi run cmake --preset default && pixi run cmake --build --preset default   # C
 
 ```
 
-> Output territories: `build/` = save-frame wall assets only · `target/` = cargo-direct only · `cmake-build*/` = CMake preset build trees (T-A0' 2026-10-10). VSCode: install CMake Tools and work via presets (cmake.useCMakePresets=already configured).
+> Output territories: `build/` = non-cargo derived output (book-src/ assembly · book/ built site · gallery/ wall assets) · `target/` = cargo-direct only · `cmake-build*/` = CMake preset build trees (T-A0' 2026-10-10). VSCode: install CMake Tools and work via presets (cmake.useCMakePresets=already configured).
 
 Working in an IDE: the test panel is the unified example registry for all languages (`ctest --preset default`); the build menu carries per-example build mediators (e.g. `visiaengine-example-E101_clear-build`) + `visiaengine-example-*-run` window buttons; Rust examples additionally have rust-analyzer Run/Debug.
 

@@ -1,6 +1,6 @@
 # VisiaEngine Status
 
-**Last updated**: 2026-10-29 | Phase: MVP closed + rendering hardening / host embedding / packaging band | Branch: main (a clean worktree is the normal state)
+**Last updated**: 2026-10-30 | Phase: MVP closed + rendering hardening / host embedding / packaging / docs-site band (D53) | Branch: main (a clean worktree is the normal state)
 
 > The full history of the predecessor MediaServo (the D/PIT/C numbering system, the crate matrix, Phase records) lives in the local archive `.refinfo/MediaServo/.agents/memorys/` (gitignored, not distributed with clones). This directory accumulates VisiaEngine history from scratch starting 2026-09-03.
 
@@ -932,3 +932,17 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   note); (c) the structure probe must compare hidden dirs on both sides and
   exclude generated dirs (node_modules et al); AGENTS.md tree rows all resolve.
 - No new findings. Next scan: fresh cycle.
+
+## doc-audit Full — 2026-10-30 (revised-skill first run; 3 parallel lanes + conductor)
+
+- 16 findings merged (1 HIGH / 5 MEDIUM / 10 LOW; 0 CRITICAL, no functional
+  contradictions). Disposition: 11 fixed in the cleanup commit (D50 dangling D46
+  ref -> D55; pixi/sh/bat www residues; D45 revision pointer; README crate-tree
+  row + build/ territory wording + splice noise; conventions header slots;
+  unsourced 6 MB sub-budget removed; book-serve docstring; .gitignore comment;
+  repo-audit C15->C17/C20; status header).
+- 挂账 (deferred with owners): L3 whitepaper Phase-1 scope + MVP wording (frozen
+  v0.1.0 text -- next whitepaper revision); L9 exempted (unnumbered tail note
+  added); L10 capi.md callback pointer-lifetime clause (next SDD batch); L11
+  panic-strategy / input-trust-model summary line in architecture (one line,
+  next docs touch).

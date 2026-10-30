@@ -27,7 +27,7 @@ common:
   ./visiaengine.sh gate-agents     single-source consistency gate
   ./visiaengine.sh ci              the whole CI chain
 
-docs (the book, output in www/book):
+docs (the book, output in build/book):
   ./visiaengine.sh book-build      build the site (--public drops internal pages)
   ./visiaengine.sh book-serve      serve it on :3000 and rebuild on change
   ./visiaengine.sh book-check      static checks on the built site

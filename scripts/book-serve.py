@@ -3,10 +3,10 @@
 
 Foreground by design (plan §12-3): Ctrl-C stops it, no PID file, no supervisor.
 `docs/`, `book/` and the codegraph database are polled; a change triggers a full
-rebuild of every built language (mdbook build is a couple of seconds here).
+rebuild (mdbook build is a couple of seconds here).
 
 Why not `mdbook serve`: it owns its own --dest-dir and would wipe the sibling
-language trees, the landing page and api/ that live next to them.
+output trees (the root redirect and the rustdoc api/ tree) next to the book.
 """
 
 from __future__ import annotations

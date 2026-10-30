@@ -1,6 +1,6 @@
 # VisiaEngine Conventions & Constraints
 
-> This file is VisiaEngine-only. C2-C8 and C10-C14 are reserved slots (C1/C9 inherited from the predecessor project's general methodology, kept to avoid dangling cross-references; C15/C16/C17 active). New conventions take the smallest free slot. Full predecessor archive: `.refinfo` (read-only).
+> This file is VisiaEngine-only. C1/C9 are inherited from the predecessor project's general methodology; C14 and C15-C25 are active; C2-C8 and C10-C13 are reserved slots (kept so old cross-references do not dangle). New conventions take the smallest free slot. Full predecessor archive: `.refinfo` (read-only).
 
 ## C1: Architecture-decision comparison format
 
@@ -260,7 +260,7 @@ never be committed. `gate-agents` is also in the `ci` chain. New host adapters a
 entries in `scripts/agent-targets.json` — but first verify that host's discovery
 paths/shape from its docs (a wrong path is a dead, unread file; see D35).
 
-## Book structure rules (enforced by gate-prose, plan 2026-10-30-book-structure-polish)
+## Book structure rules (unnumbered by design: a gate-enforced rule set, not a C-slot convention; plan 2026-10-30-book-structure-polish)
 
 - Headings are phrases, not sentences: h1 <= 60 rendered chars, h2-h4 <= 55; no
   sentence-ending punctuation (numbered prefixes like `§3. ` are exempt).

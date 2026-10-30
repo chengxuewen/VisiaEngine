@@ -257,7 +257,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - C23: "PolyOrch submodule work runs on dev-visiaengine; main is merged-into and tested, never committed-on directly"
 - C24: "Commit message = short single-concern subject + bulleted body"
 - C25: Regenerate host config layers after editing `.agents/` (2026-10-28)
-- Book structure rules (enforced by gate-prose, plan 2026-10-30-book-structure-polish)
+- Book structure rules (unnumbered by design: a gate-enforced rule set, not a C-slot convention; plan 2026-10-30-book-structure-polish)
 
 ### decisions
 - full text: `.agents/memorys/decisions.md`
@@ -309,12 +309,12 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### status
 - full text: `.agents/memorys/status.md`
-- ... 57 older entries omitted (read the full file)
-- Review-fix band baseline (2026-10-19, 5-agent review FAILED -> three blocking fixes landed)
+- ... 58 older entries omitted (read the full file)
 - Web wall expansion band baseline (2026-10-23, live pages 6 -> 26)
 - Web wall expansion addendum (2026-10-23 same band, live pages 26 -> 29)
 - 2026-10-30: the docs book line closes (S1-S8 -> D46 -> polish)
 - repo-audit Full Scan — 2026-10-30 (first Full run)
 - repo-audit Quick Scan — 2026-10-30 (closure re-check)
+- doc-audit Full — 2026-10-30 (revised-skill first run; 3 parallel lanes + conductor)
 <!-- END:agents-memory -->
 

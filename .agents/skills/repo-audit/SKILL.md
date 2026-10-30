@@ -192,8 +192,8 @@ Fetch READMEs with `webfetch`; 3-dimension quick scoring: tech-stack fit / alrea
 
 ### 3C: Persistence
 
-Record scan results in `.agents/memorys/status.md` (a fixed "ecosystem-scan" paragraph -- the memorys
-surface is a fixed four-file set, and new files change the agent-links sync face; keep the text English, C15):
+Record scan results in `.agents/memorys/status.md` (a fixed "repo-audit" paragraph -- the memorys
+surface is a fixed four-file set, and new files change the agent-links sync face; keep the text English, C17/C20):
 - each scan's findings, scores, decisions; the next scan first checks whether last time's issues were fixed
 - the Quick-run counter lives in the same paragraph
 - >=5 Quick runs -> automatically suggest Full

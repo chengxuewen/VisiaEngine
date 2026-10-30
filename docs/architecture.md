@@ -145,7 +145,7 @@ Open question: spec-compatibility with the MapLibre v8 subset (migration cost tr
 |---|---|
 | cargo | `visiaengine-ffi`: cdylib (.dll/.dylib/.so) + staticlib + hand-written, human-reviewed `visiaengine.h` (I0) |
 | wasm | the `visiaengine-wasm` standalone crate (CAPI-09 dual-face mirror) has landed; npm packaging = Alpha |
-| packaging | vcpkg / NuGet / pub mirrors; size budget core `.so` ≤ 6 MB, total ≤ 10 MB — native cdylib stripped to 7.25 MB, target met (2026-09-24) |
+| packaging | vcpkg / NuGet / pub mirrors; size budget total ≤ 10 MB — native cdylib stripped to 7.25 MB, target met (2026-09-24) |
 | CI matrix | the full suite runs on T1; T2 spot-checked on LLVMPipe/Mesa software rendering + the Android emulator; WebGL2 in browsers |
 | pin discipline | wgpu's quarterly breaks → pin the major version + a per-quarter upgrade window (re-verify all tiers) |
 

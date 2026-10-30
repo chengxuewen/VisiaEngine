@@ -22,7 +22,7 @@ fonttools = ">=4.66.0,<5"
 # Official PyPI distribution by the ast-grep author (MIT); pinned, verified 2026-10-28.
 ast-grep-cli = "==0.51.0"
 
-# Book toolchain for the human-facing docs site (book/, output in www/ -- see docs/env.md).
+# Book toolchain for the human-facing docs site (book/, output in build/book -- see docs/env.md).
 # Everything conda-installable lives here.
 [feature.book.dependencies]
 markdownlint-cli = ">=0.45,<1"
