@@ -1,6 +1,6 @@
 # Chapter order for the book (learning path first).
 # Titles are English-only on purpose: gate-i18n scans .toml, and the Chinese
-# titles come from book/po/zh-CN.po in S5 (gettext workflow).
+# English-only book (D46): browser-side translation covers other languages.
 # title = ""  -> take the first `# ` heading from the source file.
 # visibility = "internal" -> excluded by `book-build --public` (see plan §12-6).
 
@@ -8,11 +8,13 @@
 title = "Overview"
 source = "README.md"
 type = "index"
+polish = true
 
 [[chapter]]
 title = "Architecture"
 source = "docs/architecture.md"
 type = "explanation"
+polish = true
 
 [[chapter]]
 title = "Call & Dependency Graph"
@@ -23,22 +25,26 @@ type = "reference"
 title = "Product & Positioning"
 source = "docs/whitepaper.md"
 type = "explanation"
+polish = true
 visibility = "internal"
 
 [[chapter]]
 title = "Developer Environment"
 source = "docs/env.md"
 type = "how-to"
+polish = true
 
 [[chapter]]
 title = "Tutorials (E-index)"
 source = "docs/tutorials.md"
 type = "tutorial"
+polish = true
 
 [[chapter]]
 title = "Gap-Closure Roadmap"
 source = "docs/gap-closure-roadmap.md"
 type = "explanation"
+polish = true
 visibility = "internal"
 
 # SDD contracts: one chapter each, auto-titled, grouped under one part header.

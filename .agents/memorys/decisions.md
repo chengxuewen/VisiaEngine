@@ -611,3 +611,24 @@ Plan: `.omo/plans/2026-10-28-repo-book.md` (14 sections: four adjudication round
 - **Gates**: `gate-docs` ⑬ (SUMMARY entries resolve; graph chapter embeds the app) SKIPs when `build/` is absent, like cmake-smoke; `pixi run book-check` asserts index/graph.json/app/vendor and will grow a browser layer once chromium is available.
 - **Language boundary**: book sources stay English (gate-i18n scans .toml/.js/.md, so `toc.toml` titles are English); Chinese arrives through PO catalogs in S5. `visibility = "internal"` marks pages that `--public` removes from both the SUMMARY and the artifact.
 - **Status**: S1-S4 landed; S5 (PO/i18n), S6 (language switch + browser checks), S7 (gate-prose: type rules, evidence anchors, banned words), S8 (book-serve/book-graph tasks, footer provenance) remain.
+
+## D46: the book is English-only; browser-side translation covers other languages (2026-10-30)
+
+Revision of D45's bilingual plan. The PO pipeline (mdbook-i18n-helpers, book/po/,
+BOOK_LANG builds, the language switch and the coverage ratchet) is removed: measured
+over five batches it cost a re-pot/re-merge/re-translate tax on every English docs
+edit, and its hardest tail (escaped characters, fenced-block comments, quoted strings)
+fought the preprocessor's markdown reconstruction. The reader-side alternative --
+Edge/Chrome built-in translate, or Immersive Translate -- covers 100% of the content
+(including the 27 SDD pages that were never in translation scope) with zero
+per-release maintenance.
+
+- **Kept**: the whole mdBook site, the codegraph graph, lazy mermaid, book-serve,
+  book-graph and the provenance footer are language-agnostic and unchanged.
+- **Kept in history**: book/po/*.po|pot (513 translated strings, 86% of translatable
+  prose) stay recoverable from git if a published Chinese tree is ever wanted again.
+- **Marker rename**: toc.toml's `translated = true` becomes `polish = true` -- the
+  attribute now scopes gate-prose's banned-word list, not a translation promise.
+- **Simplified**: book-build emits www/book/en only (no generated per-language book
+  dirs, no langs.json/root.html landing page); book-check drops the bilingual
+  assertions; the cargo-binstall and gettext dependencies leave the book feature.

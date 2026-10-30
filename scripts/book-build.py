@@ -12,6 +12,7 @@ Unlisted markdown files are appended under "Appendix" with a WARN (plan §9-1).
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -47,11 +48,61 @@ def doc_files() -> list[str]:
     return sorted(found)
 
 
+def export_graph(src_dir: str) -> int:
+    """Export the codegraph index into the book source tree (S2/S8)."""
+    graph_db = os.path.join(ROOT, ".codegraph", "codegraph.db")
+    if not os.path.exists(graph_db):
+        print("BOOK - no .codegraph yet (run: pixi run mcp index) -- graph page will be empty")
+        return 0
+    return subprocess.run(
+        ["node", "scripts/export-graph.mjs", os.path.join(src_dir, "graph.json")],
+        cwd=ROOT, stdin=subprocess.DEVNULL,
+    ).returncode
+
+
+def write_meta(src_dir: str) -> None:
+    """Provenance for the page footer (S8): commit, last doc edit, graph index time."""
+    def git(*cmd: str) -> str:
+        try:
+            return subprocess.run(
+                ["git", *cmd], cwd=ROOT, capture_output=True, text=True,
+                stdin=subprocess.DEVNULL,
+            ).stdout.strip()
+        except OSError:
+            return ""
+
+    indexed = ""
+    graph_json = os.path.join(src_dir, "graph.json")
+    if os.path.exists(graph_json):
+        try:
+            with open(graph_json, encoding="utf-8") as handle:
+                indexed = json.load(handle).get("generated_at", "")[:16].replace("T", " ") + " UTC"
+        except (OSError, ValueError):
+            indexed = ""
+    meta = {
+        "commit": git("rev-parse", "--short", "HEAD") or "uncommitted",
+        "updated": git("log", "-1", "--format=%ad", "--date=short") or "",
+        "indexed": indexed,
+    }
+    with open(os.path.join(src_dir, "meta.json"), "w", encoding="utf-8") as handle:
+        json.dump(meta, handle, indent=2)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--public", action="store_true",
                         help="exclude chapters marked visibility = \"internal\"")
+    parser.add_argument("--graph-only", action="store_true",
+                        help="only re-export graph.json + meta.json into build/book-src (no mdbook build)")
     args = parser.parse_args()
+
+    if args.graph_only:
+        if not os.path.isdir(SRC_DIR):
+            print("BOOK \u2717 no build/book-src yet -- run: pixi run book-build", file=sys.stderr)
+            return 1
+        code = export_graph(SRC_DIR)
+        write_meta(SRC_DIR)
+        return 0 if code == 0 else code
 
     with open(os.path.join(BOOK_DIR, "toc.toml"), "rb") as handle:
         toc = tomllib.load(handle)
@@ -72,16 +123,9 @@ def main() -> int:
 
     # 3b) Graph data for the interactive page (S2). Missing index is not fatal:
     #     the page renders an actionable hint instead (plan §3.2 tolerance).
-    graph_db = os.path.join(ROOT, ".codegraph", "codegraph.db")
-    if os.path.exists(graph_db):
-        code = subprocess.run(
-            ["node", "scripts/export-graph.mjs", os.path.join(SRC_DIR, "graph.json")],
-            cwd=ROOT, stdin=subprocess.DEVNULL,
-        ).returncode
-        if code != 0:
-            print("BOOK WARN graph export failed -- graph page will be empty", file=sys.stderr)
-    else:
-        print("BOOK - no .codegraph yet (run: pixi run mcp index) -- graph page will be empty")
+    graph_code = export_graph(SRC_DIR)
+    if graph_code != 0:
+        print("BOOK WARN graph export failed -- graph page will be empty", file=sys.stderr)
 
     # 4) Collect the chapter list in toc order, expanding glob groups.
     hidden = {entry["source"] for entry in toc.get("chapter", [])
@@ -137,42 +181,14 @@ def main() -> int:
     with open(os.path.join(SRC_DIR, "SUMMARY.md"), "w", encoding="utf-8") as handle:
         handle.write("\n".join(lines) + "\n")
 
-    # 6) Build the book. -d is cwd-relative, so pass absolute paths.
-    lang = os.environ.get("BOOK_LANG", "en")
-    dest = os.path.join(OUT_DIR, lang)
-    build_dir, env = BOOK_DIR, dict(os.environ)
-    tools_bin = os.path.join(ROOT, ".tools", "bin")
-    if os.path.isdir(tools_bin):
-        env["PATH"] = tools_bin + os.pathsep + env.get("PATH", "")
-    if lang != "en":
-        # A translated build needs the gettext preprocessor (mdbook-i18n-helpers).
-        # It runs from a generated book dir so the English build never depends on .tools/.
-        if not os.path.exists(os.path.join(tools_bin, "mdbook-gettext")):
-            print("BOOK ✗ translated builds need mdbook-gettext -- run: pixi run book-i18n-setup",
-                  file=sys.stderr)
-            return 1
-        build_dir = os.path.join(ROOT, "build", f"book-{lang}")
-        os.makedirs(build_dir, exist_ok=True)
-        with open(os.path.join(build_dir, "book.toml"), "w", encoding="utf-8") as handle:
-            handle.write(
-                "[book]\n"
-                'title = "VisiaEngine"\n'
-                'src = "../book-src"\n'
-                f'language = "{lang}"\n\n'
-                "[output.html]\n"
-                'git-repository-url = "https://gitee.com/chengxuewen/VisiaEngine"\n'
-                'edit-url-template = "https://gitee.com/chengxuewen/VisiaEngine/edit/main/{path}"\n'
-                'additional-js = ["web/mermaid-init.js"]\n\n'
-                "[preprocessor.gettext]\n"
-                f'po-dir = "{os.path.join(BOOK_DIR, "po")}"\n'
-            )
-        # additional-js paths resolve against the book root, so the assets must
-        # exist next to the generated book.toml as well.
-        shutil.copytree(os.path.join(BOOK_DIR, "web"),
-                        os.path.join(build_dir, "web"), dirs_exist_ok=True)
+    write_meta(SRC_DIR)
+
+    # 6) Build the book (English-only since D46; browser-side translation covers
+    #    other languages, so there is no gettext preprocessor and no .tools dependency).
+    dest = os.path.join(OUT_DIR, "en")
     proc = subprocess.run(
-        ["mdbook", "build", build_dir, "-d", dest],
-        cwd=ROOT, stdin=subprocess.DEVNULL, env=env,
+        ["mdbook", "build", BOOK_DIR, "-d", dest],
+        cwd=ROOT, stdin=subprocess.DEVNULL,
     )
     if proc.returncode != 0:
         print("BOOK ✗ mdbook build failed", file=sys.stderr)

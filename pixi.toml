@@ -23,16 +23,13 @@ fonttools = ">=4.66.0,<5"
 ast-grep-cli = "==0.51.0"
 
 # Book toolchain for the human-facing docs site (book/, output in www/ -- see docs/env.md).
-# Everything conda-installable lives here; the only cargo-binstall exception is
-# mdbook-i18n-helpers (added in S5), pinned per .agents/rules/common/constraints.md.
+# Everything conda-installable lives here.
 [feature.book.dependencies]
-gettext = ">=0.22,<2"          # GNU gettext tools (msgfmt/xgettext); S1 verifies msgfmt --version
 markdownlint-cli = ">=0.45,<1"
 mdbook = ">=0.5,<0.6"
 
 # No aarch64 build on conda-forge (solve verified 2026-10-29); same pattern as clang-tools.
 [feature.book.target.linux-64.dependencies]
-cargo-binstall = ">=1.26,<2"
 
 [feature.tools.dependencies]
 cargo-deny = ">=0.20,<0.21"
@@ -148,9 +145,12 @@ serena = { features = ["serena"] }
 # assemble build/book-src from docs/ + book/toc.toml, then mdbook build into www/book/<lang>.
 book-build = "python3 scripts/book-build.py"
 book-check = "python3 scripts/book-check.py"
-book-i18n = "python3 scripts/book-i18n.py"
-# Only non-pixi install in the book toolchain: mdbook-i18n-helpers (cargo-binstall, repo-local).
-book-i18n-setup = "cargo-binstall mdbook-i18n-helpers -y --root .tools"
+# Foreground LAN server with a rebuild watcher; Ctrl-C stops it (plan §12-3).
+book-serve = "python3 scripts/book-serve.py"
+# Re-export the codegraph JSON into the book source tree only (no mdbook build).
+book-graph = "python3 scripts/book-build.py --graph-only"
+# Prose quality: banned adjectives, per-type structure, path:line anchors (plan §11).
+gate-prose = "python3 scripts/gate-prose.py"
 # The cargo-flavored tasks are an interface contract: running them before the Cargo workspace lands (build day) must fail -- that is expected
 check = "cargo check --workspace"
 build = "cargo build --workspace"
@@ -195,7 +195,7 @@ gen-hdr = "python3 scripts/gen_hdr.py"   # regenerate the demo_sky.hdr fixture (
 # output; needs node (default env) and a prior `pixi run web-check`. Nothing is
 # published; the tarball stays on this machine.
 npm-pack = "bash scripts/gen-npm-package.sh"
-ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "gate-skills", "gate-agents", "gate-mcp", "check-promises", "cmake-smoke", "pack-check", "i18n"] }
+ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "gate-prose", "gate-skills", "gate-agents", "gate-mcp", "check-promises", "cmake-smoke", "pack-check", "i18n"] }
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # a ctest forwarding shell (argv single source = the R9 table; CI calls it under xvfb-run)
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2: the glTF assembly chain (G3)
 smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2: the GeoJSON chain (H4)

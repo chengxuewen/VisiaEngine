@@ -41,7 +41,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/brotli-bin-1.2.0-h9908984_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_10.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-ares-1.34.8-hebe6cf0_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-binstall-1.26.1-hf473dc7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-deny-0.20.2-hb17b654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ccache-4.14-h420ae53_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cmake-4.4.3-hff7ac6b_0.conda
@@ -49,18 +48,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/fonttools-4.66.0-py312hfd18d64_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gcc_impl_linux-64-16.2.0-h176d5d0_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gcc_linux-64-16.2.0-h0ab548f_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/gettext-1.0-h0e23cf9_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/gettext-tools-1.0-h5460e5d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gxx_impl_linux-64-16.2.0-h0d273dc_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gxx_linux-64-16.2.0-h38dc33c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-py310h44b86e0_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/json-c-0.18-hebe6cf0_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/keyutils-1.6.3-h7cc23a3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/krb5-1.22.2-hbc21106_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lame-4.0-h770b6ad_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ld_impl_linux-64-2.46.1-default_hbd61a6d_102.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libasprintf-1.0-h0e23cf9_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libasprintf-devel-1.0-h0e23cf9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlicommon-1.2.0-h39a168f_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlidec-1.2.0-ha411449_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlienc-1.2.0-h018ffa1_4.conda
@@ -77,8 +71,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libfreetype-2.14.3-ha770c72_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libfreetype6-2.14.3-h5e6c136_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libgcc-16.2.0-ha9f2e26_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libgettextpo-1.0-h0e23cf9_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libgettextpo-devel-1.0-h0e23cf9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libgl-1.7.0-ha4b6fd6_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libglib-2.88.3-h569388d_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libglvnd-1.7.0-ha4b6fd6_5.conda
@@ -181,16 +173,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/dbus-1.16.2-h71d469a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/fonttools-4.66.0-py312h363f31d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gcc_impl_linux-aarch64-16.2.0-hc438ef3_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gettext-1.0-hfb3de9a_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gettext-tools-1.0-h1877654_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/icu-78.3-py311h3512406_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/json-c-0.18-h29ee22c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/keyutils-1.6.3-h5bc82ec_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/krb5-1.22.2-h095d8e5_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lame-4.0-h7ce06ba_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/ld_impl_linux-aarch64-2.46.1-default_h1979696_102.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libasprintf-1.0-hfb3de9a_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libasprintf-devel-1.0-hfb3de9a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libbrotlicommon-1.2.0-h384ecca_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libbrotlidec-1.2.0-h011f0d3_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libbrotlienc-1.2.0-hb247b97_4.conda
@@ -204,8 +191,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libffi-3.7.0-hdaad0be_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libflac-1.5.0-he9c94f4_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libgcc-16.2.0-h205dda4_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libgettextpo-1.0-hfb3de9a_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libgettextpo-devel-1.0-hfb3de9a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libgl-1.7.0-hd24410f_5.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libglib-2.88.3-h3584fe5_4.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libglvnd-1.7.0-hd24410f_5.conda
@@ -305,12 +290,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cmake-4.4.3-haddf760_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/dbus-1.16.2-hebb0a2c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/fonttools-4.66.0-py314h0df259e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/gettext-0.25.1-h98e67c8_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/gettext-tools-0.25.1-h98e67c8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/icu-78.3-py313hbf1d544_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/krb5-1.22.2-h69064fd_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libasprintf-0.25.1-h98e67c8_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libasprintf-devel-0.25.1-h98e67c8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libbrotlicommon-1.2.0-he0616a4_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libbrotlidec-1.2.0-h4a2f56c_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libbrotlienc-1.2.0-h3d41943_4.conda
@@ -320,13 +301,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libev-4.33-ha3d0635_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libexpat-2.8.1-hcc62823_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libffi-3.7.0-h6b3a05b_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libgettextpo-0.25.1-h98e67c8_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libgettextpo-devel-0.25.1-h98e67c8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libglib-2.88.3-h7e55108_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libhiredis-1.3.0-h240833e_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libiconv-1.18-h4ae439b_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libintl-0.25.1-h98e67c8_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/libintl-devel-0.25.1-h98e67c8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/liblzma-5.8.3-hbb4bfdb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libmpdec-4.0.0-ha1e9b39_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/libnghttp2-1.68.1-h1e30255_1.conda
@@ -374,13 +352,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cmake-4.4.3-hf91ab31_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/dbus-1.16.2-hf049998_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/fonttools-4.66.0-py314haf53d71_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gettext-1.0-hae62183_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gettext-tools-1.0-h90e24ba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/icu-78.3-py310h579977c_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/json-c-0.18-h74c22ad_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/krb5-1.22.2-h34f8a20_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libasprintf-1.0-hae62183_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libasprintf-devel-1.0-hae62183_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlicommon-1.2.0-h1dcdb26_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlidec-1.2.0-h5295a6a_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlienc-1.2.0-h2ddc9cb_4.conda
@@ -390,13 +363,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libev-4.33-h1a92334_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libexpat-2.8.1-hf6b4638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libffi-3.7.0-h47dc5ef_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgettextpo-1.0-hae62183_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgettextpo-devel-1.0-hae62183_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libglib-2.90.1-hccd281b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libhiredis-1.3.0-h286801f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libiconv-1.18-he4c29f2_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libintl-1.0-hae62183_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libintl-devel-1.0-hae62183_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/liblzma-5.8.3-h8088a28_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libmpdec-4.0.0-h84a0fba_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libnghttp2-1.68.1-h435687b_1.conda
@@ -442,25 +412,18 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/ccache-4.14-h7fd822b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cmake-4.4.3-hde52c71_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/fonttools-4.66.0-py314h2359020_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/gettext-0.22.5-h5728263_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/gettext-tools-0.22.5-h528050c_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/icu-78.3-h5112557_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/krb5-1.22.2-h719d79b_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/libasprintf-0.22.5-h5728263_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/libasprintf-devel-0.22.5-h5728263_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libbrotlicommon-1.2.0-hf02afa3_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libbrotlidec-1.2.0-h84f9c24_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libbrotlienc-1.2.0-he2a975b_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libcurl-8.22.0-hdb0ef4a_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libexpat-2.8.1-hac47afa_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libffi-3.7.0-h3d046cb_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/libgettextpo-0.22.5-h5728263_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/libgettextpo-devel-0.22.5-h5728263_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libglib-2.88.3-he810d59_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libhiredis-1.3.0-he0c23c2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libiconv-1.18-hc1393d2_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libintl-0.22.5-h5728263_4.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/libintl-devel-0.22.5-h5728263_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/liblzma-5.8.3-hfd05255_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libmpdec-4.0.0-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libpsl-0.23.1-h9b16d47_1.conda
@@ -3511,21 +3474,6 @@ packages:
     - cairo >=1.18.6,<2.0a0
   size: 1007110
   timestamp: 1790045358757
-- conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-binstall-1.26.1-hf473dc7_0.conda
-  sha256: c809759ba5bc84fb72549b182c1d2efdb3b1291108c8bc5d087c8a4a1d31c71a
-  md5: 09fcf50ee328e2d9df177aa1bfc57b6b
-  depends:
-  - libgcc >=15
-  - __glibc >=2.17,<3.0.a0
-  - libstdcxx >=15
-  constrains:
-  - __glibc >=2.17
-  license: GPL-3.0-only
-  license_family: GPL
-  purls: []
-  run_exports: {}
-  size: 6937547
-  timestamp: 1792870832437
 - conda: https://conda.anaconda.org/conda-forge/linux-64/cargo-deny-0.20.2-hb17b654_0.conda
   sha256: 98d4e0adbb07cff3891078d411c7b7871508c03c1830ba9be2e8c835529bc36a
   md5: 0b977c2b9739d1c0cc3e6b0621934191
@@ -3930,43 +3878,6 @@ packages:
     - libgcc >=16
   size: 30371
   timestamp: 1789573357529
-- conda: https://conda.anaconda.org/conda-forge/linux-64/gettext-1.0-h0e23cf9_0.conda
-  sha256: c2e009aae323fb3182aa83ebf186abeda2d54630ccaaa39601623293aab3a318
-  md5: d121c26bc3e933899d79dfbff4e0ed00
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - gettext-tools 1.0 h5460e5d_0
-  - libasprintf 1.0 h0e23cf9_0
-  - libasprintf-devel 1.0 h0e23cf9_0
-  - libgcc >=15
-  - libgettextpo 1.0 h0e23cf9_0
-  - libgettextpo-devel 1.0 h0e23cf9_0
-  - libiconv >=1.18,<2.0a0
-  - libstdcxx >=15
-  license: LGPL-2.1-or-later AND GPL-3.0-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-    - libgettextpo >=1.0,<2.0a0
-  size: 545430
-  timestamp: 1790820811143
-- conda: https://conda.anaconda.org/conda-forge/linux-64/gettext-tools-1.0-h5460e5d_0.conda
-  sha256: c5260ff7136229ab4103ea9f66f324f0bbbb7a75046d5732fa7ab06964820b9b
-  md5: 30828fb2ec08b174235b7a99db65851d
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - json-c >=0.18,<0.19.0a0
-  - libcurl >=8.22.0,<9.0a0
-  - libgcc >=15
-  - libiconv >=1.18,<2.0a0
-  - ncurses >=6.6,<7.0a0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports: {}
-  size: 4122410
-  timestamp: 1790820775651
 - conda: https://conda.anaconda.org/conda-forge/linux-64/giflib-6.1.3-hebe6cf0_2.conda
   sha256: 917c3a622c3870f822d25a882f1856e757d91e31a3dd52a499849a392ca865d2
   md5: 07bdd65afe03df3fb5dbcaa8257c64a3
@@ -4163,20 +4074,6 @@ packages:
     - icu >=78.3,<79.0a0
   size: 14459115
   timestamp: 1786545741408
-- conda: https://conda.anaconda.org/conda-forge/linux-64/json-c-0.18-hebe6cf0_2.conda
-  sha256: 78ec5a672acc8a6bf9c74268b88a72230809517aebe75a11acf959d3f9a63fe0
-  md5: 9aa77c4e7f9a988df94da18a7b9b90fe
-  depends:
-  - libgcc >=15
-  - __glibc >=2.17,<3.0.a0
-  license: MIT
-  license_family: MIT
-  purls: []
-  run_exports:
-    weak:
-    - json-c >=0.18,<0.19.0a0
-  size: 90204
-  timestamp: 1790188731629
 - conda: https://conda.anaconda.org/conda-forge/linux-64/keyutils-1.6.3-h7cc23a3_1.conda
   sha256: dd053c96dcb0dcfd59422aefea9d2fe937a190167f34fba7893ec1e10a7e8963
   md5: ba55d1b89fd7775e67de8291029b4059
@@ -4267,34 +4164,6 @@ packages:
     - lerc >=4.2.0,<5.0a0
   size: 271158
   timestamp: 1785036167977
-- conda: https://conda.anaconda.org/conda-forge/linux-64/libasprintf-1.0-h0e23cf9_0.conda
-  sha256: 7279d2c4c74fd226cddbb9f4990f10c2fcaae903c4651bf857a7faf7dbb7ba5a
-  md5: f1ad804f4c3e4579be44b5faa28ea123
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=15
-  - libstdcxx >=15
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-  size: 41531
-  timestamp: 1790820726900
-- conda: https://conda.anaconda.org/conda-forge/linux-64/libasprintf-devel-1.0-h0e23cf9_0.conda
-  sha256: 5ca1c188af3d7a5cf14dc3bd12c77960813d24cb2d2dd90c603bd03b441280cf
-  md5: 03f168e2bc34c28fd8cb9873a77e9ba7
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libasprintf 1.0 h0e23cf9_0
-  - libgcc >=15
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-  size: 23571
-  timestamp: 1790820739161
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libbrotlicommon-1.2.0-h39a168f_4.conda
   sha256: c4e9854c585f3ee1785f651287ecdf8c28f30a2ea1b159a513005f8a0f6453a3
   md5: df210655e30a05e3b069c91b7aaddd2d
@@ -4832,37 +4701,6 @@ packages:
     - libgcc
   size: 28616
   timestamp: 1790303114248
-- conda: https://conda.anaconda.org/conda-forge/linux-64/libgettextpo-1.0-h0e23cf9_0.conda
-  sha256: 8a445f4f6514600b3c8c0de9b5200f4c389e0fefad19d193d9d4683bd3f12bce
-  md5: 857746797e1908c942a1c1467943ffc7
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=15
-  - libiconv >=1.18,<2.0a0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=1.0,<2.0a0
-  size: 182900
-  timestamp: 1790820732763
-- conda: https://conda.anaconda.org/conda-forge/linux-64/libgettextpo-devel-1.0-h0e23cf9_0.conda
-  sha256: 63d9298a691c913430b7d52d545cc1e0d4bbe7cd7ede34898ec0aaa9239699d4
-  md5: be395c36e51ef7c6dc044af4ed4fa9de
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=15
-  - libgettextpo 1.0 h0e23cf9_0
-  - libiconv >=1.18,<2.0a0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=1.0,<2.0a0
-  size: 26656
-  timestamp: 1790820745389
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libgl-1.7.0-ha4b6fd6_5.conda
   sha256: 7b2e7e31e8a4f5a01c45ecadcd8aa68c8f733b035240bc7ba9881835ef4bf7b4
   md5: 81141db127a106eb5a91df69a29c9918
@@ -7792,41 +7630,6 @@ packages:
   run_exports: {}
   size: 77229672
   timestamp: 1787617828188
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gettext-1.0-hfb3de9a_0.conda
-  sha256: 6b3209f5e9af254ef33c25a52d71ae85343b3e3e10fc6dc8d17131659a6d1996
-  md5: 1be552f270b9a0072779e57f5f60685e
-  depends:
-  - gettext-tools 1.0 h1877654_0
-  - libasprintf 1.0 hfb3de9a_0
-  - libasprintf-devel 1.0 hfb3de9a_0
-  - libgcc >=15
-  - libgettextpo 1.0 hfb3de9a_0
-  - libgettextpo-devel 1.0 hfb3de9a_0
-  - libiconv >=1.18,<2.0a0
-  - libstdcxx >=15
-  license: LGPL-2.1-or-later AND GPL-3.0-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-    - libgettextpo >=1.0,<2.0a0
-  size: 545712
-  timestamp: 1790820944323
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gettext-tools-1.0-h1877654_0.conda
-  sha256: 709091a4f8dc347aeec99eb0bb651b89a4d7d61663abbe02af353f3913882881
-  md5: bc08f6e12b9a5c8c27ba5a80fdf50985
-  depends:
-  - json-c >=0.18,<0.19.0a0
-  - libcurl >=8.22.0,<9.0a0
-  - libgcc >=15
-  - libiconv >=1.18,<2.0a0
-  - ncurses >=6.6,<7.0a0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports: {}
-  size: 4531942
-  timestamp: 1790820908252
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/giflib-6.1.3-h29ee22c_2.conda
   sha256: cac553c1670f8b49f9b25f4c0b3fa0e7ed5c8e305d1277048c4160230adeabd0
   md5: f1f8146d28d0acb680b68b5a7b95607d
@@ -7957,19 +7760,6 @@ packages:
     - icu >=78.3,<79.0a0
   size: 14688525
   timestamp: 1786545779464
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/json-c-0.18-h29ee22c_2.conda
-  sha256: b26d0c7ec2bd6c7e6d7cc8ae6fa1e8c60f1fbda07327a56225f8f487c37e71e5
-  md5: 9d68a996cd125be9bb3a79468be85d78
-  depends:
-  - libgcc >=15
-  license: MIT
-  license_family: MIT
-  purls: []
-  run_exports:
-    weak:
-    - json-c >=0.18,<0.19.0a0
-  size: 97284
-  timestamp: 1790188733493
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/keyutils-1.6.3-h5bc82ec_1.conda
   sha256: 3999b1472f1e549a0b766428e2823abf20626aac5314b474c9b76bf6eb679def
   md5: 6d9be306ecb8dfc9ff46f02cb367d5c2
@@ -8054,32 +7844,6 @@ packages:
     - lerc >=4.2.0,<5.0a0
   size: 244850
   timestamp: 1785038308130
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libasprintf-1.0-hfb3de9a_0.conda
-  sha256: a2b003de876f73b72ac15fb3a6f98f7b9c56ab40fd43d973762fe2ca53a52d48
-  md5: baa6e2c0bc2a346969b6fa348629d0a0
-  depends:
-  - libgcc >=15
-  - libstdcxx >=15
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-  size: 43838
-  timestamp: 1790820739582
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libasprintf-devel-1.0-hfb3de9a_0.conda
-  sha256: c5d4dc16387cfbd24b25f1edb182c26c1a0ca6b55bf8c2c3c72bfea9beef56eb
-  md5: c73b8430a1c492efb900e93212b364ef
-  depends:
-  - libasprintf 1.0 hfb3de9a_0
-  - libgcc >=15
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-  size: 23794
-  timestamp: 1790820812541
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libbrotlicommon-1.2.0-h384ecca_4.conda
   sha256: 0caa2f9a3c56f139fd574d9300ecc062de96b11b50699024dde0365262f5a02a
   md5: 20d76286cd6c6541181ccf57a8dbd990
@@ -8532,35 +8296,6 @@ packages:
     - libgcc
   size: 28711
   timestamp: 1790302349238
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libgettextpo-1.0-hfb3de9a_0.conda
-  sha256: 9cc9ea159a3f38f4ebceeee4ce0811a4c295ef3760d5a0aa2352092242010d9e
-  md5: 84dd09e7089cca2a8a9a473d1339eae8
-  depends:
-  - libgcc >=15
-  - libiconv >=1.18,<2.0a0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=1.0,<2.0a0
-  size: 234141
-  timestamp: 1790820745827
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libgettextpo-devel-1.0-hfb3de9a_0.conda
-  sha256: c5d70f4c53c18a3581711b5deb09b8387ac54ba063ef9a27d34baa93f6667446
-  md5: 36d9e668dbc8140ab119a1508fe1de0f
-  depends:
-  - libgcc >=15
-  - libgettextpo 1.0 hfb3de9a_0
-  - libiconv >=1.18,<2.0a0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=1.0,<2.0a0
-  size: 26832
-  timestamp: 1790820818980
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libgl-1.7.0-hd24410f_5.conda
   sha256: f1814f83ebb510cd51147fa1578b7c77eaefcca3b1ce5e32c48b62c114e39de6
   md5: 643cbfb061e49e6608752d4892c98b13
@@ -11712,42 +11447,6 @@ packages:
     - fribidi >=1.0.17,<2.0a0
   size: 64612
   timestamp: 1790012239389
-- conda: https://conda.anaconda.org/conda-forge/osx-64/gettext-0.25.1-h98e67c8_2.conda
-  sha256: f0a04a1e842ab628b1bb66e29b9a157f9764cb16ef91943c802acf3238d2793a
-  md5: a0b7008aa8d72901f57810178e3880a3
-  depends:
-  - __osx >=11.0
-  - gettext-tools 0.25.1 h98e67c8_2
-  - libasprintf 0.25.1 h98e67c8_2
-  - libasprintf-devel 0.25.1 h98e67c8_2
-  - libcxx >=21
-  - libgettextpo 0.25.1 h98e67c8_2
-  - libgettextpo-devel 0.25.1 h98e67c8_2
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.25.1 h98e67c8_2
-  - libintl-devel 0.25.1 h98e67c8_2
-  license: LGPL-2.1-or-later AND GPL-3.0-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libintl >=0.25.1,<1.0a0
-    - libasprintf >=0.25.1,<1.0a0
-    - libgettextpo >=0.25.1,<1.0a0
-  size: 554533
-  timestamp: 1790119758977
-- conda: https://conda.anaconda.org/conda-forge/osx-64/gettext-tools-0.25.1-h98e67c8_2.conda
-  sha256: 196de037595be991a3702b59d6bc1dfa90c7e8efc2ddcda809d6eb34c8e29506
-  md5: 1c435675df31de9791dc3730e12b6d1d
-  depends:
-  - __osx >=11.0
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.25.1 h98e67c8_2
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports: {}
-  size: 3781525
-  timestamp: 1790119686844
 - conda: https://conda.anaconda.org/conda-forge/osx-64/giflib-6.1.3-had63097_2.conda
   sha256: baef1e384e4c2e30d28cdca97ee53bd49a6afbcb1c32bb6b30ef2646ddffc3e6
   md5: 8f2ab61822da3098fe75a3759c25a33d
@@ -11901,32 +11600,6 @@ packages:
     - lerc >=4.2.0,<5.0a0
   size: 217900
   timestamp: 1785036771895
-- conda: https://conda.anaconda.org/conda-forge/osx-64/libasprintf-0.25.1-h98e67c8_2.conda
-  sha256: 49de22dac7baf8d527ef94c636df5be03e16706f1429335b36c993b0bd4d0985
-  md5: 72c8e4da313362802aaa74a3de03b59a
-  depends:
-  - __osx >=11.0
-  - libcxx >=21
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=0.25.1,<1.0a0
-  size: 52548
-  timestamp: 1790119497671
-- conda: https://conda.anaconda.org/conda-forge/osx-64/libasprintf-devel-0.25.1-h98e67c8_2.conda
-  sha256: 419221a8be0c478d61cd4aff8bf49c69acb27d03fe87a3ced29105d9a6ddfe43
-  md5: 532b7c2ce216dd8199928b4d69f44a96
-  depends:
-  - __osx >=11.0
-  - libasprintf 0.25.1 h98e67c8_2
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=0.25.1,<1.0a0
-  size: 36222
-  timestamp: 1790119552075
 - conda: https://conda.anaconda.org/conda-forge/osx-64/libbrotlicommon-1.2.0-he0616a4_4.conda
   sha256: 14560b40c2c318f76ea517452f810ae9b9b752a75014138ff1ad06dba7c7e55d
   md5: faa59453024554888f67ac3142f6e4f4
@@ -12259,37 +11932,6 @@ packages:
   run_exports: {}
   size: 366001
   timestamp: 1786641701324
-- conda: https://conda.anaconda.org/conda-forge/osx-64/libgettextpo-0.25.1-h98e67c8_2.conda
-  sha256: 663f93332a2eb62a7f06c01655f89023a635a40db69faec43046a6a0f90832a9
-  md5: 4cdcb1d293525000b922bd0a101ebff5
-  depends:
-  - __osx >=11.0
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.25.1 h98e67c8_2
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=0.25.1,<1.0a0
-  size: 200516
-  timestamp: 1790119567619
-- conda: https://conda.anaconda.org/conda-forge/osx-64/libgettextpo-devel-0.25.1-h98e67c8_2.conda
-  sha256: f735528ff174bacbec2c73a9826f054ef91dcaa2c849dfce426781c73b6dfea4
-  md5: 1d2e0cc8cea0d50ab21627d8dedeeaa4
-  depends:
-  - __osx >=11.0
-  - libgettextpo 0.25.1 h98e67c8_2
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.25.1 h98e67c8_2
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=0.25.1,<1.0a0
-  size: 39007
-  timestamp: 1790119593854
 - conda: https://conda.anaconda.org/conda-forge/osx-64/libglib-2.88.3-h7e55108_4.conda
   sha256: 18d86429d453bb86e59f5a5a6f6c192ea656b019667b5c4e72263f9c6551750f
   md5: 13c5ec48b6e92cda35330224ee591502
@@ -13921,45 +13563,6 @@ packages:
     - fribidi >=1.0.17,<2.0a0
   size: 63577
   timestamp: 1790011838821
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/gettext-1.0-hae62183_0.conda
-  sha256: 364a239efdb668b3e3aa7e941ffb93d2b48838b2826885e1d4d11b01fe20b6bf
-  md5: 82a95bbfcfbc6e69b7c1b556d1d08782
-  depends:
-  - __osx >=11.0
-  - gettext-tools 1.0 h90e24ba_0
-  - libasprintf 1.0 hae62183_0
-  - libasprintf-devel 1.0 hae62183_0
-  - libcxx >=21
-  - libgettextpo 1.0 hae62183_0
-  - libgettextpo-devel 1.0 hae62183_0
-  - libiconv >=1.18,<2.0a0
-  - libintl 1.0 hae62183_0
-  - libintl-devel 1.0 hae62183_0
-  license: LGPL-2.1-or-later AND GPL-3.0-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libintl >=1.0,<2.0a0
-    - libasprintf >=1.0,<2.0a0
-    - libgettextpo >=1.0,<2.0a0
-  size: 548338
-  timestamp: 1790823123719
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/gettext-tools-1.0-h90e24ba_0.conda
-  sha256: 3fa8615a3b685404e49fb04908faed4fe42c650a46bf32b4f8d007c0aabcf007
-  md5: db523271dc7ebf8b1e556edfaaa577ac
-  depends:
-  - __osx >=11.0
-  - json-c >=0.18,<0.19.0a0
-  - libcurl >=8.22.0,<9.0a0
-  - libiconv >=1.18,<2.0a0
-  - libintl 1.0 hae62183_0
-  - ncurses >=6.6,<7.0a0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports: {}
-  size: 4226366
-  timestamp: 1790823001314
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/giflib-6.1.3-h74c22ad_2.conda
   sha256: 36a1605ea258ea805fd5a0f23f07ce3febcf4ac041d1ea99d0b31902b79f4358
   md5: edc562dcbe5872664817e64575aa325f
@@ -14082,19 +13685,6 @@ packages:
     - icu >=78.3,<79.0a0
   size: 14070242
   timestamp: 1786545847761
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/json-c-0.18-h74c22ad_2.conda
-  sha256: a52f1c0878e945a9f414d363f33592b6dc83eb9df0ddabc742bd3a4c1dd68627
-  md5: 5f4bd92d8c61f652402bfa490114ede6
-  depends:
-  - __osx >=11.0
-  license: MIT
-  license_family: MIT
-  purls: []
-  run_exports:
-    weak:
-    - json-c >=0.18,<0.19.0a0
-  size: 81313
-  timestamp: 1790188742874
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/krb5-1.22.2-h34f8a20_2.conda
   sha256: aaea1d42b07769920db2af7471ece9399d2613448863da64ad8272998db5db34
   md5: 15235dd10450d67bc25ccafd5b46d2bc
@@ -14126,32 +13716,6 @@ packages:
     - lerc >=4.2.0,<5.0a0
   size: 166477
   timestamp: 1785036480092
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libasprintf-1.0-hae62183_0.conda
-  sha256: b8eafac513801a662c24ab29428369b91af6711056a315e49de7a70c994df696
-  md5: abc7781914c8995c652a22a24ade7a99
-  depends:
-  - __osx >=11.0
-  - libcxx >=21
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-  size: 39988
-  timestamp: 1790822837241
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libasprintf-devel-1.0-hae62183_0.conda
-  sha256: b93baa0fee7840c3894ad8eec3c7258599bdebf72be2b0956d7140ccfb9421a5
-  md5: 3a434ed81d7086968500ca48d5f1681d
-  depends:
-  - __osx >=11.0
-  - libasprintf 1.0 hae62183_0
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=1.0,<2.0a0
-  size: 23820
-  timestamp: 1790822862272
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libbrotlicommon-1.2.0-h1dcdb26_4.conda
   sha256: 8a6e4789a6049dabb41c6fcaf6719232245484d81dfeb199b5abdb95c84c9fc2
   md5: 8f3981871d167a6cd323e636e1929dd4
@@ -14484,37 +14048,6 @@ packages:
   run_exports: {}
   size: 340923
   timestamp: 1786641012794
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgettextpo-1.0-hae62183_0.conda
-  sha256: a72da7c25b6a8631546992c8c25790005c1fa5b7d27728b12f8849bee88563bc
-  md5: ebcdccaf350a478eafd3ae46e25b9320
-  depends:
-  - __osx >=11.0
-  - libiconv >=1.18,<2.0a0
-  - libintl 1.0 hae62183_0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=1.0,<2.0a0
-  size: 177152
-  timestamp: 1790822876337
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libgettextpo-devel-1.0-hae62183_0.conda
-  sha256: f2bf35ab788736ddce643240a3de7fa8aa761220b6279aeb3813d385fee22207
-  md5: 271029e981fc7faea22859b46c6986b2
-  depends:
-  - __osx >=11.0
-  - libgettextpo 1.0 hae62183_0
-  - libiconv >=1.18,<2.0a0
-  - libintl 1.0 hae62183_0
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=1.0,<2.0a0
-  size: 26922
-  timestamp: 1790822902176
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libglib-2.90.0-hccd281b_0.conda
   sha256: 4ec64c476881b31f211842952f192208a3af0925a596da227f4d97fb9a63e0ac
   md5: 8f63a5f35547d0c6d819830ebe0d3245
@@ -14702,20 +14235,6 @@ packages:
     - libintl >=0.25.1,<1.0a0
   size: 41844
   timestamp: 1790118714457
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/libintl-devel-1.0-hae62183_0.conda
-  sha256: 020664d09a79e96ce30dd4996b1220d50246b44bdeef72775ce97b98c8524ebe
-  md5: 75793ce4a5e54ad64e09590bda8a45eb
-  depends:
-  - __osx >=11.0
-  - libiconv >=1.18,<2.0a0
-  - libintl 1.0 hae62183_0
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libintl >=1.0,<2.0a0
-  size: 29222
-  timestamp: 1790822889160
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libjpeg-turbo-3.2.0-h84a0fba_1.conda
   sha256: 05006418f9392c9b723e8428808db106de0350a497832f95f921b85ff1072310
   md5: b2f8c8e5a7651a1d7c05404c3a159517
@@ -16127,42 +15646,6 @@ packages:
     - fribidi >=1.0.17,<2.0a0
   size: 67033
   timestamp: 1790011847625
-- conda: https://conda.anaconda.org/conda-forge/win-64/gettext-0.22.5-h5728263_4.conda
-  sha256: d21f1f04e1aa1e276b8d87a084af9429a73325fed3e51e5c592eea8f0f0038eb
-  md5: 4bac90dac53efd9c5473e91986098aa5
-  depends:
-  - gettext-tools 0.22.5 h528050c_4
-  - libasprintf 0.22.5 h5728263_4
-  - libasprintf-devel 0.22.5 h5728263_4
-  - libgettextpo 0.22.5 h5728263_4
-  - libgettextpo-devel 0.22.5 h5728263_4
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.22.5 h5728263_4
-  - libintl-devel 0.22.5 h5728263_4
-  license: LGPL-2.1-or-later AND GPL-3.0-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libintl >=0.22.5,<1.0a0
-    - libasprintf >=0.22.5,<1.0a0
-    - libgettextpo >=0.22.5,<1.0a0
-  size: 35085
-  timestamp: 1787841662101
-- conda: https://conda.anaconda.org/conda-forge/win-64/gettext-tools-0.22.5-h528050c_4.conda
-  sha256: 4b893a4214ed38c3a61f3dec973bcbfa50588f2ee79ee397b27ad3c148a8e0a2
-  md5: 302eaf7288f1074f33235aa8381b7e23
-  depends:
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.22.5 h5728263_4
-  - ucrt >=10.0.20348.0
-  - vc >=14.3,<15
-  - vc14_runtime >=14.44.35208
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports: {}
-  size: 3447219
-  timestamp: 1787841472650
 - conda: https://conda.anaconda.org/conda-forge/win-64/glib-2.90.1-h6e26cc4_0.conda
   sha256: 6cf755b2dbd9500c4e53a3f58cef0899c81fac0860a354bb74e73595f9e234d7
   md5: 7c15230f51e46cafc6319f79183e715e
@@ -16299,28 +15782,6 @@ packages:
     - lerc >=4.2.0,<5.0a0
   size: 175297
   timestamp: 1785036247761
-- conda: https://conda.anaconda.org/conda-forge/win-64/libasprintf-0.22.5-h5728263_4.conda
-  sha256: ea9199e8505938333fc10033c9eab8ab349cdde7c97c6b0e658f1ae38c2693d0
-  md5: 59091c5f12ab618ae39056db4c3308c2
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=0.22.5,<1.0a0
-  size: 50630
-  timestamp: 1787841077177
-- conda: https://conda.anaconda.org/conda-forge/win-64/libasprintf-devel-0.22.5-h5728263_4.conda
-  sha256: 8b624461ceebc49163a5902648072a69d4858df41f7127d8ba739086deda5451
-  md5: 2f923ad0be466140213a94621c764c5e
-  depends:
-  - libasprintf 0.22.5 h5728263_4
-  license: LGPL-2.1-or-later
-  purls: []
-  run_exports:
-    weak:
-    - libasprintf >=0.22.5,<1.0a0
-  size: 37490
-  timestamp: 1787841134697
 - conda: https://conda.anaconda.org/conda-forge/win-64/libbrotlicommon-1.2.0-hf02afa3_4.conda
   sha256: 88247c467f77d99abfe2596fa5c91c2ec0f2942d6fc292d5729ab3538d1b0a0f
   md5: 35d7e4a581c8364e8c675f6b95d183d0
@@ -16570,35 +16031,6 @@ packages:
   run_exports: {}
   size: 340385
   timestamp: 1786641044865
-- conda: https://conda.anaconda.org/conda-forge/win-64/libgettextpo-0.22.5-h5728263_4.conda
-  sha256: 21955ddbd79293cb65404f9acec17a879106637a54e1208697c838611cc80024
-  md5: f11a18b3f80df6b29581165efbad58e6
-  depends:
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.22.5 h5728263_4
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=0.22.5,<1.0a0
-  size: 172187
-  timestamp: 1787841175774
-- conda: https://conda.anaconda.org/conda-forge/win-64/libgettextpo-devel-0.22.5-h5728263_4.conda
-  sha256: 9451b75f689e99f6cda32d14ec049656c7426b2649d92be5ac8d80d9348567b9
-  md5: 608acb15326d9b4fd6ab114844381eb7
-  depends:
-  - libgettextpo 0.22.5 h5728263_4
-  - libiconv >=1.18,<2.0a0
-  - libintl 0.22.5 h5728263_4
-  license: GPL-3.0-or-later
-  license_family: GPL
-  purls: []
-  run_exports:
-    weak:
-    - libgettextpo >=0.22.5,<1.0a0
-  size: 41640
-  timestamp: 1787841211798
 - conda: https://conda.anaconda.org/conda-forge/win-64/libglib-2.88.3-he810d59_2.conda
   sha256: 001620bac27dbf6daa25e5cd52970749fe2bc02a26649b0ad516d26609f6bcae
   md5: e40bcfee79dbfda3eff751ed098b6ad3
