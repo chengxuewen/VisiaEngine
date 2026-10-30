@@ -309,12 +309,12 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### status
 - full text: `.agents/memorys/status.md`
-- ... 58 older entries omitted (read the full file)
-- Web wall expansion band baseline (2026-10-23, live pages 6 -> 26)
+- ... 59 older entries omitted (read the full file)
 - Web wall expansion addendum (2026-10-23 same band, live pages 26 -> 29)
 - 2026-10-30: the docs book line closes (S1-S8 -> D46 -> polish)
 - repo-audit Full Scan — 2026-10-30 (first Full run)
 - repo-audit Quick Scan — 2026-10-30 (closure re-check)
 - doc-audit Full — 2026-10-30 (revised-skill first run; 3 parallel lanes + conductor)
+- repo-audit Full Scan (2C first live run) — 2026-10-30
 <!-- END:agents-memory -->
 

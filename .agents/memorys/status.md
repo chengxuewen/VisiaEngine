@@ -946,3 +946,30 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   added); L10 capi.md callback pointer-lifetime clause (next SDD batch); L11
   panic-strategy / input-trust-model summary line in architecture (one line,
   next docs touch).
+
+## repo-audit Full Scan (2C first live run) — 2026-10-30
+
+- Local: both prior findings re-verified CLOSED (D numbering unique; toc/SUMMARY
+  52=52 under the corrected accounting).
+- **2C pattern cards (first batch, lanes P-1/P-2)**:
+  - PC-1 [consider] Tiered ratchet floors (opaque.info: kernel 100% / enforcement
+    85% / general 70%) vs our uniform 60% chapter floor -- worth per-chapter
+    floors when coverage batches resume.
+  - PC-2 [have-it] Unidirectional ratchet, CI-enforced between sprints
+    (Citrate .agentile/coverage/GATES.md) -- the book-i18n FLOOR gate implements
+    exactly this; independent convergence validates the design.
+  - PC-3 [consider] Staged pipeline: cheapest gates first, slow stages parallel
+    (GitCode RustTraining: 6 stages, ~14 min) -- our 17-gate chain is ordered by
+    dependency, not cost; pixi depends-on could express a cheap-first split.
+  - PC-4 [have-it] --locked/--frozen in every CI command (rs4ts.dev pitfall 3).
+  - PC-5 [consider] Approved-spec registry as machine-readable JSON + governance
+    version (traverse-framework) -- our spec-trace has the substance; the JSON
+    registry would make gate-docs data-driven. Cost: medium.
+  - PC-6 [have-it, nuance] ADR immutability + SUPERSEDED marker (AWS-style
+    governance) -- our convention matches; the D45/D46 duplicate repair was a
+    one-time in-place fix with annotations, not a precedent.
+  - PC-7 [have-it] Router-scoped ADR reading (chronowarden) -- skill-router
+    implements the same discipline.
+  - PC-8 [discard] MADR template -- our decision format is strictly richer.
+- Lanes P-3/P-4: thin data this run (P-3 items were covered by the local audit's
+  own probes; P-4 deferred to the next cycle with a dedicated search).
