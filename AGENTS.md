@@ -212,6 +212,7 @@ that host's discovery paths/shape from its docs (a wrong path is a dead, unread 
 | `documentation-and-adrs` | Record architecture decisions and keep doc... |
 | `incremental-implementation` | Thin vertical slice methodology — implemen... |
 | `lesson-review` | Batch session review: systematically extra... |
+| `lsp-code-analysis` | Semantic code analysis for pre-change impa... |
 | `observability-and-instrumentation` | Observability and instrumentation for this... |
 | `openspec-apply-change` | Implement tasks from an OpenSpec change. |
 | `openspec-archive-change` | Archive a completed change in the experime... |
@@ -226,6 +227,7 @@ that host's discovery paths/shape from its docs (a wrong path is a dead, unread 
 | `rust-engineering` | Rust engineering workflow for this engine... |
 | `security-hardening` | Security audit and hardening: OWASP Top 10... |
 | `shipping-and-launch` | Release and launch checklist for this engi... |
+| `skill-creator` | Create a new skill the VisiaEngine way: th... |
 | `skill-router` | Analyze user intent and output a recommend... |
 | `source-driven-development` | Ground every external dependency decision... |
 | `subagent-orchestration` | Orchestrate subagents for this repo: decid... |

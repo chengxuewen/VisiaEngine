@@ -63,6 +63,26 @@ If the host has a browser MCP (Playwright / DevTools bridge) enabled, prefer it.
 
 Without MCP, use the pinned chromium the gate already resolves (`scripts/gate-web.sh` prints `VE_CHROME_VERSION`); the WebGPU-on-Linux flag set is documented there (`--enable-unsafe-webgpu --use-angle=swiftshader …`). Do not invent flags.
 
+### Docs-site verification recipe (measured 2026-10-30, A3)
+
+The docs site (`book-serve`, :3000) has its own three obstacles -- solved once,
+written down here so no session re-discovers them:
+
+```bash
+# obstacle 1: chromium is NOT on PATH -- it lives in the playwright cache
+CHROME=$(ls -d ~/.cache/ms-playwright/chromium-*/chrome-linux/chrome | tail -1)
+
+# obstacle 2: the driver library is the repo's node_modules, not a global one
+NODE_PATH="$PWD/node_modules" pixi run node your-script.cjs
+
+# obstacle 3: a set http_proxy hijacks localhost -- bypass it explicitly
+#   launch flags: --no-proxy-server --no-sandbox
+#   (the hijack is archived in docs/env.md)
+```
+
+With PATH fixed, `pixi run book-check --browser` stops self-SKIPping and runs its
+browser layer (rendered-marker assertions per page) for real.
+
 ## Test Workflow
 
 ```

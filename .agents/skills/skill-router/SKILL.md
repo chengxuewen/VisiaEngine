@@ -29,6 +29,8 @@ Read the user message and classify it:
 | **Test** | "测试"/"E2E"/"覆盖率" | `/test-harness`（骨架）/ `/test-driven-development`（红绿）；Web 面再加 `/browser-testing` |
 | **Docs** | "文档"/"README"/"说明" | `/doc-audit`（一致性）/ `/documentation-and-adrs`（写决策） |
 | **Audit** | "审计"/"体检"/"audit"/"扫描生态" | 对象 = docs/decisions 一致性 → `/doc-audit`；对象 = skills/rules/生态/全仓 → `/repo-audit`；两者皆像 → 交互确认 |
+| **Skill authoring** | "创建技能"/"加个技能"/"new skill" | `/skill-creator`（先读：五条硬规则 + 同步检查清单） |
+| **Impact analysis** | "影响分析"/"改这个会破坏什么"/"重构评估" | `/lsp-code-analysis`（语义查询）+ `/think-before-act`（行动闸）|
 | **Security** | "安全"/"权限"/"认证" | `/security-hardening` |
 | **Release** | "发布"/"上线"/"打包"/"tag" | `/shipping-and-launch` |
 | **Hygiene** | "死代码"/"技术债"/"AI 垃圾"/"清理" | `/code-simplification` + `/ai-slop-cleanup` |

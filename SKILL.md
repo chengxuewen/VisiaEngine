@@ -33,6 +33,7 @@ The directory count is deliberately not written here: run `ls -d .agents/skills/
 | `documentation-and-adrs` | Record architecture decisions and keep doc... |
 | `incremental-implementation` | Thin vertical slice methodology — implemen... |
 | `lesson-review` | Batch session review: systematically extra... |
+| `lsp-code-analysis` | Semantic code analysis for pre-change impa... |
 | `observability-and-instrumentation` | Observability and instrumentation for this... |
 | `openspec-apply-change` | Implement tasks from an OpenSpec change. |
 | `openspec-archive-change` | Archive a completed change in the experime... |
@@ -47,6 +48,7 @@ The directory count is deliberately not written here: run `ls -d .agents/skills/
 | `rust-engineering` | Rust engineering workflow for this engine... |
 | `security-hardening` | Security audit and hardening: OWASP Top 10... |
 | `shipping-and-launch` | Release and launch checklist for this engi... |
+| `skill-creator` | Create a new skill the VisiaEngine way: th... |
 | `skill-router` | Analyze user intent and output a recommend... |
 | `source-driven-development` | Ground every external dependency decision... |
 | `subagent-orchestration` | Orchestrate subagents for this repo: decid... |
