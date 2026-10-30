@@ -202,6 +202,24 @@ def main() -> int:
     else:
         print("BOOK - no target/doc yet (run: pixi run docs-gen) -- api/ skipped")
 
+    # D46 follow-up: prune language trees left by the retired bilingual build and
+    # keep a minimal root redirect, so book-check stays green on old checkouts and
+    # the root URL still lands somewhere useful.
+    for name in sorted(os.listdir(OUT_DIR)):
+        stale = os.path.join(OUT_DIR, name)
+        if name in ("en", "api"):
+            continue
+        if os.path.isdir(stale) and os.path.exists(os.path.join(stale, "index.html")):
+            shutil.rmtree(stale)
+            print(f"BOOK ✓ pruned stale language tree {name}/")
+    stale_langs = os.path.join(OUT_DIR, "langs.json")
+    if os.path.exists(stale_langs):
+        os.remove(stale_langs)
+    root_index = os.path.join(OUT_DIR, "index.html")
+    with open(root_index, "w", encoding="utf-8") as handle:
+        handle.write('<!doctype html>\n<meta http-equiv="refresh" content="0; url=./en/">\n'
+                     '<p>The book lives at <a href="./en/">./en/</a>.</p>\n')
+
     n = len(covered)
     print(f"BOOK ✓ built {n} chapter(s) -> {os.path.relpath(dest, ROOT)}")
     return 0
