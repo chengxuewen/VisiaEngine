@@ -941,7 +941,7 @@ Closeout same day (59df128/aec496d): chromium pin lives IN the gate (exact-match
   row + build/ territory wording + splice noise; conventions header slots;
   unsourced 6 MB sub-budget removed; book-serve docstring; .gitignore comment;
   repo-audit C15->C17/C20; status header).
-- 挂账 (deferred with owners): L3 whitepaper Phase-1 scope + MVP wording (frozen
+- Deferred (with owners): L3 whitepaper Phase-1 scope + MVP wording (frozen
   v0.1.0 text -- next whitepaper revision); L9 exempted (unnumbered tail note
   added); L10 capi.md callback pointer-lifetime clause (next SDD batch); L11
   panic-strategy / input-trust-model summary line in architecture (one line,

@@ -58,7 +58,7 @@ With no arguments, pop up:
 | Feature | Quick | Full |
 |------|:-----:|:----:|
 | Local audit | 1 fast check per domain (10) | deep checks per domain (24 items) |
-| External scan | 3-5 known high-star repos | comprehensive websearch + GitHub search |
+| External scan | 3-5 known high-star repos | websearch + GitHub search + practice scan (2C, 4 lanes) |
 | Scoring | 3-dimension fast | 5-dimension full scoring |
 | Security audit | none | 6 safety checks |
 | Duration | < 30s | 3-5min |
@@ -154,6 +154,38 @@ Fetch READMEs with `webfetch`; 3-dimension quick scoring: tech-stack fit / alrea
 - any **warn** -> warning + confirmation required
 - all pass -> SAFE
 
+### 2C: Practice scan -- study HOW other projects work (Full mode)
+
+2B asks "what can we install?"; 2C asks "how do the good repos DO it?". Four
+sub-lanes, each producing **pattern cards** (adoptable practices, not artifacts):
+
+| Lane | Looks at | Example questions |
+|------|----------|-------------------|
+| P-1 workflow / ci-gate design | gate layering, ratchet floors, failure policy, release flow | how do mature repos split fast/slow gates? do they ratchet coverage floors? |
+| P-2 documentation system | docs-as-code, audit loops, decision-record formats | how do others mark superseded decisions? do they run doc audits? |
+| P-3 repo structure / naming | tree conventions, ownership territories, generated-dir policy | how do others fence generated output? who documents hidden dirs? |
+| P-4 tooling choices | task runners, env/lock strategy, auxiliary tooling | what do Rust-heavy repos pair with pixi-style envs? |
+
+**Pattern card** (the unit of output):
+
+| Field | Content |
+|-------|---------|
+| Pattern | one-line name |
+| Source | repo + path (file:line where readable) |
+| Here | this repo's current state: have it / lack it / do it better |
+| Fit | compatibility with this repo's constitution (C15 English, append-only memorys, gates-first) -- a pattern that violates them is rewrite-to-fit or discard |
+| Cost | adoption effort (lines / gates / process change) |
+| Verdict | adopt (P1) / consider (P2) / discard |
+
+**Scoring**: reuse the 5-dimension table; Fit judges constitutional compatibility
+instead of tech-stack match. **Security**: patterns introduce no code, so the
+code/permission/exfil checks are n/a; repo-trust and freshness still apply before
+a pattern is worth reading.
+
+**Relay**: a P1 pattern that needs deep study is archived under `.refinfo/` and
+distilled into a `docs/reference/` profile -- repo-audit discovers and triages;
+the reference-library mechanism digests.
+
 ---
 
 ## Phase 3: Synthesis & Recommendation
@@ -162,6 +194,8 @@ Fetch READMEs with `webfetch`; 3-dimension quick scoring: tech-stack fit / alrea
 
 - multiple sources recommending the same content -> +2 points
 - tech-stack mismatch but portable pattern -> annotate "rewrite-to-fit"
+- 2C pattern cards and 2B install candidates are ranked in one P1/P2 list, typed
+  (install / pattern) so a P1 pattern and a P1 skill never compete for the same slot
 
 ### 3B: Output format
 
@@ -184,6 +218,10 @@ Fetch READMEs with `webfetch`; 3-dimension quick scoring: tech-stack fit / alrea
 #### P2: Worth considering
 | # | Item | Source | Score | Security | Effort |
 |---|------|------|:---:|:---:|:---:|
+
+#### Patterns (2C)
+| # | Pattern | Source | Here | Fit | Cost | Verdict |
+|---|---------|--------|------|:---:|:---:|:---:|
 
 #### Rejected
 | Item | Reason | Security |
@@ -269,4 +307,5 @@ Replace the variables:
 
 - The scan report with per-domain verdict, per-item score + security verdict.
 - `GATE-SKILLS` and the gate-agents SKILLS-INDEX segment cover every skill (inventory consistent); the 17-gate ci chain green.
+- 2C pattern cards cite source repo + path and pass the constitutional Fit check.
 - Gap findings cite file:line and name the enforcement owner that should own them.
