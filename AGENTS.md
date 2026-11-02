@@ -263,8 +263,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### decisions
 - full text: `.agents/memorys/decisions.md`
-- ... 32 older entries omitted (read the full file)
-- D31: MCP single-source second-round adjudication (2026-10-28, user-adjudicated one by one) — scope / abstraction / credentials
+- ... 33 older entries omitted (read the full file)
 - D32: Stage 0 start — codegraph confirmed an npm package (review #17 verified + implemented) (2026-10-28)
 - D33: MCP real-launch acceptance (acceptance #8, 2026-10-28) — version pins and env name corrected by live probe
 - D34: Stage 1 implemented and verified (2026-10-28) — per-layer small generators + shared base + gate in ci
@@ -289,6 +288,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D45: human-facing docs site -- mdBook + codegraph graph + lazy mermaid (2026-10-29)
 - D46: the book is English-only; browser-side translation covers other languages (2026-10-30)
 - D53: the docs site moves to `build/book`; `www/` retires (2026-10-30, user-adjudicated U4)
+- D56: agent skill surface v3 -- four adoptions, one lane, one rename wave (2026-10-30, user-adjudicated one by one)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
@@ -301,7 +301,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - PIT-85: a `.gitignore` inline comment silently disables the rule it annotates (2026-10-29, .gitignore reorg)
 - PIT-86: the MCP launcher was cwd-robust but its REFERENCE was not -- Trae spawns outside the repo root (2026-10-29, Trae onboarding)
 - PIT-87: a 0-byte case-variant `AGENTS.md` inside a rules folder becomes a generated rule, silently (2026-10-29, Trae onboarding)
-- PIT-88: msgid bytes are the gettext lookup key -- rewriting them silently de-translates entries (2026-10-30, book translation batches)
+- PIT-95: msgid bytes are the gettext lookup key -- rewriting them silently de-translates entries (2026-10-30, book translation batches; renumbered from a duplicate "PIT-88" per the 2026-11-02 audit)
 - PIT-89: gettext reconstruction re-parses "N. Title" headings as ordered lists (2026-10-30, silent-fallback class)
 - PIT-90: whole-book greedy validation conflates failures -- use a one-page harness (2026-10-30, translation infrastructure)
 - PIT-91: prose scanners -- sibling bullets are distinct items, indented continuations are not (2026-10-30, gate-prose structure rules)

@@ -121,7 +121,7 @@ flowchart TB
 
 ### 6.2 Roadmap
 
-- **Phase 1: MVP (current)**
+- **Phase 1: MVP** (landed -- the live surface lives in the README Development Status)
     - Core Rust libraries (`visiaengine-core`, `visiaengine-render`, `visiaengine-render-wgpu`)
     - Basic glTF and GeoJSON loading
     - Free switching between the 2D map and the 3D viewport, demonstrated

@@ -35,7 +35,7 @@ An open-source, lightweight, embeddable spatial visualization **engine kernel** 
 
 ## Development Status
 
-- **Phase 1 status (numbers as reported by the gates)**: **11 crates** (10 in `crates/` (incl. ffi) + wasm; workspace has 12 packages incl. the examples shell package), **199** SDD behavioral contract clauses all green (`scripts/spec-trace.sh` bidirectional tracing; `gate-docs` locks these numbers to live reports). Rendering pipeline: **11 crates** (10 in `crates/` (incl. ffi) + wasm; workspace has 12 packages incl. the examples shell package) and **199** SDD behavioral contract clauses all green (`scripts/spec-trace.sh` bidirectional tracing; `gate-docs` locks these numbers to live reports).
+- **Phase 1 status (numbers as reported by the gates)**: **11 crates** (10 in `crates/` (incl. ffi) + wasm; workspace has 12 packages incl. the examples shell package) and **199** SDD behavioral contract clauses all green (`scripts/spec-trace.sh` bidirectional tracing; `gate-docs` locks these numbers to live reports).
 - **Rendering pipeline**:
   - glTF/GeoJSON/point-cloud(PLY)/tiled-vector (MVT directory/HTTP source mounting + viewport scheduling + pump loading)
   - material textures (GGX PBR, WGPU-35/REND-45) + GPU instancing (100k building blocks in one draw)
@@ -46,13 +46,13 @@ An open-source, lightweight, embeddable spatial visualization **engine kernel** 
   - main/aux dual-projection minimap / click navigation + continuous 2D↔3D projection morph
   - picking (incl. point cloud REND-38 + line-feature screen space REND-46) / parametric-curve tube/ribbon (REND-47) / measurement loop + D7 far-coordinate rebase (pixel-verified)
 - Offscreen golden: no SKIP on real hardware; **ctest unified example registry (44 entries, incl. the SDL3 window family xvfb substate) + three gates (abi/trace/docs) + cmake-smoke four states (incl. installed tree) + pack-check installed-tree hygiene + bench artifact chain** as machine gates; the tutorial E-number system lives in [docs/tutorials.md](docs/tutorials.md) (filename = header comment = index, single source).
-- **Web example wall (43 entries)** — 6 live in-browser on WebGPU, the rest detail cards; thumbnails stay self-rendered via save_frame. The `visiaengine-wasm-serve` button assembles + serves → `http://localhost:8017`. A self-signed TLS sibling (`pixi run serve-https`, certs via `serve-https-gen`) serves `https://<LAN-IP>:8443` — https counts as a secure context even when the cert is untrusted (measured on chrome 131), so remote WebGPU works without tunnels.
+- **Web example wall (43 entries)** — 29 live pages (each a browser-run demo) + 14 native detail cards; thumbnails stay self-rendered via save_frame. The `visiaengine-wasm-serve` button assembles + serves → `http://localhost:8017`. A self-signed TLS sibling (`./visiaengine.sh serve-https`, certs via `serve-https-gen`) serves `https://<LAN-IP>:8443` — https counts as a secure context even when the cert is untrusted (measured on chrome 131), so remote WebGPU works without tunnels.
 - **Host embedding**: C ABI 49 entry points (+5 scene-tree ports + HTTP/raster tile sources + 3 property hot-update ports + .hdr environment + rigid-body node transforms) (event push / point cloud / profile / font annotation / flight / minimap navigation, mirrored three ways in wasm·hpp·header) (human-reviewed handwritten header + C demo fleet actually run) + Web surface (visiaengine-wasm dual mirror, runnable demo page) — proven on a Qt host ✅ (header-only widget + real-window smoke, three states).
-- **Install tree delivered**: (`cmake --install` produces 9 items: library + three headers + licenses + `find_package(visiaengine)` how-to page + pkg-config receipt; out-of-tree consumers compiled and run in both C/C++ forms, re-prefix rebuild passes, the library ships its own SONAME so `NEEDED` records the bare name); npm/pip packaging deferred to Alpha.; npm/pip packaging deferred to Alpha.
+- **Install tree delivered**: (`cmake --install` produces 9 items: library + three headers + licenses + `find_package(visiaengine)` how-to page + pkg-config receipt; out-of-tree consumers compiled and run in both C/C++ forms, re-prefix rebuild passes, the library ships its own SONAME so `NEEDED` records the bare name); npm/pip packaging deferred to Alpha.
 
 ```bash
-bash bootstrap.sh && source pixi.sh && pixi run ci   # environment, three steps
-pixi run cmake --preset default && pixi run cmake --build --preset default   # C++/IDE entry (root CMake facade)
+bash bootstrap.sh && source pixi.sh && ./visiaengine.sh ci   # environment, three steps
+./visiaengine.sh cmake --preset default && ./visiaengine.sh cmake --build --preset default   # C++/IDE entry (root CMake facade)
 
 ```
 

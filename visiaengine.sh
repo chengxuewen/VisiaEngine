@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# visiaengine.sh -- execution front door (human convenience; agent/CI keep using `pixi run`).
+# visiaengine.sh -- execution front door (the one documented form for humans and agents; `pixi run` is the CI form).
 #
 # Pure passthrough:  ./visiaengine.sh <task> [args...]   ==   pixi run <task> [args...]
 # There is no command table here on purpose: pixi.toml is the single source of

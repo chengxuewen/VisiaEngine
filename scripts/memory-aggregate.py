@@ -35,10 +35,19 @@ def _digest(path):
     """One bullet per `## ` entry (title only), so AGENTS.md stays a navigable
     index instead of a 300 KB full-text dump. Full text lives in the source file."""
     out = []
+    seen: dict[str, int] = {}
     with open(path) as handle:
         for line in handle:
             if line.startswith("## "):
-                out.append("- " + line[3:].strip())
+                heading = line[3:].strip()
+                key = heading.split(":", 1)[0].strip()
+                if key in seen:
+                    raise SystemExit(
+                        f"GATE-MEMORY \u2717 duplicate entry heading {key!r} in {path} "
+                        f"(first at line {seen[key]}); numbering must stay unique"
+                    )
+                seen[key] = len(out) + 2  # approximate line number, good enough for the message
+                out.append("- " + heading)
     return out
 
 

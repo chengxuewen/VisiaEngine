@@ -1,6 +1,6 @@
 # VisiaEngine Status
 
-**Last updated**: 2026-10-30 | Phase: MVP closed + rendering hardening / host embedding / packaging / docs-site band (D53) | Branch: main (a clean worktree is the normal state)
+**Last updated**: 2026-11-02 | Phase: MVP closed + rendering hardening / host embedding / packaging / docs-site band (D53) | Branch: main (a clean worktree is the normal state)
 
 > The full history of the predecessor MediaServo (the D/PIT/C numbering system, the crate matrix, Phase records) lives in the local archive `.refinfo/MediaServo/.agents/memorys/` (gitignored, not distributed with clones). This directory accumulates VisiaEngine history from scratch starting 2026-09-03.
 

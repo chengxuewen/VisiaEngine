@@ -1,6 +1,6 @@
 ---
 name: lsp-code-analysis
-description: "Semantic code analysis for pre-change impact work in the 10-crate workspace: find trait implementors before editing visiaengine-core, call hierarchies before touching the C ABI (49 entries), and cross-crate reference maps. Falls back to ripgrep + gate-trace when the host has no LSP. Use before refactors, for 'what breaks if I change X' questions, and for C ABI surface reviews."
+description: "Semantic code analysis for pre-change impact work across the workspace: find trait implementors before editing visiaengine-core, call hierarchies before touching the C ABI surface (the count lives in gate-abi), and cross-crate reference maps. Falls back to ripgrep + gate-trace when the host has no LSP. Use before refactors, for 'what breaks if I change X' questions, and for C ABI surface reviews."
 ---
 
 # LSP Code Analysis -- pre-change impact work (thin wrapper)

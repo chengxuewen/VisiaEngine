@@ -30,10 +30,10 @@ description: Whole-repo engineering audit across 10 domains (skills, rules, mcp,
 | 3 | **mcp** | `.mcp.json`, host mirrors, `scripts/mcp-*` | gate-mcp (MCP-FILE segment via scripts/mcp-file-guard.py) | launcher portability (PIT-86), pin drift, per-host parity |
 | 4 | **scripts** | `scripts/` (~25 py/sh) | gate-docs 12 (names only) | syntax health sweep (`bash -n` / `ast.parse`), orphan detection (not referenced by pixi/gates/docs), CRLF/LF consistency (PIT-93), shebang + exec bits |
 | 5 | **docs** | `docs/` (README, env, whitepaper, sdd/, reference/) | gate-prose, gate-docs, gate-trace | cross-reference audit; numbering HOLES detected here, numbering SEMANTICS hand off to doc-audit dimension 3 |
-| 6 | **book** | `book/` + `www/book/` | book-check, gate-docs 13 | toc<->SUMMARY<->sidebar nesting consistency, vendored offline assets, fold structure, title-length budget |
+| 6 | **book** | `book/` + `build/book/` | book-check, gate-docs 13 | toc<->SUMMARY<->sidebar nesting consistency, vendored offline assets, fold structure, title-length budget |
 | 7 | **cli** | `visiaengine.sh` / `.bat` | gate-docs 12/12b | USAGE<->pixi task sync, sh/bat parity (advertised set diff), front-door discoverability |
 | 8 | **tests** | examples/, ctest registry, `smoke-*` | cmake-smoke, pack-check, ctest | orphaned tests, registry<->examples consistency, dual-mode (human/ctest) coverage |
-| 9 | **structure** | repo tree | manual | AGENTS.md STRUCTURE tree vs `ls` drift, root pollution (unexpected top-level dirs), territory ownership (`build/` `www/` `target/` `.tools/`) |
+| 9 | **structure** | repo tree | manual | AGENTS.md STRUCTURE tree vs `ls` drift, root pollution (unexpected top-level dirs), territory ownership (`build/` `target/` `.tools/`) |
 | 10 | **naming** | files, tasks, branches | gate-rules (partial) | case-collision detection (PIT-87), task-name style consistency, kebab-case adherence, mixed line-ending detection |
 
 **Reading the table**: if the enforcement owner is green, that domain's mechanical health is proven -- do not re-audit it.
@@ -62,7 +62,7 @@ With no arguments, pop up:
 | Scoring | 3-dimension fast | 5-dimension full scoring |
 | Security audit | none | 6 safety checks |
 | Duration | < 30s | 3-5min |
-| Trigger | `/ecosystem-scan` | `/ecosystem-scan full` or >=5 Quick runs |
+| Trigger | `/repo-audit quick` | `/repo-audit full` or >=5 Quick runs |
 
 ---
 
@@ -173,7 +173,7 @@ sub-lanes, each producing **pattern cards** (adoptable practices, not artifacts)
 | Pattern | one-line name |
 | Source | repo + path (file:line where readable) |
 | Here | this repo's current state: have it / lack it / do it better |
-| Fit | compatibility with this repo's constitution (C15 English, append-only memorys, gates-first) -- a pattern that violates them is rewrite-to-fit or discard |
+| Fit | compatibility with this repo's constitution (C17 English-only, the append-only memorys contract in .agents/AGENTS.md, gates-first) -- a pattern that violates them is rewrite-to-fit or discard |
 | Cost | adoption effort (lines / gates / process change) |
 | Verdict | adopt (P1) / consider (P2) / discard |
 

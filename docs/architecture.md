@@ -1,7 +1,8 @@
 # VisiaEngine Architecture Design
 
-**v0.2 | 2026-09-14** (v0.1 = the 2026-09-03 design baseline) | Inputs: D2 + D4 + the evidence chain (`reference/evidence/` + the 19-file reference-project library)
-Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding/wasm/rendering hardening 4ab·4c·4de·4f/docs re-homing). This file = a two-layer design baseline + **landing corrections**: the diagrams are design goals (including unbuilt pieces such as the style/proj split); for the current state read AGENTS.md + `.agents/memorys/status.md`; decision evolution goes through decisions.md (D7-D10 registered).
+**v0.2 | 2026-09-14** (v0.1 = the 2026-09-03 design baseline) | Inputs: D2 + D4 + the evidence chain (`reference/evidence/` + the reference-project library, indexed in `docs/reference/README.md`)
+
+Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding/wasm/rendering hardening 4ab·4c·4de·4f/docs re-homing). This file = a two-layer design baseline + **landing corrections**: the diagrams are design goals (including unbuilt pieces such as the style/proj split); for the current state read AGENTS.md + `.agents/memorys/status.md`; decision evolution goes through decisions.md (the file itself is the only authoritative list).
 
 ## Design invariants (outrank every diagram)
 
@@ -11,6 +12,7 @@ Status: **batches 0..5 landed** (skeleton/content/geo/interaction/host embedding
 4. **The main loop belongs to the host**: the engine is only pumped, never builds its own event loop (the rerun spawn/connect model is the reference, the Flutter embedder is the ABI-discipline template).
 5. **Compatibility = tier parameterization, not compile-time forking**: capabilities queried at runtime (§ figure ⑥) — capability_query: drawn as design goal, not yet implemented (Alpha tier).
 6. **Copyleft dependencies (PROJ/GEOS/OSG family/LGPL pieces) are always feature-gated into the extension layer**, zero contamination in the core package's static link.
+7. **Asset bytes are untrusted input; the engine never aborts on them.** Every loader rejects malformed input with an error return (GLTF-06 / GEO-06 / IO-*), any internal panic is converted to `VE_ERR_PANIC` at the C ABI (CAPI-02), and no host callback is invoked from inside that barrier.
 
 ## ① Full panoramic layering
 

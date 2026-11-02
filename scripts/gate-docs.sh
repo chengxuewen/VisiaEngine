@@ -204,7 +204,7 @@ if [ -f visiaengine.sh ]; then
         grep -qxF "$btoken" <<< "$cli_tasks" || continue
         echo "GATE-DOCS ✗ 12)$bfile:$bline says 'pixi run $btoken'; the documented form is ./visiaengine.sh $btoken"
         fail=1
-    done < <(grep -nE 'pixi run ' AGENTS.md docs/env.md 2>/dev/null || true)
+    done < <(grep -nE 'pixi run ' AGENTS.md docs/env.md README.md 2>/dev/null || true)
 
     cli_exes="cmake cargo node npm python3 ctest rustc rustfmt mdbook serena"
     while IFS= read -r name; do

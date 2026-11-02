@@ -1,6 +1,7 @@
 # VisiaEngine Architecture Decision Record
 
-> Records decisions that affect interfaces, data flow, dependency direction, or build shape. Each entry carries a number, date, decision content, rationale, and impact. Option-comparison presentation follows C1 (pros-cons / source / impact / recommendation, four elements). Overturned decisions are marked SUPERSEDED with the new number; entries are never deleted.
+> Records decisions that affect interfaces, data flow, dependency direction, build shape, or the agent configuration surface (skill set / host generation layer / gates / memory layering). Each entry carries a number, date, decision content, rationale, and impact. Option-comparison presentation follows C1 (pros-cons / source / impact / recommendation, four elements). Overturned decisions are marked SUPERSEDED with the new number; entries are never deleted.
+> File order is NOT number order (D42-D55 were renumbered on 2026-10-30); locate an entry by the number+date+title triple, never by position.
 
 ## Format example
 
@@ -658,3 +659,37 @@ wall" -- was already false when written: the wall is served from
   are siblings of `en/`); the artifact a CI pages job would take is `build/book`; no
   command name changes. Touch list: three scripts, gate-docs ④ skip prefix, pixi.toml,
   book/book.toml, docs/env.md, AGENTS.md, .gitignore.
+
+## D56: agent skill surface v3 -- four adoptions, one lane, one rename wave (2026-10-30, user-adjudicated one by one)
+
+Plan: `.omo/plans/2026-10-30-skill-adoption.md` (4 adjudications, all "A"). This
+entry closes the tracked-record gap: the adjudications and the rejection register
+previously lived only in the gitignored plan file.
+
+- **A1 -- skill-creator (project edition): landed** in `f7997c8`. The five hard
+  rules (mandatory frontmatter, kebab-case + PIT-87 case ban, English-only source,
+  one trigger domain per skill, sync-as-part-of-creation) + a seven-step recipe.
+- **A2 -- lsp-code-analysis (thin wrapper): landed** in `f7997c8`. Three
+  high-value pre-change queries + explicit host degradation to ripgrep + gates.
+- **A3 -- browser recipe folded** into the browser-testing skill in `f7997c8`
+  (cached-chromium discovery, NODE_PATH, proxy bypass) -- `book-check --browser`
+  now has a written activation path.
+- **A4 -- eight platform skills rejected (won't-fix, reopen conditions below)**:
+  - `find-skills` -- duplicated by repo-audit 2B; reopen only if 2B is removed.
+  - `agent-browser` / `playwright-cli` -- duplicate the project browser-testing
+    skill; reopen never (three-way trigger dilution).
+  - `pdf` -- no PDF consumer; reopen when the book gains a PDF export pipeline.
+  - `docx` / `xlsx` / `pptx` -- no office artifacts in this repo; reopen never.
+  - `multimodal generation` -- outside the engineering workflow; reopen never.
+- **repo-audit 2C practice-scan lane: landed** in `6fd2615` (pattern cards,
+  constitutional Fit).
+- **doc-audit revision: landed** in `89c0c3d` (real target set, numbering
+  uniqueness, gates-first scoping, host-neutral protocols).
+
+Skill count went 37 -> 39 (delta; the current level lives in `status.md`).
+Closure: all four adjudications landed in `f7997c8`; gates green after sync.
+
+Writing rule for future D entries (from the 2026-11-02 audit): description-class
+numbers enter as deltas (`14->17`) or by reference to the gate that counts them;
+prescription-class numbers (thresholds/windows) may be written but point at the
+enforcing code, never a bare literal.

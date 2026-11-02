@@ -29,6 +29,7 @@ Purpose: the evidence base for the final rendering-backend ruling (D4), whitepap
 | [easy3d.md](easy3d.md) | Easy3D v2.6.1 (GPL, read-only archive) | the cautionary-tale library for host embedding + positive examples for property/pass/tutorial design | ★★☆ |
 | [team-gap-analysis-2026-09-28b.md](team-gap-analysis-2026-09-28b.md) | three.js 608-example benchmark + machine census of this repo's 34 examples | the register of the example gap (supersedes the 09-24 edition's example-census section; coverage mapping + missing-domain->feature mapping + three quick wins + action order) | ★★★ |
 | [team-gap-analysis-2026-09-24.md](team-gap-analysis-2026-09-24.md) | this repo vs 24 archived projects + the GitHub ecosystem | feature-gap ledger (S/A/B grading; the example-census section was refreshed by 09-28b) | ★★☆ |
+| [pattern-cards-2026-10-30.md](pattern-cards-2026-10-30.md) | other projects' engineering practices (repo-audit 2C) | adoptable practice cards: ratchet tiers, staged pipelines, spec registries | -- |
 
 ## Evidence memos (evidence/)
 

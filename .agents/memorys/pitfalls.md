@@ -764,7 +764,7 @@ Rebuild it by hand only if the tool is skipped for a missing dependency.
 - **Solution**: delete the variant; confirm the generated tree pruned back to 40 (`[ MDCDEL] codebuddy common-AGENTS`). No code guard added: an empty-rule filter would hide the symptom, not the cause (the file must not exist), and it cannot fix a case collision anyway. Prevent with review discipline: never create a file in `.agents/rules/<lang>/` whose name differs from an existing one only by case, and read the `GATE-RULES ✓ (N rule files …)` count when it changes.
 - **Verification**: `ls .agents/rules/common/` shows 13 canonical files and no uppercase variant; `ls -d .codebuddy/rules/*/ | wc -l` = 40; `git status` clean of untracked files under `.agents/`.
 
-## PIT-88: msgid bytes are the gettext lookup key -- rewriting them silently de-translates entries (2026-10-30, book translation batches)
+## PIT-95: msgid bytes are the gettext lookup key -- rewriting them silently de-translates entries (2026-10-30, book translation batches; renumbered from a duplicate "PIT-88" per the 2026-11-02 audit)
 
 - **Symptom**: a translation sat in `book/po/zh-CN.po` (`msgstr` filled, msgfmt green), but the built zh page still rendered the English sentence. No error anywhere.
 - **Root cause**: the mdbook gettext preprocessor matches `msgstr` to `msgid` by exact bytes. A hand "canonicalization" pass that rewrote every entry onto one physical line changed the byte form of entries containing escaped quotes (`\"`), so the lookup missed and the string silently fell back to English.

@@ -73,3 +73,15 @@ The batch-2 §2 fourteen-function surface converges in shape with the three most
 ## Landing summary (v1.3->v1.4)
 Batch 2: VeInput+struct_size / the CAPI-06 double pin / the CAPI-07 double promise / I1 tests+3 / style+tool names finalized / D8 triggers ×4 / threadsafety header comments. Batch 7: wasm-pack wording / CAPI-09 sizeof linkage / (route A, the emscripten refusal, the no-free discipline all gain 7-house endorsement, zero changes). Cross-cutting: the docker.md musl note.
 **The four lanes overturned none of the core design** (the 14 signatures, the pull model, the single entry, the generational handles, the no-callback, the thread affinity, the thin facade single source — all CONFIRM, by name and evidence); net gain four holes "missed by both Momus rounds and the team review round" — the empirical proof of the research's marginal value.
+
+
+## CAPI-17 callback lifetime (added 2026-11-02)
+
+The one place the engine retains host memory long-term: event-callback `cb`/`user`
+stay valid from registration to detach/replacement. Industry precedent for the
+wording: SDL_AddEventWatch (valid until removed), Vulkan
+`PFN_vkDebugUtilsMessengerCallbackEXT::pUserData` (VUID: valid for the messenger
+lifetime), SQLite `sqlite3_commit_hook` ("user data must remain valid until the
+hook is removed"), GLFW `glfwSetWindowUserPointer` + the `glfwSet*Callback`
+family. This row supersedes the memo's earlier "the no-callback" design claim
+(CAPI-17 landed after the snapshot).
