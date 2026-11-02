@@ -1,6 +1,6 @@
 ---
 name: repo-audit
-description: Whole-repo engineering audit across 10 domains (skills, rules, mcp, scripts, docs, book, cli, tests, structure, naming) + external ecosystem scan for adoptable skills; formerly ecosystem-scan.
+description: Whole-repo engineering audit across 10 domains (skills, rules, mcp, scripts, docs, book, cli, tests, structure, naming) + external scan in two lanes: 2B for adoptable skills/rules/MCP and 2C practice scan (pattern cards for other projects' workflows, doc systems, repo conventions, tooling); formerly ecosystem-scan.
 ---
 
 # repo-audit — Whole-Repo Engineering Audit + Ecosystem Scan

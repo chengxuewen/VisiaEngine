@@ -689,7 +689,18 @@ previously lived only in the gitignored plan file.
 Skill count went 37 -> 39 (delta; the current level lives in `status.md`).
 Closure: all four adjudications landed in `f7997c8`; gates green after sync.
 
-Writing rule for future D entries (from the 2026-11-02 audit): description-class
-numbers enter as deltas (`14->17`) or by reference to the gate that counts them;
-prescription-class numbers (thresholds/windows) may be written but point at the
-enforcing code, never a bare literal.
+Writing rule for future D entries (F2 v5, 2026-11-02 audit -- three sentences):
+1. **Writing**: description-class numbers enter as deltas (`14->17`, `37->39`);
+   level values point at a gate output or `status.md`. Prescription-class values
+   (thresholds/windows) are written as the SYMBOL NAME only (`HUB_LIMIT`,
+   `WINDOW["decisions"]`), never the literal.
+2. **Scan domain**: drift scans exclude the append-only `decisions.md` /
+   `pitfalls.md`; historical literals (D47, D52) stay as counter-examples and are
+   never retro-edited.
+3. **Deferred with trigger**: a gate-docs check for prescription literals is NOT
+   implemented -- it would flag the legitimate delta rewrite (`HUB_LIMIT` = 40000
+   (was 30000)) and live coverage is partial anyway. Trigger: the first confirmed
+   case of a prescription literal aging into a misleading D entry; then implement
+   symbol-binding + "extracted count >= 8" self-check.
+Test question when writing: "delete this number -- what does the reader lose?"
+Decision direction -> delta; current state -> gate reference; rule -> symbol name.
