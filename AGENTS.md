@@ -292,8 +292,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
-- ... 81 older entries omitted (read the full file)
-- PIT-81: veLoop's onFrame callback receives NO arguments; ad-hoc harness chrome runs need the D-Bus scrub (2026-10-23, E305 band)
+- ... 82 older entries omitted (read the full file)
 - PIT-82: an unclosed <script type="module"> tag silently disables the whole page -- and my own degenerate write caused it (2026-10-23, E901 band)
 - PIT-83: wasm-bindgen glue does not track lib.rs -- a stale pkg passes host checks and ships without the new bridge (2026-10-23, bytes-bridge band)
 - PIT-84: generated hub regions silently duplicate their END marker every sync -- and the gate's "first END" check hid it (2026-10-28, agent-sync)
@@ -308,6 +307,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - PIT-93: docs/*.md are CRLF -- python string surgery with '\n' silently misses (2026-10-30, structure polish)
 - PIT-94: history surgery -- backup branch first, synchronous rebase, fresh origin/main (2026-10-30, 24->5 commit squash)
 - PIT-96: a citation validator has two false-positive classes of its own -- append-only headings and reserved-slot option letters (2026-11-05, rule-ref-lint adoption)
+- PIT-97: a breakage probe that silently no-ops prints the same green as a passing gate (2026-11-05, skill-lint wiring)
 
 ### status
 - full text: `.agents/memorys/status.md`

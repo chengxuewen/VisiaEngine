@@ -15,6 +15,16 @@ Single source of truth for the local quality gate. Two parts:
 - Any dependency change must pass `pixi run audit` (cargo-deny); a version bump goes through `pixi add` / `pixi update` and commits the lock.
 - Fix the cause, not the gate. If a gate is red, the gate is right until proven otherwise.
 
+## Verification discipline (hand-written)
+
+A check that has never been seen failing is not a check, it is decoration.
+
+- Adding or changing a gate requires ONE planted-violation demo: break the rule on purpose → the gate goes red and its output **names the defect**; restore → green. Record the command and the result in the commit message.
+- A gate whose red state was never demonstrated counts as **not done** — "the report says it is enforced" is not evidence.
+- New gate scripts carry their own `--self-test` (in-built probe, temp files only, never touches the repo): `rule-ref-lint.py`, `skill-lint.py`, `check-promises.sh` are the pattern to follow.
+- The probe must prove the plant **took effect** before trusting the exit code (a `sed`/edit that silently misses prints the same green as a passing gate — PIT-97), and attribution must be read: which segment went red, and does its message name the planted defect?
+- Backlog (not yet enforced per-gate): in-built self-tests for the contract-watching gates, in this order — `gate-abi` → `gate-mcp` → `spec-trace` → `gate-web` legs. A false green there promises an ABI/protocol shape to consumers.
+
 <!-- BEGIN:ci-gates -->
 
 ## CI gates (generated from `pixi.toml` -> `[tasks] ci` depends-on; edit pixi.toml, not this block)
