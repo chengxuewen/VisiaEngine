@@ -27,7 +27,7 @@ is worth invoking, and what to do when the host lacks one.
   ripgrep with symbol-shaped patterns AND state the limitation -- ripgrep hits
   comments and same-name items, so treat its result as a superset to be pruned.
 - The safety net is unchanged either way: gate-trace (spec<->code bidirectional)
-  and the 17-gate chain catch what the pre-change analysis misses.
+  and the `ci` gate chain catch what the pre-change analysis misses.
 
 ## Boundary
 

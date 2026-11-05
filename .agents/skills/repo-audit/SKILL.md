@@ -6,7 +6,7 @@ description: Whole-repo engineering audit across 10 domains (skills, rules, mcp,
 # repo-audit — Whole-Repo Engineering Audit + Ecosystem Scan
 
 > Two-tier scan (Quick daily / Full deep) across **10 engineering domains**, quality scoring, security-audit gate.
-> Governing principle: **gates-first** -- this repo runs 17 gates in `pixi run ci`; the scan never re-checks by hand
+> Governing principle: **gates-first** -- this repo runs its gate chain in `pixi run ci`; the scan never re-checks by hand
 > what a gate proves. The scan (a) verifies every surface HAS an enforcement owner, (b) runs gap checks where no
 > gate exists, (c) spends deep analysis only where judgment is needed.
 > Reference precedents: [autoskills](https://github.com/B143KC47/autoskills), [agent-skill-discovery](https://github.com/ericgandrade/claude-superskills), [skill-update-team](https://github.com/franktsai2008-eng/skill-update-team), [agent-self-audit](https://github.com/Xxt-XN/agent-self-audit).
@@ -306,6 +306,6 @@ Replace the variables:
 ## Verification (evidence)
 
 - The scan report with per-domain verdict, per-item score + security verdict.
-- `GATE-SKILLS` and the gate-agents SKILLS-INDEX segment cover every skill (inventory consistent); the 17-gate ci chain green.
+- `GATE-SKILLS` and the gate-agents SKILLS-INDEX segment cover every skill (inventory consistent); the `ci` gate chain green.
 - 2C pattern cards cite source repo + path and pass the constitutional Fit check.
 - Gap findings cite file:line and name the enforcement owner that should own them.

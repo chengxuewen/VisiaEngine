@@ -406,7 +406,7 @@ shape pins.
 
 ### 34. Renaming/moving a file must sweep LIVE executable check bodies, not just prose (2026-10-15)
 
-**Rule**: when a file is renamed or removed, grep the old path across executable check bodies -- `.agents/memorys/conventions.md` C-check command blocks, `scripts/gate-*.sh`, CI configs -- and fix them IN THE SAME COMMIT. A check whose target path is gone exits nonzero into a `|| echo PASS` branch and turns silently green (the C21 near-miss: the rename ticket would have killed the gate until the plan review caught it). Then observe one planted red (C0).
+**Rule**: when a file is renamed or removed, grep the old path across executable check bodies -- `.agents/memorys/conventions.md` C-check command blocks, `scripts/gate-*.sh`, CI configs -- and fix them IN THE SAME COMMIT. A check whose target path is gone exits nonzero into a `|| echo PASS` branch and turns silently green (the band-V rename-ticket near-miss: the gate would have died until the plan review caught it). Then observe one planted red (the predecessor zero-hallucination proof duty, MediaServo rule archived under the number C-zero -- do not cite it as a live ID).
 
 **Verification**: `git grep -nE '<old-file-name>' -- scripts/gate-*.sh .agents/memorys/conventions.md` = 0 (dated ledger prose exempt); gate re-run shows the check still FAILS when a violation is planted.
 

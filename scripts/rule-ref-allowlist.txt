@@ -1,0 +1,9 @@
+# rule-ref allowlist
+#
+# Format: <ID>  # source: <repo> <date> <what was semantically cross-checked>
+# Starts empty. Only entries with a genuine EXTERNAL source that a human has
+# verified may live here -- an allowlist line is a citation, not a mute button.
+# Never add an ID that exists locally: rule-ref-lint resolves local headings
+# first, and allowing an existing one would mask future edits to its entry.
+#
+# (Adopted from the same-lineage remote_control_host repo, 2026-11-05.)

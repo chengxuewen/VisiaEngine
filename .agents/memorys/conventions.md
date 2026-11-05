@@ -63,7 +63,7 @@ Listing options for the user to choose without the above analysis is forbidden.
 git diff --cached -U0 -- '*.rs' | grep -P '^\+.*[\x{4e00}-\x{9fff}]' || echo OK
 ```
 
-## C18: Shared-code boundary = the example's teaching claim (2026-10-08 band V, user rulings C2=A/C3=B)
+## C18: Shared-code boundary = the example's teaching claim (2026-10-08 band V, user rulings band-V options B/A)
 
 **Constraint**: when pulling code duplicated across examples into shared components, pull only the parts that are **verbatim identical and carry no claim** (the device/surface/context boot sequences,
 argv parsing). The code by which an example teaches its one lesson (present-path selection, mouse/keyboard semantics, pixel predicates) **must not be eaten by sharing** —
@@ -129,7 +129,7 @@ the named residuals. Test fixtures that ARE the feature under test (E505 CJK gly
 E814 UTF-8 path, io_spec Chinese test-function identifiers) are functional data, not prose.
 
 ```bash
-bash scripts/gate-i18n.sh   # red/green proof duty per C0 was performed 2026-10-12
+bash scripts/gate-i18n.sh   # red/green proof duty per the predecessor zero-hallucination rule was performed 2026-10-12
 ```
 
 New commits: subject+body in English from E1 onward (the pre-E1 Chinese commit history is

@@ -251,7 +251,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - C15: Interface sentinels and parameter semantics must first be checked against the existing clause-ownership table
 - C16: Decision-presentation format = plain words + diagram + directory + one-at-a-time
 - C17: English-only for all persisted artifacts (2026-09-20 user ruling)
-- C18: Shared-code boundary = the example's teaching claim (2026-10-08 band V, user rulings C2=A/C3=B)
+- C18: Shared-code boundary = the example's teaching claim (2026-10-08 band V, user rulings band-V options B/A)
 - C19: Self-check/prune/gate-step predicates must be token-level, and a breakage probe must run before commissioning (2026-10-08 band V, hard evidence)
 - C20: All tracked artifacts are English; Chinese lives in AI chat and the .omo plan zone (2026-10-12, user adjudication A)
 - C21: Semicolon is the CMake list separator -- multi-value table entries need their own delimiter (2026-10-12, caught live as CMP0002 target collision)
@@ -292,8 +292,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
-- ... 80 older entries omitted (read the full file)
-- PIT-80: fit-changed framing breaks every "pick the center pixel" assumption downstream (2026-10-19, same round)
+- ... 81 older entries omitted (read the full file)
 - PIT-81: veLoop's onFrame callback receives NO arguments; ad-hoc harness chrome runs need the D-Bus scrub (2026-10-23, E305 band)
 - PIT-82: an unclosed <script type="module"> tag silently disables the whole page -- and my own degenerate write caused it (2026-10-23, E901 band)
 - PIT-83: wasm-bindgen glue does not track lib.rs -- a stale pkg passes host checks and ships without the new bridge (2026-10-23, bytes-bridge band)
@@ -308,6 +307,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - PIT-92: indented SUMMARY entries escaped the book chapter existence check (2026-10-30, sidebar folding)
 - PIT-93: docs/*.md are CRLF -- python string surgery with '\n' silently misses (2026-10-30, structure polish)
 - PIT-94: history surgery -- backup branch first, synchronous rebase, fresh origin/main (2026-10-30, 24->5 commit squash)
+- PIT-96: a citation validator has two false-positive classes of its own -- append-only headings and reserved-slot option letters (2026-11-05, rule-ref-lint adoption)
 
 ### status
 - full text: `.agents/memorys/status.md`
