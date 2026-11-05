@@ -292,8 +292,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`
-- ... 82 older entries omitted (read the full file)
-- PIT-82: an unclosed <script type="module"> tag silently disables the whole page -- and my own degenerate write caused it (2026-10-23, E901 band)
+- ... 83 older entries omitted (read the full file)
 - PIT-83: wasm-bindgen glue does not track lib.rs -- a stale pkg passes host checks and ships without the new bridge (2026-10-23, bytes-bridge band)
 - PIT-84: generated hub regions silently duplicate their END marker every sync -- and the gate's "first END" check hid it (2026-10-28, agent-sync)
 - PIT-85: a `.gitignore` inline comment silently disables the rule it annotates (2026-10-29, .gitignore reorg)
@@ -308,6 +307,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - PIT-94: history surgery -- backup branch first, synchronous rebase, fresh origin/main (2026-10-30, 24->5 commit squash)
 - PIT-96: a citation validator has two false-positive classes of its own -- append-only headings and reserved-slot option letters (2026-11-05, rule-ref-lint adoption)
 - PIT-97: a breakage probe that silently no-ops prints the same green as a passing gate (2026-11-05, skill-lint wiring)
+- PIT-98: prose translation ate a shell guard -- `d28c7af` turned `if ...; then echo SKIP; exit 0; fi` into a bare echo (2026-11-05, found by the MediaServo/RCHC adoption audit)
 
 ### status
 - full text: `.agents/memorys/status.md`

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gate-abi (I2 / plan v1.4 s6; P1 tile two ports 33->35; R band raster two ports 44->46): default-feature build + nm whitelist == 49 + demo compile-and-run.
+# gate-abi (I2 / plan v1.4 s6; P1 tile two ports 33->35; R band raster two ports 44->46): default-feature build + nm whitelist == 49 + header/lib drift + hpp mirror + demo compile-and-run.
 # Tool probe order: PATH -> host-spike conda prefix binaries ([FFI-R:FC-M1] no bare nm/cc on this machine);
 # both missing = SKIP exit 0 (the conditional segment writes its own shell gate, [v13-LEDG/env-W4] -- CI/fresh clones never go red spuriously).
 set -uo pipefail
@@ -7,7 +7,11 @@ cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.."
 NM=$(command -v nm || true); [ -n "$NM" ] || NM=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-nm
 CC=$(command -v cc || true);   [ -n "$CC" ] || CC=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-cc
 RE=$(command -v readelf || true); [ -n "$RE" ] || RE=.pixi/envs/host-spike/bin/x86_64-conda-linux-gnu-readelf
-  echo "GATE-ABI SKIP (no nm/readelf/cc -- gate-abi family discipline: a bare clone never goes red spuriously)"
+# Guard restored 2026-11-05: the i18n migration (d28c7af) translated this one-line
+# `if ... then echo SKIP; exit 0; fi` into a BARE echo, so every run printed "SKIP" and
+# then executed anyway, and a host without the tools would have crashed into the checks
+# instead of skipping. A control-flow line that carries prose text is not a comment.
+if [ ! -x "$NM" ] || [ ! -x "$CC" ] || [ ! -x "$RE" ]; then echo "GATE-ABI SKIP (no nm/cc/readelf -- host-spike not installed)"; exit 0; fi
 cargo build -p visiaengine-ffi >/dev/null 2>&1 || { echo "GATE-ABI ✗ build"; exit 1; }
 SO=target/debug/libvisiaengine.so
 [ -f "$SO" ] || { echo "GATE-ABI ✗ missing $SO ([lib] name check)"; exit 1; }
@@ -22,6 +26,27 @@ have=$("$RE" -d "$SO" | sed -n 's/.*SONAME.*\[\(.*\)\].*/\1/p')
 N=$("$NM" -D "$SO" | grep -c ' T visiaengine_' || true)
 echo "ABI-SYMBOLS="$N/49" | SO_SIZE=$(du -h "$SO" | cut -f1)"
 [ "$N" = "49" ] || { echo "GATE-ABI ✗ symbol count $N"; exit 1; }
+# C header <-> .so bidirectional drift gate (audit item 6a, adopted from the MediaServo
+# check-abi-drift shape). The count above owns HOW MANY; this owns WHICH: a declaration
+# with no export is a silent removal (the count can stay 49 if an unrelated symbol was
+# added in the same band), an export with no declaration is a symbol consumers were
+# never told about. Predicate strips comments first (C19): a doc line naming a call is
+# not a declaration. Measured clean 2026-11-05: 49 decl <-> 49 exp, set-identical, no
+# typedef/callback pollution -- so this gate opens with an empty exclusion list.
+TMPD=$(mktemp -d 2>/dev/null) || { mkdir -p .cache/tmp; TMPD=$(mktemp -d "$PWD/.cache/tmp/abi-XXXXXX"); } # /tmp can be read-only (sandbox/GUI host); never go red for the wrong reason
+trap 'rm -rf "$TMPD"' EXIT
+"$NM" -D "$SO" | awk '/ T visiaengine_/{print $3}' | sed 's/^visiaengine_//' | sort -u > "$TMPD/exp"
+grep -vE '^[[:space:]]*(\*|//)' bindings/c/include/visiaengine.h \
+  | sed 's|/\*.*\*/||g' | grep -oE '\bvisiaengine_[a-z0-9_]+[[:space:]]*\(' \
+  | sed 's/^visiaengine_//;s/[[:space:]]*(//' | sort -u > "$TMPD/decl"
+NOT_EXPORTED=$(comm -23 "$TMPD/decl" "$TMPD/exp")
+NOT_DECLARED=$(comm -13 "$TMPD/decl" "$TMPD/exp")
+if [ -n "$NOT_EXPORTED" ] || [ -n "$NOT_DECLARED" ]; then
+  [ -n "$NOT_EXPORTED" ] && { echo "GATE-ABI ✗ declared in visiaengine.h, absent from .so:"; echo "$NOT_EXPORTED" | sed 's/^/    visiaengine_/'; }
+  [ -n "$NOT_DECLARED" ] && { echo "GATE-ABI ✗ exported by .so, absent from visiaengine.h:"; echo "$NOT_DECLARED" | sed 's/^/    visiaengine_/'; }
+  exit 1
+fi
+echo "ABI-DRIFT ✓ ($(wc -l < "$TMPD/decl") declared <-> $(wc -l < "$TMPD/exp") exported, both directions)"
 # hpp mirror gate (N1.1, gap-analysis C1): every .so visiaengine_* symbol must have a
 # wrapper method in the hpp. Predicate = short name (prefix stripped) appears as `name(`
 # method form; the raw C symbol alone is NOT enough (it always appears as the call target).
