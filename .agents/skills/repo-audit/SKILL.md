@@ -293,6 +293,7 @@ Replace the variables:
 | "skip the security gate, it's a popular repo" | Popularity is not safety; run the 6 checks. |
 | "one quick scan is enough" | Quick misses duplicates/security; escalate to Full periodically. |
 | "the gates are green, nothing to scan" | Gates prove mechanical health per surface; they do NOT prove coverage (a surface without a gate is invisible), nor naming/structure/duplication quality -- that is exactly the scan's gap analysis. |
+| "the reference repo has X, so we lack X" | A same-lineage file list is a hypothesis, not a finding: check our side by name (`ls scripts/`, `grep` the pixi task) before recommending adoption. Live miss 2026-11-05: item 7 recommended porting an `mcp setup/index` CLI we already had (`scripts/mcp-cli.py`, four subcommands, documented in `docs/env.md`), because the stale workspace tree in the prompt listed a deleted file instead of it. Also verify the *behaviour* gap separately from the *file* gap. |
 | "audit .agents only, the rest is product code" | Scripts, CLI, tests and tree structure ARE the agent system's execution surface -- PIT-86/87/92/93 all lived outside .agents/. |
 
 ## Red Flags

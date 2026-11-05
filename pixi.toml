@@ -164,7 +164,7 @@ gate-abi = "bash scripts/gate-abi.sh"   # batch 2 I2: symbol whitelist + demo co
 gate-trace = "bash scripts/spec-trace.sh"   # batch 2 v1.4: traceability nativized into the ci chain (sealing the [FFI-R:FC-6] false-green window)
 gate-style = "bash -c '! grep -qE \"use serde_json|serde_json::\" crates/visiaengine-geo/src/style.rs'"   # the GEO-18 parsing-boundary gate (code shape; comments exempt)
 gate-docs = "bash scripts/gate-docs.sh"   # batch 5 T3: the four zero-drift document checks
-gate-skills = "python3 scripts/skills-links.py check"   # single-source skills: the .codebuddy link layer must match .agents/skills (guard exits 2, never 1)
+gate-skills = "python3 scripts/skills-links.py check"   # single-source skills: the .codebuddy link layer must match .agents/skills (guard exits 2, never 1) + per-skill content lint (name==dir, desc/size caps, @refs resolve; scripts/skill-lint.py)
 gate-agents = "python3 scripts/agent-links.py check"   # single-source rules/mcp/memory: generated host layers (.mcp.json, opencode mcp{}, AGENTS.md region) must match .agents/ (guard exits 2)
 rule-ref = "python3 scripts/rule-ref-lint.py"   # every C/D/PIT citation in rules/skills/AGENTS/SKILL resolves to a local memorys heading (or the source-noted allowlist); DUPLICATE scan + planted-red self-test
 agent-sync = "python3 scripts/agent-links.py sync"     # repair generated host layers from .agents/ single source (rules symlinks, mcp files, AGENTS.md memory region)

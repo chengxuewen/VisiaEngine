@@ -247,6 +247,28 @@ def check_target(skills, skills_dir, canonical_real, copy_mode):
     return findings
 
 
+def _content_lint():
+    """Run the skill content quality lint (scripts/skill-lint.py) and fold its exit
+    code into this gate. Placement follows the Adj 4 = A ruling (D551): a same-family
+    check joins the existing gate instead of spawning a script + pixi task + ci site,
+    so there stays ONE gate name to remember and CONSTRAINTS.md does not drift.
+    The link layer (above) answers "is the activation surface in sync"; this answers
+    "is each SKILL.md internally sound" -- two different questions, one gate.
+    The registry pass inside it is a second opinion on the gate-agents SKILLS-INDEX
+    segment; when both complain, gate-agents is the first judge.
+    """
+    import importlib.util
+
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skill-lint.py")
+    if not os.path.isfile(path):
+        print("GATE-SKILLS ! content lint absent (%s) -- link layer only" % path)
+        return 0
+    spec = importlib.util.spec_from_file_location("skill_lint", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.main([path])
+
+
 def do_check(targets, skills, canonical_real, force_copy, forbidden=()):
     failures = 0
     shadow = check_forbidden(forbidden)
@@ -282,9 +304,14 @@ def do_check(targets, skills, canonical_real, force_copy, forbidden=()):
             print("GATE-SKILLS ✗ %d target(s) need repair (run: sync)" % failures)
         if shadow:
             print("GATE-SKILLS ✗ %d shadowed skill(s) -- sync cannot fix this, delete them" % len(shadow))
-        return 1
-    print("GATE-SKILLS ✓ (%d skills × %d target(s))" % (len(skills), len(targets)))
-    return 0
+        link_rc = 1
+    else:
+        print("GATE-SKILLS ✓ (%d skills × %d target(s))" % (len(skills), len(targets)))
+        link_rc = 0
+    # Content pass runs either way: an author fixing the link layer should also see
+    # every other defect in one run, not in two rounds.
+    content_rc = _content_lint()
+    return max(link_rc, content_rc)
 
 
 def do_sync(targets, skills, canonical_real, force_copy, dry_run):
