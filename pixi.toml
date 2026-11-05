@@ -197,6 +197,7 @@ gen-hdr = "python3 scripts/gen_hdr.py"   # regenerate the demo_sky.hdr fixture (
 # published; the tarball stays on this machine.
 npm-pack = "bash scripts/gen-npm-package.sh"
 ci = { depends-on = ["fmt", "lint", "check", "test", "audit", "gate-style", "gate-trace", "gate-abi", "gate-docs", "gate-prose", "gate-skills", "gate-agents", "rule-ref", "gate-mcp", "check-promises", "cmake-smoke", "pack-check", "i18n"] }
+ci-all = "bash scripts/ci-all.sh"   # DIAGNOSTIC sweep: runs every ci site and summarizes (pixi.toml is the single list source), never aborts early; acceptance stays `pixi run ci`. Args: site filters, or --list
 smoke-clear = "bash scripts/smoke-rs.sh E101_clear"   # a ctest forwarding shell (argv single source = the R9 table; CI calls it under xvfb-run)
 smoke-load-gltf = "bash scripts/smoke-rs.sh E201_load_gltf"   # L2: the glTF assembly chain (G3)
 smoke-geo-viewer = "bash scripts/smoke-rs.sh E202_geo_viewer"   # L2: the GeoJSON chain (H4)

@@ -161,7 +161,7 @@ grep -rnE 'PIT-[0-9]+|D1[0-9][0-9]|D2[0-9][0-9]' .agents/rules .agents/skills
 python3 -m json.tool .opencode/opencode.json >/dev/null && echo json-OK
 ```
 
-Not in the `ci` chain (run deliberately): `gate-web`, `keys-probe`, `serve-https*`, `npm-pack`, `bench`, `docs-gen`, `f5`.
+Not in the `ci` chain (run deliberately): `gate-web`, `keys-probe`, `serve-https*`, `npm-pack`, `bench`, `docs-gen`, `f5`, `ci-all` (diagnostic sweep: every ci site, summarized, never aborts early; `./visiaengine.sh ci-all --list` shows the resolved list, and acceptance stays the fail-fast `ci`).
 
 ## NOTES
 
