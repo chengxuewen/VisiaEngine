@@ -405,7 +405,36 @@ def shutil_move(src, dst):
     shutil.move(src, dst)
 
 
+def _inherit(targets):
+    """Resolve `rules_inherit_from: <label>` before anything reads a target.
+
+    A host that wants the same rule tiers as another must POINT at them, not copy them:
+    a duplicated `rule_descriptions` block (12 entries of hand-written wording) would be a
+    second owner, and the two copies diverge the moment someone edits one host. Only the
+    rule-tier keys travel -- an allowlist on purpose, because inheriting `mcp_file` would
+    silently make two targets claim the same generated file. Child keys win.
+    """
+    RULE_KEYS = ("rules_mode", "langs", "always_on_rules", "rule_descriptions",
+                 "rules_files", "router_card")
+    by_label = {t.get("label"): t for t in targets}
+    out = []
+    for t in targets:
+        src = t.get("rules_inherit_from")
+        if not src:
+            out.append(t)
+            continue
+        if src not in by_label:
+            print("%s \u2717 %s: rules_inherit_from '%s' names no target" % (PREFIX, t.get("label"), src))
+            raise SystemExit(ac.EXIT_GUARD)
+        merged = {k: by_label[src][k] for k in RULE_KEYS if k in by_label[src]}
+        merged.update(t)
+        merged.pop("rules_inherit_from", None)
+        out.append(merged)
+    return out
+
+
 def run(command, targets, cfg, dry_run):
+    targets = _inherit(targets)
     rules_root = os.path.join(ac.ROOT, cfg["rules_root"])
     canonical_real = os.path.realpath(rules_root)
     if not os.path.isdir(rules_root):

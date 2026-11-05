@@ -263,8 +263,7 @@ file. Read the source file before acting on a rule you are unsure about.
 
 ### decisions
 - full text: `.agents/memorys/decisions.md`
-- ... 33 older entries omitted (read the full file)
-- D32: Stage 0 start — codegraph confirmed an npm package (review #17 verified + implemented) (2026-10-28)
+- ... 34 older entries omitted (read the full file)
 - D33: MCP real-launch acceptance (acceptance #8, 2026-10-28) — version pins and env name corrected by live probe
 - D34: Stage 1 implemented and verified (2026-10-28) — per-layer small generators + shared base + gate in ci
 - D35: Host discovery behavior empirically verified (review #15/#18, 2026-10-28) — verification caught two dead files
@@ -289,6 +288,7 @@ file. Read the source file before acting on a rule you are unsure about.
 - D46: the book is English-only; browser-side translation covers other languages (2026-10-30)
 - D53: the docs site moves to `build/book`; `www/` retires (2026-10-30, user-adjudicated U4)
 - D56: agent skill surface v3 -- four adoptions, one lane, one rename wave (2026-10-30, user-adjudicated one by one)
+- D57: Qoder rule surface = always-on + model-decision only, emitted through the codebuddy shape by inheritance (2026-11-05, S6 runtime probe)
 
 ### pitfalls
 - full text: `.agents/memorys/pitfalls.md`

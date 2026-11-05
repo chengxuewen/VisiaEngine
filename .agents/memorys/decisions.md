@@ -704,3 +704,18 @@ Writing rule for future D entries (F2 v5, 2026-11-02 audit -- three sentences):
    symbol-binding + "extracted count >= 8" self-check.
 Test question when writing: "delete this number -- what does the reader lose?"
 Decision direction -> delta; current state -> gate reference; rule -> symbol name.
+
+## D57: Qoder rule surface = always-on + model-decision only, emitted through the codebuddy shape by inheritance (2026-11-05, S6 runtime probe)
+
+**Decision**: register a `qoder` target with `rules_dir: .qoder/rules`, `rules_inherit_from: codebuddy`, `optional: true`. `rules-links.py` gained `_inherit()`, which resolves the pointer over an ALLOWLIST of rule-tier keys (`rules_mode / langs / always_on_rules / rule_descriptions / rules_files / router_card`) and lets child keys win. `.qoder/` stays gitignored (the `.trae` precedent) as a local activation layer.
+
+**Why, measured rather than inferred** (nine probes planted in `.qoder/rules/`, one restart, runtime evidence from the injected rules block; official docs still 404):
+- `alwaysApply: true` → always-on tier. `.mdc` extension and the `<rule-folder>/RULE.mdc` layout are BOTH read, so the existing `mdc` emitter is reused verbatim — no new format, no new code path.
+- `alwaysApply: false` + `description` → model-decision tier, and FetchRules proves the body is actually retrievable (a listed-but-unfetchable rule would be decoration).
+- **No glob tier exists in this host.** `globs:`, `glob:`, and `type: glob` all produced nothing — no section, no listing. This refutes the earlier assumption (stated in the S6 card) that a glob layer could make Qoder richer than CodeBuddy: parity is exactly the same two tiers, 2 always-on + 38 model-decision.
+- `trigger: always_on` landed in always-on, but that is NOT evidence the key is supported: a rule without `alwaysApply` appears to default to always-on, so the observation cannot distinguish "alias honored" from "fallback". Do not cite it as a supported naming.
+- A file with no frontmatter at all is never injected (S5 finding, still valid).
+
+**Cost accounting** (per turn, measured on the generated tree): always-on bodies 3,048 bytes + model-decision index lines 2,822 bytes = ~5.9 KB, the same order as the skill table (2,982 bytes) and identical in shape to what CodeBuddy already pays. The rejected alternative was mirroring all 41 rules as always-on (143,483 bytes), which would blow through the injection budget GATE-HUB exists to protect.
+
+**Single-owner rule**: the 12 curated descriptions are NOT copied into the qoder target. A duplicated tier block would be a second owner of the same wording, and the copies diverge the first time someone edits one host (the C15 "one value domain, two claimants" alarm). Inheritance also has to be key-filtered on purpose: inheriting whole targets would drag `mcp_file` along and make two targets claim one generated file.

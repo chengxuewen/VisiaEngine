@@ -51,6 +51,14 @@
       "notes": "activation layer, gitignored; mcp only (Trae natively reads AGENTS.md and .agents/skills). optional = absent layer is SKIP. structured_compare = the IDE re-indents the file on save (D50 R1). mcp_launcher_absolute = Trae does not spawn MCP servers in the repo root, so the launcher must be an absolute path (legal here because this file is gitignored)"
     },
     {
+      "label": "qoder",
+      "enabled": true,
+      "rules_dir": ".qoder/rules",
+      "rules_inherit_from": "codebuddy",
+      "optional": true,
+      "notes": "activation layer, gitignored. Tiers proven by a runtime probe (2026-11-05, .omo/plans/2026-10-28-agent-audit-followups.md S6 Step 1): alwaysApply:true => always-on; alwaysApply:false + description => model-decision (fetchable on demand); no glob tier exists in this host -- globs / glob / type:glob produced nothing at all; a file with no frontmatter is not injected; .mdc and the <rule>/RULE.mdc layout are both read, so the codebuddy emitter is reused verbatim. rules_inherit_from keeps the 12 descriptions single-owned instead of forking the wording. optional = absent layer is SKIP (fresh clone / CI)."
+    },
+    {
       "label": "claude",
       "enabled": false,
       "notes": "not used yet",
