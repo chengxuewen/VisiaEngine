@@ -3,6 +3,8 @@
 # Regenerates .codebuddy/* (gitignored), .opencode/opencode.json and the AGENTS.md memory
 # region (both tracked); re-stages the tracked generated files so the commit carries the
 # regenerated version; then verifies with gate-agents (blocks the commit on drift/guard).
+# Known deliberate bypass: no pixi on PATH => sync skipped (commit proceeds); gate-agents
+# in the ci chain is still the durable judge, so the bypass is visible, not silent.
 set -e
 cd "$(git rev-parse --show-toplevel)"
 export PATH="$HOME/.pixi/bin:$PATH"
@@ -14,9 +16,23 @@ pixi run agents sync
 # Stage every tracked generated artefact from the ONE list in agent-targets.json.
 # A hand-written add-list drifted once: .mcp.json / CONSTRAINTS.md were rewritten
 # by the generators but never staged, so the commit carried the stale shape.
-generated=$(python3 -c 'import json; print("\n".join(json.load(open("scripts/agent-targets.json"))["generated_tracked"]))' 2>/dev/null || true)
+# No `2>/dev/null` / `|| true` (adopted from the same-lineage remote_control_host
+# repo, their adjudication 11-A): a failed list read, a missing path, or a failed
+# `git add` must block THIS commit instead of letting it carry a stale generated
+# layer, which only reddens at the next gate run -- one step after the damage.
+generated=$(python3 -c 'import json; print("\n".join(json.load(open("scripts/agent-targets.json"))["generated_tracked"]))')
+if [ -z "$generated" ]; then
+  # An empty list is a defect, not a no-op: staging nothing is exactly the silent
+  # failure this hook exists to prevent.
+  echo "pre-commit: generated_tracked list is empty -- refusing to stage nothing" >&2
+  exit 1
+fi
 printf '%s\n' "$generated" | while IFS= read -r path; do
   [ -n "$path" ] || continue
-  git add -- "$path" 2>/dev/null || true
+  if [ ! -e "$path" ]; then
+    echo "pre-commit: generated path missing: $path" >&2
+    exit 1
+  fi
+  git add -- "$path"
 done
 pixi run agents check
