@@ -57,6 +57,8 @@
         "web-security": "Use when shipping web surfaces -- CSP, XSS prevention, third-party scripts, HTTPS headers.",
         "web-testing": "Use when testing web pages -- priority order, E2E shape, unit tests."
       },
+      "quote_descriptions": true,
+      "notes": "codebuddy rendering was verified WITH quoted description scalars, so its bytes stay unchanged when the emitter switched to plain scalars for other hosts (see scripts/rules-links.py:_yaml_value). Not inherited: the key is outside the rules_inherit_from allowlist, so qoder emits plain and renders once.",
       "mcp_file": ".mcp.json",
       "mcp_shape": "mcpServers",
       "mcp_launcher": true
